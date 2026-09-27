@@ -1149,10 +1149,24 @@
   color: var(--text-secondary);
   cursor: pointer;
 }
-.zoom-sheet-zoom-level:hover {
-  border-color: var(--line);
-  background: var(--surface-glass-strong);
-  color: var(--text-primary);
+/* Hover only where a pointer can hover: a tap on a touch screen leaves :hover stuck on, and the
+   readout would go on offering a press the reader has already made. */
+@media (hover: hover) {
+  .zoom-sheet-zoom-level:not([aria-disabled='true']):hover {
+    border-color: var(--line);
+    background: var(--surface-glass-strong);
+    color: var(--text-primary);
+  }
+  .zoom-sheet-zoom-level:not([aria-disabled='true']):hover .zoom-sheet-zoom-now {
+    visibility: hidden;
+  }
+  .zoom-sheet-zoom-level:not([aria-disabled='true']):hover .zoom-sheet-zoom-offer {
+    visibility: visible;
+  }
+}
+/* A fit that is already actual size has nothing to offer: the number stays put. */
+.zoom-sheet-zoom-level[aria-disabled='true'] {
+  cursor: default;
 }
 .zoom-sheet-zoom-level:focus-visible {
   outline: 2px solid var(--presence);
@@ -1167,10 +1181,10 @@
   grid-area: 1 / 1;
 }
 .zoom-sheet-zoom-offer,
-.zoom-sheet-zoom-level:is(:hover, :focus-visible) .zoom-sheet-zoom-now {
+.zoom-sheet-zoom-level:focus-visible .zoom-sheet-zoom-now {
   visibility: hidden;
 }
-.zoom-sheet-zoom-level:is(:hover, :focus-visible) .zoom-sheet-zoom-offer {
+.zoom-sheet-zoom-level:focus-visible .zoom-sheet-zoom-offer {
   visibility: visible;
 }
 .zoom-sheet-stepper {

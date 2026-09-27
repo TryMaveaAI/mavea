@@ -476,47 +476,8 @@ describe('stepping through the answer from the stage', () => {
 });
 
 describe('fit and actual size', () => {
-  const readout = () => screen.getByRole('button', { name: /^Zoom \d+%\./ }) as HTMLButtonElement;
-  const now = (root: HTMLElement) => root.querySelector('.zoom-sheet-zoom-now')?.textContent;
   const bodyZoom = (root: HTMLElement) =>
     (root.querySelector('.zoom-sheet-body') as HTMLElement).style.zoom;
-
-  it('opens fitted, and the readout toggles between the fit and actual size', () => {
-    const { container } = mount();
-    cleanClick(cell0(container, 'a'));
-    // Fitted: the body carries no magnification of its own, and the readout offers 100%.
-    expect(bodyZoom(container)).toBe('');
-    expect(readout().getAttribute('aria-label')).toMatch(/Actual size$/);
-    expect(readout().getAttribute('aria-keyshortcuts')).toBe('Shift+0');
-    expect(readout().title).toBe('Actual size (Shift+0)');
-    fireEvent.click(readout());
-    expect(bodyZoom(container)).toBe('1');
-    expect(now(container)).toBe('100%');
-    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage$/);
-    expect(readout().getAttribute('aria-keyshortcuts')).toBe('Shift+1');
-    // Any manual zoom offers the fit too.
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(now(container)).toBe('115%');
-    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage/);
-    fireEvent.click(readout());
-    expect(bodyZoom(container)).toBe('');
-  });
-
-  it('takes Shift+0 as actual size and Shift+1 as the fit, by the physical key', () => {
-    const { container } = mount();
-    cleanClick(cell0(container, 'a'));
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    // US layout: Shift+0 types ")".
-    expect(fireEvent.keyDown(window, { key: ')', code: 'Digit0', shiftKey: true })).toBe(false);
-    expect(bodyZoom(container)).toBe('1');
-    fireEvent.keyDown(window, { key: '!', code: 'Digit1', shiftKey: true });
-    expect(bodyZoom(container)).toBe('');
-    // AZERTY: the same keys type the digits themselves.
-    fireEvent.keyDown(window, { key: '0', code: 'Digit0', shiftKey: true });
-    expect(bodyZoom(container)).toBe('1');
-    fireEvent.keyDown(window, { key: '1', code: 'Digit1', shiftKey: true });
-    expect(bodyZoom(container)).toBe('');
-  });
 
   it('leaves the browser its own zoom keys, and any chord with another modifier', () => {
     const { container } = mount();

@@ -532,6 +532,9 @@ export function TopicCanvas({
   // Honest in both modes: fitted, the stage's one FitBox is the whole scale (any FitBox inside
   // the block stands down under it); magnified, the fit holds at 1 and `zoom` is the whole scale.
   const shownZoom = fitted ? fitScale : zoomLevel;
+  // A fit that landed on 100% is already actual size. Offering "100%" there would only swap the
+  // notes' layout for a magnified one at the same scale.
+  const atActual = fitted && Math.round(fitScale * 100) === 100;
   // Never under the floor, and never above 1 either: a card whose own type is already under 9px
   // can still be seen at its own size, which is what the board shows.
   const zoomFloor = Math.max(ZOOM_MIN, Math.min(1, lensFit.legibleMin));
@@ -547,6 +550,18 @@ export function TopicCanvas({
     setLayoutFit(1);
     setZoomLevel(1);
   };
+  // What a press on the readout does: actual size from a fit, the fit from a magnification, and
+  // nothing from a fit that is already actual size.
+  const readoutOffer = atActual
+    ? null
+    : fitted
+      ? { label: 'Actual size', keys: 'Shift+0', short: '100%', run: actualSize }
+      : {
+          label: 'Fit to the stage',
+          keys: 'Shift+1',
+          short: 'Fit',
+          run: () => setZoomLevel('fit'),
+        };
   // Past a 1920px window the Lens sheet grows with the type scale, so the reading size the fit
   // grows a card toward grows with it.
   const lensGrows = useMediaQuery('(width > 1920px)');
@@ -574,8 +589,9 @@ export function TopicCanvas({
       if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (e.code === 'Digit0' || e.code === 'Digit1') {
           e.preventDefault();
-          if (e.code === 'Digit0') actualSize();
-          else setZoomLevel('fit');
+          if (e.code === 'Digit0') {
+            if (!atActual) actualSize();
+          } else setZoomLevel('fit');
           return;
         }
       }
@@ -1383,16 +1399,21 @@ export function TopicCanvas({
                         type="button"
                         className="zoom-sheet-zoom-level"
                         aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
-                          fitted ? 'Actual size' : 'Fit to the stage'
+                          readoutOffer?.label ?? 'Already actual size'
                         }`}
-                        aria-keyshortcuts={fitted ? 'Shift+0' : 'Shift+1'}
-                        title={fitted ? 'Actual size (Shift+0)' : 'Fit to the stage (Shift+1)'}
-                        onClick={fitted ? actualSize : () => setZoomLevel('fit')}
+                        aria-disabled={readoutOffer ? undefined : true}
+                        aria-keyshortcuts={readoutOffer?.keys}
+                        title={
+                          readoutOffer ? `${readoutOffer.label} (${readoutOffer.keys})` : undefined
+                        }
+                        onClick={readoutOffer?.run}
                       >
                         <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
-                        <span className="zoom-sheet-zoom-offer" aria-hidden="true">
-                          {fitted ? '100%' : 'Fit'}
-                        </span>
+                        {readoutOffer && (
+                          <span className="zoom-sheet-zoom-offer" aria-hidden="true">
+                            {readoutOffer.short}
+                          </span>
+                        )}
                       </button>
                       <button
                         type="button"
