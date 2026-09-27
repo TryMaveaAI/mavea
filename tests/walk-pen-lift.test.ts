@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { awaitPenLift } from '../src/live/walkSync';
+import { awaitPenLift, finishOnceInked } from '../src/live/walkSync';
 
 // The next stop's camera waits on this, so it has to end the moment the pen is really up — a
 // worst-case hold is dead air on screen — and never before a stroke has finished drawing.
@@ -88,5 +88,30 @@ describe('awaitPenLift', () => {
     );
     await vi.advanceTimersByTimeAsync(0);
     expect(done()).toBe(true);
+  });
+});
+
+describe('finishOnceInked', () => {
+  it('ends the walk once its last stroke lands', async () => {
+    const finish = vi.fn();
+    finishOnceInked(Promise.resolve(), () => false, finish);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('never ends a walk that was cancelled while its pen was still down', async () => {
+    // The old walk is torn down and a new one starts before the old pen lifts: finishing then
+    // would clear the NEW walk's active flag and caption.
+    let release!: () => void;
+    const penDown = new Promise<void>((r) => (release = r));
+    let cancelled = false;
+    const finish = vi.fn();
+    finishOnceInked(penDown, () => cancelled, finish);
+    cancelled = true;
+    release();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(finish).not.toHaveBeenCalled();
   });
 });

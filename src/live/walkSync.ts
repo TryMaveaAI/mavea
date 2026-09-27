@@ -80,6 +80,22 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
+ * Ends a walk once its last stroke has finished — unless the walk was cancelled in the meantime.
+ * The pen's promise resolves on its own clock, and by then a NEW walk may own the shared walk
+ * state (the active flag, the flush hook, the caption); ending the old one there would wipe the
+ * new walk's state mid-stop and let a driver cut across it.
+ */
+export function finishOnceInked(
+  penDown: Promise<void>,
+  isCancelled: () => boolean,
+  finish: () => void,
+): void {
+  void penDown.then(() => {
+    if (!isCancelled()) finish();
+  });
+}
+
+/**
  * Resolves when a stop's pen has lifted: every stroke still drawing on its card has finished, and
  * a mark asked for less than `settleMs` ago has had time to settle onto the card and start. The
  * walk chains the NEXT stop's glide onto this — never the next line, which speaks on time — so a

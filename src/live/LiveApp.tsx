@@ -100,6 +100,7 @@ import {
   waitQueueQuiet,
   awaitPenLift,
   delay,
+  finishOnceInked,
   finishCapMs,
   spokenMs,
   spokenMsUncapped,
@@ -3166,7 +3167,7 @@ export function LiveApp(): ReactElement {
       if (cancelled || i >= beats.length) {
         // The last stroke finishes before the walk hands the canvas on to whatever comes next.
         if (cancelled) finish();
-        else void penDown.then(() => finish());
+        else finishOnceInked(penDown, () => cancelled, finish);
         return;
       }
       // A manual dismiss ends the walk early and leaves the canvas at rest (spot cleared).
