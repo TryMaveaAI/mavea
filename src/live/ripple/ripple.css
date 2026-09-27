@@ -4,7 +4,6 @@
    safe → --insight. */
 
 .ripple-scrim {
-  container: ripple-scrim / size;
   position: fixed;
   inset: 0;
   z-index: 52;
@@ -41,10 +40,11 @@
 }
 /* A 4K window at 1× put a 1700px panel of 11–13px type in the middle of 3840px: the app-wide type
    scale stops at 1.25 by design, which is right for a page and wrong for a dense instrument panel
-   this size. On a window this big in BOTH axes the panel restates the type ramp at its ceiling ×1.2
-   (the reader's text-size knob still composes), and widens by the same ratio so the lines it holds
-   keep their measure. */
-@container ripple-scrim (width >= 2400px) and (height >= 1500px) {
+   this size. On a window this big in BOTH axes (an ultrawide is as wide but laptop-tall) the panel
+   restates the type ramp at its ceilings ×1.5 — the app's 1.25 cap, ×1.2 — with the reader's
+   text-size knob still composing, and widens by the same ratio so its lines keep their measure.
+   The ceilings are tokens-base.css's own; tests/ripple-4k-type.test.ts holds them together. */
+@media (width >= 2560px) and (height >= 1500px) {
   .ripple-panel {
     --ripple-type: calc(var(--fs-reader, 1) * 1.5);
     --fs-2xs: calc(10.5px * var(--ripple-type));
