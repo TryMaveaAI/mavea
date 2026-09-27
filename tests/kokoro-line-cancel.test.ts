@@ -8,9 +8,11 @@ interface Scheduled {
   clip: number;
   at: number;
   duration: number;
+  /** When the source was told to stop, on the audio clock; a stop at or before `at` silences it. */
+  stoppedAt?: number;
 }
 const starts: Scheduled[] = [];
-/** Clips told to stop while they still had audio left to play — a cut, not a clean end. */
+/** Clips stopped while one of their buffers was sounding — a cut, not a clean end. */
 const stopped = new Set<number>();
 let clipSeq = 0;
 
@@ -48,14 +50,19 @@ const fakeCtx = {
       connect(dest: { id?: number }): void {
         src.clip = dest?.id ?? 0;
       },
+      record: null as Scheduled | null,
       start(at: number): void {
         src.endsAt = at + (src.buffer?.duration ?? 0);
-        starts.push({ clip: src.clip, at, duration: src.buffer?.duration ?? 0 });
+        src.record = { clip: src.clip, at, duration: src.buffer?.duration ?? 0 };
+        starts.push(src.record);
       },
-      // A clip's own teardown also stops its sources once they have played out; only a stop
-      // that lands before the buffer's end is audible.
-      stop(): void {
-        if (fakeCtx.currentTime < src.endsAt) stopped.add(src.clip);
+      // A clip's own teardown also stops its sources once they have played out, and a clip moved
+      // up the clock stops sources that have not begun; only a stop that lands while the buffer
+      // is sounding cuts audio.
+      stop(when?: number): void {
+        const at = when || fakeCtx.currentTime; // 0 and omitted both mean "now"
+        if (src.record) src.record.stoppedAt ??= at;
+        if (src.record && at > src.record.at && at < src.endsAt) stopped.add(src.clip);
       },
       disconnect(): void {},
     };
@@ -153,6 +160,19 @@ function firstStartOf(clip: number): number | undefined {
   return own.length ? Math.min(...own) : undefined;
 }
 
+/** Where a clip is first HEARD: its earliest buffer that was not stopped before it began. */
+function firstHeardOf(clip: number): number | undefined {
+  const heard = starts
+    .filter((s) => s.clip === clip && !(s.stoppedAt !== undefined && s.stoppedAt <= s.at))
+    .map((s) => s.at);
+  return heard.length ? Math.min(...heard) : undefined;
+}
+
+/** Sleep on the wall clock, which the fake audio clock follows. */
+function elapse(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 let synthesized = 0;
 
 beforeEach(() => {
@@ -187,6 +207,9 @@ describe('stopping one spoken line', () => {
     // Both clips on the clock: the aside sounding, the narration anchored on its tail.
     await vi.waitFor(() => expect(new Set(starts.map((s) => s.clip)).size).toBe(2));
     const [asideClip, narrationClip] = [...new Set(starts.map((s) => s.clip))];
+    // Cancel it while it is sounding, not in the lead before its first sample.
+    const asideStart = firstStartOf(asideClip) ?? 0;
+    await vi.waitFor(() => expect(fakeCtx.currentTime).toBeGreaterThan(asideStart + 0.05));
 
     aside.cancel();
 
@@ -266,6 +289,52 @@ describe('stopping one spoken line', () => {
     expect(starts.filter((s) => s.clip === 1)).toHaveLength(1);
     expect(stopped.has(2)).toBe(false);
     expect(requested).toEqual([ASIDE]);
+  });
+
+  it("pulls a narration already scheduled on the aside's tail forward into the time it frees", async () => {
+    // Short enough that the cached narration goes straight onto the clock behind it.
+    const asideSeconds = 1.5;
+    cacheFor(asideSeconds, ASIDE);
+    cache(NARRATION);
+    const aside = speakKokoroLine(ASIDE, 'mavea');
+    const narration = speakKokoroLine(NARRATION, 'mavea');
+    await vi.waitFor(() => expect(firstStartOf(2)).toBeDefined());
+    expect(firstStartOf(2)).toBeCloseTo((firstStartOf(1) as number) + asideSeconds, 6);
+    await elapse(200);
+
+    const cancelledAt = fakeCtx.currentTime;
+    aside.cancel();
+
+    await vi.waitFor(() => expect(firstHeardOf(2)).toBeLessThan(cancelledAt + 0.3));
+    await expect(narration.started).resolves.toBe(true);
+    // It still ends when its own audio does, not when the old schedule said.
+    const heardFrom = firstHeardOf(2) as number;
+    await expect(narration.finished).resolves.toBe(true);
+    expect(fakeCtx.currentTime).toBeLessThan(heardFrom + CLIP_SECONDS + 0.3);
+    await expect(aside.finished).resolves.toBe(false);
+  });
+
+  it('opens a streamed narration waiting on its first chunk where the cancelled aside stopped', async () => {
+    const asideSeconds = 1.5;
+    cacheFor(asideSeconds, ASIDE);
+    const stream = handDrivenStream();
+    synthesizeWith(async () => stream.response);
+    const aside = speakKokoroLine(ASIDE, 'mavea');
+    const narration = speakKokoroLine(NARRATION, 'mavea');
+    // The narration's request is accepted and anchored on the aside's tail, awaiting audio.
+    await vi.waitFor(() => expect(stream.pendingReads).toHaveLength(1));
+    await elapse(200);
+
+    const cancelledAt = fakeCtx.currentTime;
+    aside.cancel();
+    stream.pendingReads[0]({ done: false, value: pcmOf(CLIP_SECONDS) });
+    await vi.waitFor(() => expect(stream.pendingReads).toHaveLength(2));
+    stream.pendingReads[1]({ done: true, value: undefined });
+
+    await vi.waitFor(() => expect(firstHeardOf(2)).toBeDefined());
+    expect(firstHeardOf(2)).toBeLessThan(cancelledAt + 0.3);
+    await expect(narration.finished).resolves.toBe(true);
+    await expect(aside.finished).resolves.toBe(false);
   });
 
   it('drops a line still waiting in the queue without touching the lines around it', async () => {

@@ -45,6 +45,8 @@ const BACK_PRESSURE_MARGIN_MS = 15;
  *  hush. Eight milliseconds is inaudible as a fade and completely removes the edge; it is the same
  *  ramp the offline export path has always applied per line (clip/reel/audioTrack). */
 const CANCEL_FADE_S = 0.008;
+/** Silence left by a stopped line that is too short to be worth re-timing the clips behind it. */
+const GAP_CLOSE_MIN_S = 0.01;
 
 /**
  * Decode a chunk of signed 16-bit little-endian PCM into Float32 samples in [-1, 1), carrying a
@@ -204,7 +206,12 @@ export function bindOutputGain(el: HTMLMediaElement): () => void {
 }
 
 interface ActiveStream {
-  sources: Set<AudioBufferSourceNode>;
+  /** Every source still scheduled or playing, with where it starts on the clock. */
+  sources: Map<AudioBufferSourceNode, number>;
+  /** Where the clip begins on the clock: its anchor, moved only when a clip ahead of it is cut. */
+  startAt: number;
+  /** Where its last scheduled buffer ends — and so where its next buffer goes. */
+  endsAt: number;
   /** The leased context this clip plays on. Carried explicitly rather than read off the gain node:
    *  teardown needs the clock for its fade-out, and `gain.context` is not something every host
    *  (or test double) provides. */
@@ -226,6 +233,11 @@ interface ActiveStream {
   wakeBackPressure?: () => void;
   /** Drop the pending "audible now" announcement (see announceAudible). Cleared once it fires. */
   cancelAudible?: () => void;
+  /** The clock time that announcement waits for, and a way to re-measure it once it moves. */
+  audibleAt?: number;
+  rearmAudible?: () => void;
+  /** Re-measure the end-of-playback wait after `endsAt` has moved (see awaitClipEnd). */
+  recheckEnd?: () => void;
 }
 
 let active: ActiveStream | null = null;
@@ -265,10 +277,15 @@ function anchorStart(ctx: BaseAudioContext): number {
 }
 
 /** This clip now owns the end of the scheduled voice. */
-function claimTail(state: ActiveStream, endsAt: number): void {
+function claimTail(state: ActiveStream): void {
   playhead.ctx = state.ctx;
-  playhead.endsAt = endsAt;
+  playhead.endsAt = state.endsAt;
   playhead.owner = state;
+}
+
+/** The scheduled voice ends sooner than the waiters on the playhead last measured. */
+function wakePlayheadWaiters(): void {
+  for (const wake of [...playheadWaiters]) wake();
 }
 
 /** Nothing scheduled is going to play any more: drop the tail and wake whatever was waiting it
@@ -276,7 +293,24 @@ function claimTail(state: ActiveStream, endsAt: number): void {
 function releasePlayhead(): void {
   playhead.owner = null;
   playhead.endsAt = 0;
-  for (const wake of [...playheadWaiters]) wake();
+  wakePlayheadWaiters();
+}
+
+/** Put one buffer of `state` on the clock at `at`, routed through the clip's own gain. */
+function scheduleSource(state: ActiveStream, buffer: AudioBuffer, at: number): void {
+  const src = state.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(state.gain);
+  src.start(at);
+  state.sources.set(src, at);
+  src.onended = () => {
+    state.sources.delete(src);
+    try {
+      src.disconnect();
+    } catch {
+      /* no-op */
+    }
+  };
 }
 
 /** How long the scheduled voice still has to play on the shared clock, in ms; 0 when nothing is
@@ -321,14 +355,14 @@ export async function awaitPlayheadWithin(withinMs: number, signal?: AbortSignal
  *  scheduler's own slack. */
 const CLIP_END_MARGIN_MS = 40;
 
-/** Hold until the shared clock reaches `until`, the moment this clip's last scheduled buffer has
- *  played out. Re-measured on every wake rather than slept once, because it is the AUDIO clock: a
+/** Hold until the shared clock reaches `state.endsAt`, the moment this clip's last scheduled buffer
+ *  has played out. Re-measured on every wake rather than slept once, because it is the AUDIO clock: a
  *  suspended context (a call on iOS, a backgrounded tab) stops it while setTimeout keeps counting,
  *  and finishing early takes the clip down — releasing the tail the next clause anchors on and the
  *  whole-clip fallback waits out — with a suspension's worth of it still to sound. Suspended
  *  contexts wait on state changes without polling; a closed or stalled running context ends
  *  the wait. `state.finishEarly` cuts the wait short when the clip is stopped. */
-function awaitClipEnd(state: ActiveStream, until: number): Promise<void> {
+function awaitClipEnd(state: ActiveStream): Promise<void> {
   return new Promise<void>((resolve) => {
     const ctx = state.ctx;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -339,6 +373,7 @@ function awaitClipEnd(state: ActiveStream, until: number): Promise<void> {
       finished = true;
       clearTimeout(timer);
       ctx.removeEventListener?.('statechange', check);
+      state.recheckEnd = undefined;
       resolve();
     };
     const check = (): void => {
@@ -353,11 +388,17 @@ function awaitClipEnd(state: ActiveStream, until: number): Promise<void> {
         return;
       }
       const now = ctx.currentTime;
-      if (until - now <= 0 || now <= lastSeen) return finish();
+      if (state.endsAt - now <= 0 || now <= lastSeen) return finish();
       lastSeen = now;
-      timer = setTimeout(check, (until - now) * 1000 + CLIP_END_MARGIN_MS);
+      timer = setTimeout(check, (state.endsAt - now) * 1000 + CLIP_END_MARGIN_MS);
     };
     state.finishEarly = finish;
+    // A re-measure is not a wake from the timer: the clock may not have moved since the last one,
+    // and that must not read as a stalled context.
+    state.recheckEnd = () => {
+      lastSeen = Number.NEGATIVE_INFINITY;
+      check();
+    };
     ctx.addEventListener?.('statechange', check);
     check();
   });
@@ -377,13 +418,16 @@ function announceAudible(state: ActiveStream, at: number, onStart?: () => void):
   // stops that clock while setTimeout keeps counting — so the wait is re-measured on every wake,
   // the way awaitClipEnd re-measures, and the signal fires when the clock has actually reached
   // the clip rather than when the wall clock guessed it would.
+  state.audibleAt = at;
   const arm = (): void => {
-    const wait = (at - state.ctx.currentTime) * 1000;
+    clearTimeout(timer);
+    const wait = ((state.audibleAt ?? at) - state.ctx.currentTime) * 1000;
     if (wait > 0) {
       timer = setTimeout(arm, wait);
       return;
     }
     state.cancelAudible = undefined;
+    state.rearmAudible = undefined;
     try {
       onStart();
     } catch {
@@ -393,7 +437,9 @@ function announceAudible(state: ActiveStream, at: number, onStart?: () => void):
   state.cancelAudible = () => {
     clearTimeout(timer);
     state.cancelAudible = undefined;
+    state.rearmAudible = undefined;
   };
+  state.rearmAudible = arm;
   arm();
 }
 
@@ -450,7 +496,7 @@ function teardown(state: ActiveStream, preserveAcceptedTransport = false): void 
       /* no-op */
     }
   };
-  for (const src of state.sources) {
+  for (const src of state.sources.keys()) {
     const prior = src.onended;
     src.onended = function (this: AudioScheduledSourceNode, ev: Event) {
       prior?.call(this, ev); // the scheduler's own handler removes it from `sources`
@@ -499,6 +545,60 @@ function stopClip(state: ActiveStream): void {
   teardown(state, true);
 }
 
+/** Move a clip that has not begun sounding `by` seconds earlier on the clock. A source cannot be
+ *  restarted, so each scheduled buffer goes back on the clock as a fresh source over the same
+ *  audio, and everything that waits on the clip's timing re-measures against the new schedule. */
+function pullForward(clip: ActiveStream, by: number): void {
+  for (const [src, at] of [...clip.sources]) {
+    const buffer = src.buffer;
+    if (!buffer) continue;
+    src.onended = null;
+    try {
+      src.stop();
+      src.disconnect();
+    } catch {
+      /* no-op */
+    }
+    clip.sources.delete(src);
+    scheduleSource(clip, buffer, at - by);
+  }
+  clip.startAt -= by;
+  clip.endsAt -= by;
+  if (clip.audibleAt !== undefined) clip.audibleAt -= by;
+  clip.rearmAudible?.();
+  clip.recheckEnd?.();
+  clip.wakeBackPressure?.();
+}
+
+/**
+ * Stop one line's clip and close the silence it would otherwise leave. The queue takes up a line
+ * as soon as the one ahead has scheduled its last buffer, so the lines behind a stopped clip are
+ * already anchored on its tail — a streamed one before a sample of it has even arrived. Left
+ * there, they sound only when the stopped clip would have ended. Every clip anchored at or past
+ * that end moves up by the time the stop freed, and the playhead moves with its owner, so a line
+ * not yet on the clock anchors on the new tail.
+ */
+function cutClip(state: ActiveStream): void {
+  const now = state.ctx.currentTime;
+  const freedFrom = Math.max(state.startAt, state.sources.size > 0 ? now + CANCEL_FADE_S : now);
+  const gap = state.endsAt - freedFrom;
+  const behind =
+    gap > GAP_CLOSE_MIN_S
+      ? [...settled, active].filter(
+          (clip): clip is ActiveStream =>
+            clip !== null &&
+            clip !== state &&
+            clip.ctx === state.ctx &&
+            clip.startAt >= state.endsAt - 1e-6,
+        )
+      : [];
+  stopClip(state);
+  if (behind.length === 0) return;
+  for (const clip of behind) pullForward(clip, gap);
+  if (playhead.owner && behind.includes(playhead.owner)) playhead.endsAt = playhead.owner.endsAt;
+  wakePlayheadWaiters();
+}
+
 /** Stop the in-flight streaming clip (if any) and every settled tail still playing, and rest
  *  their graphs. Idempotent. Also supersedes any line still mid-fetch (before it publishes to
  *  `active`) so it can't start playing after a cancel. */
@@ -530,7 +630,8 @@ export function cancelActiveStream(): void {
  * once. It receives the complete raw PCM (for the replay cache), or null when the clip was too
  * large to keep. Not called for a cancelled, failed, or never-started line.
  *
- * `signal` cancels THIS clip alone, resolving true like a hard stop; see KokoroLine.cancel.
+ * `signal` cancels THIS clip alone, resolving true like a hard stop; see KokoroLine.cancel. The
+ * clips queued behind it move up into the time it frees (cutClip).
  */
 export async function streamSpeak(
   text: string,
@@ -550,7 +651,7 @@ export async function streamSpeak(
   // Until the clip is published there is only the fetch to abort; after, the clip itself.
   let clip: ActiveStream | null = null;
   const stopLine = (): void => {
-    if (clip) stopClip(clip);
+    if (clip) cutClip(clip);
     else abort.abort();
   };
   signal?.addEventListener('abort', stopLine, { once: true });
@@ -626,7 +727,9 @@ export async function streamSpeak(
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
-    sources: new Set(),
+    sources: new Map(),
+    startAt: 0,
+    endsAt: 0,
     ctx,
     releaseTap: tapPlaybackNode(gain),
     releaseAudio: lease.release,
@@ -645,9 +748,8 @@ export async function streamSpeak(
   active = state;
   clip = state;
 
-  let nextTime = anchorStart(ctx);
   // Where this clip begins sounding — back-pressure is measured from here, not from the clock.
-  const clipStart = nextTime;
+  state.startAt = state.endsAt = anchorStart(ctx);
   let started = false;
   const tap = streamTap; // snapshot, so begin/push/end always hit the same listener
   try {
@@ -660,28 +762,16 @@ export async function streamSpeak(
     if (!samples.length) return;
     const buffer = ctx.createBuffer(1, samples.length, SAMPLE_RATE);
     buffer.getChannelData(0).set(samples); // widest support; copyToChannel is newer
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(gain);
     // An underrun: the playhead caught the synthesizer. Re-anchor and keep going — the voice
     // stutters for a beat but recovers, and it stays the NATURAL voice: slowness never demotes
     // to the robotic one (the preparing indicator and the one-ahead cache absorb the waits).
-    if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.02;
-    const at = nextTime;
-    src.start(at);
-    nextTime += buffer.duration;
-    claimTail(state, nextTime);
+    if (state.endsAt < ctx.currentTime) state.endsAt = ctx.currentTime + 0.02;
+    const at = state.endsAt;
+    scheduleSource(state, buffer, at);
+    state.endsAt += buffer.duration;
+    claimTail(state);
     if (!started) announceAudible(state, at, onStart);
     started = true;
-    state.sources.add(src);
-    src.onended = () => {
-      state.sources.delete(src);
-      try {
-        src.disconnect();
-      } catch {
-        /* no-op */
-      }
-    };
   };
 
   // Coalesce decoded samples into ~FLUSH_SECONDS buffers so a chunky/tiny network stream still
@@ -728,13 +818,13 @@ export async function streamSpeak(
       // of it and park the reader before its very first read — a body left unread is a body the
       // proxy may time out, and onSynthDone (the next line's prefetch) waits on its last byte.
       // What bounds the park is the anchor itself: nothing schedules past the horizon above, so
-      // clipStart is at most one clause plus MAX_AHEAD_SECONDS out.
+      // the clip's start is at most one clause plus MAX_AHEAD_SECONDS out.
       while (
         !state.cancelled &&
-        nextTime - Math.max(ctx.currentTime, clipStart) > MAX_AHEAD_SECONDS
+        state.endsAt - Math.max(ctx.currentTime, state.startAt) > MAX_AHEAD_SECONDS
       ) {
         const wait =
-          (nextTime - ctx.currentTime - MAX_AHEAD_SECONDS) * 1000 + BACK_PRESSURE_MARGIN_MS;
+          (state.endsAt - ctx.currentTime - MAX_AHEAD_SECONDS) * 1000 + BACK_PRESSURE_MARGIN_MS;
         await new Promise<void>((resolve) => {
           const timer = setTimeout(() => {
             state.wakeBackPressure = undefined;
@@ -803,7 +893,7 @@ export async function streamSpeak(
       }
     }
     // Pace the queue on real playback: resolve only once the last scheduled buffer ends.
-    await awaitClipEnd(state, nextTime);
+    await awaitClipEnd(state);
   }
 
   signal?.removeEventListener('abort', stopLine);
@@ -828,7 +918,7 @@ const CACHED_BUFFER_SECONDS = 1;
  * synthesis except for starting instantly. Every buffer exists up front, so this path can never
  * underrun (and never counts one). Resolves like streamSpeak: true when audio played or the
  * clip was hard-stopped, false only when playback could not start (caller re-synthesizes).
- * `signal` cancels this clip alone, as it does for streamSpeak.
+ * `signal` cancels this clip alone, and closes the gap behind it, as it does for streamSpeak.
  */
 export async function playPcmBytes(
   bytes: Uint8Array,
@@ -883,7 +973,9 @@ export async function playPcmBytes(
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
-    sources: new Set(),
+    sources: new Map(),
+    startAt: 0,
+    endsAt: 0,
     ctx,
     releaseTap: tapPlaybackNode(gain),
     releaseAudio: lease.release,
@@ -896,7 +988,7 @@ export async function playPcmBytes(
     teardown(active);
   }
   active = state;
-  const stopLine = (): void => stopClip(state);
+  const stopLine = (): void => cutClip(state);
   signal?.addEventListener('abort', stopLine, { once: true });
 
   const tap = streamTap;
@@ -913,36 +1005,24 @@ export async function playPcmBytes(
     /* a tap must never break playback */
   }
 
-  let nextTime = anchorStart(ctx);
+  state.startAt = state.endsAt = anchorStart(ctx);
   let started = false;
   const chunk = Math.round(CACHED_BUFFER_SECONDS * SAMPLE_RATE);
   for (let off = 0; off < samples.length && !state.cancelled; off += chunk) {
     const slice = samples.subarray(off, Math.min(off + chunk, samples.length));
     const buffer = ctx.createBuffer(1, slice.length, SAMPLE_RATE);
     buffer.getChannelData(0).set(slice);
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(gain);
-    const at = nextTime;
-    src.start(at);
-    nextTime += buffer.duration;
-    claimTail(state, nextTime);
+    const at = state.endsAt;
+    scheduleSource(state, buffer, at);
+    state.endsAt += buffer.duration;
+    claimTail(state);
     if (!started) announceAudible(state, at, onStart);
     started = true;
-    state.sources.add(src);
-    src.onended = () => {
-      state.sources.delete(src);
-      try {
-        src.disconnect();
-      } catch {
-        /* no-op */
-      }
-    };
   }
 
   if (!state.cancelled && started) {
     settle(state, onScheduled);
-    await awaitClipEnd(state, nextTime);
+    await awaitClipEnd(state);
   }
 
   signal?.removeEventListener('abort', stopLine);
