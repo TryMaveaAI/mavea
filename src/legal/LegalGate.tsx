@@ -120,7 +120,8 @@ export function LegalGate({
               host, the files, docs, diffs, and issues a feature reads can be sent to your model
               provider — including from a <strong>private</strong> repository, your employer's or a
               client's, if the access you grant can reach one. Grant the narrowest scope that works,
-              and only connect what you may disclose.
+              and only connect what you have the right to share — under the law and under any
+              agreement with your employer or client.
             </li>
             <li>
               <strong>Your key is stored only in this browser and sent with each request.</strong>{' '}
