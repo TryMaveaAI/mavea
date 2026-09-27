@@ -660,7 +660,7 @@
 .ob-page .fl-head {
   text-align: left;
   margin: 0 0 2.5rem;
-  max-width: 48rem;
+  max-width: none;
 }
 .ob-page .fl-eyebrow {
   color: var(--ob-muted);
@@ -677,6 +677,24 @@
   font-size: var(--fs-sm);
   max-width: 38rem;
   margin: 1rem 0 0;
+}
+@media (width >= 900px) {
+  .ob-page .fl-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+    column-gap: clamp(3rem, 8vw, 9rem);
+  }
+  .ob-page .fl-head .fl-eyebrow,
+  .ob-page .fl-head .fl-title {
+    grid-column: 1;
+  }
+  .ob-page .fl-head .fl-sub {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: end;
+    justify-self: end;
+    margin: 0 0 0.4rem;
+  }
 }
 .ob-page .fl-demo-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1029,6 +1047,7 @@
   translate: -50% -50%;
   display: grid;
   place-items: center;
+  align-content: center;
   width: clamp(9.5rem, 34%, 14rem);
   aspect-ratio: 1;
   text-align: center;
