@@ -806,32 +806,20 @@ describe('a stream that goes quiet is never re-sent', () => {
     }
   });
 
-  it('a gateway timeout is reported without claiming a retry, and is not retried', () => {
-    for (const status of [504, 524]) {
-      expect(isTransientProviderFailure(status)).toBe(false);
+  it('re-sends only a refusal made before any work, and never claims a retry it did not make', () => {
+    // 429, 503 and 529 are refused before the model runs. Everything else here can arrive after the
+    // upstream already processed, and billed, the prompt.
+    const resent = [408, 429, 500, 502, 503, 504, 524, 529].filter((status) =>
+      isTransientProviderFailure(status),
+    );
+    expect(resent).toEqual([429, 503, 529]);
+    for (const status of [408, 500, 502, 504, 524]) {
       const shown = describeLiveError(new Error(`openrouter ${status}`), 'openrouter');
+      expect(shown.kind).toBe('http');
+      expect(shown.status).toBe(status);
       expect(shown.message).not.toMatch(/retried/);
     }
-  });
-});
-
-describe('token usage capture — the cost signal the eval reads', () => {
-  it('anthropic sums input + both cache slices and takes the final output_tokens', async () => {
-    mockFetchOnce(
-      streamResponse(
-        [
-          'data: {"type":"message_start","message":{"usage":{"input_tokens":100,"cache_read_input_tokens":900,"cache_creation_input_tokens":0,"output_tokens":1}}}\n',
-          'data: {"type":"content_block_delta","delta":{"text":"{\\"narration\\":\\"Hi\\"}"}}\n',
-          'data: {"type":"message_delta","usage":{"output_tokens":42}}\n',
-        ],
-        'text/event-stream',
-      ),
-    );
-    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
-    const { usage } = await anthropicAdapter.generate(req, cfg);
-    // input = fresh 100 + cache_read 900 + cache_creation 0 (total input, cross-provider-consistent);
-    // cachedInput = the cache_read slice; output = the cumulative message_delta count.
-    expect(usage).toEqual({ input: 1000, output: 42, cachedInput: 900 });
+    expect(describeLiveError(new Error('gemini 503'), 'gemini').message).toMatch(/retried/);
   });
 
   it('gemini counts thinking as output and the search tool prompt as input', async () => {

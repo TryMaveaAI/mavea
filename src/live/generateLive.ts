@@ -346,17 +346,27 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       .replace(new RegExp(`^${provider}\\s+${status}\\s*(?:—|-)?\\s*`, 'i'), '')
       .replace(/^[A-Z_]+:\s*/i, '')
       .trim();
-    // A gateway timeout is not retried automatically (the model may already have run and billed
-    // the ask), so only the other statuses may claim a retry happened.
-    const retried = status !== 504 && status !== 524;
+    // Only a refusal made before any work (503 overloaded, 529) is re-sent automatically. A timeout
+    // or a server error may arrive after the model already ran and billed the ask, so those are
+    // never re-sent, and their message must not claim a retry happened.
+    if (status === 503 || status === 529) {
+      return {
+        kind: 'http',
+        status,
+        message: providerReason
+          ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
+          : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
+      };
+    }
+    const timedOut = status === 408 || status === 504 || status === 524;
     return {
       kind: 'http',
       status,
-      message: retried
-        ? providerReason
-          ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
-          : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`
-        : `${label} timed out (${status}) before the answer came back — try again.`,
+      message: timedOut
+        ? `${label} timed out (${status}) before the answer came back — try again.`
+        : providerReason
+          ? `${label} returned ${status}: ${providerReason} — try again.`
+          : `${label} returned ${status} before the answer came back — try again.`,
     };
   }
   if (status)

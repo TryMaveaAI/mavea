@@ -151,10 +151,8 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
   return Math.round(base * (0.85 + Math.random() * 0.3));
 }
 
-/** Statuses worth a bounded automatic retry. The gateway timeouts (504, and Cloudflare's 524 in
- *  front of a gateway) are deliberately absent: the upstream model may have run, and billed, the
- *  whole ask before the gateway gave up, so a silent re-send could charge the reader twice. */
-const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 529]);
+/** Re-sent only when the provider refused before doing any work, so nothing is billed twice. */
+const TRANSIENT_PROVIDER_STATUSES = new Set([429, 503, 529]);
 const NON_RETRYABLE_QUOTA =
   /(?:requests?|tokens?)\s+per\s+day|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
 
