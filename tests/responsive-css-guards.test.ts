@@ -162,18 +162,10 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(scene).toMatch(/COMPACT_W = 1120/);
   });
 
-  it('gives a short window the flat column too, at a rung of the height ladder', () => {
-    // The floored desk in a laptop-height window scrolled a real card inside itself with the note
-    // across the desk from it; the flat column reads it whole with the note beside it. The cutoff
-    // is a named rung, so it moves with the ladder and never with a guess.
-    const scale = read('src/canvas/study/useStudyScale.ts');
-    expect(scale).toMatch(
-      /const compact = !full && \(w <= COMPACT_W \|\| window\.innerHeight <= COMPACT_H\)/,
-    );
+  it('takes the short-window cutoff for the flat column from the height ladder', () => {
+    // Which windows get the column is pinned by behaviour in study-scale-fit.test.ts; this only
+    // holds the cutoff to a named rung, so it moves with the ladder and never with a guess.
     expect(BREAKPOINT_HEIGHTS).toContain(COMPACT_H);
-    // 1440×789, 1536×730 and 1366×657 take the column; 1728×993 and 1920×955 keep the desk.
-    for (const h of [657, 730, 789]) expect(h).toBeLessThanOrEqual(COMPACT_H);
-    for (const h of [955, 993]) expect(h).toBeGreaterThan(COMPACT_H);
   });
 
   it('returns the compact front card to flow POSITIONED and with the desk slot cleared', () => {
