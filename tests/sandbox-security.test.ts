@@ -77,6 +77,9 @@ describe('code sandbox adversarial boundaries', () => {
     expect(worker.options).toEqual({ name: 'mavea-code-sandbox' });
     expect(sandboxSource).toContain("locked('fetch'");
     expect(sandboxSource).toContain("locked('indexedDB',undefined)");
+    expect(sandboxSource).toContain("locked('caches',undefined)");
+    expect(sandboxSource).toContain("lockOn(self.navigator,'storage',undefined)");
+    expect(sandboxSource).toContain("lockOn(self.navigator,'locks',undefined)");
     expect(sandboxSource).toContain("locked('Worker',undefined)");
     expect(sandboxSource).toContain("locked('BroadcastChannel',undefined)");
     expect(sandboxSource).toContain("locked('postMessage'");
@@ -157,6 +160,22 @@ describe('code sandbox adversarial boundaries', () => {
     const result = await runInSandbox(`import('/api/llm')`, 'js');
     expect(result).toMatchObject({ ok: false, elapsed: 0 });
     if (!result.ok) expect(result.error).toMatch(/dynamic imports are disabled/i);
+    expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('rejects a dynamic import hidden behind comments or line breaks', async () => {
+    const disguises = [
+      `import/**/('/api/llm')`,
+      `import /* a */ /* b */ ('/api/llm')`,
+      `import // nothing to see\n('/api/llm')`,
+      `import\n\n('/api/llm')`,
+      `const u = "//"; import('/api/llm')`,
+    ];
+    for (const code of disguises) {
+      const result = await runInSandbox(code, 'js');
+      expect(result, code).toMatchObject({ ok: false, elapsed: 0 });
+      if (!result.ok) expect(result.error).toMatch(/dynamic imports are disabled/i);
+    }
     expect(FakeWorker.instances).toHaveLength(0);
   });
 

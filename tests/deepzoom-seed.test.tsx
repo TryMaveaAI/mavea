@@ -13,6 +13,7 @@ vi.mock('../src/live/deepzoom/generate', () => ({
 
 import { generateTrunk, generateBranch } from '../src/live/deepzoom/generate';
 import { DeepZoomApp } from '../src/live/deepzoom/DeepZoomApp';
+import { stashZoomTopic, takeZoomTopic } from '../src/live/course/courseSeed';
 
 const mockGenerateTrunk = vi.mocked(generateTrunk);
 const mockGenerateBranch = vi.mocked(generateBranch);
@@ -34,6 +35,60 @@ afterEach(() => {
   mockGenerateTrunk.mockClear();
   mockGenerateBranch.mockClear();
   window.location.hash = '';
+});
+
+describe('DeepZoom — ?q= from a link', () => {
+  it('pre-fills the start screen without running, so a link cannot spend the key', () => {
+    window.location.hash = '#/deepzoom?q=' + encodeURIComponent('black holes');
+    render(<DeepZoomApp />);
+
+    const input = screen.getByPlaceholderText('how does my body make energy?') as HTMLInputElement;
+    expect(input.value).toBe('black holes');
+    expect(screen.getByText(/opened from a link/i)).toBeInTheDocument();
+    expect(mockGenerateTrunk).not.toHaveBeenCalled();
+  });
+
+  it('runs a ?q= the app vouched for, once', async () => {
+    mockGenerateTrunk.mockResolvedValue({ rangeStart: 'all things', levels: trunkLevels });
+    stashZoomTopic('black holes');
+    window.location.hash = '#/deepzoom?q=' + encodeURIComponent('black holes');
+    render(<DeepZoomApp />);
+
+    await screen.findByRole('heading', { name: 'Level A' });
+    expect(mockGenerateTrunk).toHaveBeenCalledWith(
+      'black holes',
+      expect.anything(),
+      expect.anything(),
+    );
+    // Consumed on the way in: a reload of the same URL is a link again.
+    expect(takeZoomTopic()).toBeUndefined();
+  });
+
+  it('ignores a stash for a different topic', () => {
+    stashZoomTopic('quasars');
+    window.location.hash = '#/deepzoom?q=' + encodeURIComponent('black holes');
+    render(<DeepZoomApp />);
+
+    expect(mockGenerateTrunk).not.toHaveBeenCalled();
+    const input = screen.getByPlaceholderText('how does my body make energy?') as HTMLInputElement;
+    expect(input.value).toBe('black holes');
+  });
+
+  it('pre-fills, not runs, when the hash changes to an unvouched ?q= after mount', async () => {
+    window.location.hash = '#/deepzoom';
+    render(<DeepZoomApp />);
+
+    window.location.hash = '#/deepzoom?q=' + encodeURIComponent('black holes');
+    fireEvent(window, new HashChangeEvent('hashchange'));
+
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(
+        'how does my body make energy?',
+      ) as HTMLInputElement;
+      expect(input.value).toBe('black holes');
+    });
+    expect(mockGenerateTrunk).not.toHaveBeenCalled();
+  });
 });
 
 describe('DeepZoom — seed + new', () => {

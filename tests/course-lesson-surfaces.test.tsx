@@ -21,7 +21,7 @@ import { CourseRail } from '../src/live/course/CourseRail';
 import { CourseLessonReader } from '../src/live/course/CourseLessonReader';
 import { generateCheckpoint } from '../src/live/course/generateCourse';
 import { generateLive } from '../src/live/generateLive';
-import { stashCourseLesson } from '../src/live/course/courseSeed';
+import { stashCourseLesson, takeZoomTopic } from '../src/live/course/courseSeed';
 import {
   cacheCheckpoint,
   getCachedCheckpoint,
@@ -465,6 +465,8 @@ describe('CourseRail — the in-Live lesson chrome', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: /Zoom into this/i }));
       expect(window.location.hash).toBe(`#/deepzoom?q=${encodeURIComponent('Matrices')}`);
+      // The click vouches for the zoom; the same URL reached by link alone only pre-fills.
+      expect(takeZoomTopic()).toBe('Matrices');
     });
   });
 });
