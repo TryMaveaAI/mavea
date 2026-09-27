@@ -366,12 +366,14 @@ describe('fit and actual size', () => {
     cleanClick(cell0(container, 'a'));
     // Fitted: the body carries no magnification of its own, and the readout offers 100%.
     expect(bodyZoom(container)).toBe('');
-    expect(readout().getAttribute('aria-label')).toMatch(/Actual size \((⌘|Ctrl\+)0\)$/);
-    expect(readout().title).toMatch(/^Actual size/);
+    expect(readout().getAttribute('aria-label')).toMatch(/Actual size$/);
+    expect(readout().getAttribute('aria-keyshortcuts')).toBe('Shift+0');
+    expect(readout().title).toBe('Actual size (Shift+0)');
     fireEvent.click(readout());
     expect(bodyZoom(container)).toBe('1');
     expect(now(container)).toBe('100%');
-    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage \((⌘|Ctrl\+)9\)$/);
+    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage$/);
+    expect(readout().getAttribute('aria-keyshortcuts')).toBe('Shift+1');
     // Any manual zoom offers the fit too.
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(now(container)).toBe('115%');
@@ -380,28 +382,43 @@ describe('fit and actual size', () => {
     expect(bodyZoom(container)).toBe('');
   });
 
-  it('takes ⌘0 as actual size and ⌘9 as the fit, with Ctrl as well', () => {
+  it('takes Shift+0 as actual size and Shift+1 as the fit, by the physical key', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(fireEvent.keyDown(window, { key: '0', metaKey: true })).toBe(false);
+    // US layout: Shift+0 types ")".
+    expect(fireEvent.keyDown(window, { key: ')', code: 'Digit0', shiftKey: true })).toBe(false);
     expect(bodyZoom(container)).toBe('1');
-    fireEvent.keyDown(window, { key: '9', metaKey: true });
+    fireEvent.keyDown(window, { key: '!', code: 'Digit1', shiftKey: true });
     expect(bodyZoom(container)).toBe('');
-    fireEvent.keyDown(window, { key: '0', ctrlKey: true });
+    // AZERTY: the same keys type the digits themselves.
+    fireEvent.keyDown(window, { key: '0', code: 'Digit0', shiftKey: true });
     expect(bodyZoom(container)).toBe('1');
-    fireEvent.keyDown(window, { key: '9', ctrlKey: true });
+    fireEvent.keyDown(window, { key: '1', code: 'Digit1', shiftKey: true });
     expect(bodyZoom(container)).toBe('');
   });
 
-  it('leaves ⌘0 to the browser while the Lens is closed, and to a field being typed in', () => {
+  it('leaves the browser its own zoom keys, and any chord with another modifier', () => {
     const { container } = mount();
-    // Closed: not prevented, so the browser's own zoom reset still works.
-    expect(fireEvent.keyDown(window, { key: '0', metaKey: true })).toBe(true);
+    cleanClick(cell0(container, 'a'));
+    for (const mod of [{ metaKey: true }, { ctrlKey: true }, { altKey: true }]) {
+      expect(fireEvent.keyDown(window, { key: '0', code: 'Digit0', ...mod })).toBe(true);
+      expect(fireEvent.keyDown(window, { key: '0', code: 'Digit0', shiftKey: true, ...mod })).toBe(
+        true,
+      );
+    }
+    expect(fireEvent.keyDown(window, { key: '9', code: 'Digit9', metaKey: true })).toBe(true);
+    expect(bodyZoom(container)).toBe('');
+  });
+
+  it('leaves Shift+0 alone while the Lens is closed, and to a field being typed in', () => {
+    const { container } = mount();
+    const chord = { key: ')', code: 'Digit0', shiftKey: true };
+    expect(fireEvent.keyDown(window, chord)).toBe(true);
     cleanClick(cell0(container, 'a'));
     const input = document.createElement('input');
     container.appendChild(input);
-    expect(fireEvent.keyDown(input, { key: '0', metaKey: true })).toBe(true);
+    expect(fireEvent.keyDown(input, chord)).toBe(true);
     expect(bodyZoom(container)).toBe('');
   });
 

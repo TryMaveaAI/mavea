@@ -116,11 +116,10 @@ const ZOOM_STEP = 0.15;
  *  runs wider than the sheet. At its board size a one-row stat card floated in a sheet five
  *  times its height, which is not looking closer. A number is the reader's own magnification,
  *  stepped from wherever the fit left the card. The readout toggles between the fit and actual
- *  size, the way Preview does: ⌘0 is actual size, ⌘9 is the fit. */
+ *  size, on the keys a design tool uses for the same two views: Shift+0 is actual size, Shift+1
+ *  the fit. ⌘0 and ⌘9 belong to the browser (its own zoom reset, its last tab), so taking them
+ *  over a page is taking them from the reader. */
 type LensZoom = 'fit' | number;
-/** How the zoom shortcuts are written where the reader will press them. */
-const MOD_KEY =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl+';
 /** The body size the fit grows a card toward, in rendered px. The board's body type is ~14–16px
  *  on a laptop, so this is a visible step closer without a paragraph ballooning; FitBox caps the
  *  growth at 1.5x and never past the room. */
@@ -490,13 +489,16 @@ export function TopicCanvas({
       ) {
         return;
       }
-      // Preview's shortcuts: ⌘0 actual size, ⌘9 the fit. Only while the stage is up — this
-      // listener exists only then, so the browser's own ⌘0 is untouched everywhere else.
-      if ((e.metaKey || e.ctrlKey) && (e.key === '0' || e.key === '9')) {
-        e.preventDefault();
-        if (e.key === '0') actualSize();
-        else setZoomLevel('fit');
-        return;
+      // Shift+0 actual size, Shift+1 the fit. Matched on the physical key, not the character:
+      // Shift+0 types ")" on a US keyboard and "0" on AZERTY, and both are the same key. Any other
+      // modifier held means the chord is someone else's.
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.code === 'Digit0' || e.code === 'Digit1') {
+          e.preventDefault();
+          if (e.code === 'Digit0') actualSize();
+          else setZoomLevel('fit');
+          return;
+        }
       }
       if (e.key === 'ArrowRight') stepLens(1);
       else if (e.key === 'ArrowLeft') stepLens(-1);
@@ -1273,11 +1275,10 @@ export function TopicCanvas({
                       type="button"
                       className="zoom-sheet-zoom-level"
                       aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
-                        fitted ? `Actual size (${MOD_KEY}0)` : `Fit to the stage (${MOD_KEY}9)`
+                        fitted ? 'Actual size' : 'Fit to the stage'
                       }`}
-                      title={
-                        fitted ? `Actual size (${MOD_KEY}0)` : `Fit to the stage (${MOD_KEY}9)`
-                      }
+                      aria-keyshortcuts={fitted ? 'Shift+0' : 'Shift+1'}
+                      title={fitted ? 'Actual size (Shift+0)' : 'Fit to the stage (Shift+1)'}
                       onClick={fitted ? actualSize : () => setZoomLevel('fit')}
                     >
                       <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
