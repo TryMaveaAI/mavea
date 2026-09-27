@@ -5343,7 +5343,7 @@ export function LiveApp(): ReactElement {
         // — the one control the wizard hides. Something staged: it names that document and opens
         // it. See prismRow for why the naming is the fix, not a flourish.
         const staged = attached.filter(isExplodable);
-        const row = prismRow(staged);
+        const row = prismRow(staged, staged.filter((d) => !isImage(d)).length);
         return {
           feature: it.feature,
           available: true,

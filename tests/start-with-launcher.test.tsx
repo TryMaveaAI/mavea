@@ -106,10 +106,16 @@ describe('the Prism row says which document it will open', () => {
     expect(row.blurb).toBe('Open the map for macro_market_playbook.pdf');
   });
 
-  it('counts them when several are staged', () => {
-    const row = prismRow([{ name: 'a.pdf' }, { name: 'b.pdf' }, { name: 'c.pdf' }]);
-    expect(row.opensPicker).toBe(false);
-    expect(row.blurb).toBe('Open the map across 3 documents');
+  it('says what the press will open, by the same count rule the press uses', () => {
+    const docs = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `d${i}.pdf` }));
+    expect(prismRow(docs(2)).blurb).toBe('Open the map across 2 documents');
+    // Three asks the reader to choose, so the row must not promise a map.
+    const three = prismRow(docs(3));
+    expect(three.opensPicker).toBe(false);
+    expect(three.blurb).toBe('Compare or synthesize 3 documents');
+    expect(prismRow(docs(5)).blurb).toBe('Synthesize 5 sources into one map');
+    // Images are Prism-only: three staged with one picture is a comparison of all three.
+    expect(prismRow(docs(3), 2).blurb).toBe('Open the map across 3 documents');
   });
 
   it('goes back to being the picker the moment the staged file is removed', () => {
