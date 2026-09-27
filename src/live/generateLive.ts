@@ -1722,11 +1722,16 @@ export async function generateLive(
   // system into a cached first block + uncached per-turn suffix (see anthropic.ts).
   const baseReq: Omit<LiveRequest, 'user'> = {
     usageLabel: 'canvas',
-    // A backoff is the one wait the reader should be told about by name: it is not the model.
-    onWait: (ms, reason) =>
-      opts.onActivity?.(
-        ms == null ? null : reason === 'overload' ? 'provider-busy' : 'rate-limited',
-      ),
+    // A backoff is the one wait the reader should be told about by name: it is not the model. A
+    // caller with no activity line leaves it to the app shell's shared status (providers/wait).
+    ...(opts.onActivity
+      ? {
+          onWait: (ms: number | null, reason?: 'rate-limit' | 'overload') =>
+            opts.onActivity?.(
+              ms == null ? null : reason === 'overload' ? 'provider-busy' : 'rate-limited',
+            ),
+        }
+      : {}),
     system,
     systemInvariant: turnSystem.systemInvariant,
     systemBase: turnSystem.systemBase,

@@ -60,8 +60,9 @@
   background-clip: padding-box;
 }
 
-/* toast */
-#mavea-toasts {
+/* toast — and the app shell's provider-wait line, which wears the same pill (ProviderWaitStatus) */
+#mavea-toasts,
+.provider-wait {
   position: fixed;
   left: 50%;
   top: 70px;
@@ -90,6 +91,14 @@
   transition:
     opacity var(--m-normal) var(--ease-out),
     transform var(--m-normal) var(--ease-out);
+}
+.provider-wait {
+  /* Below the transient toasts, so the two never cover each other. */
+  top: 118px;
+  max-width: calc(100% - 32px);
+}
+.provider-wait .toast {
+  text-align: center;
 }
 .toast.show {
   opacity: 1;

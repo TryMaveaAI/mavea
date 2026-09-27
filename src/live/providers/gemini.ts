@@ -47,6 +47,7 @@ import {
 } from './http';
 import { geminiUserParts } from './parts';
 import { thinkingReserve } from './budget';
+import { waitReporter } from './wait';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://generativelanguage.googleapis.com) for Node eval runs.
@@ -266,6 +267,8 @@ export const geminiAdapter: ProviderAdapter = {
   },
 
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+    // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+    const onWait = waitReporter(req.onWait);
     const base = cfg.baseUrl ?? PROXY_BASE;
     const url = `${base}${API_BASE}/models/${encodeURIComponent(cfg.model)}:streamGenerateContent?alt=sse`;
     // Implicit caching needs a BYTE-IDENTICAL prefix turn-to-turn. req.system carries per-turn
@@ -364,11 +367,11 @@ export const geminiAdapter: ProviderAdapter = {
           // under "Composing your answer" — which reads as the model being slow, when the
           // model has not been asked yet.
           const wait = retryAfterMs(res, tries, detail);
-          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
           try {
             await sleepAbortable(wait, signal);
           } finally {
-            req.onWait?.(null);
+            onWait(null);
           }
           continue;
         }

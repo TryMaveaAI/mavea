@@ -16,6 +16,7 @@ import { onAudioSuspended, unlockAudio } from './voice/voiceEnergy';
 import { installLastResort } from './lib/lastResort';
 import { installAmbientPlayDriver } from './lib/pageVisibility';
 import { RootBoundary, SurfaceFallback } from './RootBoundary';
+import { ProviderWaitStatus } from './ProviderWaitStatus';
 import { preloadRoute, routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
 import { isLegalGateBypassed, isNoSpendRoute } from './legal/routePolicy';
@@ -132,6 +133,8 @@ function Root() {
           <FlagshipHost />
         )}
       </Suspense>
+      {/* A provider backoff no surface is showing (see live/providers/wait). */}
+      <ProviderWaitStatus />
       {/* Its own boundary: a slow gate chunk must never pull SurfaceFallback over a live surface. */}
       {startLoop && (
         <Suspense fallback={null}>

@@ -48,6 +48,7 @@ import { liveJsonSchema } from './schema';
 import { anthropicOutputFormat } from './anthropicFormat';
 import { anthropicUserContent } from './parts';
 import type { GroundingSource, TokenUsage } from './types';
+import { waitReporter } from './wait';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://api.anthropic.com) for Node-side eval runs.
@@ -234,6 +235,8 @@ export const anthropicAdapter: ProviderAdapter = {
   },
 
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+    // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+    const onWait = waitReporter(req.onWait);
     const base = cfg.baseUrl ?? PROXY_BASE;
 
     // Prompt caching is PREFIX-based: any uncached bytes poison everything behind them. The
@@ -400,11 +403,11 @@ export const anthropicAdapter: ProviderAdapter = {
           !signal.aborted
         ) {
           const wait = retryAfterMs(res, transientAttempt++, detail);
-          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
           try {
             await sleepAbortable(wait, signal);
           } finally {
-            req.onWait?.(null);
+            onWait(null);
           }
           continue;
         }

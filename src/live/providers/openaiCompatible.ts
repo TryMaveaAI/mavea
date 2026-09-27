@@ -33,6 +33,7 @@ import {
 } from './http';
 import { openaiUserContent, textOnlyUser } from './parts';
 import { isFreeRoute } from './route';
+import { waitReporter } from './wait';
 
 const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
@@ -262,6 +263,8 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
     },
 
     async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+      // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+      const onWait = waitReporter(req.onWait);
       const base = cfg.baseUrl ?? proxyBase;
       const searchTool = webSearchTool && req.tools?.webSearch ? webSearchTool() : undefined;
       const reasoning = isReasoningModel(cfg.model);
@@ -413,11 +416,11 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
             !signal.aborted
           ) {
             const wait = retryAfterMs(res, transientAttempt++, detail);
-            req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+            onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
             try {
               await sleepAbortable(wait, signal);
             } finally {
-              req.onWait?.(null);
+              onWait(null);
             }
             continue;
           }
