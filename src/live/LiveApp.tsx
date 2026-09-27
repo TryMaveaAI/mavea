@@ -98,6 +98,7 @@ import {
   waitLineStart,
   waitLineEnd,
   waitQueueQuiet,
+  awaitPenLift,
   delay,
   finishCapMs,
   spokenMs,
@@ -2951,6 +2952,9 @@ export function LiveApp(): ReactElement {
     // the block WITH the audio, advance when the line has finished. On a slow machine the old
     // poll's fixed cap fired while Kokoro was still synthesizing — the spotlight marched on and
     // every queued line landed a stop late, compounding for the rest of the turn.
+    // The last lit stop's pen: resolves once its strokes have finished drawing. Chained ahead of
+    // the next stop's glide and the walk's end — never ahead of a line.
+    let penDown: Promise<void> = Promise.resolve();
     const runSpokenStop = async (
       beat: (typeof beats)[number],
       idx: number,
@@ -2965,28 +2969,17 @@ export function LiveApp(): ReactElement {
       // next stop's glide (or the next answer) never scrolls or replaces a card mid-stroke.
       let penLiftsAt = 0;
       let inkAskedAt = 0;
-      // Waits only for strokes that are really still drawing, and for a mark still settling onto
-      // its card — `penLiftsAt` is the ceiling, never the wait. Holding every stop to the worst
-      // case put dead air after lines whose pen had long since lifted.
-      const penLifted = async (): Promise<void> => {
-        if (!spot) return;
-        for (;;) {
-          const left = penLiftsAt - performance.now();
-          if (left <= 0 || bail()) return;
-          const drawing = inkStillDrawing(spot);
-          const settling = INK_SETTLE_MS - (performance.now() - inkAskedAt);
-          if (drawing.length) {
-            await Promise.race([
-              Promise.all(drawing.map((a) => a.finished.catch(() => undefined))),
-              delay(left, walkController.signal),
-            ]);
-          } else if (settling > 0) {
-            await delay(Math.min(left, settling), walkController.signal);
-          } else {
-            return;
-          }
-        }
-      };
+      const penLifted = (): Promise<void> =>
+        spot
+          ? awaitPenLift({
+              drawing: () => inkStillDrawing(spot),
+              askedAt: inkAskedAt,
+              ceilingAt: penLiftsAt,
+              settleMs: INK_SETTLE_MS,
+              reducedMotion: prefersReducedMotion(),
+              signal: walkController.signal,
+            })
+          : Promise.resolve();
       /** Lights the stop and starts its pen, remembering when so `penLifted` can judge it. */
       const lightStop = (shownLine: string | undefined): void => {
         inkAskedAt = performance.now();
@@ -3017,12 +3010,19 @@ export function LiveApp(): ReactElement {
         const host = scrollRef.current;
         const target = spot ? host?.querySelector(`[data-spot-id="${CSS.escape(spot)}"]`) : null;
         if (host && target && !target.closest('.study-stage')) {
-          const bounds = target.getBoundingClientRect();
-          const delta = spotScrollDelta(bounds, host.getBoundingClientRect(), host.clientHeight);
-          landed = glideScroll(host, host.scrollTop + delta, {
-            instant: prefersReducedMotion(),
-            signal: walkController.signal,
+          // The camera moves only once the previous stop's pen has lifted; this stop's line is
+          // already free to start, so a slow stroke delays the glide, never the voice.
+          landed = penDown.then(() => {
+            if (bail()) return;
+            const bounds = target.getBoundingClientRect();
+            const delta = spotScrollDelta(bounds, host.getBoundingClientRect(), host.clientHeight);
+            return glideScroll(host, host.scrollTop + delta, {
+              instant: prefersReducedMotion(),
+              signal: walkController.signal,
+            });
           });
+        } else {
+          landed = penDown;
         }
       };
       // Stop 0 carries the opener, already queued sentence-by-sentence while the answer
@@ -3078,7 +3078,7 @@ export function LiveApp(): ReactElement {
               walkController.signal,
             );
           }
-          await penLifted();
+          penDown = penLifted();
           const verdict = await pauseVerdict();
           if (verdict === 'abort') return;
           if (verdict === 'replay') {
@@ -3102,7 +3102,7 @@ export function LiveApp(): ReactElement {
           capMs: finishCapMs(estimateMs),
           signal: walkController.signal,
         });
-        await penLifted();
+        penDown = penLifted();
         if (bail()) return;
         {
           const verdict = await pauseVerdict();
@@ -3135,7 +3135,7 @@ export function LiveApp(): ReactElement {
           // Counted from the line's start, so the glide the pen waited for is not added on top.
           await delay(estimateMs - (performance.now() - lineStartedAt), walkController.signal);
         }
-        await penLifted();
+        penDown = penLifted();
         // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
         // stop — until the transcript decides. Filler re-speaks this stop's line (its PCM is
         // cached, so the replay is instant and free); a real question ends the walk.
@@ -3152,7 +3152,9 @@ export function LiveApp(): ReactElement {
     };
     const step = (): void => {
       if (cancelled || i >= beats.length) {
-        finish();
+        // The last stroke finishes before the walk hands the canvas on to whatever comes next.
+        if (cancelled) finish();
+        else void penDown.then(() => finish());
         return;
       }
       // A manual dismiss ends the walk early and leaves the canvas at rest (spot cleared).

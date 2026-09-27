@@ -80,6 +80,51 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
+ * Resolves when a stop's pen has lifted: every stroke still drawing on its card has finished, and
+ * a mark asked for less than `settleMs` ago has had time to settle onto the card and start. The
+ * walk chains the NEXT stop's glide onto this — never the next line, which speaks on time — so a
+ * stroke is never scrolled or replaced mid-draw and the voice never waits on the pen.
+ *
+ * `ceilingAt` (performance.now() time) bounds the wait whatever the page does; `drawing` lists
+ * the strokes still running. With reduced motion the strokes do not animate and nothing needs to
+ * settle, so it resolves at once.
+ */
+export async function awaitPenLift({
+  drawing,
+  askedAt,
+  ceilingAt,
+  settleMs,
+  reducedMotion = false,
+  signal,
+}: {
+  drawing: () => Animation[];
+  askedAt: number;
+  ceilingAt: number;
+  settleMs: number;
+  reducedMotion?: boolean;
+  signal?: AbortSignal;
+}): Promise<void> {
+  if (reducedMotion) return;
+  for (;;) {
+    const left = ceilingAt - performance.now();
+    if (left <= 0 || signal?.aborted) return;
+    const running = drawing();
+    const settling = settleMs - (performance.now() - askedAt);
+    if (running.length) {
+      await untilOrAbort(
+        Promise.all(running.map((a) => a.finished.catch(() => undefined))),
+        left,
+        signal,
+      );
+    } else if (settling > 0) {
+      await delay(Math.min(left, settling), signal);
+    } else {
+      return;
+    }
+  }
+}
+
+/**
  * Wait until a line's audio is actually audible. Resolves true when the first buffer reached
  * the speakers, false when the line will never be heard (server down, cancelled) or nothing
  * arrived within `hangMs`. This is what lets the spotlight move WITH the voice instead of

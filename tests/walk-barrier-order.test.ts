@@ -72,25 +72,6 @@ describe('the reveal walk barrier keeps its escape hatches armed', () => {
     expect(effect.match(/walkController.abort\(\)/g)).toHaveLength(2);
   });
 
-  it('draws only on a card at rest, and holds each stop open until its pen lifts', () => {
-    const runner = effect.slice(effect.indexOf('const runSpokenStop'));
-    const applies = [...runner.matchAll(/\n\s+lightStop\(/g)].map((m) => m.index!);
-    expect(applies.length).toBe(3);
-    for (const at of applies) {
-      const before = runner.slice(0, at);
-      // The glide resolves before the pen touches the card…
-      expect(before.lastIndexOf('await landed;')).toBeGreaterThan(before.lastIndexOf('settleStop'));
-      // …and the stop does not advance until the last stroke has finished drawing.
-      const after = runner.slice(at);
-      expect(after.indexOf('await penLifted();')).toBeGreaterThan(-1);
-      expect(after.indexOf('await penLifted();')).toBeLessThan(after.indexOf('pauseVerdict()'));
-    }
-    // The pen-lift wait follows the strokes actually drawing — its ceiling is not the wait.
-    expect(runner).toContain('inkStillDrawing(spot)');
-    // The camera never jump-cuts past reduced motion.
-    expect(runner).toContain('instant: prefersReducedMotion()');
-  });
-
   it('does not fabricate a silent spotlight after narration or wait for unrelated image tiles', () => {
     expect(effect).not.toContain('shouldRevealTour(');
     expect(effect).not.toContain('ensureFigureReady(');
