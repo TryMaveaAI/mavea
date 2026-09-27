@@ -40,6 +40,7 @@ import {
   PROVIDER_BLOCKED,
   PROVIDER_EMPTY,
   PROVIDER_THINKING_BUDGET,
+  STREAM_STALLED,
   looksLikeBadKey,
 } from './providers/http';
 // The leaf, not './providers' — the adapter registry is mocked wholesale in tests, and this only
@@ -345,16 +346,28 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       .replace(new RegExp(`^${provider}\\s+${status}\\s*(?:—|-)?\\s*`, 'i'), '')
       .replace(/^[A-Z_]+:\s*/i, '')
       .trim();
+    // A gateway timeout is not retried automatically (the model may already have run and billed
+    // the ask), so only the other statuses may claim a retry happened.
+    const retried = status !== 504 && status !== 524;
     return {
       kind: 'http',
       status,
-      message: providerReason
-        ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
-        : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
+      message: retried
+        ? providerReason
+          ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
+          : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`
+        : `${label} timed out (${status}) before the answer came back — try again.`,
     };
   }
   if (status)
     return { kind: 'http', status, message: `${label} returned error ${status} — try again.` };
+  // The request reached the provider and the stream then went quiet. Not a connection problem,
+  // and not re-sent behind the reader's back: Retry is theirs to press.
+  if (msg === STREAM_STALLED)
+    return {
+      kind: 'network',
+      message: `${label} stopped responding before the answer arrived — try again.`,
+    };
   return {
     kind: 'network',
     message: `Couldn't reach ${label} — check your connection and try again.`,

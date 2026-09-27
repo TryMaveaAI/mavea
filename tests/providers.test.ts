@@ -11,6 +11,8 @@ import type { LiveProbe, LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
 import {
+  STREAM_FIRST_CHUNK_MS,
+  STREAM_STALLED,
   isTransientProviderFailure,
   providerRetryDelayMs,
   retryAfterMs,
@@ -775,6 +777,44 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
   });
 });
 
+describe('a stream that goes quiet is never re-sent', () => {
+  // The provider may already be billing the prompt it was reading, and a turn is one ask: a stall
+  // fails the turn, and the reader's Retry decides whether to pay for another.
+  const silent = (): Response =>
+    new Response(new ReadableStream<Uint8Array>({ start() {} }), {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    });
+
+  it('gemini: a first-byte timeout sends one request and fails as a stall', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async () => silent());
+      vi.stubGlobal('fetch', fetchMock);
+      const settled = geminiAdapter
+        .generate(req, { provider: 'gemini', model: 'reader-pick', apiKey: 'k' })
+        .catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(STREAM_FIRST_CHUNK_MS + 1_000);
+      const err = await settled;
+      expect((err as Error).message).toBe(STREAM_STALLED);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const shown = describeLiveError(err, 'gemini');
+      expect(shown.kind).toBe('network');
+      expect(shown.message).toMatch(/stopped responding/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a gateway timeout is reported without claiming a retry, and is not retried', () => {
+    for (const status of [504, 524]) {
+      expect(isTransientProviderFailure(status)).toBe(false);
+      const shown = describeLiveError(new Error(`openrouter ${status}`), 'openrouter');
+      expect(shown.message).not.toMatch(/retried/);
+    }
+  });
+});
+
 describe('token usage capture — the cost signal the eval reads', () => {
   it('anthropic sums input + both cache slices and takes the final output_tokens', async () => {
     mockFetchOnce(
@@ -926,21 +966,17 @@ function stallingResponse(before: string[] = []): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
 }
 
-describe('gemini retries a stall only when nothing was streamed', () => {
+describe('gemini never re-sends a stalled stream', () => {
   const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
 
-  it('retries once when the stream died before a single byte', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(stallingResponse())
-      .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
+  it('fails a stream that died before a single byte, after one request', async () => {
+    const fetchMock = vi.fn(async () => stallingResponse());
     vi.stubGlobal('fetch', fetchMock);
-    const { raw } = await geminiAdapter.generate(req, cfg);
-    expect(raw).toBe('{}');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/stream stalled/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT retry once fragments have already been streamed', async () => {
+  it('fails a stream that died mid-answer, after one request, keeping what arrived', async () => {
     // Re-asking here would bill the turn twice AND paint the answer's opening twice — the user has
     // already seen and heard what arrived, and generateLive salvages it.
     const fetchMock = vi.fn(async () => stallingResponse([TEXT_FRAME]));
@@ -951,13 +987,6 @@ describe('gemini retries a stall only when nothing was streamed', () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(deltas).toEqual(['{}']);
-  });
-
-  it('gives up after one retry rather than looping', async () => {
-    const fetchMock = vi.fn(async () => stallingResponse());
-    vi.stubGlobal('fetch', fetchMock);
-    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/stream stalled/);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 

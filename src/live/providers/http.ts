@@ -115,14 +115,10 @@ export const STREAM_IDLE_MS = 15_000;
  *  and the retry the user then typed by hand succeeded, because by then the prefix was cached. */
 export const STREAM_FIRST_CHUNK_MS = 25_000;
 
-/** Thrown when a stream goes quiet past its budget. Named so a caller can tell a stall — which is
- *  worth one retry when nothing arrived — from a real provider error, which is not. */
+/** Thrown when a stream goes quiet past its budget. It is never re-sent automatically: the
+ *  provider may already be billing the prompt it was reading, so the turn fails and the reader's
+ *  Retry decides. */
 export const STREAM_STALLED = 'stream stalled';
-
-/** True when `err` is the stall above (and not, say, an abort or an HTTP failure). */
-export function isStreamStall(err: unknown): boolean {
-  return err instanceof Error && err.message === STREAM_STALLED;
-}
 
 /* --- markers for a 200 OK that carried no usable answer ------------------------------------- *
  * A provider can accept a request, return HTTP 200, and stream nothing — safety-blocked, stopped
@@ -154,7 +150,10 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
   return Math.round(base * (0.85 + Math.random() * 0.3));
 }
 
-const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 504, 524, 529]);
+/** Statuses worth a bounded automatic retry. The gateway timeouts (504, and Cloudflare's 524 in
+ *  front of a gateway) are deliberately absent: the upstream model may have run, and billed, the
+ *  whole ask before the gateway gave up, so a silent re-send could charge the reader twice. */
+const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 529]);
 const NON_RETRYABLE_QUOTA =
   /(?:requests?|tokens?)\s+per\s+day|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
 
