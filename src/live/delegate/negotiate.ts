@@ -188,18 +188,25 @@ export async function negotiate(
     const system = side === 'yours' ? yourSystem(brief) : theirSystem(brief);
     let user = `Negotiation so far:\n${transcript(events, brief)}\nYour move.`;
 
-    // Up to two extra attempts per move, each with its own nudge: a reply the engine can't
-    // parse (truncated, fenced, or a transport hiccup) is asked again for the bare JSON — a
-    // hiccup is not a decision, and treating it as one is how every run used to die on turn
-    // one with "No further moves". A first-move "pass" gets a too-early-to-walk nudge (both
-    // sides owe the table one real move). A boundary trip is withheld and retried. Only a
-    // repeated failure ends the talks.
+    // Each call is billed to the reader, so a move gets at most ONE automatic re-ask, and only when
+    // its reply cannot be used: it would not parse (a truncated or fenced reply is not a decision,
+    // and reading one as a pass is how every run used to die on turn one), or its offer crossed a
+    // boundary and was withheld. A pass is a real decision and stands, even on a side's first
+    // move. A call that fails outright is not re-sent: the provider may already have billed it.
     let move: AgentMove | null = null;
-    const firstMove = !events.some((e) => e.side === side);
     let unparsed = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const raw = await call(system, user).catch(() => '');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let failed = false;
+      const raw = await call(system, user).catch(() => {
+        failed = true;
+        return '';
+      });
       if (signal?.aborted) break;
+      if (failed) {
+        unparsed = true;
+        move = null;
+        break;
+      }
       move = parseMove(raw);
       if (!move) {
         unparsed = true;
@@ -208,12 +215,6 @@ export async function negotiate(
         continue;
       }
       unparsed = false;
-      if (firstMove && move.decision === 'pass') {
-        user +=
-          '\nIt is too early to end the talks — the table deserves your best concrete move first. Make an offer or a counter.';
-        move = null;
-        continue;
-      }
       const tripped =
         side === 'yours' && move.offer ? violatedBoundary(move.offer, brief.boundaries) : null;
       if (!tripped) break;
