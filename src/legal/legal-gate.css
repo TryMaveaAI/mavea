@@ -107,7 +107,7 @@ html:has(.legal-gate) {
   border: 1px solid var(--line-strong);
   border-radius: 13px;
   color: var(--text-primary);
-  background: color-mix(in oklab, var(--surface) 90%, var(--presence) 10%);
+  background: color-mix(in oklab, var(--surface-elevated) 90%, var(--presence) 10%);
   cursor: pointer;
 }
 
