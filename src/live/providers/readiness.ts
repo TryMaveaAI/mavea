@@ -68,7 +68,7 @@ export function forgetVerified(fingerprint: string | null): void {
   if (fingerprint) verified.delete(fingerprint);
 }
 
-/** Forget every verdict — used by tests to start each case cold. */
+/** Forget every verdict and every check in flight: the device sweep, and tests starting cold. */
 export function forgetReadiness(): void {
   epoch++;
   verified.clear();

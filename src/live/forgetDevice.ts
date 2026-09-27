@@ -13,6 +13,7 @@
 // clip or dashboard modules in here would split them out of the chunks that load them today.
 import { DEVICE_FORGOTTEN_CHANNEL, forgetVaultKeys } from './keyVault';
 import { resetLiveConfig } from './useLiveConfig';
+import { forgetReadiness } from './providers/readiness';
 import { isMaveaStoreKey } from '../lib/localBudget';
 
 /** Every IndexedDB database the app opens, by the names their modules export (a test pins the
@@ -122,6 +123,8 @@ export async function forgetDevice(): Promise<ForgetDeviceSummary> {
   await attempt('secrets', () => {
     forgetVaultKeys();
     resetLiveConfig();
+    // Which key and model passed a paid readiness check is knowledge about a forgotten key.
+    forgetReadiness();
   });
   // Before the stores go, not after: removing the legal acknowledgement below puts the gate up in
   // every other tab, which unmounts the surface holding the listener — the message would arrive

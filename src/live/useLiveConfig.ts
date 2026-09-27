@@ -22,6 +22,7 @@ import {
 import type { ModelConfig, ProviderId } from '../types/mavea';
 import { PROVIDERS, providerInfo } from './providers';
 import { modelCanGenerate } from './providers/spendPolicy';
+import { forgetReadiness } from './providers/readiness';
 import type { LiveCaps } from './generateLive';
 import type { SearchProviderId } from './search';
 import type { SearchMode, QualityPref } from './generateLive';
@@ -714,6 +715,7 @@ export function useLiveConfig(): [LiveConfigV2, (patch: Partial<LiveConfigV2>) =
         if (vaultForgotten()) return;
         forgetVaultKeys();
         resetLiveConfig();
+        forgetReadiness();
         window.location.replace(window.location.pathname);
       };
     }

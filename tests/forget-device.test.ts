@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetDevice, FORGOTTEN_DATABASES } from '../src/live/forgetDevice';
 import { getLiveConfigV2, setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { KEY_VAULT_DB_NAME } from '../src/live/keyVault';
+import { isVerified, sharedPaidCheck } from '../src/live/providers/readiness';
 import { RIPPLE_CACHE_DB_NAME } from '../src/live/ripple/cache';
 import { OBSERVATION_DB_NAME } from '../src/live/dashboards/observationStore';
 import { execFileSync } from 'node:child_process';
@@ -123,6 +124,27 @@ describe('forgetDevice', () => {
     expect(deleted).toEqual(['mavea-dashboards', 'mavea-key-vault', 'mavea-ripple']);
     expect(cacheStore.delete).toHaveBeenCalledTimes(1);
     expect(cacheStore.delete).toHaveBeenCalledWith('mavea-static-v3');
+  });
+
+  it('forgets which keys passed a readiness check, including one still in flight', async () => {
+    await sharedPaidCheck('passed', async () => ({ ok: true, model: true }));
+    let settle!: () => void;
+    const inFlight = sharedPaidCheck(
+      'pending',
+      () =>
+        new Promise((resolve) => {
+          settle = () => resolve({ ok: true, model: true });
+        }),
+    );
+    expect(isVerified('passed')).toBe(true);
+    vi.stubGlobal('indexedDB', fakeIndexedDb(succeedingDelete));
+
+    await forgetDevice();
+    settle();
+    await inFlight;
+
+    expect(isVerified('passed')).toBe(false);
+    expect(isVerified('pending')).toBe(false);
   });
 
   it('removes its own scratch files from the origin directory and nothing else', async () => {
