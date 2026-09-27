@@ -117,7 +117,7 @@ export function AnswerFooter({
               type="button"
               className="footer-feature-chip"
               onClick={onCanvas}
-              title="Spread this answer's cards on a board you can wander — the Mavéa thread joins them up"
+              title="Spread this answer's cards on a canvas you can wander — the Mavéa thread joins them up"
             >
               See this answer as a canvas
               <span className="footer-chip-arrow" aria-hidden="true">

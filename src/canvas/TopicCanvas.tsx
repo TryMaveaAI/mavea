@@ -978,7 +978,7 @@ export function TopicCanvas({
                   type="button"
                   className="canvas-open"
                   onClick={() => onViewMode('canvas')}
-                  title="Spread this answer's cards on a board you can wander"
+                  title="Spread this answer's cards on a canvas you can wander"
                 >
                   <span className="canvas-open-glyph" aria-hidden>
                     ◇

@@ -162,7 +162,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         ask: 'How do we plan a great day trip to Sintra on Saturday?',
         beats: [{ kind: 'canvas', atMs: 1000 }],
-        note: 'The spatial canvas: the whole trip on one board.',
+        note: 'The spatial canvas lays the whole trip out in space.',
         expect: { minBlocks: 2 },
       },
       {

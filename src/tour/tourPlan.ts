@@ -562,7 +562,7 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'Chapter view',
     mode: 'explain',
     coach:
-      'Zoom deck pulls back from the cards to the whole session, with every topic shown as a chapter.',
+      'Chapter view pulls back from the cards to the whole session, with every topic shown as a chapter.',
     action: { kind: 'showcase', featureId: 'zoom-deck' },
     durationMs: 10000,
     glyph: '📖',
