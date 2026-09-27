@@ -12,9 +12,10 @@
                      (self-hosted, code-split, dynamic import()) — they need no CDN allowance.
         style-src    'unsafe-inline' is required — React inline styles + the design-system CSS vars
         connect-src  self covers the same-origin /llm·/tts·/stt·/search·/pdf·/actions proxies and
-                     VAD's same-origin assets; the provider + Wikipedia hosts cover a direct baseUrl;
-                     api.github.com
-                     covers Ripple's read-only, browser-direct GitHub intake (public repos keyless,
+                     VAD's same-origin assets. No model or search provider is listed: every
+                     adapter goes through those proxies, and a write-capable API host here would
+                     let injected script post a stolen key to it. Wikipedia is read directly;
+                     api.github.com covers Ripple's read-only, browser-direct GitHub intake (public repos keyless,
                      private with the user's own token). It ALSO has to repeat every image host
                      below: the raster export (modern-screenshot) inlines a cross-origin image by
                      fetch()ing it, so a host that img-src can paint but connect-src cannot fetch
@@ -32,7 +33,7 @@
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai https://api.github.com https://api.search.brave.com https://api.tavily.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.github.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
     <title>Mavéa · Talk to AI. See what it means.</title>
     <meta

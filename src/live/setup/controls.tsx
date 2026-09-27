@@ -5,6 +5,7 @@
 // the onboarding card matches the mockups and stays theme-correct.
 import { useId, useState, type ReactElement, type ReactNode } from 'react';
 import { Icon } from '../../icons/icons';
+import { SecretInput } from '../../lib/SecretInput';
 
 /** A labelled on/off row with a one-line note — the capability toggles. */
 export function ToggleRow({
@@ -98,7 +99,7 @@ export function EyeInput({
   const generatedId = useId();
   return (
     <div className="input-wrap">
-      <input
+      <SecretInput
         id={id ?? generatedId}
         className="setup-input"
         type={shown ? 'text' : 'password'}

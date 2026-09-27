@@ -97,3 +97,26 @@ describe('the post-deploy transport gate verifies behavior instead of config cla
     expect(deploymentGate).toContain("'--max-time'");
   });
 });
+
+describe('the page cannot post to a model or search API directly', () => {
+  // Every adapter reaches its provider through a same-origin proxy, so a provider host in
+  // connect-src does nothing but give injected script a write-capable place to send a stolen key.
+  const html = readFileSync(join(__dirname, '../index.html'), 'utf8');
+  const policy = html.split('Content-Security-Policy"')[1] ?? '';
+  const connectSrc = /connect-src ([^;"]+)/.exec(policy)?.[1];
+
+  it('keeps every provider host out of connect-src', () => {
+    expect(connectSrc).toContain("'self'");
+    for (const host of [
+      'api.anthropic.com',
+      'api.openai.com',
+      'generativelanguage.googleapis.com',
+      'openrouter.ai',
+      'api.x.ai',
+      'api.search.brave.com',
+      'api.tavily.com',
+    ]) {
+      expect(connectSrc).not.toContain(host);
+    }
+  });
+});

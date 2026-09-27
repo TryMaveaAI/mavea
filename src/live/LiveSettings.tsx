@@ -20,6 +20,7 @@ import { ModelSelect } from './setup/ModelSelect';
 import { ProviderResponsibilityNotice } from './setup/ProviderResponsibilityNotice';
 import { UsagePanel } from './usage/UsagePanel';
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
+import { SecretInput } from '../lib/SecretInput';
 import { VISIBLE_PROVIDERS, providerInfo, getAdapter } from './providers';
 import {
   useLiveConfig,
@@ -926,7 +927,7 @@ export function LiveSettings({
                     </span>
                   )}
                 </span>
-                <input
+                <SecretInput
                   id={apiKeyId}
                   aria-describedby={apiKeyNoteId}
                   style={inputStyle}

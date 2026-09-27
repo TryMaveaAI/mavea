@@ -27,6 +27,8 @@ export default tseslint.config(
       ecmaVersion: 2022,
       globals: { ...globals.browser, ...globals.node },
     },
+    // SecretInput renders a plain <input>; tell the a11y rules so a wrapping <label> counts.
+    settings: { 'jsx-a11y': { components: { SecretInput: 'input' } } },
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,

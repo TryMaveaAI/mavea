@@ -23,6 +23,38 @@ import { safePdfUrl } from './src/live/doc/safeUrl.js';
 // off-allowlist (e.g. internal) host. Dev-only, like the /llm proxies below — a deployed build
 // needs an equivalent same-origin forwarder, else pdfreader gracefully shows the "Open" link.
 const PDF_MAX_BYTES = 30 * 1024 * 1024;
+// The provider proxies forward whatever key a request carries — and /llm/gemini supplies the
+// .env key when it carries none — so any page open in the same browser could otherwise spend it
+// with a blind cross-site POST to localhost. Only this app's own pages may use them, the same
+// proof bin/mavea.mjs demands: a matching Origin or Referer, else Fetch Metadata saying
+// same-origin. A raw curl carries none of these and is refused too.
+function sameOriginProxyGuardPlugin(): Plugin {
+  const hostOf = (value: string | undefined) => {
+    if (!value) return null;
+    try {
+      return new URL(value).host;
+    } catch {
+      return null;
+    }
+  };
+  return {
+    name: 'mavea-same-origin-proxy-guard',
+    configureServer(server) {
+      server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+        if (!/^\/(llm|search)\//.test(req.url ?? '')) return next();
+        const host = req.headers.host;
+        const claimed = hostOf(req.headers.origin) ?? hostOf(req.headers.referer);
+        const trusted = claimed
+          ? claimed === host
+          : req.headers['sec-fetch-site'] === 'same-origin';
+        if (trusted) return next();
+        res.statusCode = 403;
+        res.end('Forbidden: provider proxies answer only this app.');
+      });
+    },
+  };
+}
+
 function pdfProxyPlugin(): Plugin {
   return {
     name: 'mavea-pdf-proxy',
@@ -365,6 +397,7 @@ export default defineConfig({
     // The shipped bundle is still compiled — `pnpm build`, the browser audits, and the release
     // workflow all exercise the compiled output, so nothing ships untested by it.
     ...(process.env.VITEST ? [] : [babel({ presets: [reactCompilerPreset({ target: '19' })] })]),
+    sameOriginProxyGuardPlugin(),
     pdfProxyPlugin(),
     runtimeAssetsPlugin(),
     legalDocsPlugin(),
@@ -479,11 +512,23 @@ export default defineConfig({
         target: 'https://api.search.brave.com',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/search\/brave/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
       },
       '/search/tavily': {
         target: 'https://api.tavily.com',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/search\/tavily/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
       },
       // Actions gateway — a confirmed action (calendar/Slack/Gmail) posts to /actions/<id>
       // and this forwards to the dependency-free gateway service (gateway/), which holds the
