@@ -5,6 +5,7 @@
 // screen). A target below the fold — an answer's footer chips, a card's Ask pill — is scrolled
 // into view first, the way a human guide would bring the thing into frame before pointing at it.
 import { useEffect, useState } from 'react';
+import { inkStillDrawing } from '../live/annotate/settle';
 
 /** True when the rect is meaningfully on screen (over half visible both ways). */
 function onScreen(r: DOMRect): boolean {
@@ -140,7 +141,9 @@ export function useElementRect(selector: string | undefined, active: boolean): D
         // Bring an off-screen target into frame (throttled — smooth scrolling takes a moment),
         // and hold the ring until it arrives so it never pulses over the viewport's edge.
         const now = Date.now();
-        if (now - lastScrollAt > 1200) {
+        // Never while the pen is mid-stroke: the page would slide out from under the mark. The
+        // interval below asks again once the stroke has landed.
+        if (now - lastScrollAt > 1200 && !inkStillDrawing().length) {
           lastScrollAt = now;
           el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }

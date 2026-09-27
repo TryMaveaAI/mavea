@@ -48,6 +48,30 @@ describe('useElementRect — rings a control once it has come to rest', () => {
     expect(result.current?.top).toBe(280);
   });
 
+  it('waits for the pen to finish before scrolling an off-screen control into view', async () => {
+    const el = target(() => 5000);
+    const scrolled = vi.fn();
+    el.scrollIntoView = scrolled;
+    const card = document.createElement('div');
+    card.setAttribute('data-spot-id', 'live-1');
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    layer.setAttribute('class', 'ink-layer');
+    card.appendChild(layer);
+    document.body.appendChild(card);
+    let drawing = true;
+    const stroke = {
+      playState: 'running',
+      effect: { getComputedTiming: () => ({ endTime: 1000 }) },
+    } as unknown as Animation;
+    layer.getAnimations = () => (drawing ? [stroke] : []);
+    renderHook(() => useElementRect('.ring-me', true));
+    await act(() => vi.advanceTimersByTimeAsync(1600));
+    expect(scrolled).not.toHaveBeenCalled();
+    drawing = false;
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(scrolled).toHaveBeenCalled();
+  });
+
   it('rings a control that never holds still once the hold runs out', async () => {
     let top = 300;
     target(() => (top += 1));
