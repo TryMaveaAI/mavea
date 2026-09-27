@@ -19,9 +19,8 @@ const publicCopyFiles = [
   'src/demo/DemoOverlay.tsx',
   'src/demo/cast.ts',
   'src/flagship/sections/DemoGallery.tsx',
-  'src/flagship/sections/FlagshipShowcase.tsx',
-  'src/flagship/sections/HonestByDesign.tsx',
-  'src/flagship/sections/SignatureLoop.tsx',
+  'src/flagship/FlagshipLanding.tsx',
+  'src/flagship/sections/AnswerObservatory.tsx',
   'src/flagship/sections/TwoSurfaces.tsx',
   'src/live/features/registry.ts',
 ] as const;

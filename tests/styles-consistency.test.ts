@@ -93,8 +93,8 @@ describe('styles.css — brand dock: wordmark makes room for the docking jelly',
   // The real presence face docks INTO the brand slot; the wordmark slides left when the slot is
   // empty (no orphaned gap) and right as the jelly lands. Two load-bearing invariants:
   it('keeps the jelly mark a fixed 21px box — measureHome reads its width for the dock target+scale', () => {
-    // Collapsing this to 0 makes useScrollDock.measureHome bail (`if (!d.width) return`) and mis-scale
-    // the docked face. The shape (and its width) now lives in the shared .jelly-mark class — .brand-dot
+    // Collapsing this to 0 makes the dock's measure bail on a zero width and mis-scale the docked
+    // face. The shape (and its width) now lives in the shared .jelly-mark class — .brand-dot
     // is paired with it at every call site and only layers docking opacity/transition on top.
     expect(css).toMatch(/\.jelly-mark\s*\{[^}]*width:\s*21px/s);
   });

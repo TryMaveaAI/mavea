@@ -63,7 +63,6 @@ import {
   clearTourSoloFlag,
   launchSoloChapter,
   peekOpenRipple,
-  clearOpenRipple,
 } from '../tour/tourEntry';
 import { useTourDriver, type TourOps } from '../tour/useTourDriver';
 import { TourOverlay } from '../tour/TourOverlay';
@@ -793,14 +792,9 @@ export function LiveApp(): ReactElement {
   // Ripple — the code/ship companion. Null = closed; a ShipModel = the open overlay. For now it
   // opens the worked example; real ingestion (paste a diff / connect a repo) lands in a later pass.
   const [ripple, setRipple] = useState<ShipModel | null>(null);
-  // The flagship's Ripple "See it live" (which can't deep-link a tour chapter — Ripple was cut from
-  // the walkthrough) hands off through a one-shot flag: open Ripple's own overlay on mount, seeded
-  // with its demo ship, so the preview honestly shows Ripple rather than dropping into the tour.
+  // `#/live?ripple=1` opens Ripple's own overlay on mount, seeded with its demo ship.
   useEffect(() => {
-    if (peekOpenRipple()) {
-      clearOpenRipple();
-      setRipple(SEED_SHIP);
-    }
+    if (peekOpenRipple()) setRipple(SEED_SHIP);
   }, []);
   // The read-only "Watch Me Think" map re-opened from a chat. `spec` is kept while closing so the
   // drawer still has content during its slide-out.

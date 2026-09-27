@@ -68,29 +68,35 @@ describe('user-facing provider copy makes no claim about a third party', () => {
 // comment saying "illustrative" is invisible to the person reading the page — which is exactly how
 // WowFeatures came to show a $15.1M ARR with no label while its sibling section carried one.
 describe('landing copy labels invented figures as illustrative', () => {
-  /** Sections whose mock cards render concrete figures a reader could otherwise take as real. */
-  const FIGURE_SECTIONS = [
-    'src/flagship/sections/WowFeatures.tsx',
-    'src/flagship/sections/SeeDontRead.tsx',
+  /** Every file the landing renders. A metric in one of them (an ARR in millions, a growth
+   *  percentage) is invented; an example question that names a price is not a metric. */
+  const LANDING_FILES = [
+    'src/flagship/FlagshipLanding.tsx',
+    'src/flagship/sections/AnswerObservatory.tsx',
+    'src/flagship/sections/AnswerTheatre.tsx',
+    'src/flagship/sections/DemoGallery.tsx',
+    'src/flagship/sections/FeatureFilm.tsx',
+    'src/flagship/sections/FeatureIndex.tsx',
+    'src/flagship/sections/Hero.tsx',
+    'src/flagship/sections/TwoSurfaces.tsx',
   ];
+  const FIGURE = /\$\d[\d.,]*\s*[MB]\b|\b\d+(\.\d+)?%/;
 
-  it('every section that renders invented figures carries an on-screen note', () => {
-    for (const rel of FIGURE_SECTIONS) {
+  it('a section that renders an invented figure carries an on-screen note', () => {
+    for (const rel of LANDING_FILES) {
       const src = read(rel);
+      // Comments are not what a reader sees, so they neither need the note nor supply it.
+      const shown = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+      if (!FIGURE.test(shown)) continue;
       // The label must be rendered TEXT, not a comment: require it inside a JSX element.
-      expect(src, `${rel} must label its figures on screen`).toMatch(
+      expect(shown, `${rel} must label its figures on screen`).toMatch(
         />\s*Illustrative numbers\s*</,
       );
     }
   });
 
   it('the landing claims no endorsement it does not have', () => {
-    const flagship = FIGURE_SECTIONS.concat([
-      'src/flagship/sections/DemoGallery.tsx',
-      'src/flagship/sections/HonestByDesign.tsx',
-    ])
-      .map(read)
-      .join('\n');
+    const flagship = LANDING_FILES.map(read).join('\n');
     expect(flagship).not.toMatch(/trusted by|used by \d|as seen (in|on)|award[- ]winning|#1\b/i);
   });
 });
