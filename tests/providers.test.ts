@@ -713,7 +713,7 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
 // the hidden pass the floor protects against, which is exactly what makes dropping the floor safe.
 // The two move TOGETHER — a floor removed while the model still thinks is how a small caller pays
 // for reasoning and receives an empty completion.
-describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () => {
+describe('a small, self-budgeted ask costs what it asked for (no-thinking tier, no floor)', () => {
   async function responsesBody(
     model: string,
     extra: Partial<LiveRequest> = {},
@@ -725,19 +725,19 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     return JSON.parse(init.body as string) as Record<string, unknown>;
   }
 
-  const glimpse: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
+  const smallAsk: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
 
-  it('Responses: a gpt-5 glimpse asks for the no-thinking tier and keeps its own 150-token budget', async () => {
+  it('Responses: a small gpt-5 ask takes no-thinking and keeps its 150 tokens', async () => {
     // The rung below `low` is `none` on the current family — `minimal` was its name on the first
-    // GPT-5 models and is now rejected outright, which broke every glimpse.
-    const body = await responsesBody('gpt-5.6-luna', glimpse);
+    // GPT-5 models and is now rejected outright, which broke every such ask.
+    const body = await responsesBody('gpt-5.6-luna', smallAsk);
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 
   it('Responses: an o-series model has no sub-low tier, so it keeps low effort AND the floor', async () => {
     // The value would be rejected outright there — the saving is never worth a 400.
-    const body = await responsesBody('o4-mini', glimpse);
+    const body = await responsesBody('o4-mini', smallAsk);
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_output_tokens).toBe(1500);
   });
@@ -745,15 +745,15 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
   it('Responses: an ordinary canvas asking for minimal thinking skips the hidden pass', async () => {
     // Canvas output has its own full-size budget. Paying for hidden reasoning before the first
     // visible token only delays an ordinary composition turn.
-    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, blockTypes: ['insight'] });
+    const body = await responsesBody('gpt-5.6-luna', { ...smallAsk, blockTypes: ['insight'] });
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 
-  it('Responses: a glimpse that also wants web search stays at medium — grounding outranks it', async () => {
+  it('Responses: a small ask that searches stays at medium (grounding wins)', async () => {
     // Search is reasoning-gated: at the lowest tier the tool doesn't engage and the "saving" is an
     // ungrounded answer.
-    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, tools: { webSearch: true } });
+    const body = await responsesBody('gpt-5.6-luna', { ...smallAsk, tools: { webSearch: true } });
     expect(body.reasoning).toEqual({ effort: 'medium' });
     expect(body.max_output_tokens).toBe(8000);
   });
@@ -770,7 +770,7 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
       const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
       vi.stubGlobal('fetch', fetchMock);
       await openrouterAdapter.generate(
-        { ...req, ...glimpse },
+        { ...req, ...smallAsk },
         { provider: 'openrouter', model, apiKey: 'k' },
       );
       const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
