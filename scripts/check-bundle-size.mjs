@@ -315,7 +315,9 @@ const ROUTE_BUDGETS = [
     // paths and role-aware explanations; measured at 64.8 kB.
     // 66, from 65: measured at 65.3. The GitHub token field became a SecretInput, which keeps the
     // pasted token out of the DOM's value attribute.
-    gzip: 66,
+    // 67, from 66: measured at 66.9. The impact map opens framed on its top instead of wherever the
+    // camera last sat, and places each verb label off the cards at the size it actually renders.
+    gzip: 67,
     files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus
