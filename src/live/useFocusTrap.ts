@@ -20,6 +20,10 @@ interface Options {
    *  pane, after the left-hand controls). Falls back to the first focusable if it's absent/null or
    *  refuses focus. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Where focus goes when the trap lets go, asked at that moment. For an overlay whose subject
+   *  can change while it is open (a viewer stepping from one item to the next), the element that
+   *  opened it is no longer where the reader is. Returning null falls back to that opener. */
+  returnTo?: () => HTMLElement | null;
 }
 
 /**
@@ -33,7 +37,7 @@ export function useFocusTrap<T extends HTMLElement>(
   ref: RefObject<T | null>,
   opts: Options = {},
 ): void {
-  const { onEscape, active = true, initialFocus } = opts;
+  const { onEscape, active = true, initialFocus, returnTo } = opts;
   // A ref so the effect below never depends on onEscape's identity — most callers pass an inline
   // closure (`{ onEscape: onClose }`), which is a fresh function every render of the host. Without
   // this indirection the effect would tear down and re-run on every unrelated re-render of that
@@ -46,6 +50,8 @@ export function useFocusTrap<T extends HTMLElement>(
   // would restore focus to the opener and re-trap mid-session.
   const initialFocusRef = useRef(initialFocus);
   initialFocusRef.current = initialFocus;
+  const returnToRef = useRef(returnTo);
+  returnToRef.current = returnTo;
   useEffect(() => {
     if (!active) return;
     const node = ref.current;
@@ -60,8 +66,13 @@ export function useFocusTrap<T extends HTMLElement>(
         // button or link, so a group using roving tabindex (one tab stop, the rest parked at -1 —
         // radiogroups, toolbars) put elements in here that Tab can never land on. The cycle then
         // closed on an element the keyboard never reaches, and focus walked straight out of the
-        // overlay into the page behind it.
-        (el) => !el.hidden && el.getAttribute('aria-hidden') !== 'true' && el.tabIndex >= 0,
+        // overlay into the page behind it. `checkVisibility` drops what CSS has taken out of
+        // layout (a control group a narrow overlay sets aside), which Tab skips just the same.
+        (el) =>
+          !el.hidden &&
+          el.getAttribute('aria-hidden') !== 'true' &&
+          el.tabIndex >= 0 &&
+          el.checkVisibility?.() !== false,
       );
 
     // Move focus into the overlay so the first Tab stays inside it. A caller can name the element
@@ -106,8 +117,9 @@ export function useFocusTrap<T extends HTMLElement>(
     return () => {
       node.removeEventListener('keydown', onKeyDown);
       // Hand focus back to the trigger so the keyboard user lands where they left off.
-      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
-        previouslyFocused.focus({ preventScroll: true });
+      const back = returnToRef.current?.() ?? previouslyFocused;
+      if (back && typeof back.focus === 'function') {
+        back.focus({ preventScroll: true });
       }
     };
   }, [ref, active]);
