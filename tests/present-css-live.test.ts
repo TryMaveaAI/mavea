@@ -4,9 +4,11 @@
 // Every class token the stylesheet defines must still be reachable from a real render: either it
 // literally appears in a .ts/.tsx source file, or it matches one of the two documented exceptions
 // below. A token that matches neither is a selector nothing can ever apply — dead CSS.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { runBeat } from '../src/demo/runBeat';
+import type { TourOps } from '../src/tour/useTourDriver';
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -101,5 +103,29 @@ describe('Present cold-load handoff', () => {
     const preparing = css.match(/\.preso-preparing\s*\{([^}]*)\}/)?.[1] ?? '';
     expect(preparing).toMatch(/position:\s*fixed/);
     expect(preparing).not.toMatch(/inset:\s*0(?:\s|;)/);
+  });
+});
+
+describe('a scripted Present takes the menu’s path', () => {
+  it('the replay beat asks for a presentation rather than flipping the theatre on', () => {
+    const present = vi.fn();
+    const scheduled: (() => void)[] = [];
+    runBeat({ kind: 'present', atMs: 0 }, { present } as unknown as TourOps, null, (_ms, fn) => {
+      scheduled.push(fn);
+    });
+    scheduled.forEach((fn) => fn());
+    expect(present).toHaveBeenCalledTimes(1);
+  });
+
+  it('wires the tour and replay op to openPresentation, which waits for the deck', () => {
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+    const driver = readFileSync(join(__dirname, '../src/tour/useTourDriver.ts'), 'utf8');
+    expect(live).toMatch(/present: openPresentation,/);
+    expect(live).toMatch(/return presentationDeckLoad\.preload\(\)\.then\(enter, enter\)/);
+    // A skip while the deck is still loading must cancel it, or it opens over the next chapter.
+    const reset = live.slice(live.indexOf('closeAllOverlays: () => {'));
+    expect(reset).toMatch(/presentationRequestRef\.current \+= 1;/);
+    expect(driver).toMatch(/a\.kind === 'present'[\s\S]*?o\.present\(\)/);
+    expect(driver).not.toMatch(/setPresenting/);
   });
 });

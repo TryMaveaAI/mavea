@@ -35,7 +35,7 @@ export type TourAction =
   | { kind: 'flashcards' } // turn a card into a flashcard (the capture flow)
   | { kind: 'course' } // seed + open a real course lesson in-place (the CourseRail over its canvas)
   | { kind: 'connect' } // open the real Model settings with all five providers + the BYOK field
-  | { kind: 'present' } // setPresenting(true)
+  | { kind: 'present' } // present through the Share menu's own path
   | { kind: 'palette' } // openPalette (⌘K)
   | { kind: 'showcase'; featureId: string } // seed + open a feature on the real surface (generic demo)
   | { kind: 'blanksDemo' }; // show a hand-authored answer with holes, then its completed twin

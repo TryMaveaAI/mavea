@@ -810,7 +810,7 @@ export function LiveApp(): ReactElement {
   presentingRef.current = presenting;
   const [presentationPreparing, setPresentationPreparing] = useState(false);
   const presentationRequestRef = useRef(0);
-  const openPresentation = useCallback(() => {
+  const openPresentation = useCallback((): Promise<void> => {
     const request = ++presentationRequestRef.current;
     setPresentationPreparing(true);
     // Keep the current answer painted while the split deck chunk arrives. Flipping `presenting`
@@ -821,7 +821,7 @@ export function LiveApp(): ReactElement {
       setPresentationPreparing(false);
       setPresenting(true);
     };
-    void presentationDeckLoad.preload().then(enter, enter);
+    return presentationDeckLoad.preload().then(enter, enter);
   }, []);
 
   useEffect(
@@ -2297,7 +2297,9 @@ export function LiveApp(): ReactElement {
       if (!askedView.current) showViewMode(mode);
     },
     setInkArmed,
-    setPresenting,
+    // The same door the Share menu's Present uses, so a run never shows the theatre before the
+    // deck it frames has loaded.
+    present: openPresentation,
     // The driver toggles the palette (its ⌘K chapter); compose the boolean setter from the hook.
     setPaletteOpen: (on: boolean) => (on ? openPalette() : closePalette()),
     // Press the named Keep-going chip for real (the .kg-tour-press class plays the tap), so the
@@ -2496,6 +2498,9 @@ export function LiveApp(): ReactElement {
       setDrawnInk(new Set());
       setHiddenSpots(new Set());
       setTrackVisible(false);
+      // A deck still loading must not open over the next chapter.
+      presentationRequestRef.current += 1;
+      setPresentationPreparing(false);
       setPresenting(false);
       setShareOpen(false);
       closePalette();

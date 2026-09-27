@@ -67,7 +67,8 @@ export interface TourOps {
   /** Seed a real five-lesson course into the course store and open Lesson 1 in place — the genuine
    *  CourseRail ("Lesson 1 of 5") over its baked canvas, replayed with no model call. */
   openTourCourse: () => void;
-  setPresenting: (on: boolean) => void;
+  /** Present the answer through the same path the Share menu takes: the deck loads, then shows. */
+  present: () => void;
   setPaletteOpen: (on: boolean) => void;
   /** Visually press the Keep-going chip with this label (the tap the chapter then acts on). */
   pressKeepGoing: (label: string) => void;
@@ -472,7 +473,7 @@ export function useTourDriver(opts: {
       // A walkthrough must teach the path without mutating or fabricating the visitor's config.
       after(400, () => o.openModelSettings());
     } else if (a.kind === 'present') {
-      after(500, () => o.setPresenting(true));
+      after(500, () => o.present());
     } else if (a.kind === 'palette') {
       after(500, () => o.setPaletteOpen(true));
     } else if (a.kind === 'atlas') {

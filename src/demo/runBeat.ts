@@ -85,7 +85,7 @@ export function runBeat(
       after(b.atMs, () => o.openFlashcards());
       break;
     case 'present':
-      after(b.atMs, () => o.setPresenting(true));
+      after(b.atMs, () => o.present());
       break;
     case 'palette':
       after(b.atMs, () => o.setPaletteOpen(true));
