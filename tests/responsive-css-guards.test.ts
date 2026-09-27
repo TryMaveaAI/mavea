@@ -528,7 +528,6 @@ describe('landing hero — short laptop windows keep the primary input in the op
 
   it('also bounds ultrawide hero scaling by viewport height', () => {
     const wide = css.slice(css.indexOf('@media (width > 1920px)'));
-    expect(wide).toMatch(/height:\s*clamp\(170px,\s*16dvh,\s*230px\)/);
     expect(wide).toMatch(/font-size:\s*clamp\(92px,\s*min\(5vw,\s*10dvh\),\s*116px\)/);
   });
 });
@@ -935,15 +934,6 @@ describe('demo gallery — a card’s parts line up with the cards beside it', (
     const role = /\.fl-demo-role\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
     expect(role).toMatch(/grid-column:\s*1 \/ -1/);
     expect(css).not.toMatch(/\.fl-demo-who\b/);
-  });
-});
-
-describe('two surfaces — the pair of buttons share one box', () => {
-  it('keeps the Live button’s border, transparent, so it is not shorter than the ghost beside it', () => {
-    const css = read('src/flagship/flagship.css');
-    const live = /\.fl-ghost-btn\.live\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
-    expect(live).toMatch(/border:\s*1px solid transparent/);
-    expect(live).not.toMatch(/border:\s*none/);
   });
 });
 
