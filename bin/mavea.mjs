@@ -319,8 +319,8 @@ export const PROXIES = [
     timeoutMs: 120_000,
   },
   // The concurrency caps are sized from what the app itself fans out, not from a guess at abuse:
-  // a turn at the Thorough dial runs the answer, two chip prefetches and the desk's notes at once,
-  // and the forecast autopsy searches up to ten claims in parallel. A cap below that answers 503
+  // a settled answer can be followed at once by the desk's notes and a world or node breakdown the
+  // reader opens, and the forecast autopsy searches up to ten claims in parallel. A cap below that answers 503
   // to the page's own work, and the adapters wait a second per retry — measured as the whole
   // reason a local install felt slower than the dev server. Two tabs' worth is the ceiling; the
   // browser's own per-host connection limit holds one page near six regardless.
