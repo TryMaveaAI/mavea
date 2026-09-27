@@ -713,10 +713,18 @@
 }
 
 /* Quote reveal: slides open on [data-open='true'] */
+/* Closed, the quote is hidden, not merely squeezed to nothing: a zero-height box still painted a
+   sliver of "you said" and kept the words in reach of find-in-page. Open, it takes its own height
+   rather than an 80px cap that cut a long quote mid-line; `interpolate-size` lets that height
+   animate where the browser can, and it simply snaps open where it cannot. */
 .ms-card-quote {
-  max-height: 0;
+  interpolate-size: allow-keywords;
+  height: 0;
   overflow: hidden;
-  transition: max-height 0.28s ease;
+  visibility: hidden;
+  transition:
+    height 0.28s ease,
+    visibility 0.28s;
   font-size: calc(var(--fs-2xs) * var(--ms-card-scale, 1));
   line-height: 1.45;
   color: var(--text-muted);
@@ -724,7 +732,8 @@
 }
 
 .ms-card[data-open='true'] .ms-card-quote {
-  max-height: 80px;
+  height: auto;
+  visibility: visible;
   margin-top: 5px;
 }
 
