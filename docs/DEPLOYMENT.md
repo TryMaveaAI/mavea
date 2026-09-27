@@ -35,8 +35,10 @@ the repository owners the operator of someone else's deployment.
 - Keep origin logs free of request bodies and authorization headers. BYOK prompts and keys must not
   enter CDN analytics, error pages, or access logs.
 
-Cloudflare Pages and Netlify consume `public/_headers` directly. Other hosts must translate it into
-their own response-header configuration. Modern CDNs normally provide HTTP/2, HTTP/3, Brotli, and
+Cloudflare Pages and Netlify consume `public/_headers` directly. Its overlapping rules are written
+for Cloudflare Pages, which applies every matching rule in order and comma-joins a header set twice;
+on Netlify, confirm the deployed PDF and asset responses carry one value per header. Other hosts
+must translate it into their own response-header configuration. Modern CDNs normally provide HTTP/2, HTTP/3, Brotli, and
 regional edge caching; verify the actual response rather than relying on a plan description.
 
 ## Release probe

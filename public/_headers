@@ -13,7 +13,9 @@
 # set twice with a comma: `no-cache` from /* would ride along with the immutable lifetime below and
 # win, and the PDF rule's `frame-ancestors 'self'` would sit beside /*'s `'none'` as a second policy
 # that still refuses the frame. So each narrower rule first detaches (`! Name`) what it replaces;
-# Pages applies a rule's detaches before its own values. Netlify's parser skips those lines.
+# Pages applies a rule's detaches before its own values (tests/security-headers.test.ts resolves
+# every path that way). Netlify's parser skips `!` lines, and how Netlify combines overlapping rules
+# has not been verified here, so check a deployed response there before relying on it.
 #
 # If you deploy somewhere else, these are the headers to carry across (nginx `add_header`, an S3 +
 # CloudFront response-headers policy, a Vercel `headers` block, and so on). Do not drop
@@ -63,7 +65,3 @@
   Content-Security-Policy: frame-ancestors 'self'
   Cross-Origin-Resource-Policy: same-origin
   Content-Disposition: inline
-
-/index.html
-  ! Cache-Control
-  Cache-Control: no-cache

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 // Five protections cannot be expressed in a <meta> tag — they exist only as response headers, so
@@ -76,13 +76,14 @@ describe('security response headers ship with the build', () => {
 // rule's `! Name` lines detach before its own values are set, and a header set twice is joined with
 // a comma. Reading one rule in isolation is how `no-cache` rode along with the immutable lifetime
 // and a second `frame-ancestors` policy blocked the PDF reader without any test noticing.
-function resolvedOnPages(path: string): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const block of headers.split(/\n(?=\/)/)) {
-    const [pattern, ...lines] = block
-      .split('\n')
-      .filter((l) => l.trim() && !l.trim().startsWith('#'));
-    if (!pattern?.startsWith('/')) continue;
+const rules = headers
+  .split(/\n(?=\/)/)
+  .map((block) => block.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')))
+  .filter(([pattern]) => pattern?.startsWith('/'));
+
+function valuesOnPages(path: string): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const [pattern = '', ...lines] of rules) {
     const re = new RegExp(
       `^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
     );
@@ -94,15 +95,28 @@ function resolvedOnPages(path: string): Map<string, string> {
       const at = l.indexOf(':');
       if (l.trim().startsWith('!') || at < 0) continue;
       const name = l.slice(0, at).trim().toLowerCase();
-      const value = l.slice(at + 1).trim();
-      const prior = out.get(name);
-      out.set(name, prior ? `${prior}, ${value}` : value);
+      out.set(name, [...(out.get(name) ?? []), l.slice(at + 1).trim()]);
     }
   }
   return out;
 }
 
+const resolvedOnPages = (path: string) =>
+  new Map([...valuesOnPages(path)].map(([name, values]) => [name, values.join(', ')]));
+
+// One concrete path per rule, so a rule added later is covered without editing this list.
+const everyRulePath = ['/', '/live', ...rules.map(([pattern = '']) => pattern.replace(/\*/g, 'x'))];
+
 describe('what each path receives once every matching rule has applied', () => {
+  it('never sets a header twice on any path, and never loses one /* promises', () => {
+    const global = [...valuesOnPages('/').keys()];
+    for (const path of everyRulePath) {
+      const got = valuesOnPages(path);
+      for (const [name, values] of got) expect(values, `${path} ${name}`).toHaveLength(1);
+      for (const name of global) expect(got.has(name), `${path} ${name}`).toBe(true);
+    }
+  });
+
   it('lets only the bundled PDFs be framed, and only by the app itself', () => {
     const pdf = resolvedOnPages('/demo-assets/pdf/primer.pdf');
     expect(pdf.get('x-frame-options')).toBe('SAMEORIGIN');
@@ -112,6 +126,15 @@ describe('what each path receives once every matching rule has applied', () => {
       expect(got.get('x-frame-options'), path).toBe('DENY');
       expect(got.get('content-security-policy'), path).toMatch(/frame-ancestors 'none'$/);
     }
+  });
+
+  it('keeps the frameable folder to PDFs, since its only CSP is frame-ancestors', () => {
+    const dir = join(__dirname, '../public/demo-assets/pdf');
+    const files = readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) =>
+      e.isFile(),
+    );
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) expect(file.name).toMatch(/\.pdf$/);
   });
 
   it('gives each cached path exactly its own lifetime', () => {
