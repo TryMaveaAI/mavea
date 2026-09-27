@@ -673,6 +673,26 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       ).toBeInTheDocument();
     });
 
+    it('sends a reader with no model to settings instead of a Try again that cannot work', async () => {
+      saveCourse(course('a'));
+      stashCourseLesson({ courseId: 'a', lessonIdx: 0 });
+      mockGenerateLive.mockResolvedValueOnce({
+        spec: lessonSpec('stub'),
+        narration: '',
+        tier: 'frontier',
+        error: {
+          kind: 'auth',
+          message: 'No model is connected yet — add a model and its API key in settings to start.',
+        },
+      });
+
+      render(<CourseLessonReader />);
+
+      const link = await screen.findByRole('link', { name: 'Connect a model' });
+      expect(link).toHaveAttribute('href', '#/live?settings=model');
+      expect(screen.queryByRole('button', { name: /Try again/i })).toBeNull();
+    });
+
     it('treats a collapsed reply as retryable instead of caching a partial lesson', async () => {
       saveCourse(course('a'));
       stashCourseLesson({ courseId: 'a', lessonIdx: 0 });

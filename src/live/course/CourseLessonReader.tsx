@@ -177,6 +177,9 @@ export function CourseLessonReader(): ReactElement {
   const [pendingShape, setPendingShape] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // An auth failure (no model connected, or a key refused) is fixed in settings, not by retrying,
+  // so the error stage offers the way there instead of only Try again.
+  const [errorNeedsSettings, setErrorNeedsSettings] = useState(false);
 
   const genRef = useRef<Generation | null>(null);
   // Whether the next uncached lesson may be BUILT. Seeded from the arrival (see Target.vouched) and
@@ -207,6 +210,7 @@ export function CourseLessonReader(): ReactElement {
         setPendingShape(null);
         setThinking(false);
         setError(null);
+        setErrorNeedsSettings(false);
         setPhase('ready');
         return;
       }
@@ -216,6 +220,7 @@ export function CourseLessonReader(): ReactElement {
       setPendingShape(null);
       setThinking(false);
       setError(null);
+      setErrorNeedsSettings(false);
       if (!vouched.current) {
         genRef.current = null;
         setPhase('held');
@@ -305,6 +310,7 @@ export function CourseLessonReader(): ReactElement {
           // user-facing line. Render it as an explicit error state, never as canvas content.
           if (result.error) {
             setError(result.error.message);
+            setErrorNeedsSettings(result.error.kind === 'auth');
             setPhase('error');
             return;
           }
@@ -435,6 +441,7 @@ export function CourseLessonReader(): ReactElement {
           {phase === 'error' && (
             <ErrorStage
               message={error ?? 'Something went wrong building this lesson.'}
+              needsSettings={errorNeedsSettings}
               onRetry={() => loadLesson(lessonIdx)}
             />
           )}
@@ -544,7 +551,15 @@ function StreamingStage({
   );
 }
 
-function ErrorStage({ message, onRetry }: { message: string; onRetry: () => void }): ReactElement {
+function ErrorStage({
+  message,
+  needsSettings,
+  onRetry,
+}: {
+  message: string;
+  needsSettings: boolean;
+  onRetry: () => void;
+}): ReactElement {
   return (
     // role="alert", like every other failure on this surface: the live "Building lesson N…" node
     // unmounts to make room for this one, so without it a reader who cannot see the page is told
@@ -555,9 +570,15 @@ function ErrorStage({ message, onRetry }: { message: string; onRetry: () => void
       </div>
       <div className="clr-state-head">Couldn’t build this lesson</div>
       <div className="clr-state-sub clr-state-error">{message}</div>
-      <button type="button" className="clr-btn clr-btn-primary" onClick={onRetry}>
-        <Icon.refresh /> Try again
-      </button>
+      {needsSettings ? (
+        <a className="clr-btn clr-btn-primary" href="#/live?settings=model">
+          Connect a model
+        </a>
+      ) : (
+        <button type="button" className="clr-btn clr-btn-primary" onClick={onRetry}>
+          <Icon.refresh /> Try again
+        </button>
+      )}
     </div>
   );
 }

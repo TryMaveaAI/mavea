@@ -229,6 +229,7 @@
 /* ── buttons ───────────────────────────────────────────────────────────────────────────────── */
 .clr-btn {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   justify-content: center;
   gap: 6px;
