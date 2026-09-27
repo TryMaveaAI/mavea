@@ -1080,6 +1080,21 @@
 .ob-after-links {
   margin-top: 1.5rem;
 }
+/* Sections 04 and 05 are each one picture and a few lines, so their breathing room is set against
+   the window's HEIGHT as well as its width: sized off width alone, a laptop window (1366×657,
+   1536×730) spent ~200px of padding between them and drew both illustrations taller than the
+   window, so each read as a picture floating in empty paper rather than a composed spread. The
+   width term still governs a tall window; the height term only binds on a short one. */
+.ob-page .ob-world-section,
+.ob-page .ob-after {
+  padding-block: clamp(2.5rem, min(7vw, 9svh), 7rem);
+}
+.ob-world-art svg {
+  max-height: 58svh;
+}
+.ob-after .feature-film-art svg {
+  max-height: 50svh;
+}
 .ob-after-links a {
   display: grid;
   grid-template-columns: 2rem 1fr 1fr 2rem;

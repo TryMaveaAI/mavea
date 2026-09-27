@@ -44,6 +44,16 @@ describe('Flagship — section compositions keep a shared alignment and focal po
     expect(label).toMatch(/width:\s*clamp\(/);
     expect(label).not.toMatch(/right:\s*0/);
   });
+
+  it('sizes sections 04 and 05 against the window height too, so a laptop reads a spread', () => {
+    // Width-only padding (7vw) and full-width illustrations left a 1366×657 window ~200px of
+    // paper between the two and each picture taller than the window.
+    const spacing =
+      /\.ob-page \.ob-world-section,\s*\.ob-page \.ob-after\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(spacing).toMatch(/padding-block:\s*clamp\([^;]*min\(7vw, \d+svh\)/);
+    expect(css).toMatch(/\.ob-world-art svg\s*\{[^}]*max-height:\s*\d+svh/);
+    expect(css).toMatch(/\.ob-after \.feature-film-art svg\s*\{[^}]*max-height:\s*\d+svh/);
+  });
 });
 
 describe('The Study — a compact lesson stays inside the viewport', () => {
