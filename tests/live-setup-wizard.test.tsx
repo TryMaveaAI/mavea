@@ -541,3 +541,17 @@ describe("SetupWizard — the composer's own paperclip", () => {
     expect(screen.queryByRole('button', { name: /attach/i })).toBeNull();
   });
 });
+
+describe('SetupWizard — each step opens at its top', () => {
+  it('resets the stage scroll when the step changes', async () => {
+    const { container } = render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    const stage = container.querySelector<HTMLElement>('.setup-stage')!;
+    stage.scrollTop = 240;
+    expect(stage.scrollTop).toBe(240);
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: /^Continue$/i })[0]);
+    });
+    expect(container.querySelector('.setup-stage')).toBe(stage);
+    expect(stage.scrollTop).toBe(0);
+  });
+});

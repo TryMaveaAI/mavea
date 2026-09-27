@@ -133,6 +133,10 @@ export function SetupWizard({
     const el = stageRef.current;
     if (!el) return;
     const root = document.documentElement;
+    // Every step opens at its own top. The stage element outlives the step, so without this the Go
+    // hub inherited however far Remember had been scrolled and opened with "I'm awake." slid up
+    // under the fixed face.
+    el.scrollTop = 0;
     let raf = 0;
     const sync = (): void => {
       raf = 0;
