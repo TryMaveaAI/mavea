@@ -72,6 +72,60 @@ describe('security response headers ship with the build', () => {
   });
 });
 
+// What a path actually receives on Cloudflare Pages: every matching rule applies in file order, a
+// rule's `! Name` lines detach before its own values are set, and a header set twice is joined with
+// a comma. Reading one rule in isolation is how `no-cache` rode along with the immutable lifetime
+// and a second `frame-ancestors` policy blocked the PDF reader without any test noticing.
+function resolvedOnPages(path: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const block of headers.split(/\n(?=\/)/)) {
+    const [pattern, ...lines] = block
+      .split('\n')
+      .filter((l) => l.trim() && !l.trim().startsWith('#'));
+    if (!pattern?.startsWith('/')) continue;
+    const re = new RegExp(
+      `^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+    );
+    if (!re.test(path)) continue;
+    for (const l of lines) {
+      if (l.trim().startsWith('!')) out.delete(l.trim().slice(1).trim().toLowerCase());
+    }
+    for (const l of lines) {
+      const at = l.indexOf(':');
+      if (l.trim().startsWith('!') || at < 0) continue;
+      const name = l.slice(0, at).trim().toLowerCase();
+      const value = l.slice(at + 1).trim();
+      const prior = out.get(name);
+      out.set(name, prior ? `${prior}, ${value}` : value);
+    }
+  }
+  return out;
+}
+
+describe('what each path receives once every matching rule has applied', () => {
+  it('lets only the bundled PDFs be framed, and only by the app itself', () => {
+    const pdf = resolvedOnPages('/demo-assets/pdf/primer.pdf');
+    expect(pdf.get('x-frame-options')).toBe('SAMEORIGIN');
+    expect(pdf.get('content-security-policy')).toBe("frame-ancestors 'self'");
+    for (const path of ['/', '/index.html', '/demo-assets/other.png', '/assets/app.js']) {
+      const got = resolvedOnPages(path);
+      expect(got.get('x-frame-options'), path).toBe('DENY');
+      expect(got.get('content-security-policy'), path).toMatch(/frame-ancestors 'none'$/);
+    }
+  });
+
+  it('gives each cached path exactly its own lifetime', () => {
+    expect(resolvedOnPages('/').get('cache-control')).toBe('no-cache');
+    expect(resolvedOnPages('/index.html').get('cache-control')).toBe('no-cache');
+    expect(resolvedOnPages('/assets/app-abc.js').get('cache-control')).toBe(
+      'public, max-age=31536000, immutable',
+    );
+    for (const path of ['/fonts/a.woff2', '/semantic/x.json', '/demo-assets/pdf/primer.pdf']) {
+      expect(resolvedOnPages(path).get('cache-control'), path).toMatch(/^public, max-age=\d+/);
+    }
+  });
+});
+
 describe('the post-deploy transport gate verifies behavior instead of config claims', () => {
   it('requires the plaintext origin to permanently upgrade to the same HTTPS host', () => {
     expect(deploymentGate).toContain("plaintext.protocol = 'http:'");

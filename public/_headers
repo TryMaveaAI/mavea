@@ -9,6 +9,12 @@
 # file is the format Cloudflare Pages and Netlify read directly out of the publish directory; Vite
 # copies it verbatim from public/.
 #
+# A path matched by several rules gets every rule's headers, and Cloudflare Pages joins a header
+# set twice with a comma: `no-cache` from /* would ride along with the immutable lifetime below and
+# win, and the PDF rule's `frame-ancestors 'self'` would sit beside /*'s `'none'` as a second policy
+# that still refuses the frame. So each narrower rule first detaches (`! Name`) what it replaces;
+# Pages applies a rule's detaches before its own values. Netlify's parser skips those lines.
+#
 # If you deploy somewhere else, these are the headers to carry across (nginx `add_header`, an S3 +
 # CloudFront response-headers policy, a Vercel `headers` block, and so on). Do not drop
 # Permissions-Policy: Mavéa asks for the microphone, and that line is what keeps an embedded or
@@ -31,26 +37,33 @@
 
 # Hashed build assets are immutable by construction; the entry HTML never is.
 /assets/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # These filenames are stable rather than content-hashed, so keep the repeat-load win bounded and
 # revalidate in the background instead of treating them as immutable across future releases.
 /fonts/*
+  ! Cache-Control
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
 /semantic/*
+  ! Cache-Control
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
 
 /demo-assets/*
+  ! Cache-Control
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
 # The app shell is never frameable. This narrow exception lets only bundled PDF assets render in
-# Pdfreader's same-origin, sandboxed iframe; other demo assets inherit DENY from /*.
+# Pdfreader's same-origin iframe; other demo assets inherit DENY from /*.
 /demo-assets/pdf/*
+  ! X-Frame-Options
+  ! Content-Security-Policy
   X-Frame-Options: SAMEORIGIN
   Content-Security-Policy: frame-ancestors 'self'
   Cross-Origin-Resource-Policy: same-origin
   Content-Disposition: inline
 
 /index.html
+  ! Cache-Control
   Cache-Control: no-cache
