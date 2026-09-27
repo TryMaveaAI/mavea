@@ -14,7 +14,7 @@ import './lib/axis.css';
 import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
-import { FitBox } from './layout/FitBox';
+import { FitBox, type FitFacts } from './layout/FitBox';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { FIT_TYPES } from './layout/fitPolicy';
 import { CanvasTakeover } from './focus/CanvasView';
@@ -104,12 +104,12 @@ const ReplayCard = lazy(() =>
   import('./ReplayCard').then((module) => ({ default: module.ReplayCard })),
 );
 
-// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls. Below 1 as well
-// as above: the fit stops at the legibility floor, so a tall card on a short laptop window had
-// no way to come into view whole — past the floor it is the reader's own hand that trades type
-// size for the whole picture.
-const ZOOM_MIN = 0.55;
-const ZOOM_MAX = 1.75;
+// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls. Zooming out stops
+// where the card's smallest type would paint under 9px (the fit reports that scale), and never
+// under ZOOM_MIN whatever the card holds; in, it stops at 2.5x, past which a reader is panning a
+// fragment rather than reading a card.
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.15;
 /** The Lens opens a card FITTED to its stage (`'fit'`), the way a viewer opens a picture: a short
  *  card is grown toward a reading size, a tall one is fitted down to the room, and neither ever
@@ -454,15 +454,30 @@ export function TopicCanvas({
   // The scale the fit settled on, reported by the stage's FitBox: the readout states it, and a
   // magnification starts from it rather than jumping back to the card's board size.
   const [fitScale, setFitScale] = useState(1);
+  // What the fit learned beyond its scale: where the card's smallest type reaches the floor
+  // (the zoom-out stops there), and whether the card still runs past the stage at that scale.
+  const [lensFit, setLensFit] = useState<FitFacts>({ legibleMin: 0, spills: false });
+  const onLensFit = useCallback((k: number, facts: FitFacts) => {
+    setFitScale(k);
+    setLensFit(facts);
+  }, []);
+  // The size the board already shows this card at. The Lens is for looking closer, so a fit
+  // never takes the card below it; a card taller than the stage at that size scrolls instead.
+  const [boardScale, setBoardScale] = useState(1);
   const fitted = zoomLevel === 'fit';
+  // Honest in both modes: fitted, the stage's one FitBox is the whole scale (any FitBox inside
+  // the block stands down under it); magnified, the fit holds at 1 and `zoom` is the whole scale.
   const shownZoom = fitted ? fitScale : zoomLevel;
+  // Never under the floor, and never above 1 either: a card whose own type is already under 9px
+  // can still be seen at its own size, which is what the board shows.
+  const zoomFloor = Math.max(ZOOM_MIN, Math.min(1, lensFit.legibleMin));
   // The fit scale a magnification lays the card out against: the fit's own when a step leaves
   // the fit (so the picture carries on from it), 1 at actual size (the card's own layout).
   const [layoutFit, setLayoutFit] = useState(1);
   const zoomBy = (d: number): void => {
     if (fitted) setLayoutFit(fitScale);
     const from = fitted ? fitScale : zoomLevel;
-    setZoomLevel(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(from + d).toFixed(2))));
+    setZoomLevel(Math.min(ZOOM_MAX, Math.max(zoomFloor, +(from + d).toFixed(2))));
   };
   const actualSize = (): void => {
     setLayoutFit(1);
@@ -695,8 +710,18 @@ export function TopicCanvas({
     lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
   };
 
+  /** The scale the board's own fit draws a card at (1 unless it had to shrink it). */
+  const boardScaleOf = (id: string | undefined): number => {
+    const cell = Array.from(
+      gridRef.current?.parentElement?.querySelectorAll<HTMLElement>('[data-spot-id]') ?? [],
+    ).find((el) => el.dataset.spotId === id && !el.closest('.zoom-scrim'));
+    const fit = cell?.querySelector<HTMLElement>(':scope > .fit-box > div');
+    const k = Number(/scale\(([\d.]+)\)/.exec(fit?.style.transform ?? '')?.[1]);
+    return k > 0 ? k : 1;
+  };
   /** Open the Lens on a block: its own stage, over a board faded back behind it. */
   const openLens = (b: Block): void => {
+    setBoardScale(boardScaleOf(b.id));
     setZoomedBlock(b);
     setZoomLevel('fit');
   };
@@ -1266,7 +1291,7 @@ export function TopicCanvas({
                       type="button"
                       className="zoom-sheet-zoom-btn"
                       aria-label="Zoom out"
-                      disabled={shownZoom <= ZOOM_MIN}
+                      disabled={shownZoom <= zoomFloor + 0.005}
                       onClick={() => zoomBy(-ZOOM_STEP)}
                     >
                       <Icon.zoomOut />
@@ -1328,10 +1353,13 @@ export function TopicCanvas({
                         before it scrolls; once the reader magnifies, scrolling is the point. */}
                     <FitBox
                       fitHeight={fitted}
+                      hold={!fitted}
+                      governs
+                      minScale={boardScale}
                       readingPx={
                         fitted ? (lensGrows ? LENS_WIDE_READING_PX : LENS_READING_PX) : undefined
                       }
-                      onScale={fitted ? setFitScale : undefined}
+                      onScale={fitted ? onLensFit : undefined}
                     >
                       {renderOnStage(zoomedBlock)}
                     </FitBox>

@@ -15,7 +15,15 @@
 //     entirely until it nears the viewport.
 //   • A fits-already early-out: when the content is already within the card, scale stays
 //     1 and no transform is applied, so the common case pays nothing.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { observeResize } from './sharedResize';
 
 const CLIP = new Set(['hidden', 'clip', 'auto', 'scroll']);
@@ -115,11 +123,45 @@ export interface FitBoxProps {
    *  size. The box wins: a block that cannot grow and still fit is left as it is. Omit to only
    *  ever shrink. */
   readingPx?: number;
+  /** Never scale the block below this — the size a reader has already seen it at (the Lens
+   *  never shows a card smaller than the board did). Past it the host scrolls. */
+  minScale?: number;
+  /** Hold the block at its own size and measure nothing: the host is magnifying it itself, and
+   *  a fit underneath would make the magnification it states untrue. */
+  hold?: boolean;
+  /** This box answers for the whole block's scale, so any FitBox nested inside it stands down.
+   *  Two fits compounding is a picture drawn at a size no readout can state. */
+  governs?: boolean;
   /** Told the scale the fit settled on, whenever it changes — for a host that states it (the
    *  Lens's zoom readout) or carries it on (a magnification that starts where the fit left off). */
-  onScale?: (k: number) => void;
+  onScale?: (k: number, fit: FitFacts) => void;
   className?: string;
 }
+
+/** What a height fit learned about its block, beyond the scale it chose. */
+export interface FitFacts {
+  /** The scale at which the block's smallest visible type paints at the 9px floor (0 when it
+   *  holds no text). A host magnifying the block itself stops its zoom-out here. */
+  legibleMin: number;
+  /** The block, at the chosen scale, is still taller than its box — the host will scroll it. */
+  spills: boolean;
+}
+
+/** Set by a governing FitBox for everything inside it. */
+const Governed = createContext(false);
+
+interface Fit extends FitFacts {
+  k: number;
+  needH: number;
+}
+const AT_REST: Fit = { k: 1, needH: 0, legibleMin: 0, spills: false };
+/** Keep the previous fit unless something a reader could see (or a host is told) moved. */
+const settle = (p: Fit, n: Fit): Fit =>
+  Math.abs(p.k - n.k) > 0.002 ||
+  Math.abs(p.legibleMin - n.legibleMin) > 0.002 ||
+  p.spills !== n.spills
+    ? n
+    : p;
 
 /** The most a reading target may grow a block. Past this the ask is not "read this at size"
  *  but "make a small thing enormous", and a block with one 8px caption would fill the box. */
@@ -135,24 +177,33 @@ export function FitBox({
   maxAspect,
   fitHeight = false,
   readingPx,
+  minScale = 0,
+  hold = false,
+  governs = false,
   onScale,
   className,
 }: FitBoxProps) {
+  const governed = useContext(Governed);
+  const still = hold || governed;
   const host = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   // scale only — height collapses to the scaled content height so the card never reserves
   // empty space below a shrunk block. The natural height rides along so the reclaim below is
   // exact rather than a share of the width.
-  const [fit, setFit] = useState({ k: 1, needH: 0 });
-  const k = fit.k;
+  const [fit, setFit] = useState<Fit>(AT_REST);
+  const { k, legibleMin, spills } = fit;
   useEffect(() => {
-    onScale?.(k);
-  }, [k, onScale]);
+    onScale?.(k, { legibleMin, spills });
+  }, [k, legibleMin, spills, onScale]);
 
   useLayoutEffect(() => {
     const h = host.current;
     const i = inner.current;
     if (!h || !i) return;
+    if (still) {
+      setFit((p) => (p.k === 1 ? p : AT_REST));
+      return;
+    }
 
     const measure = (): void => {
       const availW = h.clientWidth;
@@ -288,13 +339,14 @@ export function FitBox({
       // absorbs sub-pixel rounding so a block that exactly fits doesn't flutter.)
       const fitsW = !needW || needW <= availW + 1;
       const fitsH = !fitHeight || !needH || !Number.isFinite(availH) || needH <= availH + 1;
+      const legible = Number.isFinite(minPx) ? LEGIBLE_FLOOR_PX / minPx : 0;
       if (grown && fitsW) {
-        const next = grown;
-        setFit((p) => (Math.abs(p.k - next.k) > 0.002 ? next : p));
+        const next = { ...grown, legibleMin: legible, spills: false };
+        setFit((p) => settle(p, next));
         return;
       }
       if (fitsW && fitsH) {
-        setFit((p) => (p.k === 1 ? p : { k: 1, needH: 0 }));
+        setFit((p) => settle(p, { ...AT_REST, legibleMin: legible }));
         return;
       }
       const rawW = fitsW ? 1 : availW / needW;
@@ -307,8 +359,10 @@ export function FitBox({
         const floor = LEGIBLE_FLOOR_PX / minPx;
         raw = Math.max(raw, Math.min(1, floor));
       }
-      const next = Math.max(0.4, Math.floor(raw * 1000) / 1000); // floor so we never shrink to nothing
-      setFit((p) => (Math.abs(p.k - next) > 0.002 ? { k: next, needH } : p));
+      // Floored so a block never shrinks to nothing, nor below the size it was already seen at.
+      const next = Math.max(0.4, Math.min(1, minScale), Math.floor(raw * 1000) / 1000);
+      const spill = fitHeight && Number.isFinite(availH) && needH * next > availH + 1;
+      setFit((p) => settle(p, { k: next, needH, legibleMin: legible, spills: spill }));
     };
 
     measure();
@@ -327,7 +381,7 @@ export function FitBox({
       stopBox?.();
       stopRoom?.();
     };
-  }, [children, fitHeight, readingPx]);
+  }, [children, fitHeight, readingPx, minScale, still]);
 
   const scaled = k !== 1;
   return (
@@ -360,7 +414,7 @@ export function FitBox({
             : undefined
         }
       >
-        {children}
+        {governs ? <Governed.Provider value>{children}</Governed.Provider> : children}
       </div>
     </div>
   );
