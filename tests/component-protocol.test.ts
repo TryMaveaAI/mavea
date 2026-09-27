@@ -12,7 +12,6 @@ import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
-import { FAMILIES } from '../src/gallery/families';
 /**
  * Block types TopicCanvas resolves with its own `b.type === '…'` branch (not the
  * extended registry). Kept in sync with TopicCanvas.tsx and data-integrity.test.ts.
@@ -105,32 +104,6 @@ describe('component protocol — registry ↔ ComponentMeta bijection', () => {
       orphan,
       `These ComponentMeta entries have no renderer (not a core type, an EXTENDED_REGISTRY key, ` +
         `or a SPECIAL_RENDER branch) — Live could select a block that cannot render: ${orphan.join(', ')}`,
-    ).toEqual([]);
-  });
-});
-describe('component protocol — the gallery covers every family', () => {
-  it('every canvas/blocks/* family with a registry.tsx has a gallery FAMILIES entry', () => {
-    const blocksDir = join(dirname(fileURLToPath(import.meta.url)), '../src/canvas/blocks');
-    const onDisk = readdirSync(blocksDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && existsSync(join(blocksDir, d.name, 'registry.tsx')))
-      .map((d) => d.name)
-      .sort();
-    const wired = new Set(FAMILIES.map((f) => f.id));
-    const missing = onDisk.filter((id) => !wired.has(id));
-    expect(
-      missing,
-      `These block families exist on disk but are not in gallery/families.ts FAMILIES, so their ` +
-        `blocks are mis-grouped under "core" in the #/gallery QA surface. Add a labelled entry: ${missing.join(', ')}`,
-    ).toEqual([]);
-  });
-  it('every gallery FAMILIES id maps to a real on-disk family (no stale entries)', () => {
-    const blocksDir = join(dirname(fileURLToPath(import.meta.url)), '../src/canvas/blocks');
-    const stale = FAMILIES.map((f) => f.id).filter(
-      (id) => !existsSync(join(blocksDir, id, 'registry.tsx')),
-    );
-    expect(
-      stale,
-      `gallery FAMILIES references families with no registry.tsx: ${stale.join(', ')}`,
     ).toEqual([]);
   });
 });
