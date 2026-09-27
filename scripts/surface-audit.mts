@@ -321,9 +321,11 @@ const MEASURE_SCRIPT = (
         (getComputedStyle(el.parentElement).webkitLineClamp !== 'none' && getComputedStyle(el.parentElement).webkitLineClamp !== ''));
       // A reel marquee's track is wider than its band by design: the band's overflow is what turns an
       // endless strip into a crawl, so words the BAND cuts are the next frames, not lost text. The
-      // band itself gets no pass — clipped by anything else, it is judged like any other text. The
-      // reel gallery's own board audit excuses the same attribute (src/clip/reel/auditBoard.ts).
-      const byMarquee = !!clipper.closest('[data-reel-marquee]');
+      // pass needs the marked track inside the clipper that cut — some finishes mark only the track
+      // (marquee.tsx), others the band too — so a band clipped by anything else is judged like any
+      // other text. The reel gallery's own board audit excuses the same attribute (auditBoard.ts).
+      const track = el.closest('[data-reel-marquee]');
+      const byMarquee = !!track && clipper.contains(track);
       if (lost > 4 && !truncates && !parentTruncates && !byMarquee && !el.closest('.zoom-scrim, [data-text-disclosure]')) {
         clipped.push(name(el) + ' loses ' + Math.round(lost) + 'px to ' + name(clipper));
       }
