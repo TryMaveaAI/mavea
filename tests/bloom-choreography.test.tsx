@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { act, render } from '@testing-library/react';
+import type { Block, ConversationSpec } from '../src/data/conversation';
+
+vi.mock('../src/canvas/blocks/useBlockFamilies', () => ({ useBlockFamilies: () => true }));
+
+import { TopicCanvas } from '../src/canvas/TopicCanvas';
 
 // The "answers bloom" reveal choreography: wired into the global stylesheet, scoped to the canvas
 // grid, and never holding a hidden frame past its own window.
@@ -62,5 +68,42 @@ describe('bloom rules never outlive their own animation', () => {
     expect(canvas).toMatch(/BLOOM_WINDOW_MS\s*=\s*\d+/);
     expect(canvas).toContain('setBlooming(false)');
     expect(canvas).toContain("' blooming'");
+  });
+});
+
+// The bloom is unconditional: the grid always carries its scope, and only the transient window
+// comes and goes. Rendered, not read from source, so a refactor that drops the class fails here.
+describe('the canvas grid always carries the bloom scope', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const spec: ConversationSpec = {
+    id: 'bloom',
+    workspace: 'T',
+    title: 'T',
+    sub: '',
+    opener: '',
+    context: [],
+    blocks: [
+      { type: 'insight', id: 'i1', col: 6, num: '1', props: { title: 'Revenue', summary: 's' } },
+    ] as Block[],
+    proof: null,
+    extras: {},
+    group: 'home',
+    suggests: [],
+    keywords: [],
+  };
+
+  it('keeps bloom-on after the blooming window closes', () => {
+    vi.useFakeTimers();
+    const { container } = render(
+      <TopicCanvas data={spec} spot={null} built={{}} onProve={() => {}} />,
+    );
+    const grid = container.querySelector('.card-grid');
+    expect(grid?.classList.contains('bloom-on')).toBe(true);
+    expect(grid?.classList.contains('blooming')).toBe(true);
+
+    act(() => void vi.advanceTimersByTime(5000));
+    expect(grid?.classList.contains('bloom-on')).toBe(true);
+    expect(grid?.classList.contains('blooming')).toBe(false);
   });
 });

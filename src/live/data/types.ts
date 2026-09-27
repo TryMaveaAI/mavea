@@ -35,7 +35,6 @@ export interface TypedDataset {
   parsedAt: number;
 }
 
-/** How to reduce a column to a single number (a deterministic transform of T1 cells — still T1). */
 /** Row cap — keep a big export from pressuring a weak machine; the excess is dropped with an honest
  *  `truncated` flag, never silently. */
 export const ROW_CAP = 20_000;

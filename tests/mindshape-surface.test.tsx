@@ -55,9 +55,8 @@ afterEach(() => {
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useMindShape / mergeDelta / mindShapeToSpec / computeLayout — behavioral tests for
-// useMindShape, MindShapeCanvas, and mindShapeToSpec. Verifies the core invariants without
-// hitting any network calls.
+// useMindShape / mergeDelta / computeLayout — behavioral tests for useMindShape and
+// MindShapeCanvas. Verifies the core invariants without hitting any network calls.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('useMindShape', () => {
@@ -361,8 +360,6 @@ describe('mergeDelta', () => {
     expect(r.links).toHaveLength(0);
   });
 });
-
-// ── mindShapeToSpec ──────────────────────────────────────────────────────
 
 // ── computeLayout de-clumping ─────────────────────────────────────────────
 describe('computeLayout', () => {

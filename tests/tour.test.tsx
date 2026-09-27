@@ -172,7 +172,7 @@ describe('blanks demo — the key-free walkthrough frames', () => {
 });
 
 // The walkthrough's coach line bypasses the per-turn narration walk (it isn't a new answer, so
-// nothing resets or advances `spokenNow`, the state the on-screen SpeakingDock caption reads).
+// nothing resets or advances `spokenNow`, the state the spoken caption reads).
 // A chapter that speaks a coach line directly — e.g. "Make it yours" right after "It draws the
 // answer" — used to leave the dock showing the PREVIOUS answer's narration while the coach's own
 // audio played, a caption/voice mismatch a visitor would notice immediately. The fix: the speak
@@ -182,7 +182,7 @@ describe('blanks demo — the key-free walkthrough frames', () => {
 // This can't be proven by mounting LiveApp (it needs a live tour run — audio unlock, chapter
 // timers, session storage — see live-tour-replay-guard.test.tsx for why that class of tour
 // wiring is asserted by inspecting the source instead of a full render).
-describe('tour coach speech stays in sync with the SpeakingDock caption', () => {
+describe('tour coach speech stays in sync with the spoken caption', () => {
   const src = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
 
   it('passes the scripted drivers a speak() that updates spokenNow before speaking', () => {
