@@ -2,13 +2,17 @@
   "name": "@mavea/mavea",
   "version": "2.10.5",
   "type": "module",
-  "description": "Mavéa — a visual AI assistant. Answers come back as charts, timelines, maps and evidence you can check. Runs on your machine, with your own API key.",
+  "description": "Mavéa is a local-first visual AI workspace that turns conversations into charts, diagrams, maps, evidence, and explorable canvases.",
   "keywords": [
     "ai",
     "ai-assistant",
+    "visual-ai",
+    "ai-workspace",
+    "ai-canvas",
     "data-visualization",
     "visualization",
     "generative-ui",
+    "visual-reasoning",
     "charts",
     "canvas",
     "llm",
@@ -55,7 +59,7 @@
       "node": ">=22.12"
     }
   },
-  "homepage": "https://github.com/TryMaveaAI/mavea#readme",
+  "homepage": "https://mavea.ai/",
   "bugs": {
     "url": "https://github.com/TryMaveaAI/mavea/issues"
   },

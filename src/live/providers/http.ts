@@ -33,9 +33,11 @@ export async function fetchWithTimeout(
  * the JSON shape every provider uses — `{ error: { message, type|status|code } }`. Trimmed hard, so
  * no key, header, or whole body can ride along. Never throws: no detail is always an acceptable answer.
  */
-/* When any provider last answered 429 (epoch ms), noted by providerErrorDetail below —
- * the one chokepoint every adapter's error path already flows through. */
-let rateLimitedAt = 0;
+/* Until when optional provider work should stay quiet. This learns from live response headers and
+ * transient failures; quota tables vary by model, account, and tier, so a baked-in RPM number would
+ * be stale (and wrong for the user's key) the moment a provider changes it. */
+let providerPressureUntil = 0;
+let providerPressureObservedAt = 0;
 
 /**
  * Whether a provider rate-limited us inside the given window. Speculative work (chip prefetch,
@@ -44,19 +46,25 @@ let rateLimitedAt = 0;
  * interactive turn needs, which is how one question came to retry three times before landing.
  */
 export function recentlyRateLimited(windowMs = 60_000): boolean {
-  return Date.now() - rateLimitedAt < windowMs;
+  if (windowMs <= 0) return false;
+  const now = Date.now();
+  return providerPressureUntil > now || now - providerPressureObservedAt < windowMs;
 }
 
-/** Note a 429 seen OUTSIDE providerErrorDetail. The Gemini and Responses adapters retry 429s
+/** Note provider pressure seen OUTSIDE providerErrorDetail. The Gemini and Responses adapters retry
+ * 429/overload responses
  *  inside their own loops and only reach an error-detail call on the FINAL failure — so a
  *  retried-then-recovered rate limit (the common shape) never told the guard anything, and the
  *  guard was inert on exactly the providers it was built for. */
 export function noteRateLimited(status: number): void {
-  if (status === 429) rateLimitedAt = Date.now();
+  if (status === 429 || status === 503 || status === 529) {
+    providerPressureObservedAt = Date.now();
+    providerPressureUntil = Math.max(providerPressureUntil, Date.now());
+  }
 }
 
 export async function providerErrorDetail(res: Response): Promise<string> {
-  if (res.status === 429) rateLimitedAt = Date.now();
+  observeProviderLimits(res);
   try {
     const text = (await res.text()).slice(0, 2000);
     if (!text) return '';
@@ -133,10 +141,107 @@ export const PROVIDER_THINKING_BUDGET = 'thinking-budget';
  *  when it sent one (capped), else a short exponential backoff. Shared by every adapter that
  *  retries, so a burst of dashboard refreshes rides out a brief tokens-per-minute spike the same
  *  way whichever model is connected. */
-export function retryAfterMs(res: Response, attempt: number): number {
-  const hdr = Number(res.headers.get('retry-after'));
-  if (Number.isFinite(hdr) && hdr > 0) return Math.min(hdr * 1000, 10_000);
-  return Math.min(800 * 2 ** attempt, 8_000);
+export function retryAfterMs(res: Response, attempt: number, detail = ''): number {
+  const exact = providerRetryDelayMs(res);
+  if (exact !== undefined) return exact;
+  const bodyHint = /retry(?: after| in)?\s+([\d.]+)\s*(ms|s|m)\b/i.exec(detail);
+  if (bodyHint) {
+    const unit = bodyHint[2]!.toLowerCase();
+    const multiplier = unit === 'ms' ? 1 : unit === 'm' ? 60_000 : 1000;
+    return Math.min(Number(bodyHint[1]) * multiplier, 30_000);
+  }
+  const base = Math.min(900 * 2 ** attempt, 12_000);
+  return Math.round(base * (0.85 + Math.random() * 0.3));
+}
+
+const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 504, 524, 529]);
+const NON_RETRYABLE_QUOTA =
+  /(?:requests?|tokens?)\s+per\s+day|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
+
+/** Whether another bounded attempt can plausibly help. Daily/spend exhaustion is deliberately not
+ * retried: it wastes the very allowance the user is trying to protect. */
+export function isTransientProviderFailure(status: number, detail = ''): boolean {
+  return TRANSIENT_PROVIDER_STATUSES.has(status) && !NON_RETRYABLE_QUOTA.test(detail);
+}
+
+function durationMs(raw: string, now: number): number | undefined {
+  const value = raw.trim();
+  if (!value) return undefined;
+  // HTTP dates and Anthropic's ISO reset timestamps contain fragments such as "24 Sep"; parse
+  // them before the compact-duration grammar so the day is never mistaken for "24s".
+  if (value.includes(',') || /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const date = Date.parse(value);
+    return Number.isFinite(date) ? date - now : undefined;
+  }
+  const pieces = [...value.matchAll(/([\d.]+)\s*(ms|s|m|h)/gi)];
+  if (pieces.length) {
+    const units = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 } as const;
+    return pieces.reduce((sum, match) => {
+      const unit = match[2]!.toLowerCase() as keyof typeof units;
+      return sum + Number(match[1]) * units[unit];
+    }, 0);
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    if (numeric > 1_000_000_000_000) return numeric - now;
+    if (numeric > 1_000_000_000) return numeric * 1000 - now;
+    return numeric * 1000;
+  }
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? date - now : undefined;
+}
+
+/** Read the retry/reset dialects exposed by OpenAI-compatible and Anthropic responses. Exact
+ * provider guidance wins over local backoff; waits stay bounded so an interactive turn never hangs
+ * behind a far-future daily reset. */
+export function providerRetryDelayMs(res: Response, now = Date.now()): number | undefined {
+  // A Response always has Headers in browsers. Keeping the guard makes this helper tolerant of the
+  // deliberately minimal response doubles used by readiness probes and third-party adapters.
+  if (!res.headers?.get) return undefined;
+  const retryMs = Number(res.headers.get('retry-after-ms'));
+  if (Number.isFinite(retryMs) && retryMs > 0) return Math.min(retryMs, 30_000);
+
+  const retryAfter = res.headers.get('retry-after');
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    const parsed = Number.isFinite(seconds) ? seconds * 1000 : durationMs(retryAfter, now);
+    if (parsed !== undefined && parsed > 0) return Math.min(parsed, 30_000);
+  }
+
+  const resetHeaders = [
+    'x-ratelimit-reset-requests',
+    'x-ratelimit-reset-tokens',
+    'anthropic-ratelimit-requests-reset',
+    'anthropic-ratelimit-tokens-reset',
+    'ratelimit-reset',
+  ];
+  const waits = resetHeaders
+    .map((header) => res.headers.get(header))
+    .filter((value): value is string => value !== null)
+    .map((value) => durationMs(value, now))
+    .filter((value): value is number => value !== undefined && value > 0);
+  return waits.length ? Math.min(Math.max(...waits), 30_000) : undefined;
+}
+
+/** Learn pressure from every provider response. A failed overload suppresses speculative work; a
+ * successful response reporting zero remaining requests/tokens does the same until its reset. */
+export function observeProviderLimits(res: Response): void {
+  const pressured = res.status === 429 || res.status === 503 || res.status === 529;
+  const exhausted = res.headers?.get
+    ? [
+        'x-ratelimit-remaining-requests',
+        'x-ratelimit-remaining-tokens',
+        'anthropic-ratelimit-requests-remaining',
+        'anthropic-ratelimit-tokens-remaining',
+      ].some((header) => {
+        const remaining = res.headers.get(header);
+        return remaining !== null && Number(remaining) === 0;
+      })
+    : false;
+  if (!pressured && !exhausted) return;
+  providerPressureObservedAt = Date.now();
+  const delay = providerRetryDelayMs(res) ?? (pressured ? 15_000 : 60_000);
+  providerPressureUntil = Math.max(providerPressureUntil, Date.now() + delay);
 }
 
 /** A cancellable sleep — resolves after `ms`, or rejects the moment the turn aborts, so a

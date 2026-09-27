@@ -84,6 +84,20 @@ Drawn in-repo for Mavéa, so no third-party license applies.
 | ------------------------------------ | ----------------------------------------------- |
 | `images/slide-placeholder.svg`       | Gradient placeholder tile, slide-lab fixtures   |
 | `images/slide-placeholder-light.svg` | Light-theme variant of the placeholder gradient |
+| `narration/dev-1.webm`               | Pre-rendered narration: developer demo, turn 1  |
+| `narration/dev-2.webm`               | Pre-rendered narration: developer demo, turn 2  |
+| `narration/pm-1.webm`                | Pre-rendered narration: product demo, turn 1    |
+| `narration/pm-2.webm`                | Pre-rendered narration: product demo, turn 2    |
+| `narration/pm-3.webm`                | Pre-rendered narration: product demo, turn 3    |
+| `narration/student-1.webm`           | Pre-rendered narration: student demo, turn 1    |
+| `narration/student-2.webm`           | Pre-rendered narration: student demo, turn 2    |
+| `narration/traveler-1.webm`          | Pre-rendered narration: traveler demo, turn 1   |
+| `narration/traveler-2.webm`          | Pre-rendered narration: traveler demo, turn 2   |
+
+The narration files are first-party recordings generated from Mavéa's own recorded-demo text
+with the locally run, Apache-2.0 Kokoro model. They contain no third-party speech recording, model
+weights, container image, or runtime service; the public site only serves the finished WebM/Opus
+files.
 
 ## `docs/media` — first-party captures of Mavéa itself
 

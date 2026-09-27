@@ -6,6 +6,8 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { SEED_SHIP } from '../src/live/ripple/seed';
 import { layoutImpact, NODE_W, NODE_H } from '../src/live/ripple/layout';
+import { ImpactMap } from '../src/live/ripple/ImpactMap';
+import { findImpactPath, traceImpact } from '../src/live/ripple/impactTrace';
 import { statusVar, statusLabel, riskVar } from '../src/live/ripple/colors';
 import { RippleOverlay } from '../src/live/ripple/RippleOverlay';
 import { ShipGate } from '../src/live/ripple/sections/ShipGate';
@@ -13,6 +15,7 @@ import { ShipWorkspace } from '../src/live/ripple/sections/ShipWorkspace';
 import { ShipRead } from '../src/live/ripple/sections/ShipRead';
 import { parseUnifiedDiff } from '../src/live/ripple/ingest/parseDiff';
 import { buildShipFromDiff } from '../src/live/ripple/ingest/buildShip';
+import { buildShipFromPaths } from '../src/live/ripple/ingest/buildRepo';
 import type { NodeStatus, RiskLevel, ShipNode } from '../src/live/ripple/model';
 
 afterEach(() => cleanup());
@@ -114,6 +117,86 @@ describe('layoutImpact', () => {
   });
 });
 
+describe('ImpactMap causal tracing', () => {
+  const edges = [
+    { from: 'change', to: 'service', verb: 'changes', status: 'affected' as const },
+    { from: 'service', to: 'client', verb: 'serves', status: 'breaks' as const },
+    { from: 'config', to: 'service', verb: 'configures', status: 'affected' as const },
+  ];
+
+  it('walks the full grounded graph in either direction without looping', () => {
+    const downstream = traceImpact(edges, 'change', 'downstream');
+    expect([...downstream.nodeIds]).toEqual(['change', 'service', 'client']);
+    expect([...downstream.edgeIndexes]).toEqual([0, 1]);
+    expect(downstream.depth.get('client')).toBe(2);
+
+    const upstream = traceImpact(edges, 'client', 'upstream');
+    expect([...upstream.nodeIds]).toEqual(['client', 'service', 'change', 'config']);
+    expect([...upstream.edgeIndexes]).toEqual([1, 0, 2]);
+  });
+
+  it('returns the shortest verb-by-verb route to an affected system', () => {
+    expect(findImpactPath(edges, 'change', 'client', 'downstream')).toEqual({
+      nodeIds: ['change', 'service', 'client'],
+      edgeIndexes: [0, 1],
+    });
+    expect(findImpactPath(edges, 'client', 'config', 'upstream')).toEqual({
+      nodeIds: ['client', 'service', 'config'],
+      edgeIndexes: [1, 2],
+    });
+    expect(findImpactPath(edges, 'change', 'config', 'downstream')).toBeNull();
+  });
+
+  it('lets a reader select a system and reverse from effects to prerequisites', () => {
+    const { container, getAllByText, getByRole, getByText } = render(
+      <ImpactMap
+        nodes={SEED_SHIP.nodes}
+        edges={SEED_SHIP.edges}
+        changes={SEED_SHIP.changes}
+        altitude="working"
+      />,
+    );
+
+    expect(getByText('Cause → effect')).toBeTruthy();
+    expect(getByText('60 * 60')).toBeTruthy();
+    expect(getByText('15 * 60')).toBeTruthy();
+    expect(getByText('Still works')).toBeTruthy();
+
+    fireEvent.click(getByRole('button', { name: /changed validateToken/i }));
+    expect(getByText('validateToken(t: string)')).toBeTruthy();
+    expect(getByText('validateToken(t: string, opts: VerifyOpts)')).toBeTruthy();
+    expect(getByText('Changed here')).toBeTruthy();
+    expect(getByText('Stops working')).toBeTruthy();
+
+    fireEvent.click(getByRole('button', { name: /added rotateRefresh/i }));
+    expect(getByText('Not present')).toBeTruthy();
+    expect(getByText('async function rotateRefresh(session)')).toBeTruthy();
+
+    expect(getByText(/auth-service reaches 6 mapped systems downstream/i)).toBeTruthy();
+    expect(getAllByText(/outside this PR/i)).toHaveLength(2);
+    expect(getByText(/runtime TypeError on each route/i)).toBeTruthy();
+    expect(container.querySelectorAll('.ripple-edge-flow')).toHaveLength(6);
+
+    fireEvent.click(getByRole('button', { name: /src\/api/i }));
+    expect(getByText(/How this change reaches here/i)).toBeTruthy();
+    expect(getByText(/Exact change behind this effect/i)).toBeTruthy();
+    expect(getByText(/Builder lens/i)).toBeTruthy();
+    expect(getByText(/auth-service reaches 6 mapped systems downstream/i)).toBeTruthy();
+
+    fireEvent.click(getByRole('button', { name: /src\/jobs\/reaper/i }));
+    expect(getByText(/This behavior changes outside the PR’s edited files/i)).toBeTruthy();
+    expect(getByText(/decide whether this consequence is intended/i)).toBeTruthy();
+    expect(getByText(/repository-wide caller search/i)).toBeTruthy();
+
+    fireEvent.click(getByRole('button', { name: /Trace effects from here/i }));
+    expect(getByText(/No downstream effect is mapped from src\/jobs\/reaper/i)).toBeTruthy();
+
+    fireEvent.click(getByRole('button', { name: /Upstream/i }));
+    expect(getByText(/src\/jobs\/reaper reaches 2 mapped systems upstream/i)).toBeTruthy();
+    expect(container.querySelectorAll('.ripple-edge-flow')).toHaveLength(2);
+  });
+});
+
 describe('status / risk colour vocabulary', () => {
   const statuses: NodeStatus[] = ['breaks', 'migration', 'untested', 'affected', 'safe'];
   const risks: RiskLevel[] = ['safe', 'watch', 'breaks'];
@@ -131,9 +214,15 @@ describe('status / risk colour vocabulary', () => {
 
 describe('RippleOverlay', () => {
   it('opens on the verdict hero and navigates to the deep sections', async () => {
-    const { getByText, findByText, findAllByText, getByRole, getAllByRole, queryByText } = render(
-      <RippleOverlay model={SEED_SHIP} onClose={() => undefined} />,
-    );
+    const {
+      getByText,
+      findByText,
+      findAllByText,
+      getByRole,
+      getAllByRole,
+      queryByText,
+      container,
+    } = render(<RippleOverlay model={SEED_SHIP} onClose={() => undefined} />);
 
     // Header + the honest example ribbon.
     expect(getByText('acme/auth-service')).toBeTruthy();
@@ -150,6 +239,10 @@ describe('RippleOverlay', () => {
     // Mavéa's read is rail-only — navigating there shows the full prose.
     fireEvent.click(getByRole('button', { name: /Mavéa.s read/i }));
     expect(await findByText(/cuts access-token lifetime to 15 minutes/i)).toBeTruthy();
+    expect(getByRole('button', { name: /^Onboarding:/i })).toBeTruthy();
+    expect(getByRole('button', { name: /^Builder:/i })).toBeTruthy();
+    fireEvent.click(getByRole('button', { name: /^Principal:/i }));
+    expect(container.querySelector('.ripple-read')).toHaveAttribute('data-altitude', 'principal');
 
     // The workspace renders the first change's title (list + detail pane).
     fireEvent.click(getAllByRole('button', { name: /Workspace/i })[0]!);
@@ -269,6 +362,23 @@ describe('the deterministic floor promises only what it has', () => {
   it('does not offer an expander the read has no control for', () => {
     const { getByText, container } = render(<ShipRead model={FLOOR} altitude="working" />);
     expect(getByText(/paraphrases nothing it can’t cite/i).textContent).not.toMatch(/expand any/i);
+    expect(container.querySelector('.ripple-read')!.querySelectorAll('button, a').length).toBe(0);
+  });
+
+  it('turns a repository read into a grounded architecture spine and starting path', () => {
+    const repo = buildShipFromPaths(
+      ['src/app.ts', 'src/api/routes.ts', 'src/api/users.ts', 'tests/app.test.ts'],
+      'acme/widget',
+      true,
+    );
+    const { getByText, getAllByText, container } = render(
+      <ShipRead model={repo} altitude="newgrad" />,
+    );
+    expect(getByText('Architecture spine')).toBeInTheDocument();
+    expect(getByText('Start reading here')).toBeInTheDocument();
+    expect(getByText('Bounded read')).toBeInTheDocument();
+    expect(getAllByText('src/api')[0]).toBeInTheDocument();
+    expect(container.querySelectorAll('.ripple-read-module').length).toBeGreaterThan(1);
     expect(container.querySelector('.ripple-read')!.querySelectorAll('button, a').length).toBe(0);
   });
 

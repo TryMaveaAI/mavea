@@ -52,6 +52,7 @@ const scene = (over: Partial<ConversationScene> = {}): ConversationScene => ({
   turnIndex: 0,
   startMs: 0,
   durationMs: 1_000,
+  focus: null,
   spot: null,
   caption: null,
   ink: [],
@@ -192,6 +193,16 @@ describe('ConversationStage', () => {
     // the exported raster, which never reproduced a scroll position.
     rerender(<ConversationStage scene={scene({ spot: 'live-2' })} options={options} />);
     expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-740px');
+  });
+
+  it('moves the camera without visually spotlighting the coverage target', () => {
+    const { container, getByTestId } = render(
+      <ConversationStage scene={scene({ focus: 'live-2', spot: null })} options={options} />,
+    );
+    expect(
+      container.querySelector<HTMLElement>('.topic-wrap')?.style.getPropertyValue('--cvs-shift'),
+    ).toBe('-740px');
+    expect(getByTestId('topic-canvas').getAttribute('data-spot')).toBe('');
   });
 
   it('holds the current offset on a beat with no cue instead of gliding home', () => {

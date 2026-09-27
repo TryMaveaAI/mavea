@@ -73,6 +73,7 @@ import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
 import { SectionGroup } from './depth/SectionGroup';
 import { BendStrip } from './BendStrip';
+import { bendBlock } from './bendBlock';
 import { ActionProposal, type ActionProposalProps } from './ActionProposal';
 import { blockLabel } from './blockLabel';
 import { BlankFillContext, type BlankFillState } from './lib';
@@ -431,6 +432,8 @@ export function TopicCanvas({
   // The "Open my CRM/tracker" action launches the real built app full-screen.
   // The app it opens IS the topic's `preview` block (the same interactive PreviewFrame).
   const [launched, setLaunched] = useState<PreviewProps | null>(null);
+  const [bendValue, setBendValue] = useState<number | null>(bend?.param.value ?? null);
+  useEffect(() => setBendValue(bend?.param.value ?? null), [bend?.blockId, bend?.param.value]);
   // Reading mode: expand every "Go deeper" drawer at once (find-in-page + screen reader access).
   // Offered only when the current answer has section-tagged blocks.
   const [readingMode, setReadingMode] = useState(false);
@@ -591,7 +594,7 @@ export function TopicCanvas({
 
   const renderBlock = (b: Block): ReactNode => (
     <BlockView
-      block={b}
+      block={bend && bendValue !== null ? bendBlock(b, bend, bendValue) : b}
       nest={0}
       spotlight={!!b.id && spot === b.id}
       dimmed={!!b.id && !!spot && spot !== b.id}
@@ -767,7 +770,9 @@ export function TopicCanvas({
           </aside>
         )}
         <BlockBoundary fallback={<FallbackCard block={b} />}>{renderBlock(b)}</BlockBoundary>
-        {bend && bend.blockId === b.id && <BendStrip bend={bend} />}
+        {bend && bend.blockId === b.id && (
+          <BendStrip bend={bend} value={bendValue ?? bend.param.value} onChange={setBendValue} />
+        )}
         {(askable || addable || flashcardable || draggable || lensable) && (
           <div className="block-actions" ref={measureActionsWidth}>
             {draggable && (

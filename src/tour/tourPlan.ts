@@ -10,6 +10,8 @@
 import { tourConversation } from './corpus';
 import type { TurnFrame } from '../live/history';
 import { naturalGuidedCopy, naturalizeGuidedFrame } from './guidedCopy';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
+import { isShowcaseChapter } from '../showcasePolicy';
 
 export type TourMode = 'voice' | 'answer' | 'explain' | 'silent';
 
@@ -80,7 +82,7 @@ export interface TourChapter {
 //
 // Arc: talk → connect → draw → mark → guide → ask → spread → walk the why → prove it → share it →
 // your turn.
-export const TOUR: readonly TourChapter[] = [
+const CORE_TOUR: readonly TourChapter[] = [
   {
     id: 'talk',
     title: 'Speak naturally',
@@ -200,12 +202,17 @@ export const TOUR: readonly TourChapter[] = [
   },
 ];
 
+/** Public visitors watch a complete performance, then get the local installation command. */
+export const TOUR: readonly TourChapter[] = IS_SHOWCASE
+  ? CORE_TOUR.filter((chapter) => chapter.action.kind !== 'connect' && !chapter.handsBack)
+  : CORE_TOUR;
+
 // The EXTRAS — the feature demos the fast core leaves out, each a self-contained chapter.
 // They never play in the first run; instead each is a one-tap "mini-demo" from the end card's
 // "More to explore" grid (and, later, the ⌘K palette's "Watch" affordance). Every one carries a
 // `glyph` + `hook` for its grid chip. Their coach lines stay a touch fuller than the core's — a
 // solo demo has no neighbours to race, and the line is the whole teaching.
-export const TOUR_EXTRAS: readonly TourChapter[] = [
+const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
   {
     id: 'bend',
     title: 'Make it yours',
@@ -556,6 +563,10 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'Holes for the numbers only you know',
   },
 ];
+
+export const TOUR_EXTRAS: readonly TourChapter[] = IS_SHOWCASE
+  ? LOCAL_TOUR_EXTRAS.filter((chapter) => isShowcaseChapter(chapter.id))
+  : LOCAL_TOUR_EXTRAS;
 
 /** Every chapter — core first, then extras. The lookup space for deep-links and solo mini-demos. */
 export const ALL_CHAPTERS: readonly TourChapter[] = [...TOUR, ...TOUR_EXTRAS];

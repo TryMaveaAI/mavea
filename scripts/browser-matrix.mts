@@ -11,7 +11,7 @@ interface Surface {
 }
 
 const SURFACES: Surface[] = [
-  { name: 'landing', hash: '', ready: '.fl-landing' },
+  { name: 'landing', hash: '', ready: '.ob-page' },
   { name: 'terms', hash: '#/terms', ready: '.legal-app' },
   { name: 'privacy', hash: '#/privacy', ready: '.legal-app' },
   { name: 'disclosures', hash: '#/legal', ready: '.legal-app' },

@@ -7,6 +7,7 @@ import { ContractionTimer } from '../src/canvas/blocks/everyday/ContractionTimer
 import { CycleTrack } from '../src/canvas/blocks/everyday/CycleTrack';
 import { Forecast } from '../src/canvas/blocks/everyday/Forecast';
 import { PrayerTimes } from '../src/canvas/blocks/everyday/PrayerTimes';
+import { PlanGrid } from '../src/canvas/blocks/everyday/PlanGrid';
 import { RelationshipMap } from '../src/canvas/blocks/everyday/RelationshipMap';
 import { SettleUp } from '../src/canvas/blocks/everyday/SettleUp';
 import { UnitConvert } from '../src/canvas/blocks/everyday/UnitConvert';
@@ -17,6 +18,25 @@ import type {
   Settlement,
   UnitEquivalent,
 } from '../src/canvas/blocks/everyday/types';
+
+describe('PlanGrid', () => {
+  it('leaves an unplanned slot empty instead of calling it free', () => {
+    const { container, queryByText } = render(
+      <PlanGrid
+        title="Daily focus"
+        columns={['Phase 1', 'Phase 2']}
+        rows={[{ slot: 'Morning', cells: [{ col: 'Phase 1', label: 'Review notes' }] }]}
+      />,
+    );
+
+    expect(queryByText(/^free$/i)).toBeNull();
+    expect(container.querySelectorAll('.pg-cell--free')).toHaveLength(1);
+    expect(container.querySelector('.pg-cell--free')).toHaveAttribute(
+      'aria-label',
+      'No activity planned',
+    );
+  });
+});
 
 describe('RelationshipMap', () => {
   it('keeps nodes distinct when model-authored ids are blank or duplicated', () => {

@@ -24,7 +24,18 @@
 // Goes through the same-origin /llm/anthropic proxy (key in header, no CORS).
 import type { ModelConfig } from '../../types/mavea';
 import type { ProviderAdapter, LiveRequest, LiveProbe, DeltaFn, RawResult } from './types';
-import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, num } from './http';
+import {
+  fetchWithTimeout,
+  providerErrorDetail,
+  readSSE,
+  retryAfterMs,
+  sleepAbortable,
+  observeProviderLimits,
+  isTransientProviderFailure,
+  obj,
+  str,
+  num,
+} from './http';
 import { liveJsonSchema } from './schema';
 import { anthropicOutputFormat } from './anthropicFormat';
 import { anthropicUserContent } from './parts';
@@ -38,6 +49,7 @@ const MODELS = '/v1/models';
 const VERSION = '2023-06-01';
 const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
+const TRANSIENT_RETRIES = 2;
 /** Hard ceiling on one turn's whole stream. GEN_TIMEOUT_MS only guards time-to-first-BYTE and the
  *  SSE idle timer only catches a stream that has gone silent — neither stops one that trickles
  *  thinking deltas forever. Matches the ceiling openaiCompatible has always had. */
@@ -134,6 +146,7 @@ export const anthropicAdapter: ProviderAdapter = {
         { method: 'GET', headers: headers(cfg) },
         PROBE_TIMEOUT_MS,
       );
+      observeProviderLimits(res);
       if (!res.ok)
         return {
           ok: false,
@@ -336,6 +349,7 @@ export const anthropicAdapter: ProviderAdapter = {
         });
 
       let res: Response;
+      let transientAttempt = 0;
       for (;;) {
         res = await fetchWithTimeout(
           `${base}${MESSAGES}`,
@@ -343,10 +357,25 @@ export const anthropicAdapter: ProviderAdapter = {
           GEN_TIMEOUT_MS,
           signal,
         );
+        observeProviderLimits(res);
         if (res.ok) break;
         // Carry the provider's own reason: a 429 is either a per-minute rate limit or a spent
         // quota, and only the body says which (describeLiveError reads the words, not the status).
         const detail = await providerErrorDetail(res);
+        if (
+          isTransientProviderFailure(res.status, detail) &&
+          transientAttempt < TRANSIENT_RETRIES &&
+          !signal.aborted
+        ) {
+          const wait = retryAfterMs(res, transientAttempt++, detail);
+          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          try {
+            await sleepAbortable(wait, signal);
+          } finally {
+            req.onWait?.(null);
+          }
+          continue;
+        }
         // Neither of these is transient and neither is the user's fault — the request simply named
         // a mode this half of the lineup doesn't take. Learn it and re-ask rather than failing a
         // turn over a knob nobody chose.

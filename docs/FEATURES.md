@@ -27,10 +27,10 @@ index, or open the **Explore** menu in the top bar.
   streamed into the margin as each note lands and kept for that answer, so every later visit costs
   nothing and a reader who never opens the desk is never billed for it. **Guide me** walks the desk
   object by object, narrating each one; the session notes keep a line for every beat you visited.
-- 🎯 **Three ways to read one answer** — **Everything** is the default: the whole canvas at once,
-  nothing staged. **The Study** is the desk above. **Focus** flips the answer to a single hero card
-  on a center stage with a live-thumbnail filmstrip, and appears once there are at least two cards
-  to page through. The switch sits on the canvas, and your choice is kept for every session after.
+- 🎯 **Board, Lens, and Guide me** — the whole board rests in view by default. Click a card to open
+  its Lens: a silent close-up with navigation through the other cards. Choose **Guide me** to open
+  the Study desk above and walk through the answer with notes in the margin. Spatial Canvas and
+  Focus remain available through the feature menu.
 - 📽️ **Present mode** — go full theater: the chrome drops entirely, one slide sits on a dark stage
   with prev/next nav, and the mic stays live so questions from the room become new canvases (tagged
   _from the room_ in the session rail).

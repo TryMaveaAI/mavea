@@ -1,7 +1,8 @@
 import type { ModelConfig } from '../../types/mavea';
 import { providerInfo } from './info';
+import { IS_SHOWCASE } from '../../lib/runtimeMode';
 
-let replayBlocked = false;
+let replayBlocked = IS_SHOWCASE;
 
 export type ProviderGenerationBlockedReason = 'replay' | 'unconfigured';
 
@@ -21,7 +22,7 @@ export class ProviderGenerationBlockedError extends Error {
 
 /** Set by Live when it boots into a baked tour or demo replay. */
 export function configureProviderSpending(blocked: boolean): void {
-  replayBlocked = blocked;
+  replayBlocked = IS_SHOWCASE || blocked;
 }
 
 export function isProviderSpendingBlocked(): boolean {

@@ -1129,10 +1129,6 @@
   justify-content: center;
   min-height: 44px;
 }
-.pg-cell-free {
-  font-size: var(--fs-2xs, 10px);
-  color: var(--text-faint);
-}
 .pg-cell.done {
   opacity: 0.6;
 }

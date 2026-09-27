@@ -71,6 +71,19 @@ function cueStart(cueIndex: number, cueCount: number, audio: ConversationTurnAud
   return QUESTION_LEAD_MS + (body * (cueIndex + 1)) / (cueCount + 1);
 }
 
+/** Representative cards spanning the answer in reading order. The viewport shows neighbouring
+ *  cards too, so five camera positions cover a long canvas without turning the video into a rapid
+ *  card-by-card slideshow. */
+function coverageTargets(frame: TurnFrame): string[] {
+  const ids = frame.spec.blocks.flatMap((block) => (block.id ? [block.id] : []));
+  if (ids.length <= 2) return [];
+  const count = Math.min(5, ids.length);
+  return Array.from({ length: count }, (_, index) => {
+    const at = Math.round((index * (ids.length - 1)) / (count - 1));
+    return ids[at]!;
+  }).filter((id, index, all) => index === 0 || id !== all[index - 1]);
+}
+
 export function buildConversationTimeline(
   frames: readonly TurnFrame[],
   audio: readonly ConversationTurnAudio[],
@@ -83,8 +96,14 @@ export function buildConversationTimeline(
     if (!turnAudio) return;
     const replay = replayFrame(frame);
     const cueTimes = replay.cues.map((_, i) => cueStart(i, replay.cues.length, turnAudio));
-    const boundaries = [0, QUESTION_LEAD_MS, ...cueTimes, turnAudio.durationMs]
+    const coverage = coverageTargets(frame);
+    const bodyMs = Math.max(0, turnAudio.durationMs - QUESTION_LEAD_MS - TURN_TAIL_MS);
+    const coverageTimes = coverage.map(
+      (_, index) => QUESTION_LEAD_MS + (bodyMs * index) / coverage.length,
+    );
+    const boundaries = [0, QUESTION_LEAD_MS, ...cueTimes, ...coverageTimes, turnAudio.durationMs]
       .map((value) => Math.max(0, Math.min(turnAudio.durationMs, value)))
+      .sort((a, b) => a - b)
       .filter((value, index, all) => index === 0 || value > all[index - 1]);
     let ink: ConversationScene['ink'] = [];
 
@@ -93,6 +112,8 @@ export function buildConversationTimeline(
       const next = boundaries[i + 1];
       const cueIndex = cueTimes.findIndex((value) => value === localAt);
       const cue = cueIndex >= 0 ? replay.cues[cueIndex] : undefined;
+      const coverageIndex = coverageTimes.findIndex((value) => value === localAt);
+      const focus = cue?.spot ?? (coverageIndex >= 0 ? coverage[coverageIndex]! : null);
       if (cue && options.penMarks) {
         ink = [
           ...ink,
@@ -115,6 +136,7 @@ export function buildConversationTimeline(
         turnIndex,
         startMs: globalAt + localAt,
         durationMs: Math.max(1, next - localAt),
+        focus,
         spot: options.spotlights ? (cue?.spot ?? null) : null,
         caption: options.captions ? (currentSpan?.text ?? null) : null,
         ink,

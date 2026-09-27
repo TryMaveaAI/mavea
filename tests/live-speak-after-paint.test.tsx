@@ -120,6 +120,76 @@ describe('awaitFirstPaint waits for a card, then for it to finish appearing', ()
   it('resolves when there is no host at all', async () => {
     await expect(awaitFirstPaint(() => null, '.card', 200)).resolves.toBeUndefined();
   });
+
+  it('counts a card mounted immediately after the gate starts', async () => {
+    const host = document.createElement('div');
+    const ready = awaitFirstPaint(() => host, '.card', 1000);
+    host.innerHTML = '<div class="card">Ready</div>';
+    const start = Date.now();
+    await ready;
+    expect(Date.now() - start).toBeLessThan(500);
+  });
+
+  it('does not count skeletons and accepts their replacement on the same element', async () => {
+    const host = document.createElement('div');
+    host.innerHTML = '<div class="card skel-card"></div>';
+    let done = false;
+    const ready = awaitFirstPaint(() => host, '.card', 1000).then(() => (done = true));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(done).toBe(false);
+    host.firstElementChild!.classList.remove('skel-card');
+    await ready;
+    expect(done).toBe(true);
+  });
+
+  it('ignores infinite ambient motion and can accept an existing current-turn card', async () => {
+    const { host, card } = animatingCard();
+    const getAnimations = vi.fn(() => [
+      { playState: 'running', effect: { getComputedTiming: () => ({ endTime: Infinity }) } },
+    ]);
+    Object.defineProperty(card, 'getAnimations', { value: getAnimations });
+    host.append(card);
+    await awaitFirstPaint(() => host, '.card', 1000, undefined, true);
+    expect(getAnimations).toHaveBeenCalledWith({ subtree: false });
+  });
+
+  it('accepts material updates to a reused card but not spotlight class changes', async () => {
+    const host = document.createElement('div');
+    host.innerHTML = '<div class="card">Previous answer</div>';
+    let done = false;
+    const ready = awaitFirstPaint(() => host, '.card', 1000).then(() => (done = true));
+    host.firstElementChild!.classList.add('spotlit');
+    await new Promise((r) => setTimeout(r, 80));
+    expect(done).toBe(false);
+    host.firstElementChild!.textContent = 'Updated answer';
+    await ready;
+    expect(done).toBe(true);
+  });
+
+  it.each(['abort', 'timeout'] as const)(
+    'stops all work after %s during an entrance',
+    async (end) => {
+      vi.useFakeTimers();
+      try {
+        const { host, card } = animatingCard();
+        const readHost = vi.fn(() => host);
+        const controller = new AbortController();
+        const ready = awaitFirstPaint(readHost, '.card', 200, controller.signal);
+        host.append(card);
+        await vi.advanceTimersByTimeAsync(100);
+        if (end === 'abort') controller.abort();
+        else await vi.advanceTimersByTimeAsync(100);
+        await ready;
+        const calls = readHost.mock.calls.length;
+        host.append(document.createElement('span'));
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(readHost).toHaveBeenCalledTimes(calls);
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 });
 
 describe('only the opening line waits', () => {
@@ -195,6 +265,35 @@ describe('only the opening line waits', () => {
       void result.current.run('plan the launch');
     });
     expect(asked).toHaveBeenCalledTimes(1);
+  });
+
+  it('prepares only the opening breath while waiting and can cancel pending speech', async () => {
+    const prepareSpeech = vi.fn();
+    const speak = vi.fn();
+    const cancelSpeak = vi.fn();
+    gen.impl = (_t, _h, _c, onChunk) => {
+      stream(onChunk as (s: string) => void, ['One thing here.', 'Two things here.']);
+      return new Promise<LiveResult>(() => {});
+    };
+    const { result } = renderHook(() =>
+      useLiveTurn({
+        getConfig: () => cfg,
+        canvasReady: () => ready,
+        prepareSpeech,
+        speak,
+        cancelSpeak,
+      }),
+    );
+    await act(async () => {
+      void result.current.run('a different question');
+    });
+    expect(prepareSpeech).toHaveBeenCalledExactlyOnceWith('One thing here.');
+    expect(speak).not.toHaveBeenCalled();
+    act(() => result.current.stopNarration());
+    await act(async () => release());
+    expect(speak).not.toHaveBeenCalled();
+    expect(cancelSpeak).toHaveBeenCalled();
+    expect(result.current.busy).toBe(true);
   });
 
   it('speaks immediately when the host offers no gate at all', async () => {

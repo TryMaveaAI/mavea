@@ -21,11 +21,10 @@ import type {
   ShipModel,
   ShipNode,
 } from './model';
-import { ImpactMap } from './ImpactMap';
 import { parseUnifiedDiff, looksLikeDiff } from './ingest/parseDiff';
 import { useFocusTrap } from '../useFocusTrap';
 import { buildShipFromDiff } from './ingest/buildShip';
-import { buildShipFromPaths } from './ingest/buildRepo';
+import { buildCourseFloor, buildShipFromPaths } from './ingest/buildRepo';
 import { mergeEnrichment } from './ingest/companionSchema';
 import { planFor } from './ingest/tier';
 import { cacheGet, cachePut, rippleCacheKey } from './cache';
@@ -82,8 +81,8 @@ type CodeContextModule = typeof import('./ingest/codeContext');
 const loadCodeContext = cachedImport(
   (): Promise<CodeContextModule> => import('./ingest/codeContext'),
 );
-const gatherCodeContext = (...args: Parameters<CodeContextModule['gatherCodeContext']>) =>
-  loadCodeContext().then((module) => module.gatherCodeContext(...args));
+const gatherCodeEvidence = (...args: Parameters<CodeContextModule['gatherCodeEvidence']>) =>
+  loadCodeContext().then((module) => module.gatherCodeEvidence(...args));
 const repoFromLabel = (label?: string): string | undefined =>
   label ? /^([\w.-]+\/[\w.-]+)/.exec(label.trim())?.[1] : undefined;
 
@@ -92,6 +91,9 @@ const readSection = createPreloadableLazy(() =>
 );
 const incidentSection = createPreloadableLazy(() =>
   import('./sections/ShipIncident').then((m) => ({ default: m.ShipIncident })),
+);
+const impactSection = createPreloadableLazy(() =>
+  import('./ImpactMap').then((m) => ({ default: m.ImpactMap })),
 );
 const workspaceSection = createPreloadableLazy(() =>
   import('./sections/ShipWorkspace').then((m) => ({ default: m.ShipWorkspace })),
@@ -127,6 +129,7 @@ const RippleAskController = askController.Component;
 
 const ShipRead = readSection.Component;
 const ShipIncident = incidentSection.Component;
+const ImpactMap = impactSection.Component;
 const ShipWorkspace = workspaceSection.Component;
 const ShipCascade = cascadeSection.Component;
 const ShipMigration = migrationSection.Component;
@@ -156,11 +159,23 @@ function safeLocalSet(key: string, value: string): void {
   }
 }
 
-/** The altitude ladder — one artifact that meets a new grad and a principal alike. */
-const ALTITUDES: { id: Altitude; label: string }[] = [
-  { id: 'newgrad', label: 'New grad' },
-  { id: 'working', label: 'Working' },
-  { id: 'principal', label: 'Principal' },
+/** The altitude ladder — one artifact that meets an onboarding reader and a principal alike. */
+const ALTITUDES: { id: Altitude; label: string; description: string }[] = [
+  {
+    id: 'newgrad',
+    label: 'Onboarding',
+    description: 'More context, with unfamiliar terms unpacked',
+  },
+  {
+    id: 'working',
+    label: 'Builder',
+    description: 'Practical mechanisms and implementation detail',
+  },
+  {
+    id: 'principal',
+    label: 'Principal',
+    description: 'The crux, tradeoffs, and system-level risk',
+  },
 ];
 
 /** Providers capable of a deep read. With nothing connected, Ripple falls back to Gemini for
@@ -199,6 +214,7 @@ function preloadSection(id: SectionId): Promise<void> {
   const loaders: Partial<Record<SectionId, () => Promise<void>>> = {
     read: readSection.preload,
     incident: incidentSection.preload,
+    impact: impactSection.preload,
     workspace: workspaceSection.preload,
     cascade: cascadeSection.preload,
     migration: migrationSection.preload,
@@ -506,6 +522,7 @@ export function RippleOverlay({
     if (cfg && CAPABLE_PROVIDERS.has(cfg.provider)) return cfg;
     return { provider: cfg?.provider ?? 'gemini', model: '', apiKey: '' };
   }, [cfg]);
+  const canGenerate = modelCanGenerate(analysisCfg);
 
   // Size the work to the model WITHOUT ever changing it (token caps, course count, code-context gate,
   // thinking level). A slow/cheap model gets a lean, fast read instead of a minute-long stall.
@@ -536,21 +553,29 @@ export function RippleOverlay({
         // With a connected repo (and a tier that affords it), read the real code first — the changed
         // files and the ACTUAL callers across the repo (fetched in parallel) — so the model grounds
         // its cascade/blast in those.
-        const codeContext =
+        const codeEvidence =
           repo && plan.fetchCodeContext
-            ? await gatherCodeContext(built, repo, undefined, ac.signal).catch(() => '')
-            : '';
+            ? await gatherCodeEvidence(built, repo, undefined, ac.signal).catch(() => ({
+                prompt: '',
+                callers: [],
+              }))
+            : { prompt: '', callers: [] };
         if (ac.signal.aborted || enrichRun.current !== runId) return;
+        const grounded = (await loadCodeContext()).mergeCallerEvidence(built, codeEvidence.callers);
+        if (grounded !== built) {
+          setShown(grounded);
+          floorRef.current = grounded;
+        }
         // Stream the read in: each completed field merges onto the immutable floor as it lands, so the
         // verdict sharpens in place instead of appearing all at once.
-        const final = await enrichShipModel(built, text, analysisCfg, {
+        const final = await enrichShipModel(grounded, text, analysisCfg, {
           signal: ac.signal,
-          codeContext: codeContext || undefined,
+          codeContext: codeEvidence.prompt || undefined,
           maxTokens: plan.enrichMaxTokens,
           thinkingLevel: plan.thinkingLevel,
           onPartial: (enr) => {
             if (enrichRun.current === runId)
-              setShown(mergeEnrichment(built, enr, analysisCfg.model));
+              setShown(mergeEnrichment(grounded, enr, analysisCfg.model));
           },
         });
         if (enrichRun.current !== runId) return;
@@ -561,8 +586,8 @@ export function RippleOverlay({
         } else {
           // A genuine failure (no key, a refusal, a dropped connection) — never show a stale partial
           // merge as if it were a real read. Fall back cleanly to the grounded floor and say so.
-          setShown(built);
-          floorRef.current = built;
+          setShown(grounded);
+          floorRef.current = grounded;
           setGroupStatus((s) => ({ ...s, verdict: 'error' }));
         }
       })();
@@ -665,6 +690,12 @@ export function RippleOverlay({
       const repo = repoRef.current;
       if (!repo || (coursesKicked.current && !force)) return;
       coursesKicked.current = true;
+      // The file-tree course is already usable without a provider. Do not turn that honest floor
+      // into a doomed request when the reader has not connected a model yet.
+      if (!modelCanGenerate(analysisCfg)) {
+        setGroupStatus((s) => ({ ...s, courses: 'error' }));
+        return;
+      }
       coursesAbort.current?.abort();
       const ac = new AbortController();
       coursesAbort.current = ac;
@@ -1026,6 +1057,9 @@ export function RippleOverlay({
       }
       const label = prefix ? `${res.label ?? 'repo'}/${prefix}` : (res.label ?? 'repo');
       const floor = buildShipFromPaths(paths, label, res.truncated);
+      // Courses must never be an empty waiting room. The real tree is enough to provide an
+      // immediately usable reading path; the lazy model call refines this floor after it paints.
+      const grounded = { ...floor, courses: buildCourseFloor(floor, plan.courseCount) };
       const repo = repoFromLabel(res.label);
       const ref = refParam;
 
@@ -1039,7 +1073,7 @@ export function RippleOverlay({
       actionSeq.current++;
       abortEnrich();
       ++enrichRun.current; // supersede any in-flight run
-      floorRef.current = floor;
+      floorRef.current = grounded;
       repoRef.current = repo;
       refRef.current = ref;
       // The exact commit `ref` resolved to (only the tree fetch resolves one) — the identity a later
@@ -1054,7 +1088,7 @@ export function RippleOverlay({
       // The full tree the ask rail's local keyword retrieval ranks over — the same slice the floor
       // was built from. Set AFTER resetAsk (which clears it) so this explore's tree survives.
       treePathsRef.current = paths;
-      setShown(floor);
+      setShown(grounded);
       setActive(alreadyHasCourse ? 'course' : 'onboarding');
       setAnalyzed(true);
       setPasteOpen(false);
@@ -1064,7 +1098,16 @@ export function RippleOverlay({
         if (alreadyHasCourse) ensureCourses();
       }
     },
-    [ghRef, ghRepo, ghPath, abortEnrich, ensureOrientation, ensureCourses, resetAsk],
+    [
+      ghRef,
+      ghRepo,
+      ghPath,
+      abortEnrich,
+      ensureOrientation,
+      ensureCourses,
+      resetAsk,
+      plan.courseCount,
+    ],
   );
 
   // The smart input: parse whatever was pasted (a PR/repo/compare/tree URL or a shorthand) and route
@@ -1254,7 +1297,13 @@ export function RippleOverlay({
         return <ShipIncident model={shown} altitude={altitude} />;
       case 'impact':
         return (
-          <ImpactMap nodes={shown.nodes} edges={shown.edges} altitude={altitude} onAsk={onAsk} />
+          <ImpactMap
+            nodes={shown.nodes}
+            edges={shown.edges}
+            changes={shown.changes}
+            altitude={altitude}
+            onAsk={onAsk}
+          />
         );
       case 'workspace':
         return <ShipWorkspace model={shown} altitude={altitude} />;
@@ -1270,11 +1319,11 @@ export function RippleOverlay({
             model={shown}
             altitude={altitude}
             building={groupStatus.courses === 'enriching'}
-            onRegenerate={repoRef.current ? regenerate : undefined}
-            loadLessonDetail={repoRef.current ? loadLessonDetail : undefined}
-            loadCourseClosing={repoRef.current ? loadCourseClosing : undefined}
+            onRegenerate={repoRef.current && canGenerate ? regenerate : undefined}
+            loadLessonDetail={repoRef.current && canGenerate ? loadLessonDetail : undefined}
+            loadCourseClosing={repoRef.current && canGenerate ? loadCourseClosing : undefined}
             courseFocus={courseFocus}
-            onCourseFocus={repoRef.current ? pickCourseFocus : undefined}
+            onCourseFocus={repoRef.current && canGenerate ? pickCourseFocus : undefined}
             speak={narrate ? speak : undefined}
             commitSha={repoRef.current ? commitShaRef.current : undefined}
             compareSinceBuilt={repoRef.current ? compareSinceBuilt : undefined}
@@ -1306,6 +1355,7 @@ export function RippleOverlay({
     onAsk,
     goTo,
     groupStatus.courses,
+    canGenerate,
     regenerate,
     loadLessonDetail,
     loadCourseClosing,
@@ -1475,42 +1525,44 @@ export function RippleOverlay({
             still being sharpened by the model carry a subtle cue — never a full-screen wall. ── */}
         <div className="ripple-body">
           <nav className="ripple-rail" aria-label="Sections">
-            {railClusters.map((cluster) => (
-              <div className="ripple-rail-group" key={cluster.job}>
-                {/* Two jobs: only label the clusters when both are present, so a single-job view stays clean. */}
-                {railClusters.length > 1 && (
-                  <div className="ripple-rail-grouplabel">{JOB_LABEL[cluster.job]}</div>
-                )}
-                {cluster.items.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="ripple-rail-item"
-                    // Stable hook for the first-run tour's scripted rail navigation (see
-                    // TourOps.rippleGoTo) — a real section id, not a screen position, so it
-                    // survives the rail reflowing around whichever sections a given model applies.
-                    data-ripple-section={s.id}
-                    data-active={s.id === active ? 'true' : undefined}
-                    data-enriching={
-                      groupStatus[groupFor(s.id)] === 'enriching' ? 'true' : undefined
-                    }
-                    onClick={() => {
-                      goTo(s.id);
-                      if (narrate && speak) {
-                        const line = sayFor(s.id);
-                        if (line) speak(line);
+            <div className="ripple-rail-sections">
+              {railClusters.map((cluster) => (
+                <div className="ripple-rail-group" key={cluster.job}>
+                  {/* Two jobs: only label the clusters when both are present, so a single-job view stays clean. */}
+                  {railClusters.length > 1 && (
+                    <div className="ripple-rail-grouplabel">{JOB_LABEL[cluster.job]}</div>
+                  )}
+                  {cluster.items.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="ripple-rail-item"
+                      // Stable hook for the first-run tour's scripted rail navigation (see
+                      // TourOps.rippleGoTo) — a real section id, not a screen position, so it
+                      // survives the rail reflowing around whichever sections a given model applies.
+                      data-ripple-section={s.id}
+                      data-active={s.id === active ? 'true' : undefined}
+                      data-enriching={
+                        groupStatus[groupFor(s.id)] === 'enriching' ? 'true' : undefined
                       }
-                    }}
-                    {...preloadIntentProps(() => preloadSection(s.id))}
-                  >
-                    <span className="ripple-rail-label">{s.label}</span>
-                    {groupStatus[groupFor(s.id)] === 'enriching' && (
-                      <span className="ripple-rail-spark" aria-hidden="true" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            ))}
+                      onClick={() => {
+                        goTo(s.id);
+                        if (narrate && speak) {
+                          const line = sayFor(s.id);
+                          if (line) speak(line);
+                        }
+                      }}
+                      {...preloadIntentProps(() => preloadSection(s.id))}
+                    >
+                      <span className="ripple-rail-label">{s.label}</span>
+                      {groupStatus[groupFor(s.id)] === 'enriching' && (
+                        <span className="ripple-rail-spark" aria-hidden="true" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
             <div className="ripple-rail-altitude">
               <div className="ripple-eyebrow">Explain for</div>
               <div className="ripple-alt" role="group" aria-label="Explanation altitude">
@@ -1519,6 +1571,8 @@ export function RippleOverlay({
                     key={a.id}
                     type="button"
                     data-active={altitude === a.id ? 'true' : undefined}
+                    aria-label={`${a.label}: ${a.description}`}
+                    title={a.description}
                     onClick={() => setAltitude(a.id)}
                   >
                     {a.label}

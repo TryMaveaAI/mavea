@@ -990,6 +990,11 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     expect(prompt.split('YOU CANNOT PERFORM ACTIONS').length - 1).toBe(1);
     expect(prompt.split(/USE REAL DATA ONLY —/).length - 1).toBe(1);
   });
+  it('requires a voice-safe twin for non-English diacritics in every spoken field', () => {
+    const prompt = liveSystemPrompt('frontier');
+    expect(prompt).toMatch(/every non-English diacritic MUST be tagged/);
+    expect(prompt).toContain('[[Hạ Long|hah long]]');
+  });
   it('consolidates the variety directives into one VARIETY & CAPS paragraph', () => {
     const prompt = liveSystemPrompt('frontier');
     expect(prompt).toContain('VARIETY & CAPS');

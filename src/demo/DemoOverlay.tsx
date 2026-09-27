@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
 import { useFocusTrap } from '../live/useFocusTrap';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 import type { DemoDriver } from './useDemoDriver';
 import { DEMO_CAST, type DemoCastMember } from './cast';
 import { launchDemo } from './demoEntry';
@@ -190,11 +191,13 @@ export function DemoOverlay({
           <p className="demox-card-body">
             These model-generated answers were prerecorded, then replayed with curated feature
             choreography. The scenario is illustrative, not a live result or customer testimonial.
-            Try your own question with your selected provider.
+            {IS_SHOWCASE
+              ? ' Run Mavéa on your computer to ask your own questions.'
+              : ' Try your own question with your selected provider.'}
           </p>
           <div className="demox-card-actions">
             <button type="button" className="demox-primary" onClick={onExit}>
-              Try it yourself
+              {IS_SHOWCASE ? 'Get Mavéa' : 'Try it yourself'}
             </button>
             <button type="button" className="demox-ghost" onClick={driver.replay}>
               Replay
@@ -314,9 +317,11 @@ export function DemoOverlay({
           type="button"
           className="demox-skip"
           onClick={onExit}
-          aria-label="Exit demo, try it yourself"
+          aria-label={IS_SHOWCASE ? 'Exit demo, get Mavéa' : 'Exit demo, try it yourself'}
         >
-          <span className="demox-skip-full">Exit, try it yourself</span>
+          <span className="demox-skip-full">
+            {IS_SHOWCASE ? 'Exit, get Mavéa' : 'Exit, try it yourself'}
+          </span>
           <span className="demox-skip-short" aria-hidden="true">
             Exit
           </span>

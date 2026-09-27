@@ -59,52 +59,22 @@ export function kokoroVoice(who: Speaker): string {
 const NORMALIZE_CACHE_MAX = 16;
 const normalizeCache = new Map<string, string>();
 
-// This CPU Kokoro server does not flush useful PCM until it has rendered the submitted text. A
-// paragraph-sized request therefore looks like broken audio on an older machine: the first word
-// can sit behind 30–60 seconds of synthesis. Feed it short natural clauses instead. Requests stay
-// strictly serial (the queue below is unchanged), so this improves time-to-first-audio without
-// increasing peak CPU or memory. 68 characters is roughly one 8–12 word breath.
-const SYNTH_CHUNK_MAX = 68;
-const SYNTH_CHUNK_MIN = 30;
-// The opening breath is the only one the user waits for in silence; every later breath renders
-// while the previous one plays. Measured on a 2-core Intel Mac (CPU Kokoro, 4 threads): a
-// 31-character clause is audible in ~2s, a 68-character one in ~5s and a whole paragraph in 20s+.
-// So the first breath is capped tighter than the rest. A fast machine pays one extra ~50ms request.
-const FIRST_CHUNK_MAX = 40;
-const FIRST_CHUNK_MIN = 18;
+// Each synthesis request keeps a complete sentence so the voice retains its prosody and
+// never turns a character-budget cut into a sentence-ending pause. Preparation still runs
+// one sentence ahead; requests remain serialized on small local speech servers.
+const sentenceSegmenter =
+  typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter('en', { granularity: 'sentence' })
+    : null;
 
 export function splitSynthesisChunks(text: string): string[] {
   const source = text.trim();
   if (!source) return [];
-  const sentences = source.match(/[^.!?]+(?:[.!?]+["'’”]?|$)/g) ?? [source];
-  const chunks: string[] = [];
-
-  for (const raw of sentences) {
-    let rest = raw.trim();
-    for (;;) {
-      const first = chunks.length === 0;
-      const max = first ? FIRST_CHUNK_MAX : SYNTH_CHUNK_MAX;
-      const min = first ? FIRST_CHUNK_MIN : SYNTH_CHUNK_MIN;
-      if (rest.length <= max) break;
-      const window = rest.slice(0, max + 1);
-      let cut = -1;
-      // Prefer a real spoken pause, but never make a breath so tiny that request overhead
-      // dominates. Include the punctuation in the emitted chunk.
-      for (let index = min; index < window.length; index++) {
-        if (/[,;:—–]/.test(window[index]) && /\s/.test(window[index + 1] ?? '')) cut = index + 1;
-      }
-      if (cut < 0) {
-        const wordBreak = window.lastIndexOf(' ');
-        cut = wordBreak >= min ? wordBreak : max;
-      }
-      chunks.push(rest.slice(0, cut).trim());
-      rest = rest.slice(cut).trim();
-    }
-    if (rest) chunks.push(rest);
-  }
-  return chunks;
+  if (!sentenceSegmenter) return [source];
+  return Array.from(sentenceSegmenter.segment(source), ({ segment }) => segment.trim()).filter(
+    Boolean,
+  );
 }
-
 function normalizeForSpeech(text: string): string {
   const hit = normalizeCache.get(text);
   if (hit !== undefined) {

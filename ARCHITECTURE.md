@@ -37,18 +37,29 @@ transforms it.
 Mavéa is one product with one component library and one stylesheet. `main.tsx` routes on the
 URL hash: `#/live` mounts **Live** (`live/LiveApp.tsx`, the real experience), `#/gallery` the
 visual library, and anything else mounts the **landing** (`flagship/FlagshipHost.tsx`, the
-marketing front door). The landing owns no conversation machinery at all — every interactive
-path hands off into Live: the hero composer stashes a seed question (`live/seedQuery.ts`),
-"Take the tour" boots Live's walkthrough mode (`tour/tourEntry.ts`), and a demo card boots
-Live's demo replay mode (`demo/demoEntry.ts`).
+interactive front door). The landing's lightweight SVG illustrations run without conversation
+machinery. "Let me explore" boots Live's walkthrough mode (`tour/tourEntry.ts`), and a demo card
+boots Live's replay mode (`demo/demoEntry.ts`). The feature index reads the app's feature registry;
+its Watch links open individual tour chapters. A deferred answer player renders three-card
+excerpts curated by block ID from the real walkthrough corpus through `TopicCanvas`, preloading their renderer
+families before presenting one card at a time. Visitors can select any of the three parts;
+playback pauses offscreen or in hidden tabs, and reduced motion uses manual navigation.
+These are labelled recorded answers; the homepage accepts no prompts.
+The feature film illustrates the six Explore destinations using sample SVG scenes, separate
+from the recorded answers. Its descriptions come from the feature registry. Motion and scene
+cycling stop offscreen or in hidden tabs; reduced motion presents static illustrations.
+
+The public informational site is released from the separate `mavea-site` repository. This
+repository remains the complete local application: its homepage can open the app or the
+key-free guided tour, while all provider configuration and conversation capabilities stay here.
 
 ```mermaid
 flowchart LR
     entry["main.tsx Root()"]
     entry -->|"#/live"| L["LiveApp\n(lazy chunk)"]
     entry -->|"#/gallery"| G["GalleryApp\n(lazy chunk)"]
-    entry -->|"else"| A["FlagshipHost\n(eager, synchronous)"]
-    A -.->|"seed / tour / demo\n(one-shot stash + #/live)"| L
+    entry -->|"else"| A["FlagshipHost\n(lazy chunk)"]
+    A -.->|"tour / demo\n(one-shot stash + #/live)"| L
 ```
 
 ## Scripted playback: the tour and the demo replays
@@ -327,6 +338,17 @@ Separately, `voice/tts.ts` is the spoken-answer playback: it speaks through the 
 **Kokoro** server (`voice/kokoro.ts`) when one is reachable, using raw PCM or uncompressed WAV —
 captions carry the line when it isn't.
 
+Opening audio is prepared while renderer chunks load, but playback waits for the current
+answer's first usable card to commit and finish entering. Skeletons and ambient animation do not
+count as readiness. Recorded frames mount immediately and use the same visual gate; model
+settlement alone does not release speech. Narrated tour stops center and paint their target
+before queuing audio, then advance from that line's playback lifecycle. Without authored tour
+lines, the canvas stays at rest instead of running a silent spotlight after the summary.
+Readiness observes DOM changes rather than polling continuously, and interruption cancels its
+observers, frame callbacks, and timers. Image tiles elsewhere in the answer do not delay a stop.
+This overlaps preparation rather than adding a fixed delay; provider/network/synthesis latency
+still determines the lower bound on time to the first synchronized answer.
+
 `docker-compose.yml` is runtime-neutral. Podman is the recommended Apache-2.0 runtime; Docker is
 supported when its separate license permits the user's use. The Kokoro v0.2.4 image is pinned by
 immutable digest. Its model and wrapper are Apache-2.0; the image's GPL-3.0-or-later eSpeak NG
@@ -349,8 +371,8 @@ The flow for a turn:
 ```
 useLiveTurn ── generate(request) ──▶ ProviderAdapter ──▶ raw model output (streamed)
      │                                                          │
-     │  narration-first: speak the headline as soon as          ▼
-     │  it streams in (streamParse.extractNarration)     validateLiveResponse
+     │  prepare the opening voice as it streams;               ▼
+     │  play once its first card is ready               validateLiveResponse
      └──────────────────────────────────────────────▶  (repair → typed ConversationSpec)
 ```
 
@@ -372,10 +394,11 @@ A few ideas make it feel instant, stay safe, and stay cheap:
 
 - **Narration-first streaming.** The system prompt asks the model to emit a short spoken
   `narration` field first. `live/streamParse.ts` scans the partial JSON for that one complete
-  string and hands it back the moment it arrives, so the face speaks within a few hundred
-  milliseconds while the rest of the blocks are still generating. The spoken line is capped to a
-  conversational length for the ask (`live/effort.ts` `capSpoken` — a tweet for a trivial question,
-  a couple of sentences for a rich one); the depth lives in the canvas, not the monologue.
+  string and hands it back as it arrives; playback waits for the opening canvas to paint.
+  `live/effort.ts` requests brief, complete thoughts, including Guide Me notes and tour lines.
+  Writing targets never truncate playback. Kokoro requests keep sentences intact, and failed
+  streams are never cached as complete clips. Suspended audio waits for the audio clock to resume
+  before releasing its tail; explicit cancellation still stops immediately.
 - **One validation core.** Adapters do transport only; they never validate or render. Every
   response — however malformed — flows through `engine/liveSchema.validateLiveResponse`, which
   coerces loose JSON into safe, fully-typed blocks (dropping unknown types, snapping colors to

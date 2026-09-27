@@ -184,6 +184,26 @@ describe('conversation video model', () => {
     );
   });
 
+  it('moves the camera across a long answer even when no tour or spotlight was authored', () => {
+    const longFrame = frame({
+      spec: {
+        title: 'Full answer',
+        blocks: Array.from({ length: 10 }, (_, index) =>
+          block(`live-${index + 1}`, `Part ${index + 1}`),
+        ),
+      } as ConversationSpec,
+    });
+    const scenes = buildConversationTimeline(
+      [longFrame],
+      [{ durationMs: 8_000, spans: [{ text: longFrame.narration, startMs: 650, endMs: 7_650 }] }],
+      { ...options, spotlights: false },
+    );
+    const focuses = scenes.flatMap((scene) => (scene.focus ? [scene.focus] : []));
+    expect(focuses).toEqual(['live-1', 'live-3', 'live-6', 'live-8', 'live-10']);
+    expect(scenes.every((scene) => scene.spot === null)).toBe(true);
+    expect(scenes.at(-1)!.startMs + scenes.at(-1)!.durationMs).toBe(8_000);
+  });
+
   it('paces an audio-off cut from the character estimate, captioning every line', () => {
     const walked = frame({
       narration: 'Opening line about scattering.',

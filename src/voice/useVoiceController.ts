@@ -5,6 +5,7 @@
 // old controller is disposed on unmount. Voice capture is always the local Silero + Whisper path.
 import { useEffect, useMemo, useRef } from 'react';
 import { VadVoice } from './VadVoice';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 import type {
   VoiceCapabilities,
   VoiceController,
@@ -80,8 +81,12 @@ export function useVoiceController(args: UseVoiceControllerArgs = {}): UseVoiceC
   return useMemo<UseVoiceControllerReturn>(
     () => ({
       mode: controller.mode,
-      capabilities: controller.capabilities,
-      start: (ctx) => controller.start(ctx),
+      capabilities: IS_SHOWCASE
+        ? { ...controller.capabilities, stt: false, canUseRealVoice: false }
+        : controller.capabilities,
+      start: (ctx) => {
+        if (!IS_SHOWCASE) controller.start(ctx);
+      },
       stop: () => controller.stop(),
       speak: (opts) => controller.speak(opts),
       cancel: () => controller.cancel(),

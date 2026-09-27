@@ -46,6 +46,40 @@ function makeSpeaker() {
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe('runDiagramWalk', () => {
+  it('prepares the step and audio together, withholding speech until the visual commits', async () => {
+    const controller = makeController(1);
+    const release = vi.fn();
+    const speaker = makeSpeaker();
+    const primeLine = vi.fn();
+    let ready!: () => void;
+    const signal = new AbortController();
+    const onDone = vi.fn();
+    runDiagramWalk(
+      { controller, release },
+      {
+        ...speaker,
+        primeLine,
+        prepareStep: () =>
+          new Promise<void>((r) => {
+            ready = r;
+          }),
+        signal: signal.signal,
+        isCancelled: () => false,
+        isDismissed: () => false,
+      },
+      onDone,
+    );
+    expect(controller.setIndex).toHaveBeenCalledWith(0);
+    expect(primeLine).toHaveBeenCalledWith('caption-0');
+    expect(speaker.speakLine).not.toHaveBeenCalled();
+    ready();
+    await flush();
+    expect(speaker.speakLine).toHaveBeenCalledExactlyOnceWith('caption-0');
+    signal.abort();
+    await flush();
+    expect(onDone).toHaveBeenCalledWith('cancelled');
+    expect(vi.getTimerCount()).toBe(0);
+  });
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -100,15 +134,17 @@ describe('runDiagramWalk', () => {
     const release = vi.fn();
     const { speakLine } = makeSpeaker(); // its line never fires start/end — a wedged server
     const onDone = vi.fn();
+    const cancelSpeech = vi.fn();
     runDiagramWalk(
       { controller, release },
-      { speakLine, isCancelled: () => false, isDismissed: () => false },
+      { speakLine, cancelSpeech, isCancelled: () => false, isDismissed: () => false },
       onDone,
     );
     await flush();
     expect(controller.setIndex).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(START_HANG_MS);
+    expect(cancelSpeech).toHaveBeenCalledOnce();
     expect(controller.setIndex).toHaveBeenNthCalledWith(1, 0);
     expect(onDone).not.toHaveBeenCalled();
 

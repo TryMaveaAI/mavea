@@ -4,6 +4,8 @@
 // the prefix up to a breakpoint, so a head that is not really the head marks bytes the model is
 // never sent first — a cache that is written, billed, and never read.
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildStableTurnBase, buildStableTurnInvariant } from '../src/live/generateLive';
 import { liveSystemPrompt, liveSystemPromptInvariant } from '../src/engine/liveSchema';
 import type { AskComplexity } from '../src/live/select/complexity';
@@ -12,6 +14,14 @@ const TIERS = ['frontier', 'mid', 'small'] as const;
 const DEPTHS: AskComplexity[] = ['brief', 'lean', 'rich'];
 
 describe('prompt cache: the invariant head is a real prefix', () => {
+  it('keeps a direct-answer instruction in the per-turn tail', () => {
+    // This instruction must stay dynamic and near the conversation: a cached generic prefix is
+    // too far from the current question to reliably keep a presentation-focused model on task.
+    const source = readFileSync(join(__dirname, '../src/live/generateLive.ts'), 'utf8');
+    expect(source).toContain('ANSWER THE ACTUAL ASK');
+    expect(source.indexOf('directAnswerLine,')).toBeGreaterThan(source.indexOf('offerSvg'));
+  });
+
   it('holds for the system prompt across every tier, depth and generative setting', () => {
     for (const tier of TIERS)
       for (const generativeOn of [false, true])

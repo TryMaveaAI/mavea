@@ -16,10 +16,14 @@ about.
 
 <p>
   <a href="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml"><img src="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://github.com/TryMaveaAI/mavea"><img src="https://img.shields.io/github/stars/TryMaveaAI/mavea?style=flat-square&logo=github&label=Stars" alt="GitHub stars" /></a>
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 6" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
 </p>
+
+**Talk to AI. See what it means.** If that is a direction worth exploring, a
+[⭐ on GitHub](https://github.com/TryMaveaAI/mavea) helps other people find Mavéa.
 
 ```sh
 npx @mavea/mavea@latest
@@ -43,9 +47,6 @@ playbook and the totals that matter. Mavéa picks the form each answer needs.</s
 
 <sub>**Ask "why did it happen?"** — and the answer opens into the causal web behind it. Turn a cause
 down and the whole web re-weighs, with every link traceable to a real quote.</sub>
-
-**Talk to AI. See what it means.** If that is a direction worth exploring, a ⭐ helps other people
-find Mavéa.
 
 </div>
 

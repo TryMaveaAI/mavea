@@ -12,11 +12,16 @@
 // walk exists to prevent.
 import type { StepController } from '../canvas/focus/stepDriver';
 import type { SpokenLine } from '../voice/tts';
-import { waitLineStart, waitLineEnd, delay } from './walkSync';
+import { waitLineStart, waitLineEnd, delay, spokenMsUncapped } from './walkSync';
 
 export interface DiagramWalkDeps {
   /** Queue one line and get its lifecycle handle — the same wrapped seam the outer walk uses. */
   speakLine: (text: string) => SpokenLine;
+  /** Prepare audio while the step commits; playback remains held until the visual is ready. */
+  primeLine?: (text: string) => void;
+  prepareStep?: () => Promise<void>;
+  signal?: AbortSignal;
+  cancelSpeech?: () => void;
   /** True once the walk itself has been torn down (turn changed, muted, component unmounted). */
   isCancelled: () => boolean;
   /** True once the user dismissed the tour — checked after every wait, not just once. */
@@ -52,7 +57,11 @@ export function runDiagramWalk(
   };
   /** The reason to stop right now, or null to keep walking — re-read after EVERY wait. */
   const interrupted = (): DiagramWalkResult | null =>
-    deps.isCancelled() ? 'cancelled' : deps.isDismissed() ? 'dismissed' : null;
+    deps.signal?.aborted || deps.isCancelled()
+      ? 'cancelled'
+      : deps.isDismissed()
+        ? 'dismissed'
+        : null;
   void (async () => {
     for (let i = 0; i < controller.count; i++) {
       const before = interrupted();
@@ -62,19 +71,32 @@ export function runDiagramWalk(
       }
       const line = controller.spokenFor(i) ?? controller.captionFor(i);
       if (line) {
+        if (deps.prepareStep) {
+          deps.primeLine?.(line);
+          controller.setIndex(i);
+          await deps.prepareStep();
+          const stopped = interrupted();
+          if (stopped) {
+            finishWith(stopped);
+            return;
+          }
+        }
         const handle = deps.speakLine(line);
-        const heard = await waitLineStart(handle);
+        const heard = await waitLineStart(handle, undefined, deps.signal);
         const mid = interrupted();
         if (mid) {
           finishWith(mid);
           return;
         }
-        controller.setIndex(i);
-        if (heard) await waitLineEnd(handle, STEP_DWELL_MS, STEP_FLOOR_MS);
-        else await delay(STEP_DWELL_MS); // voiceless line — pace by its reading length
+        if (!deps.prepareStep) controller.setIndex(i);
+        if (heard) await waitLineEnd(handle, spokenMsUncapped(line), STEP_FLOOR_MS, deps.signal);
+        else {
+          deps.cancelSpeech?.();
+          await delay(STEP_DWELL_MS, deps.signal);
+        }
       } else {
         controller.setIndex(i);
-        await delay(STEP_DWELL_MS);
+        await delay(STEP_DWELL_MS, deps.signal);
       }
     }
     const after = interrupted();

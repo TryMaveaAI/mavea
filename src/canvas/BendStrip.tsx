@@ -7,8 +7,17 @@ import type { BendSpec } from '../data/conversation';
 import { evaluateBend, formatBendValue } from '../lib/bend';
 import './bend.css';
 
-export function BendStrip({ bend }: { bend: BendSpec }): ReactElement {
-  const [x, setX] = useState(bend.param.value);
+export function BendStrip({
+  bend,
+  value,
+  onChange,
+}: {
+  bend: BendSpec;
+  value?: number;
+  onChange?: (value: number) => void;
+}): ReactElement {
+  const [localValue, setLocalValue] = useState(bend.param.value);
+  const x = value ?? localValue;
   const unit = bend.param.unit ?? '';
   return (
     <div className="bend-strip" data-bend>
@@ -27,7 +36,11 @@ export function BendStrip({ bend }: { bend: BendSpec }): ReactElement {
         max={bend.param.max}
         step={bend.param.step}
         value={x}
-        onChange={(e) => setX(Number(e.target.value))}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          setLocalValue(next);
+          onChange?.(next);
+        }}
         aria-label={`Bend ${bend.label}`}
       />
       <ul className="bend-outputs">

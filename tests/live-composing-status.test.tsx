@@ -14,4 +14,9 @@ describe('ComposingStatus', () => {
     expect(status).toHaveTextContent(/composing your answer/i);
     expect(status).toHaveAttribute('aria-live', 'polite');
   });
+
+  it('explains overload recovery without calling it a rate limit', () => {
+    render(<ComposingStatus activity="provider-busy" />);
+    expect(screen.getByRole('status')).toHaveTextContent(/provider is busy/i);
+  });
 });

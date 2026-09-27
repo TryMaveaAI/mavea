@@ -264,7 +264,7 @@ describe('a chapter that hands the surface back', () => {
     const invite = ALL_CHAPTERS.filter((c) => c.handsBack);
     expect(invite.map((c) => c.id)).toEqual(['yours']);
     const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    expect(live).toMatch(/handsBack: scriptHandsBack/);
+    expect(live).toMatch(/handsBack: !IS_SHOWCASE && scriptHandsBack/);
     expect(live).not.toMatch(/=== 'yours'/);
   });
 });

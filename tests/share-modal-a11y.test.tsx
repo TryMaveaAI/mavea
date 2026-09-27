@@ -41,7 +41,8 @@ vi.mock('../src/clip/capture', () => ({
   // pins that they match); here it just needs to render.
   qualityHint: () => 'up to 30 fps · 10 Mbps',
 }));
-vi.mock('../src/clip/share', () => ({
+vi.mock('../src/clip/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/clip/share')>()),
   downloadClip: downloadClipSpy,
 }));
 vi.mock('../src/clip/reel/audioTrack', () => ({
@@ -245,7 +246,11 @@ describe('ShareModal accessibility', () => {
     fireEvent.click(await view.findByRole('button', { name: 'Finish reel recording' }));
     await waitFor(() => expect(downloadClipSpy).toHaveBeenCalledOnce());
 
-    expect(downloadClipSpy).toHaveBeenCalledWith(blob, undefined, expect.any(Function));
+    expect(downloadClipSpy).toHaveBeenCalledWith(
+      blob,
+      expect.stringMatching(/^mavea-.+-\d{4}-\d{2}-\d{2}\.webm$/),
+      expect.any(Function),
+    );
     expect(toastSpy).toHaveBeenCalledWith('Saved to your downloads', 'good');
     expect(onShared).toHaveBeenCalledOnce();
   });

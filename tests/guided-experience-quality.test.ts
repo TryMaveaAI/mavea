@@ -138,5 +138,6 @@ describe('guided experience quality', () => {
     expect(tourOverlay).toContain('driver.toggleMute');
     expect(tourOverlay).toContain("driver.total === 1 ? 'scene plays' : 'scenes play'");
     expect(demoOverlay).toContain('driver.toggleMute');
+    expect(demoOverlay).not.toContain('{!IS_SHOWCASE && (');
   });
 });

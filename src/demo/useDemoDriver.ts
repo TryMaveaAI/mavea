@@ -22,6 +22,7 @@ import { syncDemoUrl } from './demoEntry';
 import type { TurnFrame } from '../live/history';
 import { naturalGuidedCopy, naturalizeGuidedFrame } from '../tour/guidedCopy';
 import { savedViewMode } from '../canvas/focus/useFocusMode';
+import { DemoNarration } from './narration';
 
 /** Default breath a turn step holds after its walk + beats before auto-advance. */
 const STEP_HOLD_MS = 3000;
@@ -114,6 +115,7 @@ export function useDemoDriver(opts: {
   const [note, setNote] = useState<string | null>(null);
   const opsRef = useRef(opts.ops);
   opsRef.current = opts.ops;
+  const narration = useRef(new DemoNarration()).current;
   const viewRestoreRef = useRef(savedViewMode());
   // The moment (ms epoch) the current step is allowed to auto-advance: set once its walk went
   // quiet and its beats were scheduled (quiet + beats tail + hold). Null while still revealing.
@@ -141,10 +143,17 @@ export function useDemoDriver(opts: {
   /** Revert anything a step might have opened, so navigating away is always clean. */
   const resetTriggers = useCallback(() => {
     const o = opsRef.current;
+    narration.stop();
     o.closeAllOverlays();
     o.stopRevealWalk();
     o.cancelSpeech();
-  }, []);
+  }, [narration]);
+
+  // The transport and dock share one mute source. A mute from either surface stops the public
+  // recording immediately, just as it stops local speech.
+  useEffect(() => {
+    if (opts.muted) narration.stop();
+  }, [narration, opts.muted]);
 
   // APPLY the current step's side effects, once per entry — not keyed on `playing`, so
   // pause/resume never re-reveals or re-fires a beat (the tour's exact contract).
@@ -196,7 +205,7 @@ export function useDemoDriver(opts: {
           fireBeats();
           return;
         }
-        quiet = o.isSpeaking() || o.isBusy() ? 0 : quiet + 1;
+        quiet = o.isSpeaking() || o.isBusy() || narration.isPlaying() ? 0 : quiet + 1;
         if (quiet >= QUIET_POLLS) {
           fireBeats();
           return;
@@ -225,7 +234,12 @@ export function useDemoDriver(opts: {
       // Cold-entry gate (driverKit.whenUnlocked): a ?demo= deep link or mid-demo reload has no
       // user gesture yet — without this the frame's narration would play on a suspended
       // AudioContext and never be heard.
-      after(revealAt, () => whenUnlocked(after, () => o.showFrame(frame, ask)));
+      after(revealAt, () =>
+        whenUnlocked(after, () => {
+          o.showFrame(frame, ask);
+          narration.play(script.persona, turnIdx, mutedRef.current);
+        }),
+      );
       watchThenBeats(revealAt + WALK_GRACE_MS);
     } else {
       // A feature step: no new turn — the beats ARE the content, over the current canvas.
@@ -240,7 +254,7 @@ export function useDemoDriver(opts: {
     }
 
     return st.cancel;
-  }, [index, token, active, started, done, loadState, convo, script, resetTriggers]);
+  }, [index, token, active, started, done, loadState, convo, script, resetTriggers, narration]);
 
   // AUTO-ADVANCE — separate so play/pause only starts/stops the clock, never re-applies.
   // Waits for the step's ready moment (walk quiet + beats + hold) AND for real quiet, so a
@@ -251,7 +265,7 @@ export function useDemoDriver(opts: {
     const id = window.setInterval(() => {
       const readyAt = stepReadyAtRef.current;
       if (!readyAt || Date.now() < readyAt) return;
-      if (o.isSpeaking() || o.isBusy()) return;
+      if (o.isSpeaking() || o.isBusy() || narration.isPlaying()) return;
       window.clearInterval(id);
       if (index + 1 >= total) {
         resetTriggers();
@@ -261,7 +275,7 @@ export function useDemoDriver(opts: {
       }
     }, QUIET_POLL_MS);
     return () => window.clearInterval(id);
-  }, [index, token, active, started, done, playing, total, loadState, resetTriggers]);
+  }, [index, token, active, started, done, playing, total, loadState, resetTriggers, narration]);
 
   // Clean up on unmount so no feature is left open.
   useEffect(

@@ -16,8 +16,7 @@ beforeEach(() => {
     'fetch',
     vi.fn(() => Promise.reject(new Error('no network in test'))),
   );
-  // Every tour entry point now retires the first-run invite, so each test starts as a
-  // first-time visitor rather than inheriting the previous one's "seen" flag.
+  // Every entry point records the walkthrough as seen; isolate that persisted state.
   resetTourSeen();
 });
 
@@ -112,40 +111,37 @@ describe('flagship topbar — Explore dropdown', () => {
   });
 });
 
-describe('flagship — the first-run tour invite retires wherever the tour starts', () => {
-  it('retires when the walkthrough is taken from the topbar, not just from the invite', () => {
+describe('flagship — walkthrough entry points', () => {
+  it('marks the walkthrough seen when it is taken from the topbar', () => {
     render(<FlagshipHost />);
-    // A first-time visitor sees the invite in the hero.
-    expect(screen.getByText('Watch the Study')).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole('button', { name: 'Take the tour' }));
     expect(window.location.hash).toBe('#/live');
-    // Coming back to the landing after touring must not re-offer the tour.
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Take the full tour')).toBeNull();
-    expect(screen.getByText(/Watch the Study/i)).toBeInTheDocument();
+    expect(sessionStorage.getItem('mavea-tour-mode')).toBe('1');
   });
 
-  it('retires when the Explore shortcut starts the walkthrough', () => {
+  it('marks the walkthrough seen when the Explore shortcut starts it', () => {
     render(<FlagshipHost />);
     fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
     const menu = screen.getByRole('menu', { name: /explore features/i });
     fireEvent.click(within(menu).getByText('Take the tour'));
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Take the full tour')).toBeNull();
   });
 
-  it('still retires from the invite’s own two answers', () => {
-    const { unmount } = render(<FlagshipHost />);
-    fireEvent.click(screen.getByText('Take the full tour'));
-    expect(isTourSeen()).toBe(true);
-    unmount();
-
-    resetTourSeen();
+  it('opens the guided demo from the hero', () => {
     render(<FlagshipHost />);
-    fireEvent.click(screen.getByText(/I'll explore on my own/i));
+    fireEvent.click(screen.getByRole('button', { name: /Let me explore/i }));
+    expect(window.location.hash).toBe('#/live');
+    expect(sessionStorage.getItem('mavea-tour-mode')).toBe('1');
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Take the full tour')).toBeNull();
+  });
+
+  it('links Guide me directly to its solo walkthrough chapter', () => {
+    render(<FlagshipHost />);
+    expect(screen.getByRole('link', { name: /Try Guide me/i })).toHaveAttribute(
+      'href',
+      '#/live?tour=1&ch=study&solo=1',
+    );
   });
 });
 
@@ -169,18 +165,16 @@ describe('flagship hero — presence ghost', () => {
 
 // Last in the file on purpose: waiting for a deferred section flushes every pending lazy import,
 // including the face — and the presence-ghost test above needs that chunk still in flight.
-describe('flagship — the invite also retires on the routes that only SHOW the product', () => {
-  it('retires when a flagship card opens its scripted demo', async () => {
+describe('flagship — product preview entry points', () => {
+  it('opens the living-answer walkthrough chapter', () => {
     render(<FlagshipHost />);
-    const cta = await waitFor(
-      () => screen.getAllByRole('button', { name: /Open scripted demo/i })[0],
-    );
-    fireEvent.click(cta);
-    expect(sessionStorage.getItem('mavea-tour-chapter')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Explore a living answer/i }));
+    expect(window.location.hash).toBe('#/live');
+    expect(sessionStorage.getItem('mavea-tour-chapter')).toBe('living-answer');
     expect(isTourSeen()).toBe(true);
   });
 
-  it('retires when a demo card plays its replay', async () => {
+  it('marks the walkthrough seen when a demo card plays its replay', async () => {
     const { container } = render(<FlagshipHost />);
     const card = await waitFor(() => {
       const el = container.querySelector('.fl-demo-card');

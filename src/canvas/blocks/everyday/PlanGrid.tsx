@@ -8,8 +8,8 @@ type Props = PlanGridProps & { delay?: number };
 const norm = (s: string) => s.trim().toLowerCase();
 
 // A forward-looking days×slots matrix (meal plan, study schedule, habit tracker, weekly routine).
-// Cells name their column, so alignment survives loose model output and an unfilled column reads as a
-// free slot. The grid scrolls horizontally when columns are many, so the card never overflows.
+// Cells name their column, so alignment survives loose model output. Empty slots stay visually quiet;
+// the grid scrolls horizontally when columns are many, so the card never overflows.
 export function PlanGrid({
   title,
   icon = 'clock',
@@ -57,9 +57,11 @@ export function PlanGrid({
                   const cell = byCol.get(norm(c));
                   if (!cell || !cell.label) {
                     return (
-                      <div key={`c${ri}-${ci}`} className="pg-cell pg-cell--free">
-                        <span className="pg-cell-free">free</span>
-                      </div>
+                      <div
+                        key={`c${ri}-${ci}`}
+                        className="pg-cell pg-cell--free"
+                        aria-label="No activity planned"
+                      />
                     );
                   }
                   const accentStyle = cell.accent

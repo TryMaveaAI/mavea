@@ -56,19 +56,15 @@ describe('validateLiveResponse — never throws, honest fallback', () => {
     expect(r!.blocks.map((b) => b.type)).toEqual(['list']);
   });
 
-  it('bounds a runaway narration at the validator (outer 320); the ask-aware cap is applied downstream', () => {
-    // The validator is the OUTER safety bound only — it stops a runaway line without
-    // pre-truncating a legitimately longer rich narration. The precise lean(~140)/rich(~320)
-    // cap is generateLive's job via capSpoken (see live-effort.test.ts), where the ask
-    // complexity is known. So a ~600-char line is trimmed here to ≤320, not to 140.
-    const long = 'word '.repeat(120).trim(); // ~600 chars
+  it('preserves the conclusion of narration longer than the writing target', () => {
+    const long = `${'This is a complete supporting sentence. '.repeat(16)}Here is the conclusion.`;
     const r = validateLiveResponse({
       title: 'T',
       narration: long,
       blocks: [{ type: 'list', props: { title: 'L', items: ['a'] } }],
     });
     expect(r).not.toBeNull();
-    expect(r!.narration.length).toBeLessThanOrEqual(320);
+    expect(r!.narration).toBe(long);
   });
 
   it('gates on the supplied block set: a frontier type is dropped under the base set', () => {
@@ -751,11 +747,34 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
     expect(replay.message).not.toMatch(/connection/i);
   });
 
-  it('404 → model-name guidance; other statuses stay honest with the code', () => {
+  it('404 → model-name guidance; transient failures keep the status and provider reason', () => {
     expect(describeLiveError(new Error('gemini 404'), 'gemini').message).toContain('Model not');
-    const e = describeLiveError(new Error('anthropic 529'), 'anthropic');
-    expect(e).toMatchObject({ kind: 'http', status: 529 });
-    expect(e.message).toContain('529');
+    const e = describeLiveError(
+      new Error(
+        'gemini 503 — UNAVAILABLE: This model is currently experiencing high demand. Please try again later.',
+      ),
+      'gemini',
+    );
+    expect(e).toMatchObject({ kind: 'http', status: 503 });
+    expect(e.message).toContain('Google returned 503');
+    expect(e.message).toContain('currently experiencing high demand');
+    expect(e.message).not.toMatch(/temporarily overloaded or unavailable/i);
+
+    const bare = describeLiveError(new Error('anthropic 529'), 'anthropic');
+    expect(bare).toMatchObject({ kind: 'http', status: 529 });
+    expect(bare.message).toContain('Anthropic returned 529');
+  });
+
+  it('distinguishes a per-minute 429 from daily quota exhaustion', () => {
+    expect(
+      describeLiveError(
+        new Error('gemini 429 — RESOURCE_EXHAUSTED: RPM per minute; retry in 12s'),
+        'gemini',
+      ).message,
+    ).toMatch(/rate-limiting/i);
+    expect(
+      describeLiveError(new Error('gemini 429 — daily quota exceeded'), 'gemini').message,
+    ).toMatch(/daily quota/i);
   });
 });
 

@@ -986,9 +986,13 @@
   /* No clamp: a scrawl is capped at 46 characters where it is written (penQuip), so the only
      thing a line limit could add here is an ellipsis on handwriting. */
   font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
-  font-weight: 500;
+  /* The desk itself scales down. Counter-scale the handwritten words so a real annotation never
+     drops below a readable rendered size before the layout switches to the reading column. */
+  --study-mark-size: max(var(--fs-lg), calc(17px / var(--study-scale, 1)));
+  font-weight: 600;
   line-height: 1.2;
   color: var(--study-pen);
+  text-shadow: 0 1px 0 color-mix(in oklab, var(--surface-base) 42%, transparent);
   text-wrap: balance;
 }
 
@@ -1028,7 +1032,7 @@
 }
 
 .study-mark.slot-left .study-mark-text {
-  font-size: var(--fs-xl);
+  font-size: max(var(--fs-xl), var(--study-mark-size));
 }
 
 .study-mark.slot-left .study-mark-arrow {
@@ -1052,7 +1056,7 @@
 }
 
 .study-mark.slot-bottom .study-mark-text {
-  font-size: var(--fs-xl);
+  font-size: max(var(--fs-xl), var(--study-mark-size));
 }
 
 .study-mark.slot-bottom .study-mark-arrow {
@@ -1071,7 +1075,7 @@
 }
 
 .study-mark.slot-top .study-mark-text {
-  font-size: var(--fs-lg);
+  font-size: var(--study-mark-size);
 }
 
 .study-mark.slot-top .study-mark-arrow {
@@ -1094,7 +1098,7 @@
 }
 
 .study-mark.slot-right .study-mark-text {
-  font-size: var(--fs-lg);
+  font-size: var(--study-mark-size);
 }
 
 .study-mark.slot-right .study-mark-arrow {
@@ -1110,7 +1114,7 @@
 }
 
 .study-mark.slot-rightlow .study-mark-text {
-  font-size: var(--fs-lg);
+  font-size: var(--study-mark-size);
 }
 
 .study-mark.slot-rightlow .study-mark-arrow {
@@ -1141,7 +1145,7 @@
   }
 
   .study-card:not([data-wide]) .study-mark.slot-left .study-mark-text {
-    font-size: var(--fs-lg);
+    font-size: var(--study-mark-size);
   }
 
   .study-card:not([data-wide]) .study-mark.slot-left .study-mark-arrow {
@@ -1162,7 +1166,7 @@
   }
 
   .study-card[data-wide] .study-mark.slot-left .study-mark-text {
-    font-size: var(--fs-lg);
+    font-size: var(--study-mark-size);
   }
 
   .study-card[data-wide] .study-mark.slot-left .study-mark-arrow {

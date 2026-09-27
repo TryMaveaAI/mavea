@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   thinkingLevelFor,
   temperatureFor,
-  capSpoken,
+  completeSpokenLine,
   isHardAsk,
-  spokenBudget,
   NARRATION_FIRST_LINE,
   spokenLineDirective,
 } from '../src/live/effort';
@@ -89,43 +88,23 @@ describe('isHardAsk', () => {
   });
 });
 
-describe('capSpoken — conversational, never a wall of text', () => {
-  it('holds a lean answer to a tweet', () => {
-    const long = 'a '.repeat(200);
-    expect(capSpoken(long, 'lean').length).toBeLessThanOrEqual(spokenBudget('lean'));
+describe('complete spoken lines', () => {
+  it('never truncates a sentence or its conclusion to meet a writing target', () => {
+    const line =
+      'The first part introduces the idea. ' +
+      'The supporting explanation is important, '.repeat(8) +
+      'and this is the conclusion.';
+    expect(completeSpokenLine(line)).toBe(line);
+    expect(completeSpokenLine('  A complete answer.  ')).toBe('A complete answer.');
+    expect(completeSpokenLine('')).toBe('');
   });
-
-  it('allows a couple of sentences for a rich answer but still caps it', () => {
-    const long = 'word '.repeat(400);
-    const out = capSpoken(long, 'rich');
-    expect(out.length).toBeLessThanOrEqual(spokenBudget('rich'));
-    expect(out.length).toBeGreaterThan(spokenBudget('lean')); // richer than a tweet
-  });
-
-  it('leaves a short line untouched and trims at a word boundary', () => {
-    expect(capSpoken('Half to needs, a third to wants.', 'rich')).toBe(
-      'Half to needs, a third to wants.',
-    );
-    // Distinct long words so a boundary trim is observable: the result must not end with a
-    // half-word — it ends on a whole word + ellipsis, never slicing through a token.
-    const sentence = 'antidisestablishmentarianism '.repeat(40);
-    const trimmed = capSpoken(sentence, 'rich');
-    expect(trimmed.endsWith('…')).toBe(true);
-    expect(trimmed).toMatch(/antidisestablishmentarianism…$/); // whole word, not a fragment
-  });
-
-  it('handles empty input', () => {
-    expect(capSpoken('', 'rich')).toBe('');
-  });
-
-  it('prefers a complete sentence over a mid-sentence fragment when one fits the budget', () => {
-    // A cut that lands mid-clause reads as an abandoned thought; capSpoken should back up to
-    // the last full sentence that fits instead of chopping the next one short.
-    const long = 'Mavéa keeps this short. '.repeat(20);
-    const out = capSpoken(long, 'rich');
-    expect(out.length).toBeLessThanOrEqual(spokenBudget('rich'));
-    expect(out.endsWith('…')).toBe(false);
-    expect(out.endsWith('short.')).toBe(true);
+  it('tells the model to finish thoughts in both narration and Guide me', () => {
+    for (const kind of ['lean', 'brief', 'rich'] as const) {
+      const prompt = spokenLineDirective(kind);
+      expect(prompt).toContain('Finish every sentence and its thought');
+      expect(prompt).toContain('Guide me');
+      expect(prompt).toContain('never end with a hanging clause');
+    }
   });
 });
 

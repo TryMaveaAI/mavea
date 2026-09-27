@@ -1,0 +1,478 @@
+.answer-theatre {
+  min-width: 0;
+  padding-block: var(--sp-fluid-lg);
+}
+.answer-theatre-heading {
+  max-width: 46rem;
+}
+.answer-theatre-heading h2 {
+  font-size: var(--fs-2xl);
+  line-height: 1.1;
+  margin-block: 0.6em;
+}
+.answer-theatre-heading p,
+.answer-theatre-footer p {
+  color: var(--text-muted);
+}
+.answer-theatre-choices,
+.answer-theatre-controls,
+.answer-theatre-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.answer-theatre-choices {
+  margin-block: 1.5rem;
+}
+.answer-theatre button,
+.answer-theatre-footer a {
+  min-height: var(--tap-min);
+  padding: 0.65rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid var(--grid-line);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.answer-theatre button[aria-pressed='true'] {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 15%, var(--surface-elevated));
+}
+.answer-theatre-player {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.7fr) minmax(0, 1.3fr);
+  grid-template-rows: 1fr auto auto;
+  /* Every recorded answer shares one stage. A tall visualization used to grow this grid while a
+     compact diagram left it short, making the page lurch as the playback advanced. */
+  height: clamp(36rem, 46vw, 46rem);
+  border: 1px solid var(--grid-line);
+  border-radius: 1.25rem;
+  background: var(--ob-card);
+  overflow: hidden;
+}
+.answer-theatre-player[data-playing='false'] {
+  --ambient-play: paused;
+}
+.answer-theatre-prompt {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(1.5rem, 3vw, 3rem);
+  background: var(--ob-art);
+}
+.answer-theatre-prompt > div:last-child {
+  min-width: 0;
+}
+.answer-theatre-presence {
+  flex: 0 0 auto;
+  padding: 0.5rem;
+}
+.answer-theatre-presence .presence {
+  --face-size: 3.5rem;
+  position: relative;
+  inset: auto;
+  margin: 0;
+}
+.answer-theatre-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 1.5rem 1rem;
+  background: var(--ob-art);
+}
+.answer-theatre-progress button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ob-muted);
+}
+.answer-theatre-progress button[aria-pressed='true'] {
+  background: var(--ob-card);
+  color: var(--ob-ink);
+  box-shadow: 0 0.75rem 1.5rem -1.25rem color-mix(in oklab, var(--ob-green) 70%, transparent);
+}
+.answer-theatre-progress button span {
+  font-family: var(--font-data, monospace);
+  color: var(--ob-green);
+}
+.answer-theatre-canvas .card-grid > :last-child {
+  animation: answer-theatre-arrive 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Pausing the sequence must not freeze a newly selected card's entrance. Canvas
+   ambient loops use --ambient-play; the mascot can pause independently. */
+.answer-theatre-player[data-paused='true'] .answer-theatre-presence *,
+.answer-theatre-player[data-paused='true'] .answer-theatre-presence *::before,
+.answer-theatre-player[data-paused='true'] .answer-theatre-presence *::after {
+  animation-play-state: paused !important;
+}
+@keyframes answer-theatre-arrive {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+    scale: 0.975;
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    filter: blur(0);
+  }
+}
+.answer-theatre-prompt span {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.answer-theatre-prompt p {
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+  line-height: 1.5;
+  margin: 0.5rem 0 0;
+  max-width: 65ch;
+}
+.answer-theatre-controls {
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-block: 1px solid var(--grid-line);
+  font-size: var(--fs-sm);
+  background: var(--ob-art);
+}
+.answer-theatre-canvas {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1 / 4;
+  align-content: center;
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 3rem);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.answer-theatre-canvas::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 18% 28%,
+      color-mix(in oklab, var(--presence) 13%, transparent),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 82% 72%,
+      color-mix(in oklab, var(--insight) 9%, transparent),
+      transparent 27%
+    );
+  opacity: 0.8;
+  animation: answer-canvas-aura 12s ease-in-out infinite alternate;
+  animation-play-state: var(--ambient-play, running);
+}
+.answer-theatre-canvas .topic-canvas {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  height: 100%;
+}
+.answer-theatre-canvas .card-grid {
+  align-items: start;
+  display: block;
+}
+.answer-theatre-canvas .card-grid > * {
+  width: 100%;
+  max-width: none;
+}
+.answer-theatre-canvas .card {
+  box-shadow: none;
+  /* The player is the card here. Individual block families bring their own surface defaults,
+     which made one recorded answer appear navy and another paper-white inside the same stage. */
+  background: transparent;
+  border-color: transparent;
+}
+.answer-theatre-canvas .card-grid > * {
+  height: 100%;
+}
+/* Two-panel training curves are the tallest homepage excerpt. Let their SVG use the remaining
+   stage height, rather than establishing the height of the stage itself. */
+.answer-theatre-canvas[data-preview-type='trainingcurve'] .card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.answer-theatre-canvas[data-preview-type='trainingcurve'] .card > svg {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  /* The SVG's normal canvas view lets chart callouts breathe beyond its bounds. In a fixed player
+     that turns into clipping, so use its viewBox's native meet scaling and keep the whole answer
+     inside the available stage. */
+  overflow: hidden !important;
+}
+/* Route cards combine a map, attribution, metrics, and an itinerary. In the fixed recorded stage the
+   normal one-column itinerary is taller than the available canvas, so the final stops used to be
+   clipped below the player. The excerpt keeps every piece, but lays the six stops across two columns
+   and gives the map a stage-sized height. The standalone MapRoute remains unchanged. */
+@media (width > 768px) {
+  .answer-theatre-canvas[data-preview-type='maproute'] .mr-map,
+  .answer-theatre-canvas[data-preview-type='maproute'] .geo-map-empty {
+    height: clamp(12rem, 16vw, 15rem);
+  }
+  .answer-theatre-canvas[data-preview-type='maproute'] .mr-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .answer-theatre-canvas[data-preview-type='maproute'] .mr-row {
+    min-width: 0;
+  }
+}
+.answer-theatre-canvas .c2-plot-svg {
+  max-height: 20rem;
+}
+.answer-theatre-canvas .canvas-title {
+  font-size: var(--fs-xl);
+}
+.answer-cycle-key {
+  display: none;
+}
+@keyframes answer-canvas-aura {
+  from {
+    translate: -3% -2%;
+    scale: 0.96;
+  }
+  to {
+    translate: 3% 2%;
+    scale: 1.08;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* A process should feel assembled: the cycle writes its path once as its stages arrive. */
+  .answer-theatre-canvas[data-preview-type='cyclewheel'] .dg-cw-link {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: answer-cycle-draw 1.4s 180ms ease-out both;
+  }
+  .answer-theatre-canvas[data-preview-type='cyclewheel'] .dg-cw-node {
+    transform-origin: center;
+    animation: answer-cycle-node 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .answer-theatre-canvas[data-preview-type='cyclewheel'] .dg-cw-node:nth-of-type(2) {
+    animation-delay: 110ms;
+  }
+  .answer-theatre-canvas[data-preview-type='cyclewheel'] .dg-cw-node:nth-of-type(3) {
+    animation-delay: 220ms;
+  }
+  .answer-theatre-canvas[data-preview-type='cyclewheel'] .dg-cw-node:nth-of-type(4) {
+    animation-delay: 330ms;
+  }
+}
+@keyframes answer-cycle-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes answer-cycle-node {
+  from {
+    opacity: 0;
+    scale: 0.72;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@media (width <= 768px) {
+  .answer-theatre-canvas[data-preview-type='trainingcurve'] svg[role='img'] {
+    min-width: 0 !important;
+  }
+  .answer-theatre-canvas[data-preview-type='trainingcurve'] svg[role='img'] text {
+    font-size: var(--fs-xs);
+  }
+  .answer-theatre-canvas .dg-cw-svg {
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+  .answer-theatre-canvas .dg-cw-svg text {
+    display: none;
+  }
+  .answer-cycle-key {
+    display: grid;
+    gap: 1rem;
+    padding-left: 1.5rem;
+    margin-top: 1rem;
+  }
+  .answer-cycle-key strong,
+  .answer-cycle-key span {
+    display: block;
+  }
+  .answer-cycle-key span {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+  }
+  .answer-theatre-canvas .c2-plot-svg {
+    min-width: 0 !important;
+  }
+  .answer-theatre-canvas .c2-plot-tick,
+  .answer-theatre-canvas .c2-plot-axlbl {
+    font-size: var(--fs-xs);
+  }
+  .answer-theatre-player {
+    display: block;
+    height: auto;
+  }
+  .answer-theatre-prompt {
+    flex-direction: row;
+    padding: 1.25rem;
+  }
+  .answer-theatre-progress {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 1rem;
+  }
+  .answer-theatre-progress button {
+    flex: 1;
+    font-size: var(--fs-sm);
+  }
+  .answer-theatre-canvas {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+}
+.answer-theatre-footer {
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: var(--fs-sm);
+}
+.answer-theatre-loading {
+  padding: 3rem 1rem;
+}
+.answer-theatre-immersive {
+  padding-block: 0;
+  position: relative;
+}
+.answer-theatre-immersive .answer-theatre-heading {
+  max-width: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--ob-line);
+}
+.ob-page .answer-theatre-immersive .answer-theatre-heading h2 {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: var(--fs-xl);
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.answer-theatre-immersive .answer-theatre-heading p {
+  font-size: var(--fs-sm);
+}
+.answer-theatre-immersive .answer-theatre-choices {
+  margin-block: 1rem 1.5rem;
+}
+.answer-theatre-immersive .answer-theatre-choices button {
+  border-color: var(--ob-line);
+  color: var(--ob-muted);
+  background: transparent;
+}
+.answer-theatre-immersive .answer-theatre-choices button[aria-pressed='true'] {
+  color: var(--ob-ink);
+  background: var(--ob-art);
+  border-color: var(--ob-green);
+}
+.answer-theatre-immersive .answer-theatre-player {
+  grid-template-columns: minmax(15rem, 0.6fr) minmax(0, 1.4fr);
+  border: 1px solid var(--ob-line);
+  border-radius: 0.5rem 2.5rem 0.5rem 0.5rem;
+  background: var(--ob-card);
+  box-shadow: 0 1.5rem 4rem -2rem color-mix(in oklab, var(--ob-green) 25%, transparent);
+}
+.answer-theatre-immersive .answer-theatre-prompt {
+  padding: clamp(1.5rem, 3vw, 3rem);
+  gap: 0.75rem;
+}
+.answer-theatre-immersive .answer-theatre-prompt p {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+.answer-theatre-immersive .answer-theatre-presence .presence {
+  --face-size: 4.5rem;
+}
+.answer-theatre-prompt .answer-question-word {
+  font: inherit;
+  color: inherit;
+  animation: answer-word-arrive 0.5s both;
+}
+@keyframes answer-word-arrive {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.answer-theatre-immersive .c2-plot-svg polyline {
+  animation: answer-trace 2s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+@keyframes answer-trace {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.answer-theatre-immersive .answer-theatre-canvas {
+  min-height: 30rem;
+  padding: clamp(1.5rem, 3vw, 3rem);
+}
+.answer-theatre-immersive .answer-theatre-canvas .card {
+  background: transparent;
+  border-color: transparent;
+}
+.answer-theatre-immersive .answer-theatre-canvas .big {
+  font-size: clamp(3rem, 5vw, 6rem);
+  letter-spacing: -0.06em;
+}
+.answer-theatre-immersive .answer-theatre-canvas .card-grid > :last-child {
+  animation: answer-theatre-arrive 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (width <= 768px) {
+  .answer-theatre-immersive .answer-theatre-heading {
+    display: block;
+  }
+  .answer-theatre-immersive .answer-theatre-heading p {
+    margin-top: 0.5rem;
+  }
+  .answer-theatre-immersive .answer-theatre-canvas {
+    min-height: 0;
+    padding: 1rem;
+  }
+  .answer-theatre-immersive .answer-theatre-prompt p {
+    font-size: var(--fs-xl);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .answer-theatre *,
+  .answer-theatre *::before,
+  .answer-theatre *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -202,17 +202,21 @@ const RUNTIME_ASSETS = [...VAD_ASSETS, ...PDFJS_ASSETS];
 // fell back to WebSpeech. This plugin serves them (dev) and copies them into the output (build).
 function runtimeAssetsPlugin(): Plugin {
   let root = process.cwd();
+  let runtimeAssets = RUNTIME_ASSETS;
   return {
     name: 'mavea-runtime-assets',
     configResolved(c) {
       root = c.root;
+      // Recorded experiences never capture a microphone. Omit the unused speech models,
+      // including the WASM binary larger than static hosts' per-file limits.
+      if (c.mode === 'showcase') runtimeAssets = PDFJS_ASSETS;
     },
     // DEV: a PRE-hook middleware (registered before Vite's, so before the SPA fallback).
     configureServer(server) {
       server.middlewares.use(
         (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
           const path = (req.url || '').split('?')[0].replace(/^\//, '');
-          const asset = RUNTIME_ASSETS.find((a) => a.name === path);
+          const asset = runtimeAssets.find((a) => a.name === path);
           if (!asset) return next();
           const file = resolve(root, asset.src);
           if (!existsSync(file)) return next();
@@ -228,7 +232,7 @@ function runtimeAssetsPlugin(): Plugin {
     // BUILD: copy each asset to '<outDir>/<name>' so the same URL resolves in production.
     writeBundle(options) {
       const outDir = options.dir ?? resolve(root, 'dist');
-      for (const asset of RUNTIME_ASSETS) {
+      for (const asset of runtimeAssets) {
         const from = resolve(root, asset.src);
         if (existsSync(from)) {
           const to = resolve(outDir, asset.name);

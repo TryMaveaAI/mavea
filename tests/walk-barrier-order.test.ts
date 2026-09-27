@@ -47,13 +47,35 @@ describe('the reveal walk barrier keeps its escape hatches armed', () => {
 
   it('lights a spoken stop only after its own line reports audio started', () => {
     const stopRunner = effect.slice(effect.indexOf('const runSpokenStop'));
-    const started = stopRunner.indexOf('await waitLineStart(handle)');
+    const started = stopRunner.indexOf('await waitLineStart(handle,');
     // Prefix-matched, not the whole call: applyStop has grown arguments (the stop index, so a
     // voiced walk can write its margin aside) and will grow more. What this pins is the ORDER —
     // the stop lights after its own audio is reported started — never the argument list.
     const lit = stopRunner.indexOf('applyStop(spot, line', started);
     expect(started).toBeGreaterThan(-1);
     expect(lit).toBeGreaterThan(started);
+  });
+
+  it('prepares the narrated card before enqueuing its audio and cancels readiness on teardown', () => {
+    const runner = effect.slice(effect.indexOf('const runSpokenStop'));
+    for (const line of ['ownLine', 'spokenLine']) {
+      const prepared = runner.indexOf(`await prepareStop(${line})`);
+      const spoken = runner.indexOf(`const handle = speak(${line})`);
+      expect(prepared).toBeGreaterThan(-1);
+      expect(spoken).toBeGreaterThan(prepared);
+    }
+    const prepare = runner.slice(0, runner.indexOf('// Stop 0'));
+    expect(prepare.indexOf("primeLine(text, 'mavea')")).toBeLessThan(
+      prepare.indexOf('await awaitFirstPaint('),
+    );
+    expect(prepare).toContain('walkController.signal');
+    expect(effect.match(/walkController.abort\(\)/g)).toHaveLength(2);
+  });
+
+  it('does not fabricate a silent spotlight after narration or wait for unrelated image tiles', () => {
+    expect(effect).not.toContain('shouldRevealTour(');
+    expect(effect).not.toContain('ensureFigureReady(');
+    expect(effect).not.toContain('setTimeout(step,');
   });
 
   it('keeps the barrier out of muted turns (the muted branch returns first)', () => {

@@ -1,9 +1,4 @@
-// The deterministic spoken-length cap (capSpoken/effort.ts) only ever trimmed the FINAL,
-// complete narration — the branch a non-streaming turn takes. On the streaming path (the one
-// real users are on almost every turn), sentences are spoken as they arrive straight from the
-// raw, uncapped text, so a model that ignores the requested spoken budget could monologue with
-// no ceiling. This locks the fix: the streaming feed tracks cumulative spoken length and stops
-// queueing further sentences once the ask's budget is spent.
+// Writing targets must never cause the streaming feed to discard a spoken conclusion.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ModelConfig } from '../src/types/mavea';
@@ -38,8 +33,8 @@ beforeEach(() => {
   calls.length = 0;
 });
 
-describe('useLiveTurn — the streaming feed respects the spoken-length cap', () => {
-  it('stops speaking further sentences once the lean budget (140 chars) is spent', async () => {
+describe('useLiveTurn — complete streamed narration', () => {
+  it('preserves the conclusion even when narration exceeds the prompt length target', async () => {
     const speak = vi.fn();
     const { result } = renderHook(() => useLiveTurn({ getConfig: () => cfg, speak }));
 
@@ -50,13 +45,12 @@ describe('useLiveTurn — the streaming feed respects the spoken-length cap', ()
     expect(calls).toHaveLength(1);
 
     const sentences = [
-      'Point number one right here.', // 29 chars — running total 29
-      'Point number two follows closely.', // 34 — total 63
-      'Point number three keeps going.', // 32 — total 95
-      'Point number four still going strong.', // 38 — total 133 (still under 140)
-      'Point number five exceeds the budget now.', // 42 — crosses 140; still spoken (a complete
-      // sentence is allowed to finish once budget is spent mid-sentence, mirroring capSpoken)
-      'Point number six should never be spoken.', // now over budget — must be withheld
+      'Point number one right here.',
+      'Point number two follows closely.',
+      'Point number three keeps going.',
+      'Point number four still going strong.',
+      'Point number five exceeds the budget now.',
+      'Point number six completes the explanation.',
     ];
 
     act(() => {
@@ -83,7 +77,7 @@ describe('useLiveTurn — the streaming feed respects the spoken-length cap', ()
     // deliberately not the contract. The budget is.
     const queued = speak.mock.calls.map((c) => c[0] as string).join(' ');
     for (const sentence of sentences.slice(0, 5)) expect(queued).toContain(sentence);
-    expect(queued).not.toContain(sentences[5]);
+    expect(queued).toContain(sentences[5]);
   });
 
   it('keeps a rich (non-lean) ask to its larger 220-character budget', async () => {

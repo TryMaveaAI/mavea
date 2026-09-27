@@ -7,8 +7,9 @@ Generated videos stay inside an explicit open-media allowlist — AV1 video with
 MP4 container where the browser can encode them, WebM (VP9/VP8 + Opus) otherwise. Mavéa does
 not generate H.264, H.265, or AAC files or silently fall back to them. Published source licences
 and patent commitments reduce risk but are not a universal patent-clearance opinion. Conversation and Reel direction, rendering, and
-encoding stay local; opening Reel never calls a configured model provider. Narration uses the local
-Kokoro service. Document and presentation exports use bundled permissively licensed libraries and
+encoding stay local; opening Reel never calls a configured model provider. Local narration uses the
+Kokoro service, and public demo narration is pre-rendered from it as WebM/Opus output rather than
+shipping a model, container, or visitor-side TTS call. Document and presentation exports use bundled permissively licensed libraries and
 self-hosted SIL OFL fonts. Maps use BSD-licensed MapLibre with
 OpenFreeMap, whose public service terms reviewed August 11, 2026 currently permit commercial use
 without request fees; the required map attribution

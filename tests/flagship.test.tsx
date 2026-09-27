@@ -1,152 +1,161 @@
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import { FlagshipLanding } from '../src/flagship/FlagshipLanding';
-import { heroCast } from '../src/demo/cast';
+import { chapterById } from '../src/tour/tourPlan';
+
+const runtime = vi.hoisted(() => ({ IS_SHOWCASE: false }));
+vi.mock('../src/lib/runtimeMode', () => runtime);
+afterEach(() => {
+  runtime.IS_SHOWCASE = false;
+});
 
 function setup() {
   const onPlay = vi.fn();
-  const onPlayStudyDemo = vi.fn();
   const onEnterLive = vi.fn();
   const onPlayTour = vi.fn();
-  const utils = render(
-    <FlagshipLanding
-      onPlay={onPlay}
-      onPlayStudyDemo={onPlayStudyDemo}
-      onEnterLive={onEnterLive}
-      onPlayTour={onPlayTour}
-    />,
-  );
-  return { onPlay, onPlayStudyDemo, onEnterLive, onPlayTour, ...utils };
+  const onViewWorld = vi.fn();
+  return {
+    onPlay,
+    onEnterLive,
+    onPlayTour,
+    onViewWorld,
+    ...render(
+      <FlagshipLanding
+        onPlay={onPlay}
+        onEnterLive={onEnterLive}
+        onPlayTour={onPlayTour}
+        onViewWorld={onViewWorld}
+      />,
+    ),
+  };
 }
 
-describe('FlagshipLanding', () => {
-  it('renders the hero headline and the demo anchor', () => {
+describe('the observatory homepage', () => {
+  it('numbers every top-level section once in reading order', async () => {
     const { container } = setup();
-    expect(container.querySelector('.fl-hero-title')?.textContent).toContain(
-      'come alive around you.',
+    await waitFor(() => {
+      const labels = [...container.querySelectorAll('.ob-section-marker')];
+      expect(labels.map((label) => label.textContent?.slice(0, 2))).toEqual([
+        '01',
+        '02',
+        '03',
+        '04',
+        '05',
+        '06',
+        '07',
+      ]);
+      for (const label of labels) {
+        expect(label.closest('.fl-section')?.querySelector('.ob-section-marker')).toBe(label);
+      }
+    });
+  });
+  it('keeps a demo exit aligned with installation as deferred content loads', () => {
+    window.location.hash = '#install';
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scroll,
+    });
+    let resize = () => {};
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resize = callback;
+        }
+        observe() {}
+        disconnect = disconnect;
+      },
     );
-    expect(container.querySelector('#flagship-demo')).toBeTruthy();
+    try {
+      const { unmount } = setup();
+      expect(scroll).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' });
+      const before = scroll.mock.calls.length;
+      resize();
+      expect(scroll.mock.calls.length).toBe(before + 1);
+      fireEvent.wheel(window);
+      expect(disconnect).toHaveBeenCalled();
+      unmount();
+    } finally {
+      window.location.hash = '';
+      if (original) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', original);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+      vi.unstubAllGlobals();
+    }
+  });
+  it('invites exploration without a prompt composer', () => {
+    const { getByRole, onPlayTour, queryByRole } = setup();
+    expect(getByRole('heading', { level: 1 })).toHaveTextContent('What ifan answerhad a pulse?');
+    expect(queryByRole('textbox')).toBeNull();
+    fireEvent.click(getByRole('button', { name: /Let me explore/ }));
+    expect(onPlayTour).toHaveBeenCalledOnce();
   });
 
-  it('plays the first demo session when a card is clicked', async () => {
-    const { onPlay, container } = setup();
-    await waitFor(() => expect(container.querySelector('.fl-demo-card')).toBeTruthy());
+  it('keeps the animated hero and one recorded player below it', async () => {
+    const { container } = setup();
+    await waitFor(
+      () => expect(container.querySelector('.ob-demos .answer-theatre')).toBeInTheDocument(),
+      { timeout: 5000 },
+    );
+    expect(container.querySelectorAll('.answer-theatre')).toHaveLength(1);
+    expect(container.querySelector('.ob-observatory')).toBeInTheDocument();
+  });
+
+  it('shows all four actual recorded sessions and hands off the chosen persona', async () => {
+    const { container, onPlay } = setup();
+    await waitFor(() => expect(container.querySelectorAll('.fl-demo-card')).toHaveLength(4));
     fireEvent.click(container.querySelector('.fl-demo-card')!);
-    expect(onPlay).toHaveBeenCalledTimes(1);
-    expect(onPlay.mock.calls[0][0].id).toBe(heroCast()[0].id);
+    expect(onPlay.mock.calls[0][0].id).toBe('pm');
   });
 
-  it('shows all four demo cards at once', async () => {
-    const { container } = setup();
-    await waitFor(() => expect(container.querySelectorAll('.fl-demo-card').length).toBe(4));
+  it('lets readers inspect the guide illustration without starting a live call', () => {
+    const { getByRole, getByText, onEnterLive } = setup();
+    fireEvent.click(getByRole('button', { name: 'What stands out' }));
+    expect(getByRole('heading', { name: 'What stands out' })).toBeInTheDocument();
+    expect(getByText('The interesting part is right here.')).toBeInTheDocument();
+    expect(onEnterLive).not.toHaveBeenCalled();
   });
 
-  it('enters Live with the typed seed from the hero composer', () => {
-    const { onEnterLive, container } = setup();
-    const input = container.querySelector('.fl-composer-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'why did Q3 dip?' } });
-    fireEvent.submit(input.closest('form')!);
-    expect(onEnterLive).toHaveBeenCalledWith('why did Q3 dip?');
+  it('only deep-links to existing tour chapters and offers the living answer', () => {
+    const { container, getByRole, onViewWorld } = setup();
+    for (const link of container.querySelectorAll<HTMLAnchorElement>('a[href*="ch="]')) {
+      const query = new URLSearchParams(link.hash.split('?')[1]);
+      expect(chapterById(query.get('ch')!)).toBeTruthy();
+      expect(query.get('solo')).toBe('1');
+    }
+    fireEvent.click(getByRole('button', { name: /Explore a living answer/ }));
+    expect(onViewWorld).toHaveBeenCalledOnce();
   });
 
-  it('enters Live from a hero example chip', () => {
-    const { onEnterLive, getByText } = setup();
-    fireEvent.click(getByText('Map 3 days in Lisbon'));
-    expect(onEnterLive).toHaveBeenCalledWith('Map 3 days in Lisbon');
-  });
-
-  it('lists the real Live providers in the two-surfaces panel', async () => {
-    const { container } = setup();
-    await waitFor(() =>
-      expect(container.querySelectorAll('.fl-model-chip').length).toBeGreaterThan(0),
-    );
-    const chips = [...container.querySelectorAll('.fl-model-chip')].map((c) => c.textContent);
-    // The five hosted BYOK providers.
-    expect(chips.length).toBeGreaterThanOrEqual(5);
-    expect(chips.some((c) => /Gemini/.test(c ?? ''))).toBe(true);
-  });
-
-  it('closes both two-surfaces cards with a real chip row before the CTA', async () => {
-    const { container } = setup();
-    await waitFor(() => expect(container.querySelectorAll('.fl-surface').length).toBe(2));
-    const surfaces = container.querySelectorAll('.fl-surface');
-    const instantChips = [...surfaces[0].querySelectorAll('.fl-surface-chip')].map(
-      (c) => c.textContent,
-    );
-    // The instant card's chips state the shipped access policy — no invented capability, and
-    // "session-only" is the same bound HonestByDesign publishes for key storage.
-    expect(instantChips).toEqual([
-      'No sign-up',
-      'No install',
-      'Key-free tour',
-      'Keys session-only',
-    ]);
-    // Both cards share the chip row immediately before their CTA button, so they read as one
-    // balanced pair rather than one side looking unfinished.
-    for (const surface of surfaces) {
-      const chipRow = surface.querySelector('.fl-surface-chips');
-      const cta = surface.querySelector('.fl-ghost-btn');
-      expect(chipRow).toBeTruthy();
-      expect(chipRow?.nextElementSibling).toBe(cta);
+  it('copies the installation command and reports clipboard failure honestly', async () => {
+    runtime.IS_SHOWCASE = true;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    try {
+      const { getByRole } = setup();
+      fireEvent.click(getByRole('button', { name: /Copy command/ }));
+      await waitFor(() => expect(getByRole('button', { name: /Copied/ })).toBeInTheDocument());
+      expect(writeText).toHaveBeenCalledWith('npx @mavea/mavea@latest');
+      writeText.mockRejectedValueOnce(new Error('permission denied'));
+      fireEvent.click(getByRole('button', { name: /Copied/ }));
+      await waitFor(() =>
+        expect(getByRole('button', { name: /Select and copy/ })).toBeInTheDocument(),
+      );
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 
-  it('shows the key-free Study replay when no invite is passed', () => {
-    const { getByText, queryByText, onPlayStudyDemo } = setup();
-    fireEvent.click(getByText(/^Watch the Study$/i));
-    expect(onPlayStudyDemo).toHaveBeenCalledTimes(1);
-    expect(queryByText(/Take the full tour/i)).toBeNull();
-  });
-
-  it('shows the dismissible tour invite instead, when asked to', () => {
-    const onPlayTour = vi.fn();
-    const onDismissTourInvite = vi.fn();
-    const { getByText } = render(
-      <FlagshipLanding
-        onPlay={vi.fn()}
-        onPlayStudyDemo={vi.fn()}
-        onEnterLive={vi.fn()}
-        showTourInvite
-        onPlayTour={onPlayTour}
-        onDismissTourInvite={onDismissTourInvite}
-      />,
-    );
-    // The invite promotes the same Study replay into its primary action — never duplicates it.
-    expect(getByText(/^Watch the Study$/i)).toBeTruthy();
-    expect(getByText(/one question become a study/i)).toBeTruthy();
-
-    fireEvent.click(getByText('Take the full tour'));
-    expect(onPlayTour).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(getByText(/I'll explore on my own/i));
-    expect(onDismissTourInvite).toHaveBeenCalledTimes(1);
-  });
-
-  it('omits the "View as living answer" shortcut unless a handler is passed, and fires it when clicked', () => {
-    const { queryByText, rerender } = render(
-      <FlagshipLanding
-        onPlay={vi.fn()}
-        onPlayStudyDemo={vi.fn()}
-        onEnterLive={vi.fn()}
-        showTourInvite
-        onPlayTour={vi.fn()}
-        onDismissTourInvite={vi.fn()}
-      />,
-    );
-    expect(queryByText('View as living answer')).toBeNull();
-
-    const onViewWorld = vi.fn();
-    rerender(
-      <FlagshipLanding
-        onPlay={vi.fn()}
-        onPlayStudyDemo={vi.fn()}
-        onEnterLive={vi.fn()}
-        showTourInvite
-        onPlayTour={vi.fn()}
-        onDismissTourInvite={vi.fn()}
-        onViewWorld={onViewWorld}
-      />,
-    );
-    fireEvent.click(queryByText('View as living answer')!);
-    expect(onViewWorld).toHaveBeenCalledTimes(1);
+  it('offers app entry and a tour locally instead of installation instructions', () => {
+    const { getByRole, queryByRole, queryByText, onEnterLive, onPlayTour } = setup();
+    expect(queryByText('npx @mavea/mavea@latest')).toBeNull();
+    expect(queryByRole('button', { name: /Copy command/ })).toBeNull();
+    expect(queryByRole('link', { name: /Installation guide/ })).toBeNull();
+    expect(queryByRole('link', { name: /^npm/ })).toBeNull();
+    fireEvent.click(getByRole('button', { name: /Open Mavéa/ }));
+    expect(onEnterLive).toHaveBeenCalledOnce();
+    fireEvent.click(getByRole('button', { name: /Take the guided tour/ }));
+    expect(onPlayTour).toHaveBeenCalledOnce();
   });
 });

@@ -23,9 +23,11 @@ export function ComposingStatus({
             request has not been sent yet. "Composing" for that reads as a hang. */}
         {activity === 'rate-limited'
           ? 'Rate-limited by the provider — retrying'
-          : thinking
-            ? 'Thinking it through'
-            : 'Composing your answer'}
+          : activity === 'provider-busy'
+            ? 'Provider is busy — retrying with backoff'
+            : thinking
+              ? 'Thinking it through'
+              : 'Composing your answer'}
       </span>
       <span className="composing-dots" aria-hidden="true">
         <i></i>

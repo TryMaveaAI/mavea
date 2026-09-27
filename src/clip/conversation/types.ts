@@ -41,6 +41,8 @@ export interface ConversationScene {
   turnIndex: number;
   startMs: number;
   durationMs: number;
+  /** Card the camera centres, independent of whether the optional spotlight is visible. */
+  focus: string | null;
   spot: string | null;
   caption: string | null;
   ink: InkRequest[];

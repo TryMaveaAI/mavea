@@ -109,7 +109,7 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   it('keeps the compact breakpoint off the width a 1280px window resolves to', () => {
     // 1280 − 236 rail − 52 − 12 = 980.0 exactly, so a breakpoint of 980 decided the whole layout
     // on a sub-pixel: the most common laptop width was a coin toss between desk and column.
-    expect(scene).toMatch(/COMPACT_W = 940/);
+    expect(scene).toMatch(/COMPACT_W = 1120/);
   });
 
   it('does not replace a wide Study with the flat fallback merely because the window is short', () => {
@@ -691,9 +691,11 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(/\.ripple-verdict-map\s*\{[^}]*min-height:\s*min\(420px, 62dvh\)/.test(verdict)).toBe(
       true,
     );
-    // The header stays put while the rail and the main column scroll independently.
+    // The header and explanation control stay put while the rail's section list and main column
+    // scroll independently. This keeps all three audience levels reachable on a short laptop.
     expect(/\.ripple-head\s*\{[^}]*flex:\s*none/.test(ripple)).toBe(true);
-    expect(/\.ripple-rail\s*\{[^}]*overflow-y:\s*auto/.test(ripple)).toBe(true);
+    expect(/\.ripple-rail\s*\{[^}]*overflow:\s*hidden/.test(ripple)).toBe(true);
+    expect(/\.ripple-rail-sections\s*\{[^}]*overflow-y:\s*auto/.test(ripple)).toBe(true);
     expect(/\.ripple-main\s*\{[^}]*overflow:\s*auto/.test(ripple)).toBe(true);
   });
 

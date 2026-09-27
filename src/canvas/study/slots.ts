@@ -44,11 +44,13 @@ export const STUDY_READING_PX = 14;
 
 /** The width at which the 3-D desk stands down for the flat reading column: below it the floored
  *  desk crops Mavéa's note card — real reading content — off the right edge. Held clear of the
- *  980px stage a 1280px window produces (1280 − 236 rail − 52 − 12), which otherwise decided the
- *  layout on a sub-pixel. Shared with study.css's container query, which handles the descendants;
+ *  980px stage a 1280px window produces (1280 − 236 rail − 52 − 12). The desk is technically
+ *  visible there, but its handwritten marginalia has already become scenery; moving to the reading
+ *  column at 1120px keeps the actual answer and annotations comfortably legible. Shared with
+ *  study.css's container query, which handles the descendants;
  *  the stage's own box is driven by the `data-compact` attribute the scale hook publishes (a
  *  container cannot query itself). */
-export const COMPACT_W = 940;
+export const COMPACT_W = 1120;
 
 /** The tallest stage the desk is fitted into, mirroring study.css's own clamp — past it the
  *  composition is swimming in parchment rather than reading larger. */

@@ -97,7 +97,7 @@ const CACHED_PCM = new Uint8Array(CACHED_SECONDS * SAMPLE_RATE * 2).fill(7);
 const SYNTH_SECONDS = 0.05;
 
 /** Splits into exactly two clauses: the first is cached, the second has to be synthesized. */
-const LINE = 'The harbour empties on the ebb tide, and the moored boats settle into the mud.';
+const LINE = 'The harbour empties on the ebb tide. The moored boats settle into the mud.';
 /** One clause — the next line the surface announces while the fallback is waiting out the tail. */
 const NEXT_LINE = 'A gull lands on the rail.';
 

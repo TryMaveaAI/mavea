@@ -11,7 +11,6 @@
 //
 // Pure and dependency-injected (speech state comes in as functions) so the pacing rules are
 // unit-testable without WebAudio or a DOM.
-import { bounded } from '../lib/bounded';
 import { nextFrame } from '../lib/nextFrame';
 import {
   isSpeaking as globalIsSpeaking,
@@ -34,23 +33,9 @@ export const BARRIER_MAX_MS = 12_000;
 /** Ceiling on waiting for block-family chunks inside the barrier (they're usually preloaded
  *  during streaming, so this only binds on a cold cache + slow link). */
 export const FAMILY_LOAD_CAP_MS = 8_000;
-/** Content-settle ceilings for the live grid — deliberately tighter than the export path's
- *  (5000/3000): walk latency is user-facing, and a late map tile just pops in as it does today. */
-export const SETTLE_TIMEOUT_MS = 3_500;
-export const SETTLE_IMG_MS = 2_500;
 /** How long the barrier may run before the voice strip owes the user an honest "Preparing…"
  *  cue — under this it reads as normal turn rhythm, not a stall. */
 export const PREPARE_CUE_DELAY_MS = 600;
-/** showFrame (tour/demo replay) reveal: wait for the frame narration's audio to start, but no
- *  longer than this — with no voice at all, `started` resolves false in milliseconds anyway. */
-export const SHOWFRAME_REVEAL_CAP_MS = 3_000;
-/** Ceiling on holding the turn's FIRST spoken line for the answer's first card to appear. Past
- *  this the voice goes ahead regardless: a slow renderer, an answer with no blocks at all, or a
- *  backgrounded tab must never leave a turn silent. A skeleton counts as a card (it carries
- *  `.card`), so on a streamed turn this resolves the moment the first pending block registers —
- *  the cap only binds before even that, where narration IS already on screen as the streaming
- *  lead text. Holding a voice 1.8s against words the reader can see was dead air, not sync:
- *  900ms still covers a card entrance (`--m-expressive`, 550ms) plus its commit. */
 /** A last resort, not the thing that normally ends the wait. The first spoken line now holds
  *  until the answer's first card has painted OR the turn itself has ended (settled, failed, or
  *  superseded) — so this only fires if neither ever happens, which the stream's own ceilings
@@ -90,8 +75,8 @@ export function spokenMsUncapped(text: string): number {
 }
 
 /** Plain cancellable-by-neglect delay; the caller re-checks its own cancel flags after it. */
-export function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return untilOrAbort(new Promise<void>(() => {}), ms, signal);
 }
 
 /**
@@ -103,8 +88,27 @@ export function delay(ms: number): Promise<void> {
 export async function waitLineStart(
   line: SpokenLine,
   hangMs: number = START_HANG_MS,
+  signal?: AbortSignal,
 ): Promise<boolean> {
-  return (await bounded(line.started, hangMs)) ?? false;
+  return (await untilOrAbort(line.started, hangMs, signal)) ?? false;
+}
+
+function untilOrAbort<T>(value: Promise<T>, ms: number, signal?: AbortSignal): Promise<T | void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result?: T): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      resolve(result);
+    };
+    const abort = (): void => finish();
+    const timer = setTimeout(abort, ms);
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+    else void value.then(finish, abort);
+  });
 }
 
 /**
@@ -116,8 +120,12 @@ export async function waitLineEnd(
   line: SpokenLine,
   estimateMs: number,
   floorMs: number = MIN_STOP_MS,
+  signal?: AbortSignal,
 ): Promise<void> {
-  await Promise.all([bounded(line.finished, finishCapMs(estimateMs)), delay(floorMs)]);
+  await Promise.all([
+    untilOrAbort(line.finished, finishCapMs(estimateMs), signal),
+    untilOrAbort(new Promise<void>(() => {}), floorMs, signal),
+  ]);
 }
 
 export interface QueueQuietOpts {
@@ -128,6 +136,7 @@ export interface QueueQuietOpts {
   /** Speech-state taps, injectable for tests; default to the real voice seam. */
   speaking?: () => boolean;
   subscribe?: (listener: () => void) => () => void;
+  signal?: AbortSignal;
 }
 
 /**
@@ -148,21 +157,26 @@ export function waitQueueQuiet(opts: QueueQuietOpts): Promise<void> {
       settled = true;
       unsubscribe();
       clearTimeout(capTimer);
+      clearTimeout(floorTimer);
+      opts.signal?.removeEventListener('abort', finish);
       resolve();
     };
     const check = (): void => {
       if (floorPassed && !speaking()) finish();
     };
     const unsubscribe = subscribe(check);
-    setTimeout(() => {
+    const floorTimer = setTimeout(() => {
       floorPassed = true;
       check();
     }, opts.floorMs);
     const capTimer = setTimeout(finish, opts.capMs);
+    opts.signal?.addEventListener('abort', finish, { once: true });
+    if (opts.signal?.aborted) finish();
   });
 }
 
 export interface WalkReadyOpts {
+  signal?: AbortSignal;
   /** Kick (or join) the block-family chunk loads for the settled blocks. */
   loadFams: () => Promise<unknown>;
   /** Bounded content-settle pass over the mounted grid (fonts/height/tiles/images); the
@@ -175,13 +189,16 @@ export interface WalkReadyOpts {
   wantVoice: boolean;
 }
 
-/** True once nothing under `host` is still animating. The same reading the export path takes
- *  (clip/capture.ts) — `getAnimations` is what knows about a CSS entrance; a ResizeObserver and a
- *  scrollHeight poll do not, because `.reveal` animates only opacity and transform. */
+/** Wait for the card's finite entrance, never a visualization's ambient child motion. Geometry
+ *  alone cannot see an opacity/transform entrance, so inspect the animation lifecycle. */
 function stillAnimating(host: Element): boolean {
   const el = host as Element & { getAnimations?: (o?: { subtree?: boolean }) => Animation[] };
   if (typeof el.getAnimations !== 'function') return false; // can't tell → don't wait
-  return el.getAnimations({ subtree: true }).some((a) => a.playState === 'running');
+  return el.getAnimations({ subtree: false }).some((a) => {
+    if (a.playState !== 'running') return false;
+    const timing = a.effect?.getComputedTiming();
+    return timing ? Number.isFinite(timing.endTime) : true;
+  });
 }
 
 /**
@@ -194,8 +211,9 @@ function stillAnimating(host: Element): boolean {
  * almost nothing (the first card lands well before the first sentence finishes streaming) and
  * removes the case where the voice talks to an empty screen.
  *
- * Bounded by `capMs` and never rejects: with no host, no card, or no `getAnimations`, it resolves
- * and the voice proceeds exactly as it used to.
+ * Discovery uses DOM mutations once the host exists; only the short entrance needs frame checks.
+ * A release or deadline disconnects observers and cancels all scheduled work, including when the
+ * host never mounts. Callers release cardless/failed turns explicitly.
  */
 export async function awaitFirstPaint(
   host: () => Element | null,
@@ -204,51 +222,91 @@ export async function awaitFirstPaint(
   /** Fires when the turn has ended — settled, failed, or superseded. An answer that ends with no
    *  card must still release the voice, or it waits on a card that is never coming. */
   release?: AbortSignal,
+  /** Replay/settled callers already know these cards belong to the current answer. */
+  acceptExisting = false,
 ): Promise<void> {
-  await bounded(
-    (async () => {
-      // Two frames: the same commit-then-layout wait the pre-walk barrier takes, so the card we
-      // then ask about has actually reached the compositor.
-      await nextFrame();
-      await nextFrame();
-      // WAIT for the first card rather than checking once: on the opening turn the stage itself
-      // has not mounted yet when the first sentence forms, so a single look would find nothing and
-      // wave the voice through on exactly the turn this exists for. `bounded` owns the ceiling.
-      // A card behind the Study's intro gate ([data-gathered]) is mounted but invisible —
-      // waving the voice through against it starts the walk under the overlay.
-      const visible = (el: Element | null): Element | null =>
-        el && !el.closest('[data-gathered]') ? el : null;
-      // Wait for a card that was NOT already on the stage when the line formed. On a follow-up the
-      // previous answer's cards satisfy "any card" instantly, so the voice started describing new
-      // cards over the old ones while the new ones were still streaming in. A replace clears the
-      // stage first, so its first card is new by construction; an augment appends, so the old
-      // cards are excluded by identity rather than by count.
-      const before = new Set(host()?.querySelectorAll(cardSelector) ?? []);
-      const fresh = (): Element | null => {
-        for (const el of host()?.querySelectorAll(cardSelector) ?? []) {
-          if (!before.has(el) && visible(el)) return el;
-        }
-        return null;
-      };
-      let card = fresh();
-      while (!card) {
-        // The turn is over and no fresh card ever came: whatever the canvas has is all it will
-        // have. Two more frames, so a card committed at settle still gets its paint.
-        if (release?.aborted) {
-          await nextFrame();
-          await nextFrame();
-          return;
-        }
-        await nextFrame();
-        card = fresh();
-      }
-      // Poll a frame at a time rather than listening: a card's entrance is a TRANSITION whose
-      // `transitionend` never fires if it had already finished when we looked, and several
-      // properties animate at once. A handful of frames is cheaper than getting that right.
-      while (stillAnimating(card)) await nextFrame();
-    })(),
-    capMs,
+  const eligible = (el: Element): boolean =>
+    !el.matches('.skel-card') && !el.closest('[data-gathered], [aria-hidden="true"]');
+  // Snapshot before yielding: a card arriving during the first paint belongs to this turn.
+  const before = new Set(
+    acceptExisting ? [] : Array.from(host()?.querySelectorAll(cardSelector) ?? []).filter(eligible),
   );
+  await new Promise<void>((resolve) => {
+    let finished = false;
+    let frame: number | undefined;
+    let wake: ReturnType<typeof setTimeout> | undefined;
+    let observer: MutationObserver | undefined;
+    let observed: Element | null = null;
+    let candidate: Element | null = null;
+    let paints = 0;
+    const finish = (): void => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(deadline);
+      clearTimeout(wake);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      observer?.disconnect();
+      release?.removeEventListener('abort', finish);
+      resolve();
+    };
+    const schedule = (paint: boolean): void => {
+      if (finished || wake !== undefined || frame !== undefined) return;
+      const run = (): void => {
+        clearTimeout(wake);
+        if (frame !== undefined) cancelAnimationFrame(frame);
+        wake = undefined;
+        frame = undefined;
+        check();
+      };
+      wake = setTimeout(run, 50);
+      if (paint && typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(run);
+    };
+    const check = (): void => {
+      if (finished) return;
+      const current = host();
+      if (current !== observed) {
+        observer?.disconnect();
+        observed = current;
+        if (current && typeof MutationObserver !== 'undefined') {
+          observer = new MutationObserver((records) => {
+            for (const record of records) {
+              if (record.type !== 'childList' && record.type !== 'characterData') continue;
+              const element =
+                record.target instanceof Element ? record.target : record.target.parentElement;
+              const changed = element?.closest(cardSelector);
+              if (changed) before.delete(changed);
+            }
+            schedule(true);
+          });
+          observer.observe(current.parentElement ?? current, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true,
+          });
+        }
+      }
+      const card = Array.from(current?.querySelectorAll(cardSelector) ?? []).find(
+        (el) => !before.has(el) && eligible(el),
+      );
+      if (!card) {
+        candidate = null;
+        paints = 0;
+        if (!current || !observer) schedule(false);
+        return;
+      }
+      if (card !== candidate) {
+        candidate = card;
+        paints = 0;
+      }
+      if (++paints > 2 && !stillAnimating(card)) finish();
+      else schedule(true);
+    };
+    const deadline = setTimeout(finish, capMs);
+    release?.addEventListener('abort', finish, { once: true });
+    if (release?.aborted) finish();
+    else check();
+  });
 }
 
 /**
@@ -259,22 +317,35 @@ export async function awaitFirstPaint(
  * streaming, voice already speaking) resolves in two animation frames.
  */
 export async function awaitWalkReady(opts: WalkReadyOpts): Promise<void> {
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  opts.signal?.addEventListener('abort', abort, { once: true });
+  if (opts.signal?.aborted) abort();
+  const signal = controller.signal;
   try {
-    await bounded(
+    await untilOrAbort(
       (async () => {
         // Two frames: the settled spec's cards were just committed — let them reach layout so
         // the settle pass below measures real geometry, not a mid-mount snapshot.
         await nextFrame();
+        if (signal.aborted) return;
         await nextFrame();
-        await bounded(opts.loadFams(), FAMILY_LOAD_CAP_MS);
-        if (opts.settle) await opts.settle();
+        if (signal.aborted) return;
+        await untilOrAbort(opts.loadFams(), FAMILY_LOAD_CAP_MS, signal);
+        if (signal.aborted) return;
+        if (opts.settle) await untilOrAbort(opts.settle(), BARRIER_MAX_MS, signal);
+        if (signal.aborted) return;
         if (opts.wantVoice && opts.firstLine) {
-          await bounded(opts.firstLine.started, FIRST_LINE_START_CAP_MS);
+          await untilOrAbort(opts.firstLine.started, FIRST_LINE_START_CAP_MS, signal);
         }
       })(),
       BARRIER_MAX_MS,
+      signal,
     );
   } catch {
     // A barrier that fails is a barrier that's over — the walk falls back to today's behavior.
+  } finally {
+    abort();
+    opts.signal?.removeEventListener('abort', abort);
   }
 }

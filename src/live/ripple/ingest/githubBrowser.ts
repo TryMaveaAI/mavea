@@ -58,6 +58,40 @@ export interface GitHubTreeResult {
 
 const clip = (s: string, n: number): string => (s.length > n ? s.slice(0, n) : s);
 
+/** Keep a large tree representative without letting it grow the analysis prompt. GitHub returns a
+ * flat recursive tree, where taking the first N paths can fill the whole budget with one alphabetic
+ * subtree. Round-robin across two-level areas instead, so a monorepo still exposes its separate apps,
+ * packages, docs, and tooling while retaining a hard upper bound. */
+export function representativeTreePaths(
+  paths: readonly string[],
+  limit = MAX_TREE_PATHS,
+): string[] {
+  if (paths.length <= limit) return [...paths];
+  const areas = new Map<string, string[]>();
+  for (const path of paths) {
+    const parts = path.split('/');
+    const area = parts.length > 2 ? parts.slice(0, 2).join('/') : (parts[0] ?? '(root)');
+    const bucket = areas.get(area);
+    if (bucket) bucket.push(path);
+    else areas.set(area, [path]);
+  }
+  const buckets = [...areas.values()];
+  const sampled: string[] = [];
+  for (let depth = 0; sampled.length < limit; depth++) {
+    let added = false;
+    for (const bucket of buckets) {
+      const path = bucket[depth];
+      if (path !== undefined) {
+        sampled.push(path);
+        added = true;
+        if (sampled.length === limit) break;
+      }
+    }
+    if (!added) break;
+  }
+  return sampled;
+}
+
 interface Repo {
   owner: string;
   name: string;
@@ -237,11 +271,12 @@ export async function fetchRepoTree(
   const entries = Array.isArray(data.tree)
     ? (data.tree as Array<{ type?: unknown; path?: unknown }>)
     : [];
-  // Cap the path count so a giant monorepo can't balloon the response; flag if GitHub truncated it.
-  const paths = entries
+  // Cap the path count so a giant monorepo can't balloon the analysis. Sample across areas rather
+  // than taking the first alphabetic slice, which can erase whole applications from the read.
+  const allPaths = entries
     .filter((t) => t && t.type === 'blob' && typeof t.path === 'string')
-    .map((t) => t.path as string)
-    .slice(0, MAX_TREE_PATHS);
+    .map((t) => t.path as string);
+  const paths = representativeTreePaths(allPaths);
   if (paths.length === 0) return { ok: false, detail: `No files found in ${r.slug} @ ${wanted}.` };
 
   return {
@@ -249,7 +284,7 @@ export async function fetchRepoTree(
     detail: `Loaded ${paths.length} files from ${r.slug}`,
     paths,
     label: r.slug,
-    truncated: Boolean(data.truncated) || paths.length >= MAX_TREE_PATHS,
+    truncated: Boolean(data.truncated) || allPaths.length > paths.length,
     sha: commitSha,
   };
 }

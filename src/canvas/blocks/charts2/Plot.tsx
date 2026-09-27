@@ -46,10 +46,10 @@ export function Plot({
 
   const W = 320;
   const H = 220;
-  const padL = 30;
+  const padL = 48;
   const padR = 40;
   const padT = 12;
-  const padB = 24;
+  const padB = xLabel ? 36 : 24;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -179,7 +179,7 @@ export function Plot({
 
           {/* axis labels */}
           {xLabel && (
-            <text x={padL + plotW} y={padT + plotH + 12} className="c2-plot-axlbl" textAnchor="end">
+            <text x={padL + plotW} y={padT + plotH + 28} className="c2-plot-axlbl" textAnchor="end">
               {xLabel}
             </text>
           )}

@@ -325,27 +325,40 @@ const CLIP_END_MARGIN_MS = 40;
  *  played out. Re-measured on every wake rather than slept once, because it is the AUDIO clock: a
  *  suspended context (a call on iOS, a backgrounded tab) stops it while setTimeout keeps counting,
  *  and finishing early takes the clip down — releasing the tail the next clause anchors on and the
- *  whole-clip fallback waits out — with a suspension's worth of it still to sound. A clock that
- *  did not move across a whole window is not playing this clip at all, and waiting on one that
- *  never comes back would hold the queue for the session, so that ends the wait: teardown then
- *  STOPS the scheduled sources, and an abandoned tail can never surface over the line that
- *  follows. `state.finishEarly` cuts the wait short when the clip is stopped. */
+ *  whole-clip fallback waits out — with a suspension's worth of it still to sound. Suspended
+ *  contexts wait on state changes without polling; a closed or stalled running context ends
+ *  the wait. `state.finishEarly` cuts the wait short when the clip is stopped. */
 function awaitClipEnd(state: ActiveStream, until: number): Promise<void> {
   return new Promise<void>((resolve) => {
     const ctx = state.ctx;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let lastSeen = Number.NEGATIVE_INFINITY; // nothing read yet, so the first pass always arms
+    let finished = false;
     const finish = (): void => {
+      if (finished) return;
+      finished = true;
       clearTimeout(timer);
+      ctx.removeEventListener?.('statechange', check);
       resolve();
     };
     const check = (): void => {
+      if (finished) return;
+      clearTimeout(timer);
+      const status = String(ctx.state);
+      if (status === 'closed') return finish();
+      // A phone call or device switch pauses the audio clock, not the sentence. Keep its
+      // scheduled tail and wake on resume instead of treating the pause as completion.
+      if (status === 'suspended' || status === 'interrupted') {
+        lastSeen = Number.NEGATIVE_INFINITY;
+        return;
+      }
       const now = ctx.currentTime;
       if (until - now <= 0 || now <= lastSeen) return finish();
       lastSeen = now;
       timer = setTimeout(check, (until - now) * 1000 + CLIP_END_MARGIN_MS);
     };
     state.finishEarly = finish;
+    ctx.addEventListener?.('statechange', check);
     check();
   });
 }
@@ -500,9 +513,9 @@ export function cancelActiveStream(): void {
 
 /**
  * Stream one line as Kokoro PCM and play it the instant the first chunk arrives. Resolves true
- * when audio was produced (or the clip was hard-stopped — never re-speak a cancelled line) and
- * false ONLY when streaming could not start and nothing was heard, so the caller falls back to
- * the whole-clip blob path. Never throws.
+ * when audio completed (or the clip was hard-stopped — never re-speak a cancelled line).
+ * False indicates failure, possibly after partial playback. Callers must use `onAccepted`
+ * to prevent retrying an accepted stream and repeating already-heard words. Never throws.
  *
  * `onStart` fires exactly once, when the clip becomes AUDIBLE — the clock reaching its first
  * scheduled buffer, which on a line anchored behind a still-playing tail is seconds after that
@@ -515,7 +528,7 @@ export function cancelActiveStream(): void {
  * fully read) while its tail may still be playing — the moment the synthesizer goes idle, which
  * is exactly when a caller can start the next line's synthesis without ever running two at
  * once. It receives the complete raw PCM (for the replay cache), or null when the clip was too
- * large to keep. Not called for a cancelled or never-started line.
+ * large to keep. Not called for a cancelled, failed, or never-started line.
  */
 export async function streamSpeak(
   text: string,
@@ -685,6 +698,7 @@ export async function streamSpeak(
   // cache's per-clip cap (a monologue isn't worth evicting the hot lines for).
   let raw: Uint8Array[] | null = onSynthDone ? [] : null;
   let rawLen = 0;
+  let transportFailed = false;
   try {
     const reader = res.body.getReader();
     let carry: number | null = null;
@@ -745,6 +759,7 @@ export async function streamSpeak(
     if (!state.cancelled) flush(); // tail samples
     if (!state.cancelled && started) settle(state, onScheduled);
   } catch (err) {
+    transportFailed = true;
     // A genuine transport failure (proxy reset, container restart, Kokoro crash mid-line).
     // If `started` is already true the caller won't fall back (that would double-speak), so
     // this warning is the only trace that the line may have been cut short — without it the
@@ -757,7 +772,7 @@ export async function streamSpeak(
   if (!state.cancelled && started) {
     // Synthesis is over (the body is fully read) but the tail is still scheduled to play — the
     // one window where the next line can synthesize without ever doubling Kokoro's load.
-    if (onSynthDone) {
+    if (onSynthDone && !transportFailed) {
       let whole: Uint8Array | null = null;
       if (raw) {
         whole = new Uint8Array(rawLen);
@@ -780,13 +795,12 @@ export async function streamSpeak(
   const cancelled = state.cancelled;
   teardown(state);
   try {
-    tap?.end(started);
+    tap?.end(started && !transportFailed);
   } catch {
     /* a tap must never break playback */
   }
-  // Hard-stop → report "played" so the caller never re-speaks the line. Otherwise true iff a
-  // sample actually played; false means nothing was heard and the caller falls back.
-  return cancelled || started;
+  // Hard-stop prevents replay; failed accepted streams must not be retried over heard words.
+  return cancelled || (started && !transportFailed);
 }
 
 /** Chunk cached playback into ~1s buffers — few audio nodes, and a cancel still lands between

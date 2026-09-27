@@ -53,6 +53,33 @@ describe('walkSync', () => {
     await expect(q).resolves.toBe(false);
   });
 
+  it('aborting line waits clears both deadlines and the minimum dwell', async () => {
+    const controller = new AbortController();
+    const line = makeLine();
+    const start = waitLineStart(line.handle, undefined, controller.signal);
+    const end = waitLineEnd(line.handle, 1700, undefined, controller.signal);
+    controller.abort();
+    await expect(start).resolves.toBe(false);
+    await end;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('aborting the quiet gate unsubscribes and clears all timers', async () => {
+    const controller = new AbortController();
+    const unsubscribe = vi.fn();
+    const wait = waitQueueQuiet({
+      floorMs: 1100,
+      capMs: 15000,
+      speaking: () => true,
+      subscribe: () => unsubscribe,
+      signal: controller.signal,
+    });
+    controller.abort();
+    await wait;
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('waitLineEnd holds the floor even when the line finishes instantly', async () => {
     const line = makeLine();
     line.end(true);

@@ -212,7 +212,7 @@ describe('reel director — what survives the slide budget', () => {
     expect(reel.slides).toHaveLength(4); // title + both turns + outro
   });
 
-  it('keeps a many-topic session inside the reel ceiling, covering the freshest topics', () => {
+  it('keeps every turn of a many-topic session in the default reel', () => {
     // Eight genuinely DISTINCT subjects — real pivots use different vocabulary, and the section
     // boundary now reads meaning-bearing words ("Topic 0…Topic 7" fixtures share their only
     // content token, which honestly reads as one subject).
@@ -228,19 +228,20 @@ describe('reel director — what survives the slide budget', () => {
     ];
     const frames = TOPICS.map(([t, a]) => frame(`${t} question?`, a, [], 'replace'));
     const reel = buildReelFallback(frames);
-    // Eight topics used to recut into a 25-slide, multi-minute "reel"; the ceiling is the ceiling.
-    expect(reel.slides.length).toBeLessThanOrEqual(6);
+    // Every topic needs its own title and answer beat, plus the shared outro. A fixed six-slide cut
+    // silently lost most of the conversation that the user expected to download.
+    expect(reel.slides).toHaveLength(TOPICS.length * 2 + 1);
     const titles = reel.slides.filter((s) => s.template === 'title');
-    expect(titles.length).toBeGreaterThanOrEqual(1);
-    // The topics it carries are the ones the user just explored — and the part chips count only those.
+    expect(titles).toHaveLength(TOPICS.length);
     const questions = titles.map((t) => (t.slots as { question: string }).question);
-    expect(questions[questions.length - 1]).toContain('Tidepools');
+    expect(questions).toEqual(TOPICS.map(([topic]) => `${topic} question?`));
     for (const t of titles) {
       const part = (t.slots as { part?: { count: number } }).part;
       if (part) expect(part.count).toBe(titles.length);
     }
-    // And the reel is ABOUT what's in it — its question comes from a covered turn, not a dropped one.
-    expect(reel.question).not.toContain('Eigenvalues');
+    const quotes = reel.slides.filter((slide) => slide.content === 'quote');
+    expect(quotes).toHaveLength(TOPICS.length);
+    expect(reel.question).toContain('Eigenvalues');
   });
 });
 

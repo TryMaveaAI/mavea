@@ -102,6 +102,15 @@ export interface ChangeLink {
   status: CallerStatus;
 }
 
+/** One atomic fact read directly from added/removed diff lines. It powers Ripple's before → after
+ *  explanation without asking a model to infer which value or interface actually moved. */
+export interface ChangeDelta {
+  subject: string;
+  kind: 'added' | 'removed' | 'changed';
+  before?: string;
+  after?: string;
+}
+
 export interface ShipChange {
   id: string;
   subsystem: string;
@@ -125,6 +134,8 @@ export interface ShipChange {
   /** Symbols this change defines/reshapes (functions, exports). Used to find real callers in the
    *  repo when a connected source lets Ripple read beyond the diff. */
   symbols?: string[];
+  /** Concrete value/interface additions, removals, and replacements parsed from the diff. */
+  deltas?: ChangeDelta[];
 }
 
 export interface CascadeHop {

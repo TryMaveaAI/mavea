@@ -304,6 +304,7 @@ export function TrainingCurve({
         {title}
       </div>
       <svg
+        className="ai-trainingcurve-svg"
         viewBox={`0 0 ${W} ${totalH}`}
         width="100%"
         role="img"

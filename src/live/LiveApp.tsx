@@ -68,6 +68,7 @@ import {
 import { useTourDriver, type TourOps } from '../tour/useTourDriver';
 import { TourOverlay } from '../tour/TourOverlay';
 import { useScriptedLock } from '../tour/useScriptedLock';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 import { TourEndCard } from '../tour/TourEndCard';
 import { tourConversation } from '../tour/corpus';
 import { peekDemoPersona, clearDemoPersonaFlag, peekDemoStep } from '../demo/demoEntry';
@@ -103,10 +104,7 @@ import {
   spokenMsUncapped,
   MIN_STOP_MS,
   PREPARE_CUE_DELAY_MS,
-  SETTLE_TIMEOUT_MS,
-  SETTLE_IMG_MS,
 } from './walkSync';
-import { ensureFigureReady } from '../canvas/embed/ready';
 import { findPreset, VOICE_MAVEA_STORAGE_KEY, DEFAULT_MAVEA_VOICE_ID } from '../voice/presets';
 import { ALWAYS_ON_STORAGE_KEY } from '../hooks/useTweaks';
 import { livePresence } from './presenceMap';
@@ -116,7 +114,7 @@ import { Overview, deriveChapters } from './scrubber';
 import type { Chapter } from './scrubber';
 import { composeThread } from './composeThread';
 import './livedock.css';
-import { liveTourBeats, shouldRevealTour, TEACH_MAX_STOPS } from './generateBeats';
+import { liveTourBeats } from './generateBeats';
 import { revealInkPlan } from './mutedReveal';
 import { claim as claimStepper } from '../canvas/focus/stepDriver';
 import { runDiagramWalk, STEP_DWELL_MS } from './diagramWalk';
@@ -629,7 +627,7 @@ export function LiveApp(): ReactElement {
   );
   const demoStartStep = useRef(demoPersona.current ? peekDemoStep() : null);
   const askedView = useRef(viewFromHash());
-  const replayBlocksSpending = tourMode.current || !!demoPersona.current;
+  const replayBlocksSpending = IS_SHOWCASE || tourMode.current || !!demoPersona.current;
   const modelCallsAllowed = !replayBlocksSpending && hasModelConfigured(cfg);
   useEffect(() => {
     if (tourMode.current) clearTourModeFlag();
@@ -1098,6 +1096,7 @@ export function LiveApp(): ReactElement {
   // per-stop pacing. A stale handle (from a burst that already played out) is harmless: its
   // promises are settled, so any await on it resolves immediately.
   const burstLineRef = useRef<SpokenLine | null>(null);
+  const openingCanvasReadyRef = useRef<Promise<void>>(Promise.resolve());
 
   // A world the WALKTHROUGH seeded. The overlay renders only off world blocks on the canvas, so a
   // key-free visitor — who has no answer and cannot pay for one — had nothing to be shown. This is
@@ -1180,10 +1179,17 @@ export function LiveApp(): ReactElement {
     // (it is declared below, and the stage it belongs to only mounts once a turn has a spec).
     // Skipped when nothing will be heard anyway — the same test the pre-walk barrier uses — since a
     // muted or captions-only turn must not wait on audio that will never come.
-    canvasReady: (turnEnded) =>
-      mutedRef.current || kokoroKnownAvailable() === false
-        ? Promise.resolve()
-        : awaitFirstPaint(() => scrollRef.current, '.card', undefined, turnEnded),
+    canvasReady: (turnEnded) => {
+      const ready =
+        mutedRef.current || kokoroKnownAvailable() === false
+          ? Promise.resolve()
+          : awaitFirstPaint(() => scrollRef.current, '.card', undefined, turnEnded);
+      openingCanvasReadyRef.current = ready;
+      return ready;
+    },
+    prepareSpeech: (text) => {
+      if (!mutedRef.current && !IS_SHOWCASE) primeLine(text, 'mavea');
+    },
     getCaps: () => toCaps(getLiveConfigV2()),
     speak,
     cancelSpeak: cancelSpeech,
@@ -1203,7 +1209,7 @@ export function LiveApp(): ReactElement {
   // the user's first genuine ask runs for real (or the BYOK setup wizard shows). Replay re-stashes
   // the flag first. A reload is deliberate — it drops the tour's in-memory session cleanly.
   const endTourToApp = useCallback(() => {
-    window.location.hash = '#/live';
+    window.location.hash = IS_SHOWCASE ? '#install' : '#/live';
     window.location.reload();
   }, []);
   const replayTour = useCallback(() => {
@@ -1225,7 +1231,7 @@ export function LiveApp(): ReactElement {
   // latency. Idempotent and throttled inside prewarmLive, so this composes with the home
   // composer's focus-warm (a click-through from the landing collapses to one round-trip).
   useEffect(() => {
-    prewarmLive();
+    if (!IS_SHOWCASE) prewarmLive();
   }, []);
 
   // Persist the conversation after every settled turn so a reload can resume it. Bounded and
@@ -2565,8 +2571,8 @@ export function LiveApp(): ReactElement {
   const scriptHandsBack = !!(tourMode.current && tourDrive.chapter?.handsBack);
   useScriptedLock({
     root: appRef,
-    running: scriptRunning,
-    handsBack: scriptHandsBack,
+    running: IS_SHOWCASE || scriptRunning,
+    handsBack: !IS_SHOWCASE && scriptHandsBack,
     transport: scriptDrive,
     layered: overlayLayeredRef,
   });
@@ -2698,38 +2704,14 @@ export function LiveApp(): ReactElement {
       const spot = spec.blocks[t.index]?.id;
       if (spot) modelTour.push(t.say ? { spot, say: t.say } : { spot });
     }
-    // Spotlight ONLY when it earns its place. The model leads: if it authored a tour, the
-    // answer has a story worth walking (a few stops). With no tour, we add a single gentle
-    // focus on the lead block ONLY for a substantial canvas that benefits from orienting the
-    // eye — a small or simple answer just reveals at rest (a calm canvas beats lighting up
-    // the obvious). An augment that brought new content still points at the first new block.
+    // Only authored narration earns a paced spotlight. A title-only fallback would crawl
+    // silently across the answer after its opening narration had already finished.
     let beats: ReturnType<typeof liveTourBeats> = [];
     if (modelTour.length) {
       // Walk the model's narrative across several blocks — like the demos, the spotlight
       // moves element to element and the canvas glides up/down to center each one. Capped so
       // it stays a guided highlight, not a walk through the whole canvas.
       beats = liveTourBeats(spec.blocks, { opener: turn.narration, tour: modelTour, maxStops: 5 });
-    } else if (
-      shouldRevealTour({
-        blockCount: spec.blocks.length,
-        mode: turn.mode,
-        hasModelTour: false,
-        teach: teachSurface,
-      })
-    ) {
-      // Spotlight only the FEW lead blocks (the most important ones come first), then release
-      // so the whole canvas sits visible. Highlighting every block would flatten the emphasis —
-      // the point is to draw the eye to what matters, not narrate the entire page.
-      // A teach turn earns MORE stops (a lesson's later blocks carry the worked example and the
-      // pitfalls), but not one per block: this walk is SILENT — it has only block titles, so it
-      // paces on a fixed dwell — and an uncapped one crawled a spotlight across a whole lesson
-      // for ~1.5s a card with nothing being said, long after the narration had finished. That
-      // dimmed, wordless crawl was the "voice and canvas out of step" on a big answer.
-      beats = liveTourBeats(spec.blocks, {
-        opener: turn.narration,
-        maxStops: teachTurn ? TEACH_MAX_STOPS : 3,
-        startId: turn.spot ?? undefined,
-      });
     }
     // else: no spotlight — let the whole canvas sit visible while the narration plays.
     if (!beats.length) {
@@ -2740,9 +2722,7 @@ export function LiveApp(): ReactElement {
       if (turn.spot) turn.setSpot(null);
       return;
     }
-    // A model-authored tour carries real per-block lines worth SPEAKING, so Mavéa walks the
-    // canvas aloud and each block lights up exactly while its line is spoken. The derived
-    // reading-order walk only has block titles, so it stays silent on a fixed dwell.
+    // The tour carries per-block narration; no independent timer walks a voiced answer.
     const spokenWalk = modelTour.length > 0;
     walkSpokenRef.current = spokenWalk;
     // Latched here — before the first stop — and held for the turn: the gutter reserves once
@@ -2784,7 +2764,7 @@ export function LiveApp(): ReactElement {
     // for the whole spin-up — their quiet-gates must never mistake a cold voice for "finished".
     walkActive.current = true;
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const walkController = new AbortController();
     let cueTimer: ReturnType<typeof setTimeout> | undefined;
     let i = 0;
     // Set while a claimed TeachDiagram (or any future stepDriver block) is mid-build for the
@@ -2911,7 +2891,7 @@ export function LiveApp(): ReactElement {
     const advance = (spot: string | null | undefined): void => {
       const claimed =
         spot && !mutedRef.current && !prefersReducedMotion() ? claimStepper(spot) : null;
-      if (!claimed) {
+      if (!spot || !claimed) {
         step();
         return;
       }
@@ -2921,6 +2901,17 @@ export function LiveApp(): ReactElement {
         claimed,
         {
           speakLine: speak,
+          cancelSpeech,
+          primeLine: (text) => primeLine(text, 'mavea'),
+          prepareStep: () =>
+            awaitFirstPaint(
+              () => scrollRef.current,
+              `[data-spot-id="${CSS.escape(spot)}"] .card`,
+              undefined,
+              walkController.signal,
+              true,
+            ),
+          signal: walkController.signal,
           isCancelled: () => cancelled,
           isDismissed: () => tourDismissed.current,
         },
@@ -2967,6 +2958,35 @@ export function LiveApp(): ReactElement {
       spokenLine: string | undefined,
     ): Promise<void> => {
       const estimateMs = beat.ms ?? 1700;
+      const prepareStop = async (text: string): Promise<void> => {
+        primeLine(text, 'mavea');
+        if (spot) turn.setSpot(spot);
+        await awaitFirstPaint(
+          () => scrollRef.current,
+          spot ? `[data-spot-id="${CSS.escape(spot)}"] .card` : '.card',
+          undefined,
+          walkController.signal,
+          true,
+        );
+        if (bail()) return;
+        const host = scrollRef.current;
+        const target = spot ? host?.querySelector(`[data-spot-id="${CSS.escape(spot)}"]`) : null;
+        if (host && target && !target.closest('.study-stage')) {
+          const bounds = target.getBoundingClientRect();
+          const top = bounds.top - host.getBoundingClientRect().top;
+          host.scrollTo({
+            top: Math.max(0, host.scrollTop + top - (host.clientHeight - bounds.height) / 2),
+            behavior: 'instant',
+          });
+          await awaitFirstPaint(
+            () => host,
+            `[data-spot-id="${CSS.escape(spot!)}"] .card`,
+            undefined,
+            walkController.signal,
+            true,
+          );
+        }
+      };
       // Stop 0 carries the opener, already queued sentence-by-sentence while the answer
       // streamed — never double-speak it. It used to ALSO light the first card and draw its
       // marks immediately, so on every spoken walk the opening spotlight and its ink played
@@ -2984,6 +3004,7 @@ export function LiveApp(): ReactElement {
         await waitQueueQuiet({
           floorMs: MIN_STOP_MS,
           capMs: finishCapMs(spokenMsUncapped(line ?? '')),
+          signal: walkController.signal,
         });
         if (bail()) return;
         // A barge-in DURING the opener parks here too: the opener was cut (that queue is now
@@ -3001,15 +3022,18 @@ export function LiveApp(): ReactElement {
         }
         const shown = spot ? tourShownById.get(spot) : undefined;
         for (;;) {
+          await prepareStop(ownLine);
+          if (bail()) return;
           const handle = speak(ownLine);
-          const heard = await waitLineStart(handle);
+          const heard = await waitLineStart(handle, undefined, walkController.signal);
           if (bail()) return;
           applyStop(spot, shown ?? ownLine, idx);
           primeNextSpoken(idx);
           if (heard) {
-            await waitLineEnd(handle, spokenMs(ownLine));
+            await waitLineEnd(handle, spokenMsUncapped(ownLine), undefined, walkController.signal);
           } else {
-            await delay(spokenMs(ownLine));
+            cancelSpeech();
+            await delay(spokenMs(ownLine), walkController.signal);
           }
           const verdict = await pauseVerdict();
           if (verdict === 'abort') return;
@@ -3026,7 +3050,11 @@ export function LiveApp(): ReactElement {
       if (!spokenLine) {
         applyStop(spot, line, idx);
         primeNextSpoken(idx);
-        await waitQueueQuiet({ floorMs: MIN_STOP_MS, capMs: finishCapMs(estimateMs) });
+        await waitQueueQuiet({
+          floorMs: MIN_STOP_MS,
+          capMs: finishCapMs(estimateMs),
+          signal: walkController.signal,
+        });
         if (bail()) return;
         {
           const verdict = await pauseVerdict();
@@ -3037,8 +3065,10 @@ export function LiveApp(): ReactElement {
         return;
       }
       for (;;) {
+        await prepareStop(spokenLine);
+        if (bail()) return;
         const handle = speak(spokenLine);
-        const heard = await waitLineStart(handle);
+        const heard = await waitLineStart(handle, undefined, walkController.signal);
         if (bail()) return;
         // Re-applying on a replay is safe by design: ink() dedupes per (block, gesture).
         applyStop(spot, line, idx);
@@ -3047,11 +3077,12 @@ export function LiveApp(): ReactElement {
         // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
         primeNextSpoken(idx);
         if (heard) {
-          await waitLineEnd(handle, estimateMs);
+          await waitLineEnd(handle, spokenMsUncapped(spokenLine), undefined, walkController.signal);
         } else {
+          cancelSpeech();
           // This line will never be heard (voice down, or hard-stopped) — dwell for the
           // caption's own reading length instead of sprinting through the remaining stops.
-          await delay(estimateMs);
+          await delay(estimateMs, walkController.signal);
         }
         // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
         // stop — until the transcript decides. Filler re-speaks this stop's line (its PCM is
@@ -3085,23 +3116,17 @@ export function LiveApp(): ReactElement {
       // Show the shown caption, but VOICE the spoken twin for this stop when the model gave one
       // (so a figure or term in the line is said the way a person would), falling back to the caption.
       const spokenLine = spokenLineOf(beat);
-      if (spokenWalk) {
-        void runSpokenStop(beat, idx, spot, line, spokenLine);
-      } else {
-        // The silent derived walk has no audio to track — its fixed dwell is the pacing.
-        applyStop(spot, line, idx);
-        timer = setTimeout(step, beat.ms ?? 0);
-      }
+      void runSpokenStop(beat, idx, spot, line, spokenLine);
     };
     // Mute ENDS a running walk — the reader asked for the written answer, not a paced one. The
     // remaining stops' pen marks still land at once (they're answer content, not pacing); their
     // margin notes don't, since the gutter was never reserved for a walk that arrived voiced.
     flushWalkRef.current = () => {
       cancelled = true;
+      walkController.abort();
       // A parked pause must not outlive the walk it parked — resolve it as an abort so the
       // awaiting stop returns instead of leaking a pending promise into a finished turn.
       dropWalkPause();
-      if (timer) clearTimeout(timer);
       releaseActiveDiagram();
       cancelSpeech();
       if (annotationsEnabledRef.current) {
@@ -3120,31 +3145,24 @@ export function LiveApp(): ReactElement {
       finish();
       turn.setSpot(null);
     };
-    // Hold the walk until everything it is about to point at is actually there: the settled
-    // blocks' family chunks (an augment can add a family the streaming preload never saw), the
-    // grid's async content (fonts/images/tiles — bounded, late pixels just pop in as before),
-    // and, for a voiced turn, the opener's audio reaching the speakers. Without this the walk
-    // used to start over a half-built canvas — a silent gap, then the spotlight "randomly"
-    // going again. Every wait is bounded (BARRIER_MAX_MS worst case, honest "Preparing…" cue
-    // past the anti-flash delay); the warm path resolves in two animation frames.
+    // Join family loading and opening audio without waiting for unrelated map tiles or
+    // export-quality whole-grid settling. Each spoken stop gates on its own painted card.
     const beginWalk = async (): Promise<void> => {
       cueTimer = setTimeout(() => {
         if (!cancelled) setWalkPreparing(true);
       }, PREPARE_CUE_DELAY_MS);
-      const gridHost = scrollRef.current;
+      await openingCanvasReadyRef.current;
+      // Playback is enqueued by the opener's readiness continuation. Let that continuation
+      // publish its line handle before taking the snapshot for the walk's audio barrier.
+      await Promise.resolve();
+      if (bail()) return;
       await awaitWalkReady({
         loadFams: () => loadFamilies(familiesFor(spec.blocks)),
-        settle: gridHost
-          ? () =>
-              ensureFigureReady(gridHost, {
-                timeoutMs: SETTLE_TIMEOUT_MS,
-                perImageMs: SETTLE_IMG_MS,
-              })
-          : undefined,
         firstLine: burstLineRef.current,
         // Muted and captions-only turns must never wait on audio that will not come; an
         // unsettled probe (first turn of a session) is still worth the bounded wait.
         wantVoice: !mutedRef.current && kokoroKnownAvailable() !== false,
+        signal: walkController.signal,
       });
       if (cueTimer) clearTimeout(cueTimer);
       setWalkPreparing(false);
@@ -3154,6 +3172,7 @@ export function LiveApp(): ReactElement {
     void beginWalk();
     return () => {
       cancelled = true;
+      walkController.abort();
       // A pause parked against THIS walk must not survive it: resolve as abort so the awaiting
       // stop returns (and bails on `cancelled`) instead of leaking a pending promise.
       dropWalkPause();
@@ -3161,7 +3180,6 @@ export function LiveApp(): ReactElement {
       walkActive.current = false;
       walkSpokenRef.current = false;
       diagramDrivingRef.current = false;
-      if (timer) clearTimeout(timer);
       if (cueTimer) clearTimeout(cueTimer);
       setWalkPreparing(false);
       releaseActiveDiagram();
@@ -3180,6 +3198,9 @@ export function LiveApp(): ReactElement {
     const spot = turn.spot;
     const spec = turn.spec;
     if (!spec || !spot) return;
+    // Spoken stops center their own target before starting audio; a delayed smooth scroll
+    // here would move it again after narration had already begun.
+    if (walkSpokenRef.current) return;
     let tries = 0;
     let id = 0;
     const attempt = (): void => {
@@ -3235,7 +3256,9 @@ export function LiveApp(): ReactElement {
   // the whole canvas is there instantly (the same primitive a mute mid-walk uses). Outside a walk it
   // just stops any lone narration and clears a lingering spotlight. Wired to Escape and to the
   // Speaking pill so the user can always skip straight to the full answer.
+  const stopNarration = turn.stopNarration;
   const showAll = useCallback(() => {
+    stopNarration();
     const flush = flushWalkRef.current;
     if (flush) {
       flush();
@@ -3243,7 +3266,7 @@ export function LiveApp(): ReactElement {
       cancelSpeech();
       dismissSpotlight();
     }
-  }, [dismissSpotlight]);
+  }, [dismissSpotlight, stopNarration]);
 
   // Restoring (or replacing) a canvas remounts every card in one commit. Mavéa's annotation portals
   // are createPortal'd INTO those cards, so if a portal is still pointed at a card React unmounts in
@@ -6744,7 +6767,7 @@ export function LiveApp(): ReactElement {
             </div>
           </div>
         </div>
-      ) : inWizard ? (
+      ) : inWizard && !IS_SHOWCASE ? (
         <>
           <SetupWizard
             seed={seedQuery.current || undefined}
@@ -6958,7 +6981,7 @@ export function LiveApp(): ReactElement {
       )}
 
       {/* settings overlay (from the model chip) */}
-      {showSettings && (
+      {!IS_SHOWCASE && showSettings && (
         <div
           role="presentation"
           onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}

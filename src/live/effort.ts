@@ -14,7 +14,7 @@
 //     of a plausible-sounding variant; creative asks (brainstorm, names, ideas) want a HIGH
 //     one because variety is the whole point. Everything in between keeps the proven 0.3.
 //
-//  3) spoken cap — the narrated line should sound like a person talking, never a wall of
+//  3) spoken writing target — the narrated line should sound like a person talking, never a wall of
 //     text. Lean asks get a tweet; richer asks get up to a couple of sentences. The depth
 //     lives in the canvas, not the monologue — "good detail when needed, sometimes right
 //     to the point, never longer than 2–3 messages."
@@ -22,7 +22,6 @@
 // Zero-dependency, word-bounded, never-throws — same spirit as classifyAsk / detectShapes,
 // and identical on every model/provider so behavior doesn't drift by backend.
 import type { ThinkingLevel } from './providers/types';
-import { trimToSentence } from '../lib/spokenText';
 import type { AskComplexity } from './select/complexity';
 import type { IntentSignals } from './select/intent';
 
@@ -115,23 +114,20 @@ export function temperatureFor(
   return TEMP_DEFAULT;
 }
 
-// Spoken-line ceilings (characters). Keep the opener short because blocks cannot begin streaming
+// Spoken-line writing targets (characters). Keep the opener short because blocks cannot begin streaming
 // until this field closes; the canvas carries the depth.
 const SPOKEN_LEAN = 140;
 const SPOKEN_RICH = 220;
 
 /**
- * Cap the narrated line to a conversational length for the ask. Lean → ~140 chars; rich →
- * up to ~220 (a couple of short sentences). The canvas carries the depth, so the voice stays
- * human and short. Never throws; empty stays empty.
+ * Keep the authored thought intact. Brevity is requested in the prompt, never imposed by
+ * deleting the end of a sentence or the conclusion that follows it.
  */
-export function capSpoken(text: string, complexity: AskComplexity): string {
-  const max = complexity === 'lean' || complexity === 'brief' ? SPOKEN_LEAN : SPOKEN_RICH;
-  return trimToSentence(text.trim(), max);
+export function completeSpokenLine(text: string): string {
+  return text.trim();
 }
 
-/** The character ceiling for a complexity — exported so a prompt can tell the model the
- *  budget it's writing to (keeps the model from over-writing then getting truncated). */
+/** The character target for a complexity, used only in the model's writing instructions. */
 export function spokenBudget(complexity: AskComplexity): number {
   return complexity === 'lean' || complexity === 'brief' ? SPOKEN_LEAN : SPOKEN_RICH;
 }
@@ -144,10 +140,12 @@ export const NARRATION_FIRST_LINE =
   'OUTPUT ORDER — emit the "narration" field FIRST in the JSON, before "title", "sub", and "blocks", and write it as complete sentences. It is spoken aloud the moment it streams, so it must lead.';
 
 /** The per-turn SPOKEN LINE directive — the single source of truth for narration length (see
- *  spokenBudget/capSpoken above). Exported so the eval harness can assemble the SAME prompt
+ *  spokenBudget above). Exported so the eval harness can assemble the SAME prompt
  *  production sends instead of a hand-rolled, complexity-blind subset. */
 export function spokenLineDirective(complexity: AskComplexity): string {
-  return complexity === 'lean' || complexity === 'brief'
-    ? `SPOKEN LINE ("narration") — keep it to ONE short sentence (≈${spokenBudget(complexity)} characters). Right to the point.`
-    : `SPOKEN LINE ("narration") — at most two short sentences (≈${spokenBudget('rich')} characters), like a person talking. The visuals carry the detail; never narrate the whole canvas.`;
+  const length =
+    complexity === 'lean' || complexity === 'brief'
+      ? `SPOKEN LINE ("narration") — keep it to ONE short sentence (≈${spokenBudget(complexity)} characters). Right to the point.`
+      : `SPOKEN LINE ("narration") — at most two short sentences (≈${spokenBudget('rich')} characters), like a person talking. The visuals carry the detail; never narrate the whole canvas.`;
+  return `${length} These are writing targets, not permission to cut a thought short. Finish every sentence and its thought. Rewrite more concisely if needed; never end with a hanging clause, an unfinished list, or an ellipsis standing in for the conclusion. Apply the same rule to tour say lines, spoken pronunciation twins, and per-block notes used by Guide me.`;
 }

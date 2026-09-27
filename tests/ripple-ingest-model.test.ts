@@ -21,6 +21,7 @@ import { parseCodeowners, ownerForPath } from '../src/live/ripple/ingest/owners'
 import { parseGitHubInput } from '../src/live/ripple/ingest/parseGitHubUrl';
 import { listTracked, trackModel, untrack } from '../src/live/ripple/tracked';
 import { classifyTier, planFor } from '../src/live/ripple/ingest/tier';
+import { mergeCallerEvidence } from '../src/live/ripple/ingest/codeContext';
 import type { ModelConfig } from '../src/types/mavea';
 
 // The no-backend "run on real code" path: a pasted unified diff is parsed
@@ -168,6 +169,80 @@ index 0000000..2222222
       expect(m.changes[2]!.title).toContain('rotateRefresh');
       // The change's diff still carries the real hunk lines.
       expect(m.changes[0]!.diff.lines.some((l) => l.c.includes('VerifyOpts'))).toBe(true);
+    });
+
+    it('turns concrete value and symbol edits into before/now facts', () => {
+      expect(m.changes[0]!.deltas).toEqual([
+        {
+          subject: 'validateToken',
+          kind: 'changed',
+          before: 'validateToken(t: string)',
+          after: 'validateToken(t: string, opts: VerifyOpts)',
+        },
+      ]);
+      expect(m.changes[1]!.deltas).toEqual([
+        {
+          subject: 'parseLegacyJWT',
+          kind: 'removed',
+          before: 'function parseLegacyJWT(token)',
+        },
+      ]);
+      expect(m.changes[2]!.deltas).toEqual([
+        {
+          subject: 'rotateRefresh',
+          kind: 'added',
+          after: 'async function rotateRefresh(session)',
+        },
+      ]);
+
+      const values = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/src/config.ts b/src/config.ts',
+            '--- a/src/config.ts',
+            '+++ b/src/config.ts',
+            '@@ -1,2 +1,3 @@',
+            '-const ACCESS_TTL = 60 * 60;',
+            '+const ACCESS_TTL = 15 * 60;',
+            '+const ROTATE_REFRESH = true;',
+            ' const UNCHANGED = true;',
+          ].join('\n'),
+        ),
+      );
+      expect(values.changes[0]!.deltas).toEqual([
+        { subject: 'ACCESS_TTL', kind: 'changed', before: '60 * 60', after: '15 * 60' },
+        { subject: 'ROTATE_REFRESH', kind: 'added', after: 'true' },
+      ]);
+    });
+
+    it('draws causality from a changed definition to its proved caller', () => {
+      const callers = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/src/auth/token.ts b/src/auth/token.ts',
+            '--- a/src/auth/token.ts',
+            '+++ b/src/auth/token.ts',
+            '@@ -1 +1 @@',
+            '-export function validateToken(t: string) {}',
+            '+export function validateToken(t: string, opts: VerifyOpts) {}',
+            'diff --git a/src/api/guard.ts b/src/api/guard.ts',
+            '--- a/src/api/guard.ts',
+            '+++ b/src/api/guard.ts',
+            '@@ -1 +1 @@',
+            '-const ok = validateToken(token);',
+            '+const ok = validateToken(token, opts);',
+          ].join('\n'),
+        ),
+      );
+      const auth = callers.nodes.find((node) => node.label === 'src/auth')!;
+      const api = callers.nodes.find((node) => node.label === 'src/api')!;
+      expect(callers.edges).toContainEqual({
+        from: auth.id,
+        to: api.id,
+        verb: 'affects',
+        status: 'breaks',
+      });
+      expect(callers.changes[0]!.blastRadius).toEqual([auth.id, api.id]);
     });
 
     it('builds an in-repo impact map grouped by area, with consistent edges', () => {
@@ -349,6 +424,49 @@ diff --git a/src/api/guard.ts b/src/api/guard.ts
 +await validateToken(tok)
 `),
   );
+
+  describe('verified caller evidence', () => {
+    it('promotes unchanged callers beyond the PR into the impact graph', () => {
+      const merged = mergeCallerEvidence(FLOOR, [
+        { symbol: 'validateToken', file: 'src/jobs/session-reaper.ts' },
+        { symbol: 'validateToken', file: 'src/auth/token.ts' },
+      ]);
+
+      const caller = merged.nodes.find((node) => node.label === 'src/jobs/session-reaper.ts');
+      expect(caller).toMatchObject({
+        scope: 'downstream',
+        status: 'breaks',
+        sub: 'verified caller outside the diff',
+        cite: { ref: 'src/jobs/session-reaper.ts', evidence: 'verified' },
+      });
+      expect(merged.nodes.some((node) => node.label === 'src/auth/token.ts')).toBe(false);
+      expect(merged.edges).toContainEqual(
+        expect.objectContaining({ to: caller?.id, verb: 'is used by', breaking: true }),
+      );
+
+      const change = merged.changes.find((item) => item.symbols?.includes('validateToken'))!;
+      expect(change.blastRadius).toContain(caller?.id);
+      expect(change.blastOutside).toBe(1);
+      expect(change.links).toContainEqual(
+        expect.objectContaining({
+          name: 'src/jobs/session-reaper.ts',
+          scope: 'downstream',
+          status: 'breaks',
+        }),
+      );
+    });
+
+    it('deduplicates one outside caller found through multiple changed symbols', () => {
+      const merged = mergeCallerEvidence(FLOOR, [
+        { symbol: 'validateToken', file: 'src/jobs/session-reaper.ts' },
+        { symbol: 'checkToken', file: 'src/jobs/session-reaper.ts' },
+      ]);
+
+      expect(
+        merged.nodes.filter((node) => node.label === 'src/jobs/session-reaper.ts'),
+      ).toHaveLength(1);
+    });
+  });
 
   describe('parseEnrichment', () => {
     it('parses JSON wrapped in fences and prose', () => {

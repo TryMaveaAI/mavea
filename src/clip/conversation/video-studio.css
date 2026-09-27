@@ -1,20 +1,48 @@
 .cvs-panel {
-  max-height: min(82dvh, 860px);
+  max-height: min(100dvh - 106px, 980px);
   overflow: auto;
-  padding-right: 6px;
+  gap: 15px;
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 24px;
+  background: rgb(16 18 24 / 0.94);
+  box-shadow: 0 32px 90px -54px rgb(0 0 0 / 0.9);
   scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+  scrollbar-gutter: stable;
 }
-/* The one control the whole panel exists to reach cannot be the one that scrolls off the bottom.
-   Selecting several turns grows the list past the panel, which used to push Create below the fold
-   with nothing on screen suggesting it was there. */
+.cvs-panel::-webkit-scrollbar {
+  width: 7px;
+}
+.cvs-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cvs-panel::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+  background: rgb(255 255 255 / 0.22);
+  background-clip: padding-box;
+}
 .cvs-panel .shm-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  padding: 12px 0 4px;
-  border-top: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(9 11 18 / 0.96);
-  backdrop-filter: var(--glass-blur, blur(6px));
+  margin: 0 -10px -10px;
+  padding: 16px 10px 10px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+}
+.cvs-panel .shm-btn-primary {
+  width: 100%;
+  min-height: 50px;
+  justify-content: space-between;
+  padding-inline: 20px 14px;
+  border-radius: 16px;
+}
+.cvs-output-badge {
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: var(--r-full);
+  background: rgb(255 255 255 / 0.12);
+  font: 650 var(--fs-xs) / 1 var(--font-data);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .cvs-title {
   color: #f3f6fc;
@@ -47,6 +75,15 @@
 .cvs-presets button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.cvs-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid rgb(255 255 255 / 0.09);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.025);
 }
 .cvs-turns {
   display: flex;
@@ -402,14 +439,16 @@ html[data-perf='lite'] .cvs-presence .presence {
   background: var(--surface-deep);
 }
 
-/* One scroll container per breakpoint: the panel scrolls on a desktop window, the scrim scrolls
-   here. Sticky inside the now non-scrolling panel would re-anchor against that scrim and float
-   the action bar mid-list, so it goes back into the flow. */
+/* One scroll container per breakpoint: the panel scrolls on desktop, the scrim scrolls here. */
 @media (width <= 900px) {
   .cvs-panel {
     max-height: none;
+    padding: 20px;
   }
-  .cvs-panel .shm-actions {
-    position: static;
+}
+
+@media (width <= 560px) {
+  .cvs-settings-grid {
+    grid-template-columns: 1fr;
   }
 }

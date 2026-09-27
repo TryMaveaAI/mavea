@@ -679,27 +679,26 @@ describe('speakKokoroLine', () => {
     await expect(speakKokoroResult('Hello.', 'mavea')).resolves.toBe(false);
   });
 
-  it('splits long narration into natural bounded breaths for fast first audio', () => {
+  it('synthesizes complete sentences without character-budget fragments', () => {
     const chunks = splitSynthesisChunks(
       'Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I mapped out three balanced days for you.',
     );
-    expect(chunks.length).toBeGreaterThan(2);
+    expect(chunks).toHaveLength(2);
     expect(chunks.join(' ')).toBe(
       'Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I mapped out three balanced days for you.',
     );
-    expect(Math.max(...chunks.map((chunk) => chunk.length))).toBeLessThanOrEqual(68);
-    // The opening breath is capped tighter than the rest (it is the only one heard after
-    // silence), and falls back to a word boundary when no pause lands inside its window.
-    expect(chunks[0]).toBe('Lisbon is all about pacing yourself');
-    expect(chunks[0].length).toBeLessThanOrEqual(40);
+    // Even the first request retains a whole sentence so synthesis can resolve its prosody.
+    expect(chunks[0]).toBe(
+      'Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food.',
+    );
   });
 
-  it('opens on a real pause when one lands inside the first-breath window', () => {
+  it('keeps the conclusion of a long sentence in the same synthesis request', () => {
     const chunks = splitSynthesisChunks(
       'Sure, here is the plan for today, and then a few thoughts about tomorrow morning as well.',
     );
     // The comma after "Sure" is too early to be worth a request of its own; the next one is not.
-    expect(chunks[0]).toBe('Sure, here is the plan for today,');
+    expect(chunks).toHaveLength(1);
     expect(chunks.join(' ')).toBe(
       'Sure, here is the plan for today, and then a few thoughts about tomorrow morning as well.',
     );

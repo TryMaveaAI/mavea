@@ -9,6 +9,7 @@
 // so those are never invented — cross-repo blast is left for the connected-graph moat.
 import type {
   ChangeKind,
+  ChangeDelta,
   ChangeLink,
   GateCondition,
   NodeStatus,
@@ -349,6 +350,85 @@ function diffLines(f: ParsedFile): { t?: DiffLineKind; c: string }[] {
   return out;
 }
 
+interface LineFact {
+  subject: string;
+  value: string;
+}
+
+function lineFact(line: string): LineFact | null {
+  const text = line.trim().replace(/[;,]\s*$/, '');
+  if (!text || text.startsWith('//') || text.startsWith('#')) return null;
+
+  const functionDeclaration =
+    /^(?:export\s+)?(?:default\s+)?(async\s+)?function\s+([A-Za-z_$][\w$]*)\s*(\([^)]*\)(?:\s*:\s*[^={]+)?)/.exec(
+      text,
+    );
+  if (functionDeclaration?.[2] && functionDeclaration[3]) {
+    const prefix = functionDeclaration[1] ? 'async function' : 'function';
+    return {
+      subject: functionDeclaration[2],
+      value: `${prefix} ${functionDeclaration[2]}${functionDeclaration[3].trim()}`,
+    };
+  }
+  const declaration = /^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)[^=]*=\s*(.+)$/.exec(
+    text,
+  );
+  if (declaration?.[1] && declaration[2]) {
+    return { subject: declaration[1], value: declaration[2].trim() };
+  }
+  const assignment = /^([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*(?::=|=(?!=))\s*(.+)$/.exec(
+    text,
+  );
+  if (assignment?.[1] && assignment[2]) {
+    return { subject: assignment[1], value: assignment[2].trim() };
+  }
+  const property = /^["']?([A-Za-z_$][\w$.-]*)["']?\s*:\s*(.+)$/.exec(text);
+  if (property?.[1] && property[2]) {
+    return { subject: property[1], value: property[2].trim() };
+  }
+  return null;
+}
+
+const clipFact = (value: string): string =>
+  value.length > 140 ? `${value.slice(0, 137).trimEnd()}…` : value;
+
+/** Pair old/new assignments by their real identifier. A signature change is also a concrete delta,
+ *  even when the language omits a declaration keyword in the hunk excerpt. */
+function changeDeltas(f: ParsedFile, analysis: Analysis): ChangeDelta[] {
+  const before = new Map<string, string>();
+  const after = new Map<string, string>();
+  for (const line of linesOf(f, 'del')) {
+    const fact = lineFact(line);
+    if (fact) before.set(fact.subject, clipFact(fact.value));
+  }
+  for (const line of linesOf(f, 'add')) {
+    const fact = lineFact(line);
+    if (fact) after.set(fact.subject, clipFact(fact.value));
+  }
+
+  const signature = analysis.kind === 'interface' ? analysis.symbols[0] : undefined;
+  if (signature && !before.has(signature) && !after.has(signature)) {
+    const oldLine = linesOf(f, 'del').find((line) => line.includes(`${signature}(`));
+    const newLine = linesOf(f, 'add').find((line) => line.includes(`${signature}(`));
+    if (oldLine) before.set(signature, clipFact(oldLine.trim()));
+    if (newLine) after.set(signature, clipFact(newLine.trim()));
+  }
+
+  const deltas: ChangeDelta[] = [];
+  for (const subject of new Set([...before.keys(), ...after.keys()])) {
+    const oldValue = before.get(subject);
+    const newValue = after.get(subject);
+    if (oldValue === newValue) continue;
+    deltas.push({
+      subject,
+      kind: oldValue == null ? 'added' : newValue == null ? 'removed' : 'changed',
+      ...(oldValue == null ? {} : { before: oldValue }),
+      ...(newValue == null ? {} : { after: newValue }),
+    });
+  }
+  return deltas.slice(0, 8);
+}
+
 /** Does a file's diff text reference any of `symbols` as a call? (an in-repo dependent). */
 function referencesAny(f: ParsedFile, symbols: Set<string>): boolean {
   if (symbols.size === 0) return false;
@@ -404,6 +484,7 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
       links,
       risks: a.risks,
       symbols: a.symbols.length ? a.symbols.slice(0, 6) : undefined,
+      deltas: changeDeltas(f, a),
     };
   });
 
@@ -460,7 +541,8 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
     });
     edges.push({ from: 'pr', to: id, verb: 'changes', status });
   });
-  // Area→area dependency edges from in-repo references (deduped).
+  // Area→area effect edges from a changed definition to its proved in-repo callers (deduped). The
+  // arrow is causal rather than lexical: changing the callee affects the caller downstream.
   const seenEdge = new Set<string>();
   real.forEach((f, i) => {
     const fromArea = areaOf(f.path);
@@ -473,17 +555,31 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
       if (toArea === fromArea) return;
       const toId = nodeIdByArea.get(toArea);
       if (!toId || !referencesAny(other, syms)) return;
-      const key = `${toId}->${fromId}`;
+      const key = `${fromId}->${toId}`;
       if (seenEdge.has(key)) return;
       seenEdge.add(key);
       edges.push({
-        from: toId,
-        to: fromId,
-        verb: 'calls',
+        from: fromId,
+        to: toId,
+        verb: 'affects',
         status: analyses[i]!.risk === 'breaks' ? 'breaks' : 'affected',
       });
     });
   });
+
+  // Tie each change to the actual area nodes its own file and proved in-diff callers occupy. The
+  // causal view can then say which effects follow which atomic value change instead of treating the
+  // whole PR as one undifferentiated blast.
+  for (const change of changes) {
+    const ids = new Set<string>();
+    const own = nodeIdByArea.get(areaOf(change.file));
+    if (own) ids.add(own);
+    for (const link of change.links) {
+      const linked = nodeIdByArea.get(areaOf(link.ref));
+      if (linked) ids.add(linked);
+    }
+    change.blastRadius = [...ids];
+  }
 
   // Gate, computed from the worst change.
   const breaking = changes.filter((c) => c.risk === 'breaks');

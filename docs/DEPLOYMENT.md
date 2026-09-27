@@ -1,5 +1,7 @@
 # Production delivery contract
 
+## Full application hosting
+
 Mavéa’s build and its host have separate responsibilities. The repository can guarantee minified,
 content-hashed assets and safe defaults. Only the deployed edge can guarantee TLS, HTTP/2, HTTP/3,
 compression, geographic latency, and response headers. Do not claim those protocols until the

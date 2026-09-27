@@ -20,6 +20,7 @@ import {
 } from './kokoro';
 import { forSpeech } from '../lib/spokenText';
 import { stripTags } from '../lib/plainText';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 
 /** Whose line this is — selects the voice profile. */
 export type Speaker = 'mavea' | 'user';
@@ -99,6 +100,7 @@ export type SpokenLine = KokoroLine;
  * honest fallback.
  */
 export function speakLine(text: string, who: Speaker): SpokenLine {
+  if (IS_SHOWCASE) return { started: Promise.resolve(false), finished: Promise.resolve(false) };
   return speakKokoroLine(text, who);
 }
 
@@ -108,6 +110,7 @@ export function speakLine(text: string, who: Speaker): SpokenLine {
  * calls this per stop to hide the next stop's synthesis latency.
  */
 export function primeLine(text: string, who: Speaker): void {
+  if (IS_SHOWCASE) return;
   primeKokoroLine(text, who);
 }
 

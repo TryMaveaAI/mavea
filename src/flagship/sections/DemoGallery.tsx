@@ -22,10 +22,10 @@ export function DemoGallery({ onPlay }: { onPlay: (p: DemoCastMember) => void })
   return (
     <>
       <SectionHead
-        eyebrow="Curated examples"
-        sub="Each fictional scenario is a prerecorded, model-generated answer sequence with curated feature choreography on the production UI. No live provider call runs during playback."
+        eyebrow="Choose a thread"
+        sub="Four fictional scenarios, recorded model answers, and the actual Mavéa interface. Explore a session without making a live model call."
       >
-        Watch a prerecorded workflow
+        Where does your curiosity go?
       </SectionHead>
 
       <div className="fl-demo-grid">

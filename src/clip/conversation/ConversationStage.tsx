@@ -43,9 +43,10 @@ export function ConversationStage({
     // A fresh turn's canvas starts at the top; a beat with no cue HOLDS where the last one
     // settled — gliding home between cues is what read as random scrolling.
     let shift: number | null = turnChanged ? 0 : null;
-    if (scene?.spot) {
+    const focus = scene?.focus ?? scene?.spot;
+    if (focus) {
       const target = [...scroll.querySelectorAll<HTMLElement>('[data-spot-id]')].find(
-        (element) => element.dataset.spotId === scene.spot,
+        (element) => element.dataset.spotId === focus,
       );
       if (target) {
         // Accumulate layout offsets rather than reading getBoundingClientRect: the keyed remount
@@ -73,7 +74,7 @@ export function ConversationStage({
     // settled, so pen marks land on resting positions.
     const settle = window.setTimeout(() => setRevision((value) => value + 1), 420);
     return () => window.clearTimeout(settle);
-  }, [scene?.spot, scene?.turnIndex]);
+  }, [scene?.focus, scene?.spot, scene?.turnIndex]);
 
   const asking = scene?.questionOnly ?? false;
   const heading = scene ? scene.frame.question || scene.frame.spec.title : '';

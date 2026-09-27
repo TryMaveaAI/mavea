@@ -47,28 +47,27 @@ describe('FlagshipHost (the landing) — mounts and shows the marketing home', (
     // The old behavior stashed tour mode and hopped to #/live the instant the home mounted —
     // the landing must now stay put and offer the tour instead of forcing it.
     expect(window.location.hash).not.toBe('#/live');
-    expect(screen.getByText(/one question become a study/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Let me explore/ })).toBeInTheDocument();
   });
 
-  it('dismissing the tour invite retires it without navigating away', () => {
+  it('exploring the illustration stays on the home page', () => {
     localStorage.removeItem('mavea-tour-seen-v1');
     render(<FlagshipHost />);
-    fireEvent.click(screen.getByText(/I'll explore on my own/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Map the idea' }));
     expect(window.location.hash).not.toBe('#/live');
-    expect(screen.queryByText(/one question become a study/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Take the scenic route.' })).toBeInTheDocument();
   });
 
-  it('a returning visitor gets the plain key-free Study replay link', () => {
+  it('a returning visitor can still enter the guided demo', () => {
     localStorage.setItem('mavea-tour-seen-v1', '1');
     render(<FlagshipHost />);
-    expect(screen.getByText(/^Watch the Study$/i)).toBeInTheDocument();
-    expect(screen.queryByText(/one question become a study/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Let me explore/ })).toBeInTheDocument();
   });
 
   it('shows the flagship hero and the entry into Live', () => {
     render(<FlagshipHost />);
     // the flagship hero headline (also echoed in the closing CTA, hence getAllByText).
-    expect(screen.getAllByText(/come alive around you/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/had a pulse/);
     // the "Open Mavéa" call-to-action that hops to the Live surface — the one consistent label
     // used everywhere on the page (nav + the closing CTA both read it, hence getAllByRole).
     expect(screen.getAllByRole('button', { name: /Open Mavéa/i }).length).toBeGreaterThanOrEqual(1);

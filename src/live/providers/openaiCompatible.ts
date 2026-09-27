@@ -18,7 +18,19 @@ import type {
   TokenUsage,
   ThinkingLevel,
 } from './types';
-import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, arr, num } from './http';
+import {
+  fetchWithTimeout,
+  providerErrorDetail,
+  readSSE,
+  retryAfterMs,
+  sleepAbortable,
+  observeProviderLimits,
+  isTransientProviderFailure,
+  obj,
+  str,
+  arr,
+  num,
+} from './http';
 import { openaiUserContent, textOnlyUser } from './parts';
 import { isFreeRoute } from './route';
 
@@ -182,6 +194,7 @@ export function inBandErrorMessage(id: string, err: Record<string, unknown>): st
 const noJsonMode = new Set<string>();
 /** Models that refuse the cache breakpoint fields — a gateway can front a model that has none. */
 const noPromptCache = new Set<string>();
+const TRANSIENT_RETRIES = 2;
 
 /** Whether a 400 is the upstream refusing JSON mode, rather than any other bad argument. */
 function rejectsPromptCache(status: number, detail: string): boolean {
@@ -229,6 +242,7 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
           { method: 'GET', headers: headers(cfg) },
           PROBE_TIMEOUT_MS,
         );
+        observeProviderLimits(res);
         if (!res.ok)
           return {
             ok: false,
@@ -380,6 +394,7 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
           });
 
         let res: Response;
+        let transientAttempt = 0;
         for (;;) {
           res = await fetchWithTimeout(
             `${base}${CHAT}`,
@@ -387,10 +402,25 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
             GEN_TIMEOUT_MS,
             signal,
           );
+          observeProviderLimits(res);
           if (res.ok) break;
           // The body says WHY: an out-of-credit 429 and a per-minute 429 are the same status, and
           // the in-band error path below already folds the same shape (see inBandErrorMessage).
           const detail = await providerErrorDetail(res);
+          if (
+            isTransientProviderFailure(res.status, detail) &&
+            transientAttempt < TRANSIENT_RETRIES &&
+            !signal.aborted
+          ) {
+            const wait = retryAfterMs(res, transientAttempt++, detail);
+            req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+            try {
+              await sleepAbortable(wait, signal);
+            } finally {
+              req.onWait?.(null);
+            }
+            continue;
+          }
           // JSON mode is an aid, never the answer's only guarantee — the prompt asks for JSON and
           // the validator reads what comes back either way. A model that won't take it still answers.
           if (rejectsJsonMode(res.status, detail) && !noJsonMode.has(cfg.model)) {

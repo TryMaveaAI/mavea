@@ -12,7 +12,7 @@ const PCM = new Uint8Array(480).fill(7);
 
 let ctx: FakeAudioContext;
 
-class FakeAudioContext {
+class FakeAudioContext extends EventTarget {
   state: 'running' | 'suspended' | 'closed' = 'running';
   currentTime = 0;
   destination = { kind: 'destination' };
@@ -87,6 +87,42 @@ afterEach(async () => {
 });
 
 describe('streamTts audio lease', () => {
+  it('never caches an incomplete stream as a finished spoken line', async () => {
+    const response = streamingResponse();
+    const cached = vi.fn();
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const spoken = streamSpeak('Keep the whole sentence.', 'af_heart', undefined, cached);
+      await vi.advanceTimersByTimeAsync(50);
+      response.controller.error(new Error('connection reset'));
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(spoken).resolves.toBe(false);
+      expect(cached).not.toHaveBeenCalled();
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it('keeps the scheduled tail through audio-device suspension and finishes after resume', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(PCM)),
+    );
+    let finished = false;
+    const spoken = streamSpeak('A complete sentence.', 'af_heart').then(() => {
+      finished = true;
+    });
+    await vi.advanceTimersByTimeAsync(1);
+    ctx.state = 'suspended';
+    ctx.dispatchEvent(new Event('statechange'));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(finished).toBe(false);
+    ctx.currentTime = 2;
+    ctx.state = 'running';
+    ctx.dispatchEvent(new Event('statechange'));
+    await spoken;
+    expect(finished).toBe(true);
+  });
   it('hands the lease back when a line finishes, so the context can park again', async () => {
     vi.stubGlobal(
       'fetch',

@@ -18,6 +18,7 @@ import { LegalGate } from './legal/LegalGate';
 import { isLegalGateBypassed, isNoSpendRoute } from './legal/routePolicy';
 import { configureProviderSpending } from './live/providers/spendPolicy';
 import { createPreloadableLazy } from './lib/preloadableLazy';
+import { IS_SHOWCASE } from './lib/runtimeMode';
 
 // Dashboards refresh while Mavéa is open, not while #/dashboards happens to be the visible surface
 // — so the loop is owned here, above the router, rather than by any one surface. Dynamically
@@ -97,7 +98,7 @@ function Root() {
   // or hydrate this background subsystem merely because Mavéa is open.
   const [startLoop, setStartLoop] = useState(false);
   useEffect(() => {
-    if (startLoop) return;
+    if (IS_SHOWCASE || startLoop) return;
     let timer: number | null = null;
     const arm = (): void => {
       if (timer !== null) return;

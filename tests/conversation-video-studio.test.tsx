@@ -102,14 +102,14 @@ afterEach(() => {
 });
 
 describe('ConversationVideoStudio', () => {
-  it('opens on the current turn with audio on by default and 1080p creation', () => {
+  it('opens on the complete conversation with audio on by default and 1080p creation', () => {
     render(<ConversationVideoStudio frames={frames} />);
     const checks = screen.getAllByRole('checkbox') as HTMLInputElement[];
-    expect(checks.map((input) => input.checked)).toEqual([false, false, true]);
+    expect(checks.map((input) => input.checked)).toEqual([true, true, true]);
     // Audio is an ordinary Include chip now — on by default, off is the cheap silent export.
     expect(screen.getByRole('button', { name: 'Audio' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Create 1080p video' })).toBeEnabled();
-    expect(screen.getByTestId('conversation-preview')).toHaveTextContent('Question 2');
+    expect(screen.getByTestId('conversation-preview')).toHaveTextContent('Question 0');
   });
 
   it('selects all turns chronologically and independently toggles optional visuals', () => {
@@ -180,7 +180,7 @@ describe('ConversationVideoStudio', () => {
     // Named for the conversation and dated, so it is still identifiable in a downloads folder.
     expect(mocks.download).toHaveBeenCalledWith(
       result.blob,
-      expect.stringMatching(/^mavea-answer-2-\d{4}-\d{2}-\d{2}\.webm$/),
+      expect.stringMatching(/^mavea-answer-0-\d{4}-\d{2}-\d{2}\.webm$/),
       expect.any(Function),
     );
     // Handing the blob over consumes it: no card left offering a second download of a freed file.

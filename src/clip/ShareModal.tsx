@@ -14,7 +14,7 @@ import type { TurnFrame } from '../live/history';
 import type { TurnAudio } from '../live/scrubvoice/recorder';
 import type { ClipAspect, ClipQuality, ClipTheme } from './types';
 import { captureSupported, qualityHint, startStoryRecording, type StoryRecorder } from './capture';
-import { downloadClip } from './share';
+import { clipFileName, downloadClip, videoFileBase } from './share';
 import { toast } from '../lib/toast';
 import { ReelPlayer } from './reel/ReelPlayer';
 import { buildReelFallback, reseedFinishes } from './reel/director';
@@ -379,14 +379,15 @@ export function ShareModal({
     setPhase('saving');
     try {
       const result = await r.stop();
-      downloadClip(result.blob, undefined, () => void result.dispose?.());
+      const downloadName = clipFileName(videoFileBase(shown?.topic, new Date()), result.type);
+      downloadClip(result.blob, downloadName, () => void result.dispose?.());
       toast('Saved to your downloads', 'good');
       onShared?.();
       cleanupExport();
     } catch {
       failExport('Could not finish the clip');
     }
-  }, [cleanupExport, failExport, onShared]);
+  }, [cleanupExport, failExport, onShared, shown]);
 
   if (!scriptProp && !frames?.length) return null;
 

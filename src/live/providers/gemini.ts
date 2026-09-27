@@ -43,6 +43,8 @@ import {
   arr,
   num,
   noteRateLimited,
+  observeProviderLimits,
+  isTransientProviderFailure,
 } from './http';
 import { geminiUserParts } from './parts';
 import { thinkingReserve } from './budget';
@@ -61,7 +63,6 @@ const STREAM_TOTAL_MS = 90_000;
 /** Transient statuses worth one more try: 429 is a per-minute rate limit, 503 is Google's
  *  "model overloaded". Both clear on their own; failing the turn on them makes the user do by hand
  *  exactly what this loop does. */
-const RETRY_STATUSES = new Set([429, 503]);
 const TRANSIENT_RETRIES = 2;
 /** Finish reasons that mean the model refused, rather than ran out of room or simply finished. */
 const BLOCKED_FINISH = new Set(['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII']);
@@ -248,6 +249,7 @@ export const geminiAdapter: ProviderAdapter = {
         { method: 'GET', headers: keyHeader(cfg) },
         PROBE_TIMEOUT_MS,
       );
+      observeProviderLimits(res);
       if (!res.ok)
         return {
           ok: false,
@@ -350,16 +352,22 @@ export const geminiAdapter: ProviderAdapter = {
           let res: Response;
           for (let tries = 0; ; tries++) {
             res = await fetchWithTimeout(url, requestInit, GEN_TIMEOUT_MS, signal);
+            observeProviderLimits(res);
             if (res.ok) break;
             // Even a retried-and-recovered 429 must reach the guard: speculative work checks
             // recentlyRateLimited() before spending, and quota contention is per-minute.
             noteRateLimited(res.status);
-            if (RETRY_STATUSES.has(res.status) && tries < TRANSIENT_RETRIES && !signal.aborted) {
+            const detail = await errorDetail(res);
+            if (
+              isTransientProviderFailure(res.status, detail) &&
+              tries < TRANSIENT_RETRIES &&
+              !signal.aborted
+            ) {
               // Say so. This sleep can run to 10s per attempt, and it used to pass in silence
               // under "Composing your answer" — which reads as the model being slow, when the
               // model has not been asked yet.
-              const wait = retryAfterMs(res, tries);
-              req.onWait?.(wait);
+              const wait = retryAfterMs(res, tries, detail);
+              req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
               try {
                 await sleepAbortable(wait, signal);
               } finally {
@@ -367,7 +375,6 @@ export const geminiAdapter: ProviderAdapter = {
               }
               continue;
             }
-            const detail = await errorDetail(res);
             // Not a transient failure and not the user's fault: this model simply has no MINIMAL
             // tier. Learn it and re-ask at `low` rather than failing a turn over a level nobody
             // chose — every turn asks for MINIMAL, so without this the model never works at all.

@@ -4,6 +4,7 @@
 // and is pointer-transparent except for its own controls so it never blocks the app it's teaching.
 import { useEffect, useRef, type ReactElement, type WheelEvent } from 'react';
 import { Icon } from '../icons/icons';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 import { useFocusTrap } from '../live/useFocusTrap';
 import { useElementRect } from './useElementRect';
 import type { TourDriver } from './useTourDriver';
@@ -177,20 +178,22 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
             )}
             <span>{driver.playing ? 'Pause' : 'Autoplay'}</span>
           </button>
-          <button
-            type="button"
-            className="tourx-btn tourx-mute"
-            onClick={driver.toggleMute}
-            aria-label={driver.muted ? 'Turn narration on' : 'Mute narration'}
-            aria-pressed={driver.muted}
-            title={driver.muted ? 'Turn narration on' : 'Mute narration'}
-          >
-            {driver.muted ? (
-              <Icon.speakerOff className="tourx-ic" />
-            ) : (
-              <Icon.speaker className="tourx-ic" />
-            )}
-          </button>
+          {!IS_SHOWCASE && (
+            <button
+              type="button"
+              className="tourx-btn tourx-mute"
+              onClick={driver.toggleMute}
+              aria-label={driver.muted ? 'Turn narration on' : 'Mute narration'}
+              aria-pressed={driver.muted}
+              title={driver.muted ? 'Turn narration on' : 'Mute narration'}
+            >
+              {driver.muted ? (
+                <Icon.speakerOff className="tourx-ic" />
+              ) : (
+                <Icon.speaker className="tourx-ic" />
+              )}
+            </button>
+          )}
           {!driver.solo && (
             <>
               <button

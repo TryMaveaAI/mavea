@@ -360,7 +360,7 @@ export function ShipCourse({
               disabled={building}
               title="Rebuild the curriculum from the latest code"
             >
-              {building ? 'Rebuilding…' : '↻ Regenerate'}
+              {building ? 'Tailoring…' : '↻ Regenerate'}
             </button>
           )}
         </div>

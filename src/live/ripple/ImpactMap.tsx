@@ -4,15 +4,17 @@
 // target — a denser map pans rather than shrinking. Click a node to read its contract, what breaks,
 // and the fix. Two lenses (severity vs live traffic) and a cross-repo filter re-weight the view
 // without ever moving the deterministic layout — your mental map holds.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
 import { statusVar, statusLabel } from './colors';
+import { findImpactPath, traceImpact, type TraceDirection } from './impactTrace';
 import { layoutImpact, NODE_W, NODE_H, type PlacedNode } from './layout';
-import type { Altitude, ShipEdge, ShipNode } from './model';
+import type { Altitude, ChangeDelta, ShipChange, ShipEdge, ShipNode } from './model';
 
 export interface ImpactMapProps {
   nodes: ShipNode[];
   edges: ShipEdge[];
+  changes?: ShipChange[];
   altitude: Altitude;
   /** Ground a spoken/typed question on a node (wired to the ask rail by the overlay). */
   onAsk?: (node: ShipNode) => void;
@@ -22,9 +24,33 @@ export interface ImpactMapProps {
 
 type Lens = 'severity' | 'traffic';
 
+interface CausalFact {
+  id: string;
+  change: ShipChange;
+  delta: ChangeDelta;
+}
+
+const EFFECT_LABEL = {
+  breaks: 'Stops working',
+  migration: 'Changes after migration',
+  untested: 'Not proven yet',
+  affected: 'May behave differently',
+  safe: 'Still works',
+} as const;
+
+const normalizedArea = (value: string): string =>
+  value.toLowerCase().split(/[\\/]/).filter(Boolean).at(-1) ?? '';
+
+const ALTITUDE_LABEL: Record<Altitude, string> = {
+  newgrad: 'Onboarding lens',
+  working: 'Builder lens',
+  principal: 'Principal lens',
+};
+
 export function ImpactMap({
   nodes,
   edges,
+  changes = [],
   altitude,
   onAsk,
   animate,
@@ -32,14 +58,19 @@ export function ImpactMap({
   const [lens, setLens] = useState<Lens>('severity');
   const [crossRepoOnly, setCrossRepoOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [direction, setDirection] = useState<TraceDirection>('downstream');
+  const markerId = useId().replace(/:/g, '');
 
   // Filter (cross-repo) then lay out. The centre always survives the filter.
-  const view = useMemo(() => {
-    const ns = crossRepoOnly ? nodes.filter((n) => n.type === 'pr' || n.crossRepo) : nodes;
-    const ids = new Set(ns.map((n) => n.id));
-    const es = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
-    return layoutImpact(ns, es);
+  const visibleGraph = useMemo(() => {
+    const visibleNodes = crossRepoOnly
+      ? nodes.filter((n) => n.type === 'pr' || n.crossRepo)
+      : nodes;
+    const ids = new Set(visibleNodes.map((n) => n.id));
+    const visibleEdges = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
+    return { nodes: visibleNodes, edges: visibleEdges };
   }, [nodes, edges, crossRepoOnly]);
+  const view = useMemo(() => layoutImpact(visibleGraph.nodes, visibleGraph.edges), [visibleGraph]);
 
   const placedById = useMemo(() => {
     const m = new Map<string, PlacedNode>();
@@ -62,6 +93,72 @@ export function ImpactMap({
     return m;
   }, [view, placedById]);
   const center = placedById.get(view.centerId);
+  const [rootId, setRootId] = useState(view.centerId);
+  useEffect(() => {
+    if (!placedById.has(rootId)) setRootId(view.centerId);
+  }, [placedById, rootId, view.centerId]);
+
+  const trace = useMemo(
+    () => traceImpact(visibleGraph.edges, rootId, direction),
+    [visibleGraph.edges, rootId, direction],
+  );
+  const root = placedById.get(rootId)?.node ?? center?.node ?? null;
+  const reached = useMemo(
+    () =>
+      [...trace.nodeIds]
+        .filter((id) => id !== rootId)
+        .map((id) => placedById.get(id)?.node)
+        .filter((node): node is ShipNode => !!node),
+    [trace.nodeIds, rootId, placedById],
+  );
+  const breakingCount = reached.filter((node) => node.status === 'breaks').length;
+  const migrationCount = reached.filter((node) => node.status === 'migration').length;
+  const untestedCount = reached.filter((node) => node.status === 'untested').length;
+  const outsidePrCount = reached.filter((node) => node.scope !== 'in-pr').length;
+  const leadEffect =
+    reached.find((node) => node.status === 'breaks' && node.problem) ??
+    reached.find((node) => !!node.problem);
+  const directionLabel =
+    direction === 'downstream' ? 'Downstream effects' : 'Upstream dependencies';
+  const traceSummary = root
+    ? reached.length
+      ? `${root.label} reaches ${reached.length} mapped ${reached.length === 1 ? 'system' : 'systems'} ${direction === 'downstream' ? 'downstream' : 'upstream'}.`
+      : `No ${direction === 'downstream' ? 'downstream effect' : 'upstream dependency'} is mapped from ${root.label}.`
+    : 'Choose a node to trace its effects.';
+
+  const causalFacts = useMemo<CausalFact[]>(() => {
+    const relevant =
+      root?.type === 'pr'
+        ? changes
+        : changes.filter(
+            (change) =>
+              change.blastRadius?.includes(rootId) ||
+              change.subsystem.toLowerCase() === root?.label.toLowerCase(),
+          );
+    return relevant.flatMap((change) =>
+      (change.deltas ?? []).map((delta, index) => ({
+        id: `${change.id}:${delta.subject}:${index}`,
+        change,
+        delta,
+      })),
+    );
+  }, [changes, root, rootId]);
+  const [selectedFactId, setSelectedFactId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!causalFacts.some((fact) => fact.id === selectedFactId)) {
+      setSelectedFactId(causalFacts[0]?.id ?? null);
+    }
+  }, [causalFacts, selectedFactId]);
+  const selectedFact =
+    causalFacts.find((fact) => fact.id === selectedFactId) ?? causalFacts[0] ?? null;
+  const causalEffects = useMemo(() => {
+    if (!selectedFact) return [];
+    const linked = new Set(selectedFact.change.blastRadius ?? []);
+    const candidates = linked.size
+      ? [...linked].map((id) => placedById.get(id)?.node).filter((node): node is ShipNode => !!node)
+      : reached;
+    return candidates.filter((node) => root?.type !== 'pr' || node.id !== rootId).slice(0, 4);
+  }, [selectedFact, placedById, reached, root, rootId]);
 
   // A fitted node must remain a real touch target. Denser maps pan at this floor instead of
   // shrinking interactive cards into untappable miniatures.
@@ -69,7 +166,7 @@ export function ImpactMap({
   // fitted map paints its verbs and status lines under 9px; the camera stops there and the map
   // pans instead, the same rule the living world's camera follows.
   const spatial = useSpatialCanvas({ clamp: { min: 0.9, max: 2.2 }, margin: 56 });
-  const { fitTo } = spatial;
+  const { fitTo, flying, endFlight } = spatial;
   useEffect(() => {
     fitTo(view.bbox);
   }, [view, fitTo]);
@@ -126,6 +223,18 @@ export function ImpactMap({
   const traffic = lens === 'traffic';
 
   const open = openId ? (placedById.get(openId)?.node ?? null) : null;
+  const openPath = useMemo(
+    () => (open ? findImpactPath(visibleGraph.edges, rootId, open.id, direction) : null),
+    [direction, open, rootId, visibleGraph.edges],
+  );
+  const openChanges = useMemo(() => {
+    if (!open) return [];
+    return changes.filter(
+      (change) =>
+        change.blastRadius?.includes(open.id) ||
+        normalizedArea(change.subsystem) === normalizedArea(open.label),
+    );
+  }, [changes, open]);
 
   // Only offer a control when the data behind it exists. Nothing populates traffic or cross-repo
   // today — not the worked example, not a diff, not a repo read — so in practice these stay hidden
@@ -135,6 +244,146 @@ export function ImpactMap({
 
   return (
     <div className="ripple-impact">
+      <div className="ripple-impact-simulator">
+        <div className="ripple-impact-simulator-copy">
+          <span className="ripple-eyebrow">Impact simulator</span>
+          <strong>{root ? `Change ${root.label}` : 'Choose a starting point'}</strong>
+          <span className="ripple-impact-summary" aria-live="polite">
+            {traceSummary}
+          </span>
+        </div>
+        <div className="ripple-direction" role="group" aria-label="Trace direction">
+          <button
+            type="button"
+            data-active={direction === 'downstream' ? 'true' : undefined}
+            onClick={() => setDirection('downstream')}
+          >
+            <span aria-hidden="true">↘</span> Downstream
+            <small>effects this may cause</small>
+          </button>
+          <button
+            type="button"
+            data-active={direction === 'upstream' ? 'true' : undefined}
+            onClick={() => setDirection('upstream')}
+          >
+            <span aria-hidden="true">↖</span> Upstream
+            <small>what must feed it</small>
+          </button>
+        </div>
+        <div className="ripple-impact-totals" aria-label={`${directionLabel} summary`}>
+          <span data-tone="reach">
+            <strong>{reached.length}</strong> reached
+          </span>
+          <span data-tone="breaks">
+            <strong>{breakingCount}</strong> breaking
+          </span>
+          <span data-tone="migration">
+            <strong>{migrationCount}</strong> migration
+          </span>
+          <span data-tone="untested">
+            <strong>{untestedCount}</strong> untested
+          </span>
+          <span data-tone="outside">
+            <strong>{outsidePrCount}</strong> outside this PR
+          </span>
+        </div>
+        {leadEffect?.problem && (
+          <div className="ripple-impact-forecast">
+            <span>
+              {direction === 'downstream' ? 'First material effect' : 'Dependency to inspect'}
+            </span>
+            <p>
+              <strong>{leadEffect.label}</strong> — {leadEffect.problem}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {selectedFact && (
+        <section className="ripple-causal" aria-label="Before and after consequence chain">
+          <div className="ripple-causal-head">
+            <div>
+              <span className="ripple-eyebrow">Cause → effect</span>
+              <strong>See exactly what changed—and what follows</strong>
+            </div>
+            <div className="ripple-causal-facts" role="group" aria-label="Changed values">
+              {causalFacts.slice(0, 8).map((fact) => (
+                <button
+                  key={fact.id}
+                  type="button"
+                  aria-label={`${fact.delta.kind} ${fact.delta.subject}`}
+                  data-active={fact.id === selectedFact.id ? 'true' : undefined}
+                  onClick={() => setSelectedFactId(fact.id)}
+                >
+                  <span>{fact.delta.kind}</span>
+                  {fact.delta.subject}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="ripple-causal-story" aria-live="polite">
+            <div className="ripple-causal-value" data-state="before">
+              <span>Used to be</span>
+              <code>{selectedFact.delta.before ?? 'Not present'}</code>
+            </div>
+            <div className="ripple-causal-arrow" aria-hidden="true">
+              <span>{selectedFact.delta.subject}</span>→
+            </div>
+            <div className="ripple-causal-value" data-state="after">
+              <span>Now</span>
+              <code>{selectedFact.delta.after ?? 'Removed'}</code>
+            </div>
+            <div className="ripple-causal-effects">
+              <span className="ripple-causal-because">Because this changed</span>
+              <div className="ripple-causal-chain">
+                {causalEffects.length ? (
+                  causalEffects.map((node, index) => (
+                    <button
+                      type="button"
+                      className="ripple-causal-effect"
+                      data-status={node.status}
+                      key={node.id}
+                      onClick={() => setOpenId(node.id)}
+                      aria-label={`Inspect how the change affects ${node.label}`}
+                    >
+                      {index > 0 && (
+                        <span className="ripple-causal-chain-arrow" aria-hidden="true">
+                          →
+                        </span>
+                      )}
+                      <span className="ripple-causal-effect-copy">
+                        <strong>{node.label}</strong>
+                        <small>
+                          {normalizedArea(node.label) ===
+                          normalizedArea(selectedFact.change.subsystem)
+                            ? 'Changed here'
+                            : EFFECT_LABEL[node.status]}
+                        </small>
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <span className="ripple-causal-unknown">
+                    No downstream behavior is proven by this diff yet.
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="ripple-causal-evidence">
+            <p>
+              <span>Changed in</span>
+              {selectedFact.change.file}
+            </p>
+            <p>
+              <span>Why it matters</span>
+              {selectedFact.change.risks?.find((risk) => risk.level === 'breaks')?.text ??
+                (selectedFact.change.why || selectedFact.change.intent)}
+            </p>
+          </div>
+        </section>
+      )}
+
       <div className="ripple-impact-controls">
         {hasTraffic && (
           <div className="ripple-lens" role="group" aria-label="Map lens">
@@ -188,7 +437,13 @@ export function ImpactMap({
         <div
           className="ripple-world"
           data-animate={animate ? 'true' : undefined}
+          data-flying={flying ? 'true' : undefined}
           style={{ width: view.w, height: view.h, transform: spatial.transform }}
+          onTransitionEnd={(event) => {
+            if (event.target === event.currentTarget && event.propertyName === 'transform') {
+              endFlight();
+            }
+          }}
         >
           {/* the entrance pulse — a ring emanating from the change as the map appears */}
           {animate && center && (
@@ -206,67 +461,91 @@ export function ImpactMap({
             viewBox={`0 0 ${view.w} ${view.h}`}
             aria-hidden="true"
           >
-            {view.nodes
-              .filter((p) => p.node.id !== view.centerId)
-              .map((p) => {
-                const c = placedById.get(view.centerId);
-                if (!c) return null;
-                // Must be the edge TO the centre specifically — a node can also carry area→area
-                // edges to other non-centre nodes, and this line is always drawn from the centre.
-                const e =
-                  edges.find((ed) => ed.from === c.node.id && ed.to === p.node.id) ??
-                  edges.find((ed) => ed.to === c.node.id && ed.from === p.node.id);
-                const color = statusVar(p.node.status);
-                const w = traffic ? 1.3 + (p.node.traffic ?? 0) * 3 : e?.breaking ? 2.4 : 1.6;
-                return (
+            <defs>
+              <marker
+                id={`${markerId}-arrow`}
+                markerWidth="8"
+                markerHeight="8"
+                refX="7"
+                refY="4"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M0,0 L8,4 L0,8 Z" fill="context-stroke" />
+              </marker>
+            </defs>
+            {visibleGraph.edges.map((edge, index) => {
+              const from = placedById.get(edge.from);
+              const to = placedById.get(edge.to);
+              if (!from || !to) return null;
+              const target = direction === 'downstream' ? to.node : from.node;
+              const color = statusVar(target.status);
+              const active = trace.edgeIndexes.has(index);
+              const w = traffic ? 1.3 + (target.traffic ?? 0) * 3 : edge.breaking ? 2.4 : 1.6;
+              return (
+                <g key={`${edge.from}-${edge.to}-${index}`}>
                   <line
-                    key={p.node.id}
-                    x1={c.x}
-                    y1={c.y}
-                    x2={p.x}
-                    y2={p.y}
+                    x1={from.x}
+                    y1={from.y}
+                    x2={to.x}
+                    y2={to.y}
                     stroke={color}
                     strokeWidth={w}
                     strokeLinecap="round"
-                    strokeDasharray={e?.breaking ? '6 5' : e?.dashed ? '2 6' : undefined}
-                    className={'ripple-edge' + (e?.breaking ? ' ripple-edge-break' : '')}
-                    style={{ animationDelay: `${enterDelay.get(p.node.id) ?? 0}ms` }}
-                    opacity={openId && openId !== p.node.id ? 0.25 : 0.7}
+                    strokeDasharray={edge.breaking ? '6 5' : edge.dashed ? '2 6' : undefined}
+                    markerEnd={`url(#${markerId}-arrow)`}
+                    className={'ripple-edge' + (edge.breaking ? ' ripple-edge-break' : '')}
+                    style={{ animationDelay: `${enterDelay.get(target.id) ?? 0}ms` }}
+                    opacity={active ? 0.9 : 0.12}
                   />
-                );
-              })}
+                  {active && (
+                    <line
+                      x1={direction === 'downstream' ? from.x : to.x}
+                      y1={direction === 'downstream' ? from.y : to.y}
+                      x2={direction === 'downstream' ? to.x : from.x}
+                      y2={direction === 'downstream' ? to.y : from.y}
+                      stroke={color}
+                      strokeWidth={Math.max(2.8, w + 1)}
+                      strokeLinecap="round"
+                      markerEnd={`url(#${markerId}-arrow)`}
+                      className="ripple-edge-flow"
+                      style={{ ['--trace-step' as string]: trace.depth.get(target.id) ?? 1 }}
+                    />
+                  )}
+                </g>
+              );
+            })}
           </svg>
 
           {/* edge verb labels */}
-          {view.nodes
-            .filter((p) => p.node.id !== view.centerId)
-            .map((p) => {
-              const c = placedById.get(view.centerId);
-              if (!c) return null;
-              const e =
-                edges.find((ed) => ed.from === c.node.id && ed.to === p.node.id) ??
-                edges.find((ed) => ed.to === c.node.id && ed.from === p.node.id);
-              if (!e) return null;
-              return (
-                <div
-                  key={`v-${p.node.id}`}
-                  className="ripple-edge-verb"
-                  style={{
-                    left: (c.x + p.x) / 2,
-                    top: (c.y + p.y) / 2,
-                    color: statusVar(p.node.status),
-                  }}
-                >
-                  {e.verb}
-                </div>
-              );
-            })}
+          {visibleGraph.edges.map((edge, index) => {
+            const from = placedById.get(edge.from);
+            const to = placedById.get(edge.to);
+            if (!from || !to) return null;
+            const active = trace.edgeIndexes.has(index);
+            return (
+              <div
+                key={`v-${edge.from}-${edge.to}-${index}`}
+                className="ripple-edge-verb"
+                data-active={active ? 'true' : undefined}
+                style={{
+                  left: (from.x + to.x) / 2,
+                  top: (from.y + to.y) / 2,
+                  color: statusVar(to.node.status),
+                }}
+              >
+                {edge.verb}
+              </div>
+            );
+          })}
 
           {/* nodes */}
           {view.nodes.map((p) => {
             const n = p.node;
             const isCenter = n.id === view.centerId;
             const color = statusVar(n.status);
+            const traceState =
+              n.id === rootId ? 'root' : trace.nodeIds.has(n.id) ? 'reached' : 'muted';
             // Traffic changes emphasis without ever shrinking a button below the map's touch floor.
             const scale = traffic && !isCenter ? 1 + (n.traffic ?? 0) * 0.24 : 1;
             return (
@@ -277,12 +556,15 @@ export function ImpactMap({
                 data-center={isCenter ? 'true' : undefined}
                 data-status={n.status}
                 data-open={openId === n.id ? 'true' : undefined}
+                data-trace={traceState}
+                data-depth={trace.depth.get(n.id)}
                 style={{
                   left: p.x - NODE_W / 2,
                   top: p.y - NODE_H / 2,
                   width: NODE_W,
                   minHeight: NODE_H,
                   transform: `scale(${scale.toFixed(3)})`,
+                  ['--trace-depth' as string]: trace.depth.get(n.id) ?? 0,
                   borderColor: color,
                   opacity: openId && openId !== n.id ? 0.55 : 1,
                   animationDelay: `${enterDelay.get(n.id) ?? 0}ms`,
@@ -322,6 +604,9 @@ export function ImpactMap({
                       {n.trafficLabel ? ` · ${n.trafficLabel}` : ''}
                     </span>
                     {n.crossRepo && <span className="ripple-node-repo">other repo</span>}
+                    {!n.crossRepo && n.scope !== 'in-pr' && (
+                      <span className="ripple-node-repo">outside this PR</span>
+                    )}
                   </>
                 )}
               </button>
@@ -369,6 +654,61 @@ export function ImpactMap({
             {open.cite ? <span className="ripple-inspect-cite"> · {open.cite.ref}</span> : null}
           </div>
 
+          {open.scope !== 'in-pr' && (
+            <div className="ripple-inspect-decision">
+              <div className="ripple-eyebrow">Merge decision</div>
+              <strong>This behavior changes outside the PR’s edited files.</strong>
+              <p>
+                Follow the evidence path below, then decide whether this consequence is intended,
+                needs another edit, or should block the merge.
+              </p>
+            </div>
+          )}
+
+          {openPath && openPath.edgeIndexes.length > 0 && (
+            <div className="ripple-inspect-block ripple-inspect-path">
+              <div className="ripple-eyebrow">
+                {direction === 'downstream'
+                  ? 'How this change reaches here'
+                  : 'What this depends on'}
+              </div>
+              <ol>
+                {openPath.edgeIndexes.map((edgeIndex, index) => {
+                  const edge = visibleGraph.edges[edgeIndex]!;
+                  const fromId = openPath.nodeIds[index]!;
+                  const toId = openPath.nodeIds[index + 1]!;
+                  return (
+                    <li key={`${fromId}-${toId}-${edgeIndex}`}>
+                      <strong>{placedById.get(fromId)?.node.label ?? fromId}</strong>
+                      <span>{edge.verb}</span>
+                      <strong>{placedById.get(toId)?.node.label ?? toId}</strong>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
+
+          {openChanges.length > 0 && (
+            <div className="ripple-inspect-block ripple-inspect-evidence">
+              <div className="ripple-eyebrow">Exact change behind this effect</div>
+              {openChanges.map((change) => (
+                <div className="ripple-inspect-change" key={change.id}>
+                  <code>{change.file}</code>
+                  <strong>{change.title}</strong>
+                  {(change.deltas ?? []).map((delta, index) => (
+                    <p key={`${delta.subject}-${index}`}>
+                      <span>{delta.subject}</span>
+                      <code>{delta.before ?? 'Not present'}</code>
+                      <b aria-hidden="true">→</b>
+                      <code>{delta.after ?? 'Removed'}</code>
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           {open.trafficLabel && (
             <div className="ripple-inspect-traffic">
               <strong>{open.trafficLabel}</strong>
@@ -395,12 +735,17 @@ export function ImpactMap({
               <p>{open.problem}</p>
             </div>
           )}
-          {open.altitudeNotes?.[altitude] && (
-            <div className="ripple-inspect-block">
-              <div className="ripple-eyebrow">At your altitude</div>
-              <p>{open.altitudeNotes[altitude]}</p>
-            </div>
-          )}
+          <div className="ripple-inspect-block">
+            <div className="ripple-eyebrow">{ALTITUDE_LABEL[altitude]}</div>
+            <p>
+              {open.altitudeNotes?.[altitude] ??
+                (altitude === 'newgrad'
+                  ? 'Follow the path above one relationship at a time, then open the cited file to see where the dependency enters this system.'
+                  : altitude === 'principal'
+                    ? 'Use the path, ownership, and evidence to judge whether this consequence changes the system boundary or rollout risk.'
+                    : 'Check the cited caller or contract, confirm the failure mode, and cover the consequence with a targeted test.')}
+            </p>
+          </div>
           {open.fix && (
             <div className="ripple-inspect-fix">
               <div className="ripple-eyebrow">Mavéa’s call</div>
@@ -412,6 +757,16 @@ export function ImpactMap({
               Ask about {open.label}
             </button>
           )}
+          <button
+            type="button"
+            className="ripple-trace-btn"
+            onClick={() => {
+              setRootId(open.id);
+              setOpenId(null);
+            }}
+          >
+            Trace effects from here
+          </button>
         </aside>
       )}
     </div>

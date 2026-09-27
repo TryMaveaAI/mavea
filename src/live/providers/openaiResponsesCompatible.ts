@@ -35,6 +35,8 @@ import {
   arr,
   num,
   noteRateLimited,
+  observeProviderLimits,
+  isTransientProviderFailure,
 } from './http';
 import { openaiResponsesUserContent } from './parts';
 import {
@@ -49,8 +51,8 @@ import { liveJsonSchema } from './schema';
 const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
 
-/** How many times to retry a transient 429 (rate limit) before surfacing it. */
-const RATE_LIMIT_RETRIES = 3;
+/** Bounded retries for rate limits, timeouts, and temporary provider overload. */
+const TRANSIENT_RETRIES = 2;
 
 /** OpenAI added caller-selected cache breakpoints in GPT-5.6. Older models accept only implicit
  *  caching, so never send the new request fields to them. Provider prefixes are tolerated. */
@@ -159,6 +161,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           { method: 'GET', headers: headers(cfg) },
           PROBE_TIMEOUT_MS,
         );
+        observeProviderLimits(res);
         if (!res.ok) {
           // xAI is the one provider here that answers a bad key with 400 ("invalid-argument",
           // "Incorrect API key provided…") instead of the 401 every other provider (and the
@@ -392,13 +395,19 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           GEN_TIMEOUT_MS,
           req.signal,
         );
+        observeProviderLimits(res);
         if (res.ok) break;
         noteRateLimited(res.status);
-        if (res.status === 429 && rlAttempt < RATE_LIMIT_RETRIES && !req.signal?.aborted) {
+        const detail = await errorDetail(res);
+        if (
+          isTransientProviderFailure(res.status, detail) &&
+          rlAttempt < TRANSIENT_RETRIES &&
+          !req.signal?.aborted
+        ) {
           // Say so: this sleep runs to 10s an attempt, and under "Composing" or "Building" it
           // reads as the model being slow when the model has not been asked yet.
-          const wait = retryAfterMs(res, rlAttempt);
-          req.onWait?.(wait);
+          const wait = retryAfterMs(res, rlAttempt, detail);
+          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
           try {
             await sleepAbortable(wait, req.signal);
           } finally {
@@ -406,7 +415,6 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           }
           continue;
         }
-        const detail = await errorDetail(res);
         // A declared output format is an accuracy aid, never the answer's only guarantee — the
         // prompt asks for JSON and the validator reads what comes back either way. A model that
         // won't take ours answers without it rather than losing the turn.

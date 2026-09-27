@@ -33,7 +33,7 @@ export const SURFACES = [
     label: 'Landing',
     route: '',
     hash: '',
-    ready: '.fl-landing',
+    ready: '.ob-page',
     settleMs: 2500,
     owns: ['src/flagship/'],
   },

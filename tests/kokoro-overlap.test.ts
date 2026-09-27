@@ -104,10 +104,10 @@ const STREAMED_PCM = new Uint8Array(0.4 * SAMPLE_RATE * 2).fill(7);
 const SYNTH_SECONDS = 0.8;
 
 /** Splits into exactly two clauses: the first is cached, the second is synthesized. */
-const LINE = 'The harbour empties on the ebb tide, and the moored boats settle into the mud.';
+const LINE = 'The harbour empties on the ebb tide. The moored boats settle into the mud.';
 /** Three clauses — the mid-turn steady state, where the one-ahead prefetch has them all cached. */
 const LONG_LINE =
-  'The harbour empties on the ebb tide, and the moored boats settle into the mud, while the gulls wheel over the empty quay.';
+  'The harbour empties on the ebb tide. The moored boats settle into the mud. The gulls wheel over the empty quay.';
 /** One clause, short enough that it never splits. */
 const SHORT_LINE = 'A gull lands on the rail.';
 

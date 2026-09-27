@@ -186,9 +186,7 @@ export function ConversationVideoStudio({
       ),
     [frames],
   );
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(available.length ? [turnFrameId(available[available.length - 1])] : []),
-  );
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(available.map(turnFrameId)));
   const availableIds = useMemo(() => new Set(available.map(turnFrameId)), [available]);
   const [options, setOptions] = useState<ConversationVideoOptions>({
     size: '1080p',
@@ -485,49 +483,51 @@ export function ConversationVideoStudio({
           })}
         </div>
 
-        <div className="shm-group">
-          <div className="shm-label">Size</div>
-          <div className="shm-chips">
-            {SIZES.map((size) => (
-              <button
-                type="button"
-                className="shm-chip"
-                data-active={options.size === size.id}
-                aria-pressed={options.size === size.id}
-                disabled={busy}
-                onClick={() => {
-                  clearResult();
-                  setOptions((current) => ({ ...current, size: size.id }));
-                }}
-                title={size.hint}
-                key={size.id}
-              >
-                {size.label}
-              </button>
-            ))}
+        <div className="cvs-settings-grid">
+          <div className="shm-group">
+            <div className="shm-label">Resolution</div>
+            <div className="shm-chips">
+              {SIZES.map((size) => (
+                <button
+                  type="button"
+                  className="shm-chip"
+                  data-active={options.size === size.id}
+                  aria-pressed={options.size === size.id}
+                  disabled={busy}
+                  onClick={() => {
+                    clearResult();
+                    setOptions((current) => ({ ...current, size: size.id }));
+                  }}
+                  title={size.hint}
+                  key={size.id}
+                >
+                  {size.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="shm-group">
-          <div className="shm-label">Quality</div>
-          <div className="shm-chips">
-            {QUALITIES.map((quality) => (
-              <button
-                type="button"
-                className="shm-chip"
-                data-active={options.quality === quality.id}
-                aria-pressed={options.quality === quality.id}
-                disabled={busy}
-                onClick={() => {
-                  clearResult();
-                  setOptions((current) => ({ ...current, quality: quality.id }));
-                }}
-                title={qualityHint(quality.id)}
-                key={quality.id}
-              >
-                {quality.label}
-              </button>
-            ))}
+          <div className="shm-group">
+            <div className="shm-label">Quality</div>
+            <div className="shm-chips">
+              {QUALITIES.map((quality) => (
+                <button
+                  type="button"
+                  className="shm-chip"
+                  data-active={options.quality === quality.id}
+                  aria-pressed={options.quality === quality.id}
+                  disabled={busy}
+                  onClick={() => {
+                    clearResult();
+                    setOptions((current) => ({ ...current, quality: quality.id }));
+                  }}
+                  title={qualityHint(quality.id)}
+                  key={quality.id}
+                >
+                  {quality.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -619,10 +619,12 @@ export function ConversationVideoStudio({
             <button
               type="button"
               className="shm-btn shm-btn-primary"
+              aria-label={`${error ? 'Retry' : 'Create'} ${options.size} video`}
               disabled={!selectedFrames.length || overLimit || !canCapture}
               onClick={() => void exportVideo()}
             >
-              {error ? `Retry ${options.size} video` : `Create ${options.size} video`}
+              <span>{error ? 'Retry video' : 'Create video'}</span>
+              <span className="cvs-output-badge">{options.size}</span>
             </button>
           )}
         </div>

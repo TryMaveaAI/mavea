@@ -61,14 +61,14 @@ describe('public claims stay bounded by shipped behavior', () => {
   it('labels curated prerecorded demos and the static landing illustration honestly', () => {
     const gallery = read('src/flagship/sections/DemoGallery.tsx');
     const overlay = read('src/demo/DemoOverlay.tsx');
-    expect(gallery).toContain('fictional scenario');
-    expect(gallery).toContain('prerecorded, model-generated answer sequence');
-    expect(gallery).toContain('curated feature choreography');
-    expect(gallery).toContain('No live provider call runs during playback');
+    expect(gallery).toContain('fictional scenarios');
+    expect(gallery).toContain('recorded model answers');
+    expect(gallery).toContain('without making a live model call');
     expect(overlay).toContain('fictional scenario');
     expect(overlay).toContain('not a live result or customer testimonial');
     expect(DEMO_CAST.every((member) => member.role.startsWith('Fictional '))).toBe(true);
-    expect(read('src/flagship/sections/SignatureLoop.tsx')).toContain('Illustrated example');
+    expect(read('src/flagship/sections/AnswerTheatre.tsx')).toContain('Curated recorded excerpt');
+    expect(read('src/flagship/FlagshipLanding.tsx')).toContain('Illustrated preview');
   });
 
   it('keeps the fast, low-cost model defaults aligned with the setup guide', () => {

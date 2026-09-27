@@ -29,6 +29,10 @@ export function Reveal({
   reserve?: number;
 }) {
   const [intent, setIntent] = useState(false);
+  // Only the hero is guaranteed to own the first viewport. Other sections should wait for their
+  // actual arrival so their entrance reads as part of the scroll, rather than playing offscreen
+  // while the page boots.
+  const isHero = className?.split(' ').includes('ob-hero') ?? false;
   const shared = {
     // The landing scrolls in the presence stage, not the window — without the scroller as
     // the observer root, rootMargin never applies and every section mounts black-first at
@@ -38,8 +42,8 @@ export function Reveal({
     // construction. Deferred sections can wait for IntersectionObserver: reading nine section
     // rects in layout effects forced the browser to lay out the entire long landing before its
     // first paint on slow CPUs.
-    initiallyVisible: !defer,
-    measureInitial: false,
+    initiallyVisible: isHero,
+    measureInitial: !defer,
   };
   const [mountRef, nearView] = useInView<HTMLElement>({
     rootMargin: defer ? '480px 0px' : undefined,

@@ -88,7 +88,7 @@ import { blockLabel } from '../canvas/blockLabel';
 import {
   thinkingLevelFor,
   temperatureFor,
-  capSpoken,
+  completeSpokenLine,
   NARRATION_FIRST_LINE,
   spokenLineDirective,
   type QualityPref,
@@ -152,7 +152,7 @@ export interface LiveCaps {
 
 /** A coarse, user-visible activity so the surface can show what's happening and make
  *  any billable action obvious: 'searching' the web, then null when idle. */
-export type LiveActivity = 'searching' | 'rate-limited' | null;
+export type LiveActivity = 'searching' | 'rate-limited' | 'provider-busy' | null;
 
 export interface GenerateLiveOpts {
   repair?: boolean;
@@ -247,7 +247,7 @@ const PROVIDER_LABELS: Record<string, string> = {
  *  apart — and "wait a moment and try again" is exactly the wrong advice for a user who has to go top
  *  up. The adapters carry the provider's error body into the thrown message so this can match on it. */
 const SPENT_ACCOUNT =
-  /resource.?exhausted|quota.?exceed|exceeded your (?:current )?quota|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|billing/i;
+  /daily quota|requests? per day|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|spend.?limit|billing/i;
 
 /** Map a provider failure to a plain-language LiveError. Adapters throw `Error('<provider> <status>
  *  — <reason from the body>')` on HTTP failure, so the status is parsed from the message; no status
@@ -304,7 +304,8 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
   // exhaustion — "check your plan" is wrong and alarming. Distinguish by the provider's own
   // wording (RESOURCE_EXHAUSTED, "exceeded your current quota") vs a plain 429 (rate limited).
   if (status === 429) {
-    const isExhausted = SPENT_ACCOUNT.test(msg);
+    const isExhausted =
+      SPENT_ACCOUNT.test(msg) && !/(?:per.?minute|\bRPM\b|\bTPM\b|retry in)/i.test(msg);
     return {
       kind: 'quota',
       status,
@@ -330,6 +331,19 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       status,
       message: 'The model request was rejected — check the model name in settings.',
     };
+  if ([408, 500, 502, 503, 504, 524, 529].includes(status ?? 0)) {
+    const providerReason = msg
+      .replace(new RegExp(`^${provider}\\s+${status}\\s*(?:—|-)?\\s*`, 'i'), '')
+      .replace(/^[A-Z_]+:\s*/i, '')
+      .trim();
+    return {
+      kind: 'http',
+      status,
+      message: providerReason
+        ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
+        : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
+    };
+  }
   if (status)
     return { kind: 'http', status, message: `${label} returned error ${status} — try again.` };
   return {
@@ -1175,6 +1189,10 @@ export async function generateLive(
   // shift, never the completeness.
   const levelLine =
     explainLevel === 'simple' ? simpleLevelMenu() : explainLevel === 'deep' ? deepLevelMenu() : '';
+  // Keep the user's ask ahead of the presentation contract. A beautiful canvas that wanders into
+  // an adjacent subject still feels like it did not answer the question.
+  const directAnswerLine =
+    "ANSWER THE ACTUAL ASK — open the narration and first substantive block by directly answering the user's question. Do not replace it with a generic overview, merely restate it, or pivot to a neighboring topic. If one detail is genuinely ambiguous, make the best useful assumption explicit and answer what can be answered before asking a focused follow-up.";
 
   // Hoist search mode here — needed by noLiveDataLine below, which must be part of the
   // system prompt constructed before the search/grounding section runs later.
@@ -1341,6 +1359,7 @@ export async function generateLive(
       // A fully-enabled SVG contract already lives in liveSystemPrompt's cached tuple. A gap-only
       // synthesis turn still teaches it here because the user did not enable that stable capability.
       offerSvg && !generativeOn ? svgBlockMenu() : '',
+      directAnswerLine,
       // Last line of the prompt, immediately before the conversation — deliberately.
       emitReminder,
     ],
@@ -1625,7 +1644,10 @@ export async function generateLive(
   const baseReq: Omit<LiveRequest, 'user'> = {
     usageLabel: 'canvas',
     // A backoff is the one wait the reader should be told about by name: it is not the model.
-    onWait: (ms) => opts.onActivity?.(ms == null ? null : 'rate-limited'),
+    onWait: (ms, reason) =>
+      opts.onActivity?.(
+        ms == null ? null : reason === 'overload' ? 'provider-busy' : 'rate-limited',
+      ),
     system,
     systemInvariant: turnSystem.systemInvariant,
     systemBase: turnSystem.systemBase,
@@ -1841,11 +1863,10 @@ export async function generateLive(
     const props = await worldCard(arm, userText, result.title, sources, opts, pendingWorld);
     if (props) composed.blocks.push(worldBlock(props, composed.blocks.length + 1));
   }
-  // Keep the spoken line conversational for the ask: a tweet for a trivial answer, up to a
-  // couple of sentences for a rich one — the canvas carries the depth, never the monologue.
-  const narration = capSpoken(result.narration, complexity);
-  // The voice twin tracks the same ask-aware length bound as the shown narration.
-  const spoken = result.spoken ? capSpoken(result.spoken, complexity) : undefined;
+  // Brevity belongs in the writing instructions, not a cut that can remove the conclusion.
+  const narration = completeSpokenLine(result.narration);
+  // Preserve the pronunciation twin's complete thought too.
+  const spoken = result.spoken ? completeSpokenLine(result.spoken) : undefined;
   return {
     spec: toSpec(composed, sources),
     narration,

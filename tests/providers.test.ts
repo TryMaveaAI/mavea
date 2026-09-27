@@ -10,6 +10,11 @@ import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
 import { speculate } from '../src/live/ghost/speculate';
+import {
+  isTransientProviderFailure,
+  providerRetryDelayMs,
+  retryAfterMs,
+} from '../src/live/providers/http';
 
 // Locks the streaming substrate — the trickiest part of each adapter. We mock
 // fetch with a real ReadableStream body in each provider's wire format and assert
@@ -45,6 +50,36 @@ afterEach(() => {
 // signal that forces the emit_canvas tool schema — a non-canvas caller (mindshape, Prism,
 // Ripple, SRS…) omits blockTypes and gets a free-form (or its own format-schema) call instead.
 const canvasReq: LiveRequest = { ...req, blockTypes: ['insight', 'stat'] };
+
+describe('provider pressure parsing', () => {
+  it('honors retry-after seconds, HTTP dates, and provider reset-duration headers', () => {
+    const now = Date.parse('2026-09-24T12:00:00Z');
+    expect(
+      providerRetryDelayMs(new Response(null, { headers: { 'retry-after': '2.5' } }), now),
+    ).toBe(2500);
+    expect(
+      providerRetryDelayMs(
+        new Response(null, { headers: { 'retry-after': 'Wed, 24 Sep 2026 12:00:04 GMT' } }),
+        now,
+      ),
+    ).toBe(4000);
+    expect(
+      providerRetryDelayMs(
+        new Response(null, { headers: { 'x-ratelimit-reset-tokens': '1m2s' } }),
+        now,
+      ),
+    ).toBe(30_000);
+    expect(retryAfterMs(new Response(null), 0, 'Please retry in 4.25s.')).toBe(4250);
+  });
+
+  it('retries temporary overloads but never loops on a daily or spend limit', () => {
+    expect(isTransientProviderFailure(503, 'UNAVAILABLE')).toBe(true);
+    expect(isTransientProviderFailure(529, 'overloaded_error')).toBe(true);
+    expect(isTransientProviderFailure(429, 'RPM exceeded; retry in 8s')).toBe(true);
+    expect(isTransientProviderFailure(429, 'daily quota exceeded')).toBe(false);
+    expect(isTransientProviderFailure(402, 'credit balance empty')).toBe(false);
+  });
+});
 
 describe('anthropic adapter — Structured Outputs streaming', () => {
   it('accumulates text_delta and resolves a parsed object', async () => {
@@ -900,9 +935,14 @@ describe('gemini answers with 200 OK and nothing in it', () => {
       .mockResolvedValueOnce(new Response('{}', { status: 503 }))
       .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
-    const { raw } = await geminiAdapter.generate(req, cfg);
+    const { raw } = await geminiAdapter.generate(req, {
+      ...cfg,
+      model: 'gemini-user-selected-flash',
+    });
     expect(raw).toBe('{}');
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [url] of fetchMock.mock.calls)
+      expect(String(url)).toContain('/gemini-user-selected-flash:');
   });
 
   it('surfaces a non-transient status without retrying', async () => {

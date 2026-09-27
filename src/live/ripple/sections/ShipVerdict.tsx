@@ -113,6 +113,7 @@ export function ShipVerdict({
         <ImpactMap
           nodes={model.nodes}
           edges={model.edges}
+          changes={model.changes}
           altitude={altitude}
           onAsk={onAsk}
           animate

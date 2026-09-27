@@ -23,7 +23,7 @@
   flex-direction: column;
   gap: 10px;
   padding: var(--s-lg);
-  max-width: 520px;
+  width: min(100%, 720px);
 }
 .ripple-course-skeleton-head {
   display: flex;

@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { evaluateBend, isValidBendFormula, formatBendValue } from '../src/lib/bend';
 import { validateLiveResponse, FRONTIER_BLOCK_TYPES } from '../src/engine/liveSchema';
 import { BendStrip } from '../src/canvas/BendStrip';
-import type { BendSpec } from '../src/data/conversation';
+import { TopicCanvas } from '../src/canvas/TopicCanvas';
+import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
+import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
+import type { BendSpec, Block, ConversationSpec } from '../src/data/conversation';
+
+primeExtendedRegistry(EXTENDED_REGISTRY);
 
 // Bendable answers: the whitelist evaluator does real arithmetic and nothing else, the
 // schema only keeps a fully-valid bend (resolved to a real block), and the strip recomputes
@@ -114,5 +119,47 @@ describe('BendStrip', () => {
     expect(screen.getByText('Wants').closest('li')?.title).toContain(
       'x'.replace('x', '(Monthly budget)'),
     );
+  });
+
+  it('recomputes the attached budget card, not only the readouts below it', () => {
+    const block: Block = {
+      id: 'b1',
+      type: 'budgetallocator',
+      col: 12,
+      props: {
+        title: 'Allocate the full $5,000',
+        income: 5000,
+        incomeLabel: 'Monthly income',
+        unit: '$',
+        envelopes: [
+          { label: 'Housing', amount: 1500, group: 'fixed' },
+          { label: 'Dining', amount: 500, group: 'flexible' },
+        ],
+      },
+    };
+    const spec: ConversationSpec = {
+      id: 'live',
+      workspace: 'Live',
+      title: 'Budget',
+      sub: '',
+      opener: '',
+      context: [],
+      blocks: [block],
+      proof: null,
+      bend,
+      extras: {},
+      group: 'home',
+      suggests: [],
+      keywords: [],
+    };
+    const { container } = render(
+      <TopicCanvas data={spec} spot={null} built={{}} onProve={() => {}} bend={bend} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Bend Monthly budget'), { target: { value: 5400 } });
+    expect(container.querySelector('.card-eyebrow')).toHaveTextContent('Allocate the full $5,400');
+    expect(container.querySelector('.ba-income-val')).toHaveTextContent('$5,400');
+    expect(container.querySelector('.ba-env-amt')).toHaveTextContent('$1,620');
+    expect(container.querySelector('.ba-rem-val')).toHaveTextContent('$3,240');
   });
 });

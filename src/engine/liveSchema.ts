@@ -102,7 +102,6 @@ import {
   resolvesTextItems,
 } from '../canvas/lib/empty';
 import {
-  trimToSentence,
   collapseRepeatedValues,
   forDisplay,
   forSpeech,
@@ -394,6 +393,7 @@ The user asks something; reply with ONLY a single JSON object (no prose, no mark
 - "causal": true when your answer explains a MECHANISM — one thing bringing about another, whether it is history, science, engineering, business or health. "Why did the 2008 crisis happen", "how does photosynthesis work", "what happened to Kodak", "explain the French Revolution", "why is our churn rising" are all true: each has causes, steps in between, and an outcome. False when the answer has no causal chain to draw: a lookup or definition ("capital of France"), a recipe or procedure ("how do I center a div"), a comparison or recommendation, a calculation, or anything you were asked to WRITE. Judge the answer you just wrote, not the wording of the question.
 - "tour": for any multi-part answer, 3-5 {"index","say"} stops that walk the key blocks in order — each "say" is SPOKEN ALOUD, like a friend talking you through the screen, exactly as that block is spotlighted (so write each line about THAT block). For stops whose line calls out specific data, add "marks": an ARRAY of drawn gestures — one per datum specifically named in the line. One thing named → one mark. Two things compared → two marks. Four figures in a table row → four marks. Let the line dictate the count; there is no fixed ceiling. Omit the tour only for a one-glance answer.
 - "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Its FIRST sentence must be the answer itself — the recommendation, the number, the cause, the verdict — and the rest supports it; a reader who stops listening after one sentence should still have the answer. Never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
+COMPLETE SPOKEN THOUGHTS — narration, tour "say", pronunciation twins, and block notes used in Guide me must end in complete sentences and resolve the point they introduce. Use short standalone sentences. Never stop at a character target mid-clause, leave a promised explanation unfinished, or use an ellipsis as a substitute for the conclusion. Rewrite concisely rather than truncating.
 - "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — all three keys, on EVERY block, no exceptions. See PER-SLIDE NOTES.
 - "chips": 2 to 4 short follow-up questions (strings) the user might ask next.
 - "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show, so dragging recomputes them live. Omit it for anything that isn't a real calculation.
@@ -401,7 +401,7 @@ The user asks something; reply with ONLY a single JSON object (no prose, no mark
 SPOKEN PRONUNCIATION — "narration", every "tour" line, and every block "note" are READ ALOUD by a synthetic voice that mangles anything it can't sound out: it spells acronyms letter by letter ("CUDA"→"C-U-D-A") and reads symbols/numbers literally ("$5,000/mo"→"dollar sign five thousand slash em-oh"). You know how each is really said, so wherever the words on screen differ from how a person SPEAKS them, mark JUST that span inline as [[shown|said]] — the screen shows the left side EXACTLY as normally written, while the voice reads the right:
 - numbers, money, dates, symbols, equations: "[[$5,000/mo|five thousand dollars a month]]", "[[3.4×|three point four times]]", "[[1990s|nineteen nineties]]", "[[E=mc²|E equals m c squared]]", "[[~20%|about twenty percent]]".
 - abbreviated dates and shortened words the voice reads literally — a person says the FULL word, and a day-of-month as an ordinal: "[[Aug 2|august second]]", "[[Feb 28, 2027|february twenty-eighth, twenty twenty-seven]]", "[[Dr.|doctor]]", "[[St. Louis|saint louis]]", "[[approx.|approximately]]".
-- acronyms said as a word, product/library/model names, and names or borrowed words that are NOT ordinary English — a non-English spelling, or an English name a reader would also hesitate over: "[[CUDA|kooda]]", "[[GUI|gooey]]", "[[Qwen|kwen]]", "[[nginx|engine x]]", "[[Nguyen|win]]", "[[gnocchi|nyoh-kee]]", "[[Omakase|oh-mah-kah-seh]]".
+- acronyms said as a word, product/library/model names, and names or borrowed words that are NOT ordinary English — every non-English diacritic MUST be tagged: "[[Hạ Long|hah long]]", "[[CUDA|kooda]]", "[[GUI|gooey]]", "[[Nguyen|win]]", "[[gnocchi|nyoh-kee]]", "[[Omakase|oh-mah-kah-seh]]".
 For names and non-English terms, the said side MUST be the closest voice-safe version of a NATIVE speaker's source-language pronunciation — preserve its real syllables and vowels; never substitute an Anglicized guess. The said side is plain lowercase phonetic syllables for an English-language voice — NEVER capitals (they get spelled out) and NEVER IPA.
 ANNOTATE SPARINGLY — the said side is one you write from scratch, so a wrong one does not merely waste a tag, it makes the voice say a word WRONG out loud. The bar is: you would bet money a good English text-to-speech engine gets this wrong. Ordinary English words are NEVER annotated, however long or Latinate they look — a synthesizer says "analysis", "hierarchy", "epitome", "colonel", "salmon", "queue", "often", "thorough" and "February" perfectly well, and "[[analysis|uh-nal-uh-sis]]" turns a word it had right into one it now has wrong. Ordinary English names (Smith, Michael, London, Chicago) are not annotated either. Normal letter-by-letter initialisms (API, GPU, URL, HTML) stay plain — spelling them out is correct. When you are unsure, LEAVE IT ALONE: no annotation is always better than a wrong one. Everything else stays plain. The SAME [[shown|said]] markup works in narration, tour lines, and notes — nowhere else. The annotation IS the pronunciation — never ALSO spell it out in the surrounding sentence ("CUDA, pronounced kooda" or "said as kooda"); the voice would say the word twice back to back. Tag it once and move on.
 
@@ -2971,15 +2971,9 @@ export function validateLiveResponse(
     maxGraphemes: 180,
     maxLines: 4,
   });
-  // Outer safety bound only — the precise, ask-aware spoken cap (lean ~140 / rich ~220) is
-  // applied in generateLive via capSpoken, where the ask complexity is known. Here we just
-  // stop a runaway narration, without pre-truncating a legitimately longer rich line.
-  // The narration may carry inline [[shown|said]] annotations: the screen gets the shown side,
-  // the voice the said side. Cap first, then split — so both halves share one length bound.
-  // Sentence-aware, unlike capTweet: this line is both spoken and printed as the answer's opening,
-  // and a word-boundary cut left the reader staring at "…a protected site, the…". A shorter whole
-  // sentence is an answer; a longer fragment is the software trailing off.
-  const narrationRaw = trimToSentence(asStr(obj.narration).trim(), 320);
+  // Length is a prompt target, not a playback cut. Keep the complete thought on both sides
+  // of pronunciation annotations; a character cap can silently remove its conclusion.
+  const narrationRaw = asStr(obj.narration).trim();
   // collapseRepeatedValues drops an accidental back-to-back restatement ("$200, $200" → "$200")
   // a completion turn can produce, on both the shown and said sides.
   // proseFor* also strips any inline citation/URL the model dropped into the spoken line — it renders

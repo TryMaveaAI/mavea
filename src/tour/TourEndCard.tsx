@@ -3,6 +3,7 @@ import { Presence } from '../presence/Presence';
 import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import { useFocusTrap } from '../live/useFocusTrap';
 import { TOUR_EXTRAS } from './tourPlan';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 
 export function TourEndCard({
   onStart,
@@ -39,12 +40,17 @@ export function TourEndCard({
           </h2>
           <p className="tour-end-tagline tour-end-line">Talk to AI. See what it means.</p>
           <p className="tour-end-copy tour-end-line">
-            Try it now, or open any scripted mini-demo below to see that feature operate on the real
-            interface.
+            {IS_SHOWCASE
+              ? 'Run Mavéa on your computer to ask your own questions, or explore another recorded experience below.'
+              : 'Try it now, or open any scripted mini-demo below to see that feature operate on the real interface.'}
           </p>
           <div className="tour-end-actions tour-end-line">
             <button type="button" className="tour-end-start" onClick={onStart}>
-              {hasStoredSession ? 'Back to your session' : 'Start Mavéa'}
+              {IS_SHOWCASE
+                ? 'Get Mavéa'
+                : hasStoredSession
+                  ? 'Back to your session'
+                  : 'Start Mavéa'}
             </button>
             <button type="button" className="tour-end-replay" onClick={onReplay}>
               Replay the tour

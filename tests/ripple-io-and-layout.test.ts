@@ -50,11 +50,31 @@ vi.mock('../src/live/providers', () => ({
 
 // Import AFTER the mocks are registered (vi.mock is hoisted, so this is safe).
 import { getGithubToken } from '../src/live/ripple/ingest/githubToken';
-import { fetchPrDiff, compareRefs, fetchRepoTree } from '../src/live/ripple/ingest/githubBrowser';
+import {
+  fetchPrDiff,
+  compareRefs,
+  fetchRepoTree,
+  representativeTreePaths,
+} from '../src/live/ripple/ingest/githubBrowser';
 import { enrichShipModel } from '../src/live/ripple/ingest/generate';
 import { buildShipFromDiff } from '../src/live/ripple/ingest/buildShip';
 import { parseUnifiedDiff } from '../src/live/ripple/ingest/parseDiff';
 import { fileUrl } from '../src/live/ripple/links';
+
+describe('Ripple motion and rail layout contracts', () => {
+  const css = readFileSync(join(process.cwd(), 'src/live/ripple/ripple.css'), 'utf8');
+  const map = readFileSync(join(process.cwd(), 'src/live/ripple/ImpactMap.tsx'), 'utf8');
+
+  it('only eases map camera transforms during an explicit flight', () => {
+    expect(map).toContain("data-flying={flying ? 'true' : undefined}");
+    expect(css).toContain(".ripple-world[data-flying='true']");
+    expect(css).not.toMatch(/\.ripple-world\s*\{[^}]*transition:\s*transform/s);
+  });
+
+  it('keeps the full Principal altitude choice readable in the vertical rail', () => {
+    expect(css).toContain('width: min(240px, 100%)');
+  });
+});
 
 // The browser-direct GitHub reader that lets Ripple's "From GitHub"
 // intake read a PR / compare / repo straight from api.github.com, with NO local gateway. Public repos
@@ -225,6 +245,21 @@ describe('ripple GitHub reader (browser-direct)', () => {
   });
 
   describe('fetchRepoTree (browser-direct)', () => {
+    it('samples huge trees across areas instead of spending the cap on one subtree', () => {
+      const paths = [
+        ...Array.from({ length: 12 }, (_, i) => `apps/web/src/file-${i}.ts`),
+        ...Array.from({ length: 12 }, (_, i) => `packages/api/src/file-${i}.ts`),
+        ...Array.from({ length: 12 }, (_, i) => `docs/guides/page-${i}.md`),
+      ];
+
+      const sampled = representativeTreePaths(paths, 6);
+
+      expect(sampled).toHaveLength(6);
+      expect(sampled.filter((path) => path.startsWith('apps/web'))).toHaveLength(2);
+      expect(sampled.filter((path) => path.startsWith('packages/api'))).toHaveLength(2);
+      expect(sampled.filter((path) => path.startsWith('docs/guides'))).toHaveLength(2);
+    });
+
     it('resolves the ref to a concrete commit sha, then lists blob paths', async () => {
       const fetchMock = stubFetch(async (url) => {
         if (url.includes('/commits/')) {
@@ -382,7 +417,8 @@ describe('Ripple overlay — the top bar reflows instead of clipping', () => {
     const mobile = /@media \(width <= 720px\) \{([\s\S]*?)\n\}\n\n/.exec(css)?.[1];
     expect(mobile, 'expected a max-width: 720px block after the rail/main rules').toBeTruthy();
     expect(mobile).toMatch(/\.ripple-body\s*\{[^}]*flex-direction:\s*column/);
-    expect(mobile).toMatch(/\.ripple-rail\s*\{[^}]*overflow-x:\s*auto/);
+    expect(mobile).toMatch(/\.ripple-rail\s*\{[^}]*overflow:\s*hidden/);
+    expect(mobile).toMatch(/\.ripple-rail-sections\s*\{[^}]*overflow-x:\s*auto/);
   });
 
   it('the scrim uses the shared scrim token, not a raw color, behind its blur', () => {

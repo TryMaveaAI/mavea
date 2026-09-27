@@ -53,7 +53,7 @@ export interface LiveRequest {
    * the surface can say "rate-limited, retrying" instead of letting a ten-second sleep pass under
    * "composing" — the reader cannot tell a slow model from a request that was never sent.
    */
-  onWait?: (ms: number | null) => void;
+  onWait?: (ms: number | null, reason?: 'rate-limit' | 'overload') => void;
   /** Human-readable ledger attribution for this billed call. Provider facades record it centrally. */
   usageLabel?: string;
   /** System prompt (LIVE_SYSTEM_PROMPT, possibly tier-tuned). Providers cache this. */

@@ -21,7 +21,7 @@ import {
   type CourseGateState,
 } from '../src/live/ripple/courseProgress';
 import { getCourseMeta, setCourseMeta, changedLessons } from '../src/live/ripple/courseStore';
-import { buildShipFromPaths } from '../src/live/ripple/ingest/buildRepo';
+import { buildCourseFloor, buildShipFromPaths } from '../src/live/ripple/ingest/buildRepo';
 import { gatherLessonCode } from '../src/live/ripple/ingest/generate';
 import { ShipCourse } from '../src/live/ripple/sections/ShipCourse';
 import { LessonBody } from '../src/live/ripple/sections/LessonBody';
@@ -38,6 +38,48 @@ vi.mock('../src/live/srs/store', () => ({
   addCards: vi.fn((cards: Array<{ front: string; back: string }>) => cards),
 }));
 import { addCards } from '../src/live/srs/store';
+
+describe('ripple course floor', () => {
+  const paths = Array.from({ length: 10 }, (_, index) => `src/area-${index}/entry-${index}.ts`);
+  const floor = buildShipFromPaths(paths, 'acme/widget');
+
+  it('turns the real repo tree into a complete course before model enrichment lands', () => {
+    const courses = buildCourseFloor(floor, 5);
+    expect(courses).toHaveLength(3);
+    expect(courses.flatMap((course) => course.lessons)).toHaveLength(10);
+    expect(courses.map((course) => course.level)).toEqual(['beginner', 'intermediate', 'expert']);
+    for (const lesson of courses.flatMap((course) => course.lessons)) {
+      expect(paths).toContain(lesson.read[0]);
+      expect(lesson.goal).toContain(lesson.read[0]);
+    }
+  });
+
+  it('stays useful on a tiny repository and never invents a path', () => {
+    const tiny = buildShipFromPaths(['main.go'], 'acme/tiny');
+    const courses = buildCourseFloor(tiny, 5);
+    expect(courses).toHaveLength(1);
+    expect(courses[0]?.lessons).toHaveLength(1);
+    expect(courses[0]?.lessons[0]?.read).toEqual(['main.go']);
+  });
+
+  it('renders the grounded lessons instead of an empty skeleton while enrichment continues', () => {
+    const courses = buildCourseFloor(floor, 5);
+    const { container, getByText } = render(
+      <ShipCourse
+        model={{ ...floor, courses }}
+        altitude="working"
+        building
+        onRegenerate={() => undefined}
+      />,
+    );
+    expect(getByText('Guided curriculum')).toBeTruthy();
+    expect(getByText('Tailoring…')).toBeTruthy();
+    expect(container.querySelector('.ripple-course-skeleton')).toBeNull();
+    expect(container.querySelectorAll('.ripple-course-item')).toHaveLength(
+      courses[0]?.lessons.length,
+    );
+  });
+});
 
 // The "understand a repo" model layer. Guards that the parser is defensive
 // and that the merge turns a structural floor (file counts) into a real orientation — a project

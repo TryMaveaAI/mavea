@@ -10,6 +10,8 @@
 import type { ComponentType } from 'react';
 import { createPreloadableLazy } from './lib/preloadableLazy';
 import { LAB_ROUTES, PUBLIC_ROUTES, type RouteSpec } from './routeTable';
+import { IS_SHOWCASE } from './lib/runtimeMode';
+import { isShowcaseRoute } from './showcasePolicy';
 
 export interface RouteEntry {
   prefix: string;
@@ -29,10 +31,12 @@ const ROUTES: RouteEntry[] = [
 
 /** The surface for a hash, or null when nothing matches (the caller falls back to the landing). */
 export function routeFor(hash: string): ComponentType | null {
+  if (IS_SHOWCASE && !isShowcaseRoute(hash)) return null;
   return ROUTES.find((route) => hash.startsWith(route.prefix))?.Component ?? null;
 }
 
 /** Start a route's code-only import from pointer/focus/touch intent. */
 export function preloadRoute(hash: string): Promise<void> | null {
+  if (IS_SHOWCASE && !isShowcaseRoute(hash)) return null;
   return ROUTES.find((route) => hash.startsWith(route.prefix))?.preload() ?? null;
 }

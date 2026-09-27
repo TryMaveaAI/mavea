@@ -31,8 +31,6 @@ import type { ChatMessage } from './providers/types';
 import { recentlyRateLimited } from './providers/http';
 import type { Attachment } from './attachments';
 import { isSpeaking, type SpokenLine } from '../voice/tts';
-import { bounded } from '../lib/bounded';
-import { SHOWFRAME_REVEAL_CAP_MS } from './walkSync';
 import type { InkIntent } from './annotate/inkIntent';
 import type { MindShapeSpec } from './mindshape/types';
 import { explodeWorld, type WorldWait } from './world/explode';
@@ -44,8 +42,6 @@ import type { WorldSpec } from './world/types';
 import { StringFieldScanner, nextSpeakableChunk } from './streamParse';
 import { createSpeechPacer } from './speechPacer';
 import { collapseRepeatedValues, forDisplay } from '../lib/spokenText';
-import { classifyAsk } from './select/complexity';
-import { spokenBudget } from './effort';
 
 /** Presence phase for one turn (maps to Presence data-state in the surface). */
 export type LiveStatus = 'idle' | 'thinking' | 'speaking' | 'showing';
@@ -740,6 +736,8 @@ export interface UseLiveTurnArgs {
   /** Resolves when the canvas has something on screen to talk about. Handed the turn's own
    *  end signal so an answer that finishes with nothing to show still releases the voice. */
   canvasReady?: (turnEnded: AbortSignal) => Promise<void>;
+  /** Prepare the opening breath while the canvas loads; must not start playback. */
+  prepareSpeech?: (text: string) => void;
   /** Read the active capabilities at call time (web search / image gen toggles). */
   getCaps?: () => LiveCaps;
   /** Speak a line (the surface wires this to TTS). The surface's wrapper may return the line's
@@ -787,6 +785,8 @@ export interface UseLiveTurn extends LiveTurnState {
     },
   ) => Promise<void>;
   reset: () => void;
+  /** Stop current and pending narration without cancelling answer generation. */
+  stopNarration: () => void;
   /** Why `run` would refuse this ask RIGHT NOW, or null if it would start.
    *
    *  `run` is fired as `void turn.run(...)` and its guards return silently, so a caller that had
@@ -845,6 +845,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     getConfig,
     configReady,
     canvasReady,
+    prepareSpeech,
     getCaps,
     speak,
     cancelSpeak,
@@ -856,6 +857,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // over them.
   const argsRef = useRef(args);
   argsRef.current = args;
+  const pendingSpeechCancelRef = useRef<(() => void) | null>(null);
+  const stopNarration = useCallback(() => {
+    pendingSpeechCancelRef.current?.();
+    pendingSpeechCancelRef.current = null;
+    argsRef.current.cancelSpeak?.();
+  }, []);
 
   // Refs so run() reads current values without re-binding the callback.
   const busyRef = useRef(false);
@@ -972,6 +979,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // gate below waits on the first card OR this, so a turn that produces no card — a collapse,
       // an error, a retry — cannot hold the voice on a card that is never coming.
       const ended = new AbortController();
+      let speechStopped = false;
+      pendingSpeechCancelRef.current?.();
+      pendingSpeechCancelRef.current = () => {
+        speechStopped = true;
+        ended.abort();
+      };
       const endTurn = (): void => ended.abort();
       ctrl.signal.addEventListener('abort', endTurn, { once: true });
       // Busy from the instant the turn is committed, BEFORE the first await below. The guard at the
@@ -980,6 +993,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // while the config finishes restoring.
       busyRef.current = true;
       dispatch({ type: 'start', fresh: opts?.freshStart });
+      const visualReady = canvasReady?.(ended.signal);
 
       // The turn's speech gate. The FIRST line waits for the answer to have something on screen to
       // talk about; every line after it queues straight behind, so ordering is preserved and only
@@ -988,12 +1002,14 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // the burst handle the reveal walk paces off would track the wrong line.
       let speechGate: Promise<void> | null = null;
       const speakWhenVisible = (text: string): void => {
+        if (speechStopped) return;
         if (!canvasReady) {
           speak?.(text);
           return;
         }
-        speechGate = (speechGate ?? canvasReady(ended.signal)).then(() => {
-          if (ctrl.signal.aborted) return; // a superseded turn must not speak over its replacement
+        if (!speechGate) prepareSpeech?.(text);
+        speechGate = (speechGate ?? visualReady ?? Promise.resolve()).then(() => {
+          if (ctrl.signal.aborted || speechStopped) return;
           speak?.(text);
         });
       };
@@ -1111,13 +1127,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         const narrationStream = new StringFieldScanner('narration');
         let spokenLen = 0;
         let narrationStreamed = false;
-        // The same conversational-length ceiling generateLive enforces on the FINAL narration
-        // (capSpoken) — recomputed here from the same pure classifier so the streaming feed
-        // respects it too. Without this, a model that ignores the requested spoken budget could
-        // monologue with no ceiling: capSpoken only ever saw (and trimmed) the finished text, but
-        // most turns are heard sentence-by-sentence on THIS path, well before that final trim runs.
-        const spokenCap = spokenBudget(classifyAsk(userText));
-        let spokenChars = 0;
+        // The prompt controls brevity; playback preserves every sentence, including the
+        // conclusion when a model exceeds its writing target.
         const pacer = createSpeechPacer();
 
         // The engine is a lazy chunk: a cold cache, an offline tab, or a deploy that rotated the
@@ -1203,18 +1214,6 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
               type: 'speak',
               narration: collapseRepeatedValues(forDisplay(prog.text.slice(0, consumed))),
             });
-            // Once the spoken budget is spent, stop QUEUEING further sentences — the caption above
-            // keeps growing with the raw stream (it self-corrects to the capped narration when the
-            // turn settles), but the audio queue must never keep growing past the conversational
-            // length a person would actually say out loud.
-            if (spokenChars >= spokenCap) {
-              // Stop ADDING sentences — but say whatever the pacer had already gathered, or the
-              // answer would break off mid-thought at whichever sentence happened to trip the cap.
-              const gathered = pacer.flush();
-              if (gathered) speakWhenVisible(gathered);
-              return;
-            }
-            spokenChars += say.length;
             // The opening sentence goes out alone (its latency is the one a listener hears); the
             // rest are gathered into breath-sized utterances so the synthesizer carries prosody
             // ACROSS the sentence boundaries instead of resetting at every one. See speechPacer.
@@ -1395,9 +1394,9 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // walk's readiness barrier to the network on a cold cache.
         preloadBlockFamilies(renderedSpec.blocks);
 
-        // Settled. If no fresh card ever painted (an answer with nothing to draw), this is what
-        // lets the voice go; if one did, the gate has long since resolved and this is a no-op.
-        endTurn();
+        // Settlement is not a paint: cold renderer chunks can still be downloading. Only
+        // a genuinely empty answer releases the visual gate without a rendered card.
+        if (!renderedSpec.blocks.length || !result.narration) endTurn();
         dispatch({
           type: 'show',
           spec: renderedSpec,
@@ -1580,7 +1579,17 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         });
       }
     },
-    [canRun, getConfig, configReady, canvasReady, getCaps, speak, cancelSpeak, getLibraryEnabled],
+    [
+      canRun,
+      getConfig,
+      configReady,
+      canvasReady,
+      prepareSpeech,
+      getCaps,
+      speak,
+      cancelSpeak,
+      getLibraryEnabled,
+    ],
   );
 
   // The same three tests `run` applies at its top, readable BEFORE a caller commits to the send.
@@ -1755,13 +1764,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // The walkthrough queues its frames BEHIND whatever is being said (its coach line was
       // getting chopped mid-sentence by the flip); real interactive callers keep the interrupt.
       if (opts?.interrupt !== false) cancelSpeak?.();
-      // Read BEFORE queueing this frame's own line: "true" means a coach line is mid-play and
-      // this narration will wait its turn — the reveal below then keeps its fixed beat instead
-      // of waiting for audio that may be most of a sentence away.
-      const speakingAtCall = isSpeaking();
       dispatch({ type: 'start', fresh: false });
       if (!silent) dispatch({ type: 'speak', narration: frame.narration });
-      const spokenHandle = silent ? undefined : speak?.(frame.spoken ?? frame.narration);
       const nextHistory: ChatMessage[] = [
         ...historyRef.current,
         { role: 'user', content: question },
@@ -1779,12 +1783,15 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // waiting to reveal; only ever one of these beats should be in flight at a time.
       showFrameCancelRef.current?.();
       let superseded = false;
+      const readiness = new AbortController();
       showFrameCancelRef.current = () => {
         superseded = true;
+        readiness.abort();
       };
+      pendingSpeechCancelRef.current?.();
+      pendingSpeechCancelRef.current = showFrameCancelRef.current;
       const reveal = (): void => {
         if (superseded) return;
-        showFrameCancelRef.current = null;
         dispatch({
           type: 'show',
           spec: frame.spec,
@@ -1803,27 +1810,24 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           freshTimeline: false,
         });
       };
-      if (opts?.revealNow || silent) {
-        // Muted or silent lands the whole answer at once — a paced beat has no voice to sync to.
-        reveal();
-      } else if (speakingAtCall) {
-        // Mid-coach-line (walkthrough): the proven short beat, so the face is already talking
-        // when the canvas appears — waiting for THIS frame's audio would hold the reveal
-        // through the rest of the coach's sentence.
-        window.setTimeout(reveal, 480);
-      } else {
-        // Reveal the canvas the moment its narration becomes audible — the fixed 480ms guess
-        // this replaces revealed seconds before the audio on a cold Kokoro. Bounded: with no
-        // voice at all (key-free tour, no Docker) `started` resolves false in milliseconds, so
-        // the captioned reveal is FASTER than the old beat, and a wedged synthesis can never
-        // hold the canvas past the cap.
-        void bounded(
-          spokenHandle ? spokenHandle.started : Promise.resolve(false),
-          SHOWFRAME_REVEAL_CAP_MS,
-        ).then(reveal);
-      }
+      const text = frame.spoken ?? frame.narration;
+      if (!silent) prepareSpeech?.(text);
+      // Capture the old canvas before dispatching the new one. Audio preparation overlaps
+      // chunk loading and rendering, but playback cannot overtake the first usable visual.
+      const ready =
+        !silent && !opts?.revealNow && frame.spec.blocks.length
+          ? canvasReady?.(readiness.signal)
+          : undefined;
+      reveal();
+      const narrate = (): void => {
+        if (superseded) return;
+        showFrameCancelRef.current = null;
+        if (!silent) speak?.(text);
+      };
+      if (ready) void ready.then(narrate);
+      else narrate();
     },
-    [cancelSpeak, speak],
+    [cancelSpeak, speak, canvasReady, prepareSpeech],
   );
 
   // What the canvas actually renders: a composed-thread view when active, else a jumped-to past
@@ -1851,6 +1855,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     run,
     refuseReason,
     reset,
+    stopNarration,
     setSpot,
     restore,
     jumpTo,

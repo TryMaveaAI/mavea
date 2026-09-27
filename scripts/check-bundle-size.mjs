@@ -278,7 +278,9 @@ const ROUTE_BUDGETS = [
     // each API accepts and remember which request knobs a model refused, so a turn re-asks without
     // the knob instead of failing. That state sits in the closure every canvas route shares —
     // ~250 bytes, against asks that returned nothing at all before.
-    gzip: 161,
+    // 162 (was 161): measured at 161.5. Shared provider-pressure handling now learns retry windows
+    // from response headers and distinguishes temporary overloads from exhausted daily quota.
+    gzip: 162,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
@@ -298,7 +300,14 @@ const ROUTE_BUDGETS = [
     // 58, from 56: the diff parser stopped truncating hunks and a documentation-only change
     // stopped reading as an outage, and the upload notice grew a close control. Real fixes, ~400
     // bytes; the old line was already what the route weighed when it was set.
-    gzip: 58,
+    // 63, from 58: the impact map now traces upstream/downstream consequences and explains concrete
+    // before/now value changes, while repo Courses paints a grounded file-tree curriculum before
+    // model enrichment. These behaviors live in Ripple's own route closure; measured at 62.7 kB.
+    // 64, from 63: measured at 63.3. Repository reads now expose a bounded architecture spine and
+    // useful starting paths instead of an almost-empty summary, including representative sampling.
+    // 65, from 64: verified callers outside the diff now become navigable impact nodes with causal
+    // paths and role-aware explanations; measured at 64.8 kB.
+    gzip: 65,
     files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus

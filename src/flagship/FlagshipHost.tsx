@@ -1,20 +1,13 @@
-// FlagshipHost — the standalone home: the flagship marketing landing, hosted on its own. The
-// landing used to live inside the old scripted-demo surface (App.tsx); every interactive path
-// now leads into the REAL product instead — the hero composer seeds a real Live session
-// (seedQuery), "Take the tour" boots Live's walkthrough mode, and a demo card boots Live's
-// demo replay mode (a curated prerecorded example on the real surface). This host keeps only what the
-// landing itself needs: the idle face + scroll-dock, the marketing topbar, the ⌘K palette.
-// Eager and light by design — nothing here may pull the block library, the providers, or any
-// corpus (tests/eager-bundle.test.ts walks this graph).
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactElement } from 'react';
+// The home shell stays independent of the conversation machinery. The face occupies its own
+// navigation slot; tours and recorded sessions load the real Live surface on demand.
+import { lazy, Suspense, useCallback, useEffect, type ReactElement } from 'react';
 import { FlagshipLanding, DEMO_ANCHOR } from './FlagshipLanding';
 import { ExploreNav } from './ExploreNav';
-import { isTourSeen, markTourSeen } from '../tour/tourSeen';
+import { markTourSeen } from '../tour/tourSeen';
 import { stashTourMode, stashTourChapter, stashTourSolo } from '../tour/tourEntry';
 import { stashDemoPersona } from '../demo/demoEntry';
-import { castMember, type DemoCastMember } from '../demo/cast';
+import type { DemoCastMember } from '../demo/cast';
 import { stashSeedQuery } from '../live/seedQuery';
-import { useScrollDock } from '../app/useScrollDock';
 import { usePresenceColor } from '../app/usePresenceColor';
 import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import { useCommandPalette } from '../live/features/useCommandPalette';
@@ -23,6 +16,7 @@ import { ThemeToggle } from '../live/setup/ThemeToggle';
 import { preloadRoute } from '../routes';
 import { AsyncSurface } from '../components/AsyncSurface';
 import { createPreloadableLazy, preloadIntentProps } from '../lib/preloadableLazy';
+import { IS_SHOWCASE } from '../lib/runtimeMode';
 
 const flagshipPalette = createPreloadableLazy(() =>
   import('./FlagshipCommandPalette').then((m) => ({ default: m.FlagshipCommandPalette })),
@@ -49,21 +43,11 @@ export function FlagshipHost(): ReactElement {
     };
   }, [presenceBase]);
 
-  // Scroll-dock: the big hero orb glides into the topbar brand slot as you scroll down and
-  // grows back as you scroll up. Always "on home" here — this host IS the home.
-  const { appRef, brandDotRef, layerRef, homeStageRef } = useScrollDock(false, true);
   const voiceSinkRef = useVoiceEnergySink();
 
-  // First-run walkthrough invite: shown once, never a forced auto-launch (the tour stays
-  // reachable from "Take the tour", Explore, ⌘K, and ?tour=1 links). EVERY route into the
-  // walkthrough retires it, not just the invite's own buttons — coming back from the tour to
-  // be invited on it again reads as a surface that wasn't paying attention. The persisted half of
-  // that rule lives in stashTourMode, so a deep-link that never touches this host still honours it;
-  // this state is the local half, so the hero updates without a remount.
-  const [tourInviteSeen, setTourInviteSeen] = useState(isTourSeen);
+  // Preserve the first-run marker across every entry into the walkthrough.
   const retireTourInvite = useCallback(() => {
     markTourSeen();
-    setTourInviteSeen(true);
   }, []);
 
   // Launch the walkthrough: stash the tour flag, then hand off to the real Live surface,
@@ -87,12 +71,6 @@ export function FlagshipHost(): ReactElement {
     [retireTourInvite],
   );
 
-  const playStudyDemo = useCallback(() => {
-    const studyDemo = castMember('pm');
-    if (!studyDemo) return;
-    playDemo(studyDemo);
-  }, [playDemo]);
-
   // Enter the real product. An optional seed (the hero composer's typed question) is stashed
   // for LiveApp to run (or to forward through the setup wizard first).
   const enterLive = useCallback((seed?: string) => {
@@ -103,14 +81,6 @@ export function FlagshipHost(): ReactElement {
   // Topbar entry points need the same pointer/focus/touch code warmup as route cards. This imports
   // the Live shell only; it never mounts Live or runs provider/model logic.
   const preloadLiveRoute = useCallback(() => preloadRoute('#/live') ?? Promise.resolve(), []);
-
-  // Warm the Live provider/TTS connections while the user is still typing, so the click-through
-  // doesn't pay cold-start latency. Dynamically imported
-  // so the Live code never weighs down the eager landing bundle; prewarmLive self-throttles.
-  const warmLive = useCallback(() => {
-    void preloadRoute('#/live')?.catch(() => {});
-    void import('../live/prewarm').then((m) => m.prewarmLive()).catch(() => {});
-  }, []);
 
   // The ⌘K command palette — on the landing it doubles as a teaser that funnels into Live.
   // Self-contained surfaces open directly; a feature that names a walkthrough chapter plays it
@@ -128,27 +98,21 @@ export function FlagshipHost(): ReactElement {
   );
 
   return (
-    <div className="mavea-app live-voice canvas-flat" data-title="" ref={appRef}>
-      {/* presence — the idle face on the hero; docks into the brand slot on scroll. While the
-          lazy chunk loads, a same-footprint ghost holds the slot so the face fades in in place
-          instead of popping into an empty hero. */}
-      <div className="presence-layer idlehome" ref={layerRef}>
-        <div className="presence-positioner" ref={voiceSinkRef}>
-          <Suspense fallback={<div className="presence-ghost" aria-hidden="true" />}>
-            <Presence state="idle" emotion="neutral" gaze="center" muted={false} hidden={false} />
-          </Suspense>
-        </div>
-      </div>
-
-      {/* topbar — the clean marketing nav */}
+    <div className="mavea-app live-voice canvas-flat ob-host" data-title="">
       <div className="topbar">
         <div className="brand">
-          <span className="brand-dot jelly-mark" ref={brandDotRef} />
+          <div className="ob-brand-presence presence-positioner" ref={voiceSinkRef}>
+            <Suspense fallback={<div className="presence-ghost" aria-hidden="true" />}>
+              <Presence state="idle" emotion="neutral" gaze="center" muted={false} hidden={false} />
+            </Suspense>
+          </div>
           <span className="brand-name">Mavéa</span>
         </div>
         <div className="topbar-spacer" />
         <nav className="fl-nav" aria-label="Primary">
-          <TopbarSearchButton onOpen={openPalette} preload={flagshipPalette.preload} />
+          {!IS_SHOWCASE && (
+            <TopbarSearchButton onOpen={openPalette} preload={flagshipPalette.preload} />
+          )}
           <button
             type="button"
             className="fl-nav-link"
@@ -160,15 +124,27 @@ export function FlagshipHost(): ReactElement {
           <button type="button" className="fl-nav-link" onClick={scrollToDemo}>
             Demo
           </button>
-          <ExploreNav onStartTour={startTour} onScrollToDemo={scrollToDemo} />
+          {!IS_SHOWCASE && <ExploreNav onStartTour={startTour} onScrollToDemo={scrollToDemo} />}
+          <a
+            className="ob-github-link"
+            href="https://github.com/TryMaveaAI/mavea"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub ↗
+          </a>
         </nav>
         <button
           type="button"
           className="fl-nav-cta"
-          onClick={() => enterLive()}
+          onClick={() =>
+            IS_SHOWCASE
+              ? document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' })
+              : enterLive()
+          }
           {...preloadIntentProps(preloadLiveRoute)}
         >
-          Open Mavéa
+          {IS_SHOWCASE ? 'Run locally ↗' : 'Open Mavéa ↗'}
         </button>
       </div>
 
@@ -179,21 +155,17 @@ export function FlagshipHost(): ReactElement {
       </div>
 
       {/* the landing itself */}
-      <div ref={homeStageRef} className="presence-stage stage flagship" data-active="1">
+      <div className="presence-stage stage flagship" data-active="1">
         <FlagshipLanding
           onPlay={playDemo}
-          onPlayStudyDemo={playStudyDemo}
           onEnterLive={enterLive}
-          onWarm={warmLive}
           onDemoIntent={preloadLiveRoute}
-          showTourInvite={!tourInviteSeen}
           onPlayTour={startTour}
-          onDismissTourInvite={retireTourInvite}
           onViewWorld={watchInLive('living-answer')}
         />
       </div>
 
-      {paletteOpen && (
+      {paletteOpen && !IS_SHOWCASE && (
         <AsyncSurface label="Feature search" overlay>
           <FlagshipCommandPalette
             onClose={closePalette}

@@ -25,7 +25,7 @@ export interface DirectorOpts {
   maxSlides?: number;
 }
 
-const DEFAULTS = { palette: 'aurora' as ClipTheme, vibe: 'clean' as VibeId, maxSlides: 6 };
+const DEFAULTS = { palette: 'aurora' as ClipTheme, vibe: 'clean' as VibeId };
 
 // ---- shared shaping helpers ----
 function firstQuestion(frames: TurnFrame[]): string {
@@ -100,10 +100,8 @@ interface SectionCut {
 /**
  * How many topic sections a reel of `maxSlides` slides can actually carry. Every section costs a title
  * slide plus at least one content beat, and the outro costs one more — so the ceiling is what it is.
- * A long, many-topic session used to recut into one slide per topic PLUS two beats each with no regard
- * for the ceiling (ten topics → thirty-one slides, a three-minute "reel" no social format would take,
- * and minutes of rasterizing to export). A reel is a highlight, so we cover the sections we can and
- * take them from the END of the session — the topic the user just explored is the one they're sharing.
+ * An explicit caller budget may intentionally make a highlight cut. The default budget is computed
+ * from the conversation below, so the normal Reel path never silently drops an older turn.
  */
 function sectionsShown(maxSlides: number, sectionCount: number): number {
   return Math.max(1, Math.min(sectionCount, Math.floor((maxSlides - 1) / 2)));
@@ -236,6 +234,18 @@ function fallbackContent(frames: TurnFrame[], ctx: CoerceCtx, cap: number): Reel
         raw: { quote: dispSents[0] },
         voiceover: rawSents.slice(0, 2).join(' '),
       });
+    } else {
+      const question = forDisplay((f.question || f.spec?.title || '').trim());
+      const spokenQuestion = forSpeech((f.question || f.spec?.title || '').trim());
+      if (question) {
+        beats.push({
+          speaksFor: fi,
+          covers: true,
+          content: 'quote',
+          raw: { quote: question },
+          voiceover: spokenQuestion || question,
+        });
+      }
     }
     if (fi === 0 && notes.length >= 2) {
       beats.push({
@@ -283,7 +293,16 @@ function coveredSections(frames: TurnFrame[], maxSlides: number): TurnFrame[][] 
 }
 
 export function buildReelFallback(frames: TurnFrame[], opts: DirectorOpts = {}): ReelScript {
-  const o = { ...DEFAULTS, ...opts };
+  const allSections = sectionFrames(frames);
+  // One title per topic + one answer beat per turn + the outro is the smallest complete cut. Keep
+  // the six-slide richness floor for a short conversation, but grow beyond it when the live session
+  // does — dropping turns without telling the user is worse than producing a longer Reel.
+  const completeCutSlides = allSections.length + frames.length + 1;
+  const o: Required<DirectorOpts> = {
+    ...DEFAULTS,
+    ...opts,
+    maxSlides: opts.maxSlides ?? Math.max(6, completeCutSlides),
+  };
   const sections = coveredSections(frames, o.maxSlides);
   const cuts: SectionCut[] = sections.map((secFrames, i) => {
     const ctx: CoerceCtx = { topic: topicOf(secFrames), question: firstQuestion(secFrames) };

@@ -110,6 +110,28 @@ export const SEED_SHIP: ShipModel = {
       problem: 'The guard and reaper paths this PR changed are not covered.',
       fix: 'Add a test that exercises guard.ts with the new signature.',
     },
+    {
+      id: 'reaper',
+      label: 'src/jobs/reaper',
+      sub: 'caller outside the diff',
+      type: 'job',
+      status: 'breaks',
+      scope: 'downstream',
+      owner: '@acme/platform-team',
+      contract: 'The scheduled cleanup job imports parseLegacyJWT to inspect old-format tokens.',
+      problem:
+        'This PR removes parseLegacyJWT without editing the reaper, so the job fails to build after merge.',
+      fix: 'Move the reaper to the current parser or retire the legacy cleanup path in this PR.',
+      cite: { ref: 'src/jobs/reaper.ts:14', evidence: 'verified' },
+      altitudeNotes: {
+        newgrad:
+          'Start at the removed export, then follow the import into reaper.ts. The caller is unchanged in the diff, but it still depends on code the PR deletes.',
+        working:
+          'The repository-wide caller search found an unchanged import at reaper.ts:14. Update that call site and add the job build to the PR checks.',
+        principal:
+          'This crosses the PR boundary into scheduled operations. Decide whether legacy-token cleanup is retired or migrated, and make ownership and rollout explicit before merge.',
+      },
+    },
   ],
   edges: [
     { from: 'pr', to: 'api', verb: 'calls', status: 'breaks', breaking: true },
@@ -117,6 +139,7 @@ export const SEED_SHIP: ShipModel = {
     { from: 'pr', to: 'mig', verb: 'migrates', status: 'migration' },
     { from: 'pr', to: 'web', verb: 'refreshes', status: 'safe' },
     { from: 'pr', to: 'tests', verb: 'covers', status: 'untested' },
+    { from: 'auth', to: 'reaper', verb: 'is imported by', status: 'breaks', breaking: true },
   ],
 
   // ── the changes: each diff row, its intent, why, and the in-repo callers it touches ──
@@ -143,6 +166,7 @@ export const SEED_SHIP: ShipModel = {
       blastRadius: ['web'],
       blastFiles: 2,
       blastOutside: 0,
+      deltas: [{ subject: 'ACCESS_TTL', kind: 'changed', before: '60 * 60', after: '15 * 60' }],
       links: [
         { name: 'fetch wrapper', ref: 'src/web/api.ts:130', scope: 'in-pr', status: 'updated' },
       ],
@@ -172,10 +196,18 @@ export const SEED_SHIP: ShipModel = {
           { t: 'add', c: 'validateToken(t: string, opts: VerifyOpts)' },
         ],
       },
-      blastRadius: ['api', 'auth'],
+      blastRadius: ['auth', 'api'],
       blastFiles: 3,
       blastOutside: 0,
       symbols: ['validateToken'],
+      deltas: [
+        {
+          subject: 'validateToken',
+          kind: 'changed',
+          before: 'validateToken(t: string)',
+          after: 'validateToken(t: string, opts: VerifyOpts)',
+        },
+      ],
       links: [
         { name: 'route guard', ref: 'src/api/guard.ts:21', scope: 'in-pr', status: 'breaks' },
         {
@@ -224,6 +256,13 @@ export const SEED_SHIP: ShipModel = {
       blastFiles: 3,
       blastOutside: 0,
       symbols: ['rotateRefresh'],
+      deltas: [
+        {
+          subject: 'rotateRefresh',
+          kind: 'added',
+          after: 'async function rotateRefresh(session)',
+        },
+      ],
       links: [
         {
           name: 'refreshSession()',
@@ -259,15 +298,22 @@ export const SEED_SHIP: ShipModel = {
           { t: 'del', c: '}' },
         ],
       },
-      blastRadius: ['auth'],
+      blastRadius: ['auth', 'reaper'],
       blastFiles: 2,
-      blastOutside: 0,
+      blastOutside: 1,
       symbols: ['parseLegacyJWT'],
+      deltas: [
+        {
+          subject: 'parseLegacyJWT',
+          kind: 'removed',
+          before: 'function parseLegacyJWT(token)',
+        },
+      ],
       links: [
         {
           name: 'token reaper job',
           ref: 'src/jobs/reaper.ts:14',
-          scope: 'in-pr',
+          scope: 'downstream',
           status: 'breaks',
         },
       ],

@@ -3,7 +3,57 @@
 // areas/modules and lays out the repo's structure, so a new hire (or a team landing in code they
 // didn't write) can read the shape of it. Deterministic and honest — it only ever describes files
 // that exist; a connected model can later add a one-line purpose per area, but the floor stands alone.
-import type { ShipModel, ShipModule, ShipNode, ShipEdge } from '../model';
+import type { CourseLevel, ShipCourse, ShipEdge, ShipModel, ShipModule, ShipNode } from '../model';
+
+const MAX_COURSE_LESSONS = 20;
+
+function courseDisplayName(module: ShipModule): string {
+  return module.name === '(root)' ? 'the repository root' : module.name;
+}
+
+function courseLevel(index: number, count: number): CourseLevel {
+  if (count === 1 || index < Math.ceil(count / 3)) return 'beginner';
+  if (index >= Math.ceil((count * 2) / 3)) return 'expert';
+  return 'intermediate';
+}
+
+function courseTitle(index: number, count: number, modules: readonly ShipModule[]): string {
+  const week = `Week ${index + 1}`;
+  if (index === 0) return `${week}: Find your footing`;
+  if (index === count - 1) return `${week}: Trace change safely`;
+  return `${week}: Read ${courseDisplayName(modules[0]!)}`;
+}
+
+/** Build an immediate syllabus from the real file tree while the richer model read is in flight. */
+export function buildCourseFloor(model: ShipModel, requestedCourses = 3): ShipCourse[] {
+  const modules = model.modules.filter((module) => module.entry).slice(0, MAX_COURSE_LESSONS);
+  if (modules.length === 0) return [];
+
+  const courseCount = Math.min(
+    Math.max(1, Math.trunc(requestedCourses)),
+    Math.max(1, Math.ceil(modules.length / 4)),
+  );
+  const perCourse = Math.ceil(modules.length / courseCount);
+
+  return Array.from({ length: courseCount }, (_, index) => {
+    const courseModules = modules.slice(index * perCourse, (index + 1) * perCourse);
+    return {
+      title: courseTitle(index, courseCount, courseModules),
+      subtitle: `${courseModules.length} real ${courseModules.length === 1 ? 'area' : 'areas'} from the repository tree.`,
+      level: courseLevel(index, courseCount),
+      lessons: courseModules.map((module) => {
+        const name = courseDisplayName(module);
+        return {
+          title: `Trace ${name}`,
+          minutes: 25,
+          goal: `Open ${module.entry}, map the ${name} area, and follow its imports to the next boundary.`,
+          read: [module.entry],
+          concepts: ['Area layout', 'Entry points', 'Dependency tracing'],
+        };
+      }),
+    };
+  });
+}
 
 /** The area a file belongs to: its directory, collapsed to at most two segments so a deep tree still
  *  groups into a readable handful of modules (src/auth/oauth/… → src/auth). */
@@ -164,7 +214,11 @@ export function buildShipFromPaths(
         ...(areas.length > mapped.length
           ? [`The map shows the ${mapped.length} busiest areas; the full list is in Onboarding.`]
           : []),
-        ...(truncated ? ['Large repo — only the first slice of files was read.'] : []),
+        ...(truncated
+          ? [
+              `Large repo — analysis is capped at ${files.length} representative paths spread across the repository; deeper files are fetched only when a lesson or question needs them.`,
+            ]
+          : []),
       ],
     },
   };
