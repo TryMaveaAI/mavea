@@ -29,7 +29,7 @@ vi.mock('../src/live/dashboards/store', () => ({
   getDashboards: () => [],
   applyRefreshResult: vi.fn(),
   markDataRefreshed: vi.fn(),
-  markDataRetry: vi.fn(),
+  markDataFailed: vi.fn(),
   markAiRefreshed: (...a: unknown[]) => markAiRefreshed(...a),
   setVerdict: (...a: unknown[]) => setVerdict(...a),
   markVerdictFailed: (...a: unknown[]) => markVerdictFailed(...a),

@@ -24,13 +24,12 @@ import { setDataPending } from './dataPending';
 import { withSchedulerLease } from './schedulerLease';
 import { type CheckRun, endCheckRun, recordStep, startCheckRun } from './checkRun';
 import { failureLine, trackerState } from './trackerState';
-import type { TrackerFailure } from './types';
 import {
   applyRefreshResult,
   getDashboard,
   getDashboards,
   markAiRefreshed,
-  markDataRetry,
+  markDataFailed,
   markTrackerFailure,
   markVerdictFailed,
   rearmAfterConnectionChange,
@@ -61,29 +60,6 @@ import { briefingNeededToday, buildBriefingContext, recordBriefing } from './bri
 import { announceTripwireToast } from './dashboardEvents';
 
 const TICK_MS = 15_000;
-// How soon a FAILED fetch (network/429/auth — not "found nothing") gets another try. Short enough
-// that a transient blip doesn't park an hourly dashboard stale, long enough not to hammer a
-// rate-limited key every tick.
-const RETRY_MS = 5 * 60_000;
-
-/** When to try again after a call died, by WHY it died. One flat delay treated a five-second rate
- *  window and a revoked key identically: the window wasted four minutes of staleness, and the key
- *  burned a doomed call every five minutes forever. A provider that TOLD us when to come back is
- *  believed (bounded), because it knows and we are guessing. */
-function retryDelayFor(failure: TrackerFailure | undefined, now: number): number {
-  switch (failure?.kind) {
-    case 'rate-limit':
-      return failure.retryAt ? Math.max(15_000, failure.retryAt - now) : 60_000;
-    case 'provider-unavailable':
-      return 2 * 60_000;
-    case 'auth':
-      // Nothing here retries itself out of a rejected key. Park it on the normal cadence and let
-      // the tracker card ask for a reconnect, rather than spending a doomed call every 5 minutes.
-      return 6 * 60 * 60_000;
-    default:
-      return RETRY_MS;
-  }
-}
 
 // Module-scope, not per-hook: the surface router (routes.ts) fully unmounts DashboardsApp on any
 // hash change, so navigating away and back while a refresh/analyze is still in flight mounts a FRESH
@@ -368,16 +344,17 @@ export async function runRefreshBatch(
 
     if (!batchResult.ok) {
       // The CALL died (network/quota/auth). Don't stamp lastRefreshedAt — no member was checked —
-      // and retry soon instead of parking a full cadence on a transient failure. The briefing gate
-      // stays open too (markBriefingShown only ever fires from recordBriefing, on success).
+      // and don't ask again on a backoff: the board says what happened and waits for its next
+      // scheduled pass or the reader's Check now. A rejected key stops the board until the reader
+      // reconnects and checks. The briefing gate stays open too (markBriefingShown only ever fires
+      // from recordBriefing, on success).
       const failure = batchResult.failure ?? { kind: 'network' as const };
-      const retryIn = retryDelayFor(batchResult.failure, now);
       eachRun((run) => {
         recordStep(run, 'search', false, { detail: failureLine(failure) });
         endCheckRun(run, { outcome: 'failed', failure, attempts: batchResult.attempts });
       });
       for (const m of members) {
-        markDataRetry(m.d.id, now + retryIn);
+        markDataFailed(m.d.id, now, { stop: failure.kind === 'auth' });
         // Say WHICH way it died on the tracker itself, so the card can offer the matching next
         // step instead of a generic "couldn't verify" the reader can do nothing with.
         markTrackerFailure(m.d.id, failure, now);

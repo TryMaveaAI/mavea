@@ -37,12 +37,12 @@ const dashboard = (over: Partial<Dashboard> = {}): Dashboard =>
   }) as Dashboard;
 
 const applyRefreshResult = vi.fn();
-const markDataRetry = vi.fn();
+const markDataFailed = vi.fn();
 vi.mock('../src/live/dashboards/store', () => ({
   getDashboard: () => null,
   getDashboards: () => [],
   applyRefreshResult: (...args: unknown[]) => applyRefreshResult(...args),
-  markDataRetry: (...args: unknown[]) => markDataRetry(...args),
+  markDataFailed: (...args: unknown[]) => markDataFailed(...args),
   markAiRefreshed: vi.fn(),
   setVerdict: vi.fn(),
   markVerdictFailed: vi.fn(),
@@ -73,7 +73,7 @@ describe('runRefreshBatch — no model connected', () => {
     const outcomes = await runRefreshBatch([dashboard()], cfg, false);
     expect(outcomes).toEqual({});
     expect(applyRefreshResult).not.toHaveBeenCalled();
-    expect(markDataRetry).not.toHaveBeenCalled();
+    expect(markDataFailed).not.toHaveBeenCalled();
     expect(refreshDashboards).not.toHaveBeenCalled();
   });
 

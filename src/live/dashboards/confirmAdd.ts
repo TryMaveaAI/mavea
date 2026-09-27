@@ -68,7 +68,7 @@ export function confirmFailureMessage(
       ? `Saved, but nothing can be checked yet. ${searchBlockLine('search-off')} Then this starts filling in.`
       : `${searchBlockLine('search-off')} ${ONLY_ONCE_REAL[subject]}.`;
   return kept
-    ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. It keeps trying; you can also reword what to track.'
+    ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. Its next scheduled check tries again, or check it now; you can also reword what to track.'
     : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";
 }
 

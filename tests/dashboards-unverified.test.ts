@@ -35,12 +35,12 @@ const dashboard = (over: Partial<Dashboard> = {}): Dashboard =>
 
 const getDashboard = vi.fn();
 const applyRefreshResult = vi.fn();
-const markDataRetry = vi.fn();
+const markDataFailed = vi.fn();
 vi.mock('../src/live/dashboards/store', () => ({
   getDashboard: (id: string) => getDashboard(id),
   getDashboards: () => [],
   applyRefreshResult: (...args: unknown[]) => applyRefreshResult(...args),
-  markDataRetry: (...args: unknown[]) => markDataRetry(...args),
+  markDataFailed: (...args: unknown[]) => markDataFailed(...args),
   markAiRefreshed: vi.fn(),
   setVerdict: vi.fn(),
   markVerdictFailed: vi.fn(),

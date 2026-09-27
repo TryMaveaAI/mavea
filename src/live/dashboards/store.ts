@@ -977,23 +977,28 @@ export function markTrackerFailure(id: string, failure: TrackerFailure, now = Da
   patchOne(id, (d) => ({ ...d, state: stateAfterFailure(trackerState(d), failure, now) }));
 }
 
-/** A data refresh ATTEMPT died (network, quota, auth) — schedule a soon retry WITHOUT touching
- *  lastRefreshedAt/lastDataOutcome. A failed call never happened as far as the honest clock is
- *  concerned ("updated 35m ago" over a dash, when every attempt 429'd, reads as a working
- *  dashboard that found nothing — a lie), and winding the full cadence on a transient failure
- *  parks an hourly dashboard stale for an hour over a blip.
+/** A data refresh ATTEMPT died (network, quota, auth). Nothing asks again on its own: the board
+ *  waits for its next REGULAR pass — the schedule the reader set — or for the reader's own Check
+ *  now. A rejected key (`stop`) parks the board entirely, since every scheduled pass would spend a
+ *  call on a key the provider has already refused; the reader's check after reconnecting is what
+ *  starts it again. lastRefreshedAt/lastDataOutcome are untouched: a failed call never happened
+ *  as far as the honest clock is concerned.
  *
- *  A DUE one-shot (set by the user, or the durable "first check" every new dashboard gets — see
- *  ensureFirstCheck) needs the same deferral: `isDataDue` fires on either clock, so leaving a due
- *  `oneShotAt` untouched would have the next 15s tick re-select this dashboard and retry
- *  immediately instead of waiting out `retryAt` — a network blip would hot-loop a fresh dashboard
- *  every tick until it happened to succeed. Push it out to match, never clear it early. */
-export function markDataRetry(id: string, retryAt: number): void {
-  patchOne(id, (d) => ({
-    ...d,
-    nextDataAt: retryAt,
-    ...(d.oneShotAt !== undefined && d.oneShotAt < retryAt ? { oneShotAt: retryAt } : {}),
-  }));
+ *  A DUE one-shot (a time the reader set, or the "first check" every new board gets — see
+ *  ensureFirstCheck) is spent by the attempt: `isDataDue` fires on either clock, so leaving it
+ *  would have the next 15s tick re-send the call that just failed. A one-shot still in the future
+ *  is a separate appointment and stays. */
+export function markDataFailed(id: string, now: number, opts: { stop?: boolean } = {}): void {
+  patchOne(id, (d) => {
+    const cadence = cleanCadenceWindow(d.cadence, now);
+    const spent = d.oneShotAt !== undefined && d.oneShotAt <= now;
+    const { oneShotAt: _at, oneShotLabel: _label, ...rest } = d;
+    return {
+      ...(spent ? rest : d),
+      cadence,
+      nextDataAt: opts.stop ? Number.MAX_SAFE_INTEGER : nextDataDue(cadence, now),
+    };
+  });
 }
 
 /** Arms the durable "first check" every fresh dashboard with live content gets: a one-shot due

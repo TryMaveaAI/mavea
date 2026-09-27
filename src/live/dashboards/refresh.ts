@@ -291,8 +291,8 @@ export interface DashboardRefreshResult {
 }
 
 export interface BatchRefreshResult {
-  /** Whether the CALL survived (network/auth/parse) — false means every member should retry soon
-   *  without being marked as checked, same semantics as the old single-dashboard `ok`. */
+  /** Whether the CALL survived (network/auth/parse) — false means no member was checked, so none
+   *  is marked as checked; the loop waits for the next scheduled pass or the reader's Check now. */
   ok: boolean;
   /** Call-wide groundedness — an ungrounded call discards trusted output for EVERY member. */
   grounded: boolean;
@@ -834,7 +834,7 @@ export async function refreshDashboards(
   } catch (err) {
     console.error('[dashboards] refreshDashboards failed', err);
     // ok:false is the loop's cue that the CALL itself died (network, 429, auth) — distinct from
-    // "ran fine, found nothing new" — so it can retry soon instead of parking a full cadence.
+    // "ran fine, found nothing new" — so it never stamps a check that did not happen.
     const perDashboard: Record<string, DashboardRefreshResult> = {};
     for (const m of members) perDashboard[m.d.id] = emptyDashboardResult();
     return {
