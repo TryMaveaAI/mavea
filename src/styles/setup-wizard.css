@@ -1256,7 +1256,9 @@
   .provider-tiles {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--s-xs);
+    /* --s-sm, not --s-xs: on a phone the viewport scale takes --s-xs to ~3px, too little for a
+       thumb to choose between two pills; --s-sm stays over the 6px that takes. */
+    gap: var(--s-sm);
   }
   .provider-tile {
     border-radius: var(--r-full);
