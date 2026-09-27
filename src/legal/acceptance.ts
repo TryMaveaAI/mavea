@@ -22,9 +22,36 @@
 export const LEGAL_ACCEPTANCE_VERSION = '2026-09-27-plain-terms-v13';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
+/** The release running now. An acceptance counts for one release: installing a new version asks
+ *  again, even when the documents did not change, so every reader has accepted what they run. */
+export const APP_RELEASE: string =
+  typeof __MAVEA_VERSION__ === 'string' ? __MAVEA_VERSION__ : 'unversioned';
+
+/** The stored record for an acceptance of this release. Scripts that pre-accept for a browser
+ *  session pass their own release (read from package.json), since outside Vite this module cannot
+ *  know which build it is talking to. */
+export function acceptanceRecord(release: string = APP_RELEASE, now: Date = new Date()): string {
+  return JSON.stringify({
+    version: LEGAL_ACCEPTANCE_VERSION,
+    release,
+    acceptedAt: now.toISOString(),
+  });
+}
+
 interface LegalAcceptance {
   version: string;
+  release: string;
   acceptedAt: string;
+}
+
+function read(): Partial<LegalAcceptance> | null {
+  try {
+    const raw = localStorage.getItem(LEGAL_ACCEPTANCE_STORAGE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? (parsed as Partial<LegalAcceptance>) : null;
+  } catch {
+    return null;
+  }
 }
 
 function valid(value: unknown): value is LegalAcceptance {
@@ -32,6 +59,7 @@ function valid(value: unknown): value is LegalAcceptance {
   const candidate = value as Partial<LegalAcceptance>;
   return (
     candidate.version === LEGAL_ACCEPTANCE_VERSION &&
+    candidate.release === APP_RELEASE &&
     typeof candidate.acceptedAt === 'string' &&
     Number.isFinite(Date.parse(candidate.acceptedAt))
   );
@@ -46,22 +74,14 @@ export function hasLegalAcceptance(): boolean {
   }
 }
 
-/** Whether this browser accepted an EARLIER version — the gate is then showing a change, not a
- *  first visit. Read once for a label; it has no reason to be a live store. */
-export function hasEarlierAcceptance(): boolean {
-  try {
-    const raw = localStorage.getItem(LEGAL_ACCEPTANCE_STORAGE_KEY);
-    if (!raw) return false;
-    const parsed: unknown = JSON.parse(raw);
-    return (
-      !!parsed &&
-      typeof parsed === 'object' &&
-      typeof (parsed as Partial<LegalAcceptance>).version === 'string' &&
-      (parsed as Partial<LegalAcceptance>).version !== LEGAL_ACCEPTANCE_VERSION
-    );
-  } catch {
-    return false;
-  }
+/** Why the gate is showing: a first visit, a new release with the same documents, or changed
+ *  documents. Read once for a label; it has no reason to be a live store. */
+export type GateReason = 'first-visit' | 'new-release' | 'terms-changed';
+
+export function gateReason(): GateReason {
+  const prior = read();
+  if (!prior || typeof prior.version !== 'string') return 'first-visit';
+  return prior.version === LEGAL_ACCEPTANCE_VERSION ? 'new-release' : 'terms-changed';
 }
 
 /* Acceptance is read like an external store (LegalGate consumes it via useSyncExternalStore), not a
@@ -92,10 +112,7 @@ export function subscribeLegalAcceptance(listener: () => void): () => void {
 /** Persist acceptance and verify the write. Storage failure must never be mistaken for consent. */
 export function acceptLegalTerms(now = new Date()): boolean {
   try {
-    localStorage.setItem(
-      LEGAL_ACCEPTANCE_STORAGE_KEY,
-      JSON.stringify({ version: LEGAL_ACCEPTANCE_VERSION, acceptedAt: now.toISOString() }),
-    );
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord(APP_RELEASE, now));
     const accepted = hasLegalAcceptance();
     if (accepted) notify();
     return accepted;

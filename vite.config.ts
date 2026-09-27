@@ -375,8 +375,13 @@ const TEST_WORKERS = Math.max(
   Math.min(availableParallelism() - 1, Math.floor(totalmem() / 1024 ** 3 / 3)),
 );
 
+// The release a reader is running. An acknowledgement is recorded against it, so every new release
+// asks again (src/legal/acceptance.ts).
+const APP_VERSION: string = JSON.parse(readFileSync('package.json', 'utf8')).version;
+
 // Single source of truth for build (Vite) + tests (Vitest).
 export default defineConfig({
+  define: { __MAVEA_VERSION__: JSON.stringify(APP_VERSION) },
   // Vite's dep scanner only follows STATIC imports from the entry, so a package that is reached
   // exclusively through a dynamic import() is invisible to it at server start. The first time the
   // running app actually reaches one, Vite pre-bundles it on the spot and hard-reloads the page to

@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  APP_RELEASE,
+  acceptanceRecord,
   LEGAL_ACCEPTANCE_STORAGE_KEY,
   LEGAL_ACCEPTANCE_VERSION,
   acceptLegalTerms,
@@ -37,10 +39,18 @@ describe('versioned legal acknowledgement', () => {
     expect(acceptLegalTerms(new Date('2026-07-16T12:00:00.000Z'))).toBe(true);
     expect(JSON.parse(localStorage.getItem(LEGAL_ACCEPTANCE_STORAGE_KEY)!)).toEqual({
       version: LEGAL_ACCEPTANCE_VERSION,
+      release: APP_RELEASE,
       acceptedAt: '2026-07-16T12:00:00.000Z',
     });
     resetLegalAcceptance();
     expect(hasLegalAcceptance()).toBe(false);
+  });
+
+  it('asks again on every new release, even when the documents did not change', () => {
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord('0.0.1'));
+    expect(hasLegalAcceptance()).toBe(false);
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord());
+    expect(hasLegalAcceptance()).toBe(true);
   });
 
   it('rejects malformed, incomplete, and stale records', () => {
@@ -187,10 +197,7 @@ describe('LegalGate', () => {
     expect(screen.queryByText('Connected product mounted')).toBeNull();
 
     // Another tab writes the acceptance; this tab only hears about it via the storage event.
-    localStorage.setItem(
-      LEGAL_ACCEPTANCE_STORAGE_KEY,
-      JSON.stringify({ version: LEGAL_ACCEPTANCE_VERSION, acceptedAt: new Date().toISOString() }),
-    );
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord());
     fireEvent(window, new StorageEvent('storage', { key: LEGAL_ACCEPTANCE_STORAGE_KEY }));
 
     expect(screen.getByText('Connected product mounted')).toBeInTheDocument();
@@ -264,5 +271,10 @@ describe('the gate says what kind of visit this is', () => {
     );
     render(<LegalGate>{null}</LegalGate>);
     expect(screen.getByText('Our terms have changed')).toBeInTheDocument();
+    cleanup();
+
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord('0.0.1'));
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Mavéa has been updated')).toBeInTheDocument();
   });
 });

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import {
   acceptLegalTerms,
-  hasEarlierAcceptance,
+  gateReason,
   hasLegalAcceptance,
   subscribeLegalAcceptance,
 } from './acceptance';
@@ -45,8 +45,8 @@ export function LegalGate({
   // already on screen here (the 'storage' event notifies) — no stale gate demanding a reload.
   const accepted = useSyncExternalStore(subscribeLegalAcceptance, hasLegalAcceptance);
   const [checked, setChecked] = useState(false);
-  // "Changed" only to someone who accepted an earlier version; a first visit has nothing to update.
-  const [returning] = useState(hasEarlierAcceptance);
+  // Said to match the visit: a first one, a new release, or documents that changed since.
+  const [reason] = useState(gateReason);
   // Listening is confirmed on its own rather than folded into the general acknowledgement: it can
   // pick up people who never opened Mavéa, so it deserves its own deliberate tick.
   const [speechChecked, setSpeechChecked] = useState(false);
@@ -90,7 +90,11 @@ export function LegalGate({
       >
         <div className="legal-gate-body">
           <span className="legal-gate-kicker">
-            {returning ? 'Our terms have changed' : 'Welcome to Mavéa'}
+            {reason === 'terms-changed'
+              ? 'Our terms have changed'
+              : reason === 'new-release'
+                ? 'Mavéa has been updated'
+                : 'Welcome to Mavéa'}
           </span>
           <h1 id="legal-gate-title">Before using connected features</h1>
           <p id="legal-gate-summary">
