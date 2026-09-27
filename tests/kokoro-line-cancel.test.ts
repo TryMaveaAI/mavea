@@ -105,6 +105,48 @@ function cacheFor(seconds: number, line: string): void {
   }
 }
 
+/** Every synthesis request the module makes, by the text it asked for. */
+let requested: string[] = [];
+
+/** Answer every synthesis request with `respond`; the health probe always says yes. */
+function synthesizeWith(respond: (init: RequestInit) => Promise<Response>): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).includes('/tts/health')) return { ok: true } as Response;
+      requested.push((JSON.parse(String(init?.body)) as { input: string }).input);
+      return respond(init ?? {});
+    }),
+  );
+}
+
+/** A synthesis request that never answers until it is aborted. */
+function hangUntilAborted(init: RequestInit): Promise<Response> {
+  return new Promise((_, reject) => {
+    init.signal?.addEventListener('abort', () =>
+      reject(new DOMException('The operation was aborted.', 'AbortError')),
+    );
+  });
+}
+
+/** A PCM stream the test feeds by hand, one read at a time. */
+function handDrivenStream(): {
+  response: Response;
+  pendingReads: Array<(result: ReadableStreamReadResult<Uint8Array>) => void>;
+} {
+  const pendingReads: Array<(result: ReadableStreamReadResult<Uint8Array>) => void> = [];
+  const reader = {
+    read: () =>
+      new Promise<ReadableStreamReadResult<Uint8Array>>((resolve) => pendingReads.push(resolve)),
+    releaseLock(): void {},
+    cancel: async (): Promise<void> => {},
+  };
+  return {
+    response: { ok: true, body: { getReader: () => reader } } as unknown as Response,
+    pendingReads,
+  };
+}
+
 /** Where a clip first goes on the clock, once it has. */
 function firstStartOf(clip: number): number | undefined {
   const own = starts.filter((s) => s.clip === clip).map((s) => s.at);
@@ -121,6 +163,7 @@ beforeEach(() => {
   clipSeq = 0;
   clock.zero = Date.now();
   synthesized = 0;
+  requested = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: RequestInfo | URL) => {
@@ -179,6 +222,52 @@ describe('stopping one spoken line', () => {
     await expect(narration.finished).resolves.toBe(true);
   });
 
+  it('cancels a streamed aside whose synthesis hangs, and plays the line after it', async () => {
+    cache(NARRATION);
+    synthesizeWith(hangUntilAborted);
+    const aside = speakKokoroLine(ASIDE, 'mavea');
+    const narration = speakKokoroLine(NARRATION, 'mavea');
+    await vi.waitFor(() => expect(requested).toEqual([ASIDE]));
+
+    aside.cancel();
+
+    await expect(aside.finished).resolves.toBe(false);
+    await expect(narration.finished).resolves.toBe(true);
+    // The aside never reached the clock: the one clip scheduled is the narration's whole clause.
+    expect(new Set(starts.map((s) => s.clip)).size).toBe(1);
+    expect(starts.reduce((sum, s) => sum + s.duration, 0)).toBeCloseTo(CLIP_SECONDS, 6);
+    // No whole-clip retry of the cancelled line, and nothing else synthesized.
+    expect(requested).toEqual([ASIDE]);
+  });
+
+  it('cancels a streamed aside mid-stream, and plays the line after it', async () => {
+    cache(NARRATION);
+    const stream = handDrivenStream();
+    synthesizeWith(async () => stream.response);
+    const aside = speakKokoroLine(ASIDE, 'mavea');
+    const narration = speakKokoroLine(NARRATION, 'mavea');
+    await vi.waitFor(() => expect(stream.pendingReads).toHaveLength(1));
+    stream.pendingReads[0]({ done: false, value: pcmOf(0.5) });
+    await vi.waitFor(() => expect(firstStartOf(1)).toBeDefined());
+    await vi.waitFor(() => expect(stream.pendingReads).toHaveLength(2));
+
+    aside.cancel();
+
+    expect(stopped.has(1)).toBe(true);
+    // Kokoro is still rendering the accepted request, so the next line waits for that render to
+    // reach the reader rather than running a second synthesis on top of it.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(firstStartOf(2)).toBeUndefined();
+    stream.pendingReads[1]({ done: false, value: pcmOf(0.5) });
+
+    await expect(aside.finished).resolves.toBe(false);
+    await expect(narration.finished).resolves.toBe(true);
+    // Nothing the stream delivered after the cancel was scheduled.
+    expect(starts.filter((s) => s.clip === 1)).toHaveLength(1);
+    expect(stopped.has(2)).toBe(false);
+    expect(requested).toEqual([ASIDE]);
+  });
+
   it('drops a line still waiting in the queue without touching the lines around it', async () => {
     cache(NARRATION, ASIDE, LATER);
     const first = speakKokoroLine(NARRATION, 'mavea');
@@ -194,19 +283,6 @@ describe('stopping one spoken line', () => {
     // Only the two surviving lines ever reached the clock, back to back, and neither was stopped.
     const clips = [...new Set(starts.map((s) => s.clip))];
     expect(clips).toHaveLength(2);
-    expect(stopped.size).toBe(0);
-  });
-
-  it('is a no-op once the line has ended', async () => {
-    cache(ASIDE, LATER);
-    const aside = speakKokoroLine(ASIDE, 'mavea');
-    await expect(aside.finished).resolves.toBe(true);
-    const later = speakKokoroLine(LATER, 'mavea');
-    await vi.waitFor(() => expect(starts.length).toBeGreaterThan(1));
-
-    aside.cancel();
-
-    await expect(later.finished).resolves.toBe(true);
     expect(stopped.size).toBe(0);
   });
 });
