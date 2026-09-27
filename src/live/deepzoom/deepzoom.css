@@ -688,7 +688,8 @@
 }
 .dz-zoom strong {
   font-weight: 700;
-  color: var(--dz-current);
+  /* Leaned toward the text colour so every scale's hue reads on its button, hovered included. */
+  color: color-mix(in oklab, var(--dz-current) 65%, var(--text-primary));
 }
 .dz-zoom:hover {
   border-color: color-mix(in oklab, var(--dz-current) 70%, transparent);

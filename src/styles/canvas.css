@@ -302,7 +302,8 @@
   font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* Each stop sits on the recessed surface, where the muted ink falls short of 4.5:1 in light. */
+  color: var(--text-secondary);
 }
 .tl-title {
   font-size: var(--fs-lg);

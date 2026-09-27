@@ -1365,7 +1365,7 @@
   gap: 6px;
 }
 .cau-legend-item--weight {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .cau-swatch {
   width: 10px;

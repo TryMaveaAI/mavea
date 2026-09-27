@@ -20,8 +20,11 @@ import {
   auditInk,
   contrast,
   markupVars,
+  over,
+  parsePath,
   parseSheet,
   readRules,
+  scopeName,
   type Host,
   type Scope,
 } from './helpers/cssInk';
@@ -145,6 +148,95 @@ describe('text on an accent fill', () => {
         synthetic('.syn-ok { background: var(--presence); color: var(--on-presence); }'),
       ).toEqual([]);
     });
+  });
+});
+
+describe('accent text on a surface', () => {
+  // Text set in an accent reads against the panel it sits on, not a fill of its own, so the audit
+  // above never sees it. These are the ones the app sets.
+  const on = (host: Host, scope: Omit<Scope, 'host'>) => ({
+    scope: { ...scope, host },
+    media: null,
+  });
+  const hostPath = (h: Host) => parsePath(h.selector);
+  const strong = parsePath('.dz-zoom strong');
+  const eyebrow = parsePath('.ripple-eyebrow');
+  const panel = (value: string, ctx: ReturnType<typeof on>) => {
+    const base = resolver.color('var(--surface-default)', ctx);
+    return value
+      .split(' over ')
+      .reverse()
+      .reduce((under, layer) => over(resolver.color(layer, ctx), under), base);
+  };
+
+  it('Deep Zoom sets each scale colour legibly on its zoom button', () => {
+    const findings: string[] = [];
+    for (const theme of ['dark', 'light'] as const) {
+      for (let depth = 0; depth < 10; depth++) {
+        const host = {
+          selector: '.deepzoom-app',
+          inline: { '--dz-current': `var(--dz-${depth})` },
+        };
+        const ctx = on(host, { template: null, theme });
+        const bg = panel(
+          'color-mix(in oklab, var(--dz-current) 20%, var(--surface-glass)) over var(--surface-default)',
+          ctx,
+        );
+        const ink = resolver.winner(['color'], [...hostPath(host), ...strong], ctx)!.value;
+        const ratio = contrast(bg, over(resolver.color(ink, ctx, strong), bg));
+        if (ratio < 4.5) findings.push(`${ratio.toFixed(2)} ${theme} --dz-${depth}`);
+      }
+    }
+    expect(findings).toEqual([]);
+  });
+
+  it("Ripple's simulator eyebrow reads over the panel's accent glow", () => {
+    const findings: string[] = [];
+    for (const scope of SCOPES.filter((s) => !s.host)) {
+      const host = { selector: '.ripple-impact-simulator-copy' };
+      const ctx = { scope: { ...scope, host }, media: null };
+      // The glow's core and the band's wash both sit under the eyebrow's first letters.
+      const bg = panel(
+        'color-mix(in oklab, var(--presence) 24%, transparent) over color-mix(in oklab, var(--presence) 9%, transparent) over var(--surface-elevated)',
+        ctx,
+      );
+      const ink = resolver.winner(['color'], [...hostPath(host), ...eyebrow], ctx)!.value;
+      const ratio = contrast(bg, over(resolver.color(ink, ctx, eyebrow), bg));
+      if (ratio < 4.5) findings.push(`${ratio.toFixed(2)} ${scopeName(ctx.scope)}`);
+    }
+    expect(findings).toEqual([]);
+  });
+});
+
+describe('quiet text on the surface a card gives it', () => {
+  // Secondary labels a card sets on its own recessed or tinted surface: each ink as the cascade
+  // resolves it, over the backgrounds the named ancestors paint (outermost first).
+  const CASES: [ink: string, surfaces: string[]][] = [
+    ['.kpi-sub', []],
+    ['.cau-legend .cau-legend-item--weight', []],
+    ['.term-bar .term-bar-label', ['.term-bar']],
+    ['.cb-chrome .cb-lang', ['.cb-chrome', '.cb-lang']],
+    ['.cb-frame .tok-comment', ['.cb-frame']],
+    ['.timeline .tl-body .tl-time', ['.timeline .tl-body']],
+  ];
+
+  it.each(CASES)('%s clears 4.5:1 in every skin', (ink, surfaces) => {
+    const findings: string[] = [];
+    for (const scope of SCOPES.filter((s) => !s.host)) {
+      const ctx = { scope, media: null };
+      const bg = surfaces.reduce(
+        (under, sel) => {
+          const w = resolver.winner(['background', 'background-color'], parsePath(sel), ctx);
+          return w ? over(resolver.color(w.value, ctx, parsePath(sel)), under) : under;
+        },
+        resolver.color('var(--surface-default)', ctx),
+      );
+      const path = parsePath(ink);
+      const w = resolver.winner(['color'], path, ctx)!;
+      const ratio = contrast(bg, over(resolver.color(w.value, ctx, path), bg));
+      if (ratio < 4.5) findings.push(`${ratio.toFixed(2)} ${scopeName(scope)}`);
+    }
+    expect(findings).toEqual([]);
   });
 });
 

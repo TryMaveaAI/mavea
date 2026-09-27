@@ -454,7 +454,8 @@
   min-width: 0;
   font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
   font-size: var(--fs-xs, 12px);
-  color: var(--text-muted);
+  /* The bar is tinted toward the text colour, which leaves the muted ink short of 4.5:1. */
+  color: var(--text-secondary);
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;

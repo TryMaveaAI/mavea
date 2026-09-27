@@ -758,6 +758,10 @@
   gap: 3px;
   min-width: 0;
 }
+/* The eyebrow sits in the glow's core, where the muted ink drops under 4.5:1 on every skin. */
+.ripple-impact-simulator-copy .ripple-eyebrow {
+  color: var(--text-primary);
+}
 .ripple-impact-simulator-copy strong {
   color: var(--text-primary);
   font-size: var(--fs-md);

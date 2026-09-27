@@ -706,7 +706,9 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--presence-soft);
+  /* The soft accent is a dark-theme shade; leaning it toward the text colour keeps the pill's
+     label readable in light as well. */
+  color: color-mix(in oklab, var(--presence-soft) 50%, var(--text-primary));
   padding: 3px 8px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
@@ -793,7 +795,8 @@
   color: var(--text-primary);
 }
 .tok-comment {
-  color: var(--text-muted);
+  /* The code sits on the recessed surface, where the muted ink falls short of 4.5:1 in light. */
+  color: var(--text-secondary);
   font-style: italic;
 }
 .tok-punct {

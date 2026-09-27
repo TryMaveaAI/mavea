@@ -354,7 +354,7 @@
   font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 1.35;
-  color: color-mix(in oklab, var(--text-muted) 78%, transparent);
+  color: var(--text-muted);
   letter-spacing: 0;
   margin-top: 2px;
   text-wrap: balance;
