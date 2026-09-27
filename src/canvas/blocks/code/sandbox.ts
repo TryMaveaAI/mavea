@@ -240,8 +240,13 @@ function runJs(code: string): Promise<SandboxResult> {
 
 /** Execute only an explicitly supported language. Always resolves; never throws. */
 // `import` followed by a `(`, with any run of whitespace or comments between — `import/**/(`
-// and `import // note\n(` are the same call to the parser.
-const DYNAMIC_IMPORT = /\bimport(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\n]*(?:\n|$))*\(/;
+// and `import // note\n(` are the same call to the parser. The worker is a classic script, so
+// the HTML-like `<!--` and `-->` line comments parse too. Each comment form is matched by an
+// unrolled loop with exactly one way to consume it: the lazy `[\s\S]*?` version let a run of
+// `/**/` be split exponentially many ways when no `(` followed, and a 150-character block froze
+// the tab for minutes.
+const DYNAMIC_IMPORT =
+  /\bimport(?:\s|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|(?:\/\/|<!--|-->)[^\n]*(?:\n|$))*\(/;
 
 export async function runInSandbox(code: string, lang: SandboxLang): Promise<SandboxResult> {
   const normalized = lang.toLowerCase().trim() as SandboxLang;
@@ -255,15 +260,15 @@ export async function runInSandbox(code: string, lang: SandboxLang): Promise<San
   if (!RUNNABLE_LANGS.has(normalized)) {
     return { ok: false, error: `Execution is not supported for ${lang}.`, elapsed: 0 };
   }
-  if (DYNAMIC_IMPORT.test(code)) {
-    return { ok: false, error: 'Dynamic imports are disabled in the code sandbox.', elapsed: 0 };
-  }
   if (new TextEncoder().encode(code).byteLength > MAX_SANDBOX_CODE_BYTES) {
     return {
       ok: false,
       error: `Code is too large to run safely (max ${MAX_SANDBOX_CODE_BYTES / 1024} KB).`,
       elapsed: 0,
     };
+  }
+  if (DYNAMIC_IMPORT.test(code)) {
+    return { ok: false, error: 'Dynamic imports are disabled in the code sandbox.', elapsed: 0 };
   }
   if (activeJobs >= MAX_CONCURRENT_JOBS) {
     return { ok: false, error: 'Two snippets are already running. Try again shortly.', elapsed: 0 };

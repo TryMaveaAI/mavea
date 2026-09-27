@@ -560,12 +560,13 @@ export function LiveSettings({
         setForgetError(
           `Some of it could not be removed (${failed.join(', ')}). Close any other Mavéa tabs and try again.`,
         );
+        setForgetBusy(false);
         return;
       }
+      // Stays busy: the page is on its way out, and a second press would start a second sweep.
       reloadToLanding();
     } catch {
       setForgetError('Forgetting did not finish. Close any other Mavéa tabs and try again.');
-    } finally {
       setForgetBusy(false);
     }
   }, []);
@@ -1607,7 +1608,7 @@ export function LiveSettings({
             </div>
             <div
               className="settings-transfer-row"
-              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}
+              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--s-sm)' }}
               aria-busy={forgetBusy}
             >
               <ArmedActionButton
@@ -1616,7 +1617,9 @@ export function LiveSettings({
                 disabled={forgetBusy}
                 onConfirm={() => void handleForget()}
               />
-              <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-muted)' }}>
+              <span
+                style={{ fontSize: 'var(--fs-2xs)', lineHeight: 1.5, color: 'var(--text-muted)' }}
+              >
                 Removes saved keys, the encryption key that sealed them, and every Mavéa cache and
                 store in this browser. A backup taken earlier still holds what was there.
               </span>

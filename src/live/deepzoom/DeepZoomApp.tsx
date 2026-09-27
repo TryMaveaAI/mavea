@@ -884,12 +884,14 @@ export function DeepZoomApp(): ReactNode {
   // already pre-filled the start screen with it.
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    // Spent on THIS navigation whatever it turns out to be, so a vouch never waits for a later one.
+    const vouch = takeZoomTopic();
     if (params.get('demo') === '1') {
       showDemo();
       return;
     }
     const q = params.get('q')?.trim() ?? '';
-    if (q && takeZoomTopic() === q) void run(q);
+    if (q && vouch === q) void run(q);
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -900,13 +902,14 @@ export function DeepZoomApp(): ReactNode {
       const hash = window.location.hash;
       if (!hash.startsWith('#/deepzoom')) return;
       const params = new URLSearchParams(hash.split('?')[1] ?? '');
+      // Consume the stash whatever it says: a vouch is for one navigation, never a later one.
+      const vouch = takeZoomTopic();
       if (params.get('demo') === '1') {
         if (query !== DEEPZOOM_DEMO_TREE.query) showDemo();
         return;
       }
       const q = params.get('q')?.trim() ?? '';
-      // Consume the stash whatever it says: a vouch is for one navigation, never a later one.
-      const vouched = q !== '' && takeZoomTopic() === q;
+      const vouched = q !== '' && vouch === q;
       if (vouched) {
         if (q !== query) void run(q);
         return;

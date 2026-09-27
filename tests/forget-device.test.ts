@@ -6,6 +6,8 @@ import { getLiveConfigV2, setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { KEY_VAULT_DB_NAME } from '../src/live/keyVault';
 import { RIPPLE_CACHE_DB_NAME } from '../src/live/ripple/cache';
 import { OBSERVATION_DB_NAME } from '../src/live/dashboards/observationStore';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 interface FakeDeleteRequest {
   onsuccess: (() => void) | null;
@@ -60,6 +62,49 @@ describe('forgetDevice', () => {
     );
   });
 
+  it('knows every module that opens a database', () => {
+    // A store added later must be swept too; the names it exports have to reach the list.
+    const files = execFileSync('git', ['grep', '-l', 'indexedDB.open(', '--', 'src'], {
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n');
+    expect(files.length).toBeGreaterThanOrEqual(3);
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      const named = FORGOTTEN_DATABASES.some((name) => source.includes(`'${name}'`));
+      expect(named, `${file} opens a database that forgetDevice does not delete`).toBe(true);
+    }
+  });
+
+  it('treats a walled-off storage as nothing to remove, and tells the other tabs', async () => {
+    const posted: string[] = [];
+    class FakeChannel {
+      constructor(public name: string) {}
+      postMessage(message: string) {
+        posted.push(`${this.name}:${message}`);
+      }
+      close() {}
+    }
+    vi.stubGlobal('indexedDB', fakeIndexedDb(succeedingDelete));
+    vi.stubGlobal('BroadcastChannel', FakeChannel);
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('denied', 'SecurityError');
+      },
+    });
+    try {
+      const summary = await forgetDevice();
+      expect(summary.failed).toEqual([]);
+      expect(posted).toEqual(['mavea-device-forgotten:forgotten']);
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
+      else delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
+    }
+  });
+
   it('clears every Mavéa key, every Mavéa database and cache, and leaves the rest alone', async () => {
     seedStorage();
     setLiveConfigV2({ keys: { gemini: 'sk-live-secret' }, rememberKey: true });
@@ -86,6 +131,8 @@ describe('forgetDevice', () => {
     const root = {
       keys: () => names.values(),
       removeEntry: vi.fn(async (name: string) => {
+        if (name === 'mavea-scratch')
+          throw new DOMException('in use', 'NoModificationAllowedError');
         removed.push(name);
       }),
     };
@@ -94,9 +141,11 @@ describe('forgetDevice', () => {
 
     const summary = await forgetDevice();
 
-    expect(summary.failed).toEqual([]);
-    expect(removed.sort()).toEqual(['mavea-scratch', 'mavea-video-1700000000000-abc123.webm']);
+    // The locked file is reported, and it did not stop the file after it from going.
+    expect(summary.failed).toEqual(['files']);
+    expect(removed).toEqual(['mavea-video-1700000000000-abc123.webm']);
     expect(root.removeEntry).toHaveBeenCalledWith('mavea-scratch', { recursive: true });
+    expect(root.removeEntry).not.toHaveBeenCalledWith('notes.txt', expect.anything());
   });
 
   it('reports a step that throws and still runs the ones after it', async () => {

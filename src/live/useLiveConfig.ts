@@ -12,7 +12,12 @@
 // This is the v2 store for the separate src/live surface. The legacy 2-provider
 // engine/liveConfig store still backs the (now superseded) in-App live path.
 import { useEffect, useState } from 'react';
-import { encryptSecret, decryptSecret } from './keyVault';
+import {
+  encryptSecret,
+  decryptSecret,
+  forgetVaultKeys,
+  DEVICE_FORGOTTEN_CHANNEL,
+} from './keyVault';
 import type { ModelConfig, ProviderId } from '../types/mavea';
 import { PROVIDERS, providerInfo } from './providers';
 import { modelCanGenerate } from './providers/spendPolicy';
@@ -692,7 +697,23 @@ export function useLiveConfig(): [LiveConfigV2, (patch: Partial<LiveConfigV2>) =
     // paths that re-read getLiveConfigV2() fresh (chat), but it left Prism / Watch Me Think calling
     // Gemini with an empty key (403). Reading the store here closes that race.
     onChange();
-    return () => window.removeEventListener(LIVE_V2_EVENT, onChange);
+    // Another tab forgot the device: this one still holds the keys in memory and would seal them
+    // back to disk on its next settings change, so drop them and leave for the landing too.
+    const forgotten =
+      typeof BroadcastChannel === 'undefined'
+        ? null
+        : new BroadcastChannel(DEVICE_FORGOTTEN_CHANNEL);
+    if (forgotten) {
+      forgotten.onmessage = () => {
+        forgetVaultKeys();
+        resetLiveConfig();
+        window.location.replace(window.location.pathname);
+      };
+    }
+    return () => {
+      window.removeEventListener(LIVE_V2_EVENT, onChange);
+      forgotten?.close();
+    };
   }, []);
   return [cfg, setLiveConfigV2];
 }

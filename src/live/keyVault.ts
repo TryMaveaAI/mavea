@@ -69,8 +69,16 @@ function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
 // One non-extractable AES-GCM key PER NAMED KEY ID, created on first use and reused thereafter.
 // Keyed by id (not a single slot) so secrets and content each get their own row in the same store.
 const keyPromises = new Map<string, Promise<CryptoKey>>();
+// Set by forgetVaultKeys. A content autosave reacting to the reset can otherwise race the vault
+// delete, re-open the database and mint a fresh key into it — a vault that exists after Forget.
+let forgotten = false;
+
+/** Posted by a tab that has forgotten the device, so the others drop their keys and reload
+ *  instead of writing the secrets they still hold back to disk on their next settings change. */
+export const DEVICE_FORGOTTEN_CHANNEL = 'mavea-device-forgotten';
 
 function getKey(keyId: string): Promise<CryptoKey> {
+  if (forgotten) return Promise.reject(new Error('the device keys were forgotten'));
   const existing = keyPromises.get(keyId);
   if (existing) return existing;
   const pending = (async () => {
@@ -101,6 +109,7 @@ function getKey(keyId: string): Promise<CryptoKey> {
  *  already resolved in memory would keep sealing and unsealing until the page went away. */
 export function forgetVaultKeys(): void {
   keyPromises.clear();
+  forgotten = true;
 }
 
 function toBase64(bytes: Uint8Array): string {

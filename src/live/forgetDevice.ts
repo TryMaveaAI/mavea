@@ -11,13 +11,14 @@
 // prefix, `isMaveaStoreKey`): a key, a cache or a scratch file that carries it is swept, anything
 // else on the origin is left alone. That is also why this module imports no store — pulling the
 // clip or dashboard modules in here would split them out of the chunks that load them today.
-import { forgetVaultKeys } from './keyVault';
+import { DEVICE_FORGOTTEN_CHANNEL, forgetVaultKeys } from './keyVault';
 import { resetLiveConfig } from './useLiveConfig';
 import { isMaveaStoreKey } from '../lib/localBudget';
 
 /** Every IndexedDB database the app opens, by the names their modules export (a test pins the
- *  two lists together). A database missing here survives a forget. Each store lets go of its
- *  connection on `versionchange`, which a delete fires at every open connection first. */
+ *  two lists together, and fails on a module that opens a database not named here). The vault
+ *  and the Ripple cache close after every operation; the dashboards store holds its connection
+ *  and lets go on `versionchange`, which a delete fires at every open connection first. */
 export const FORGOTTEN_DATABASES: readonly string[] = [
   'mavea-key-vault',
   'mavea-ripple',
@@ -33,7 +34,19 @@ export interface ForgetDeviceSummary {
   failed: string[];
 }
 
-function clearMaveaKeys(storage: Storage): void {
+/** A storage a browser walls off (a sandboxed frame, some private modes) throws on the accessor
+ *  itself. That is nothing to remove, not a failed step: reporting it as failed would keep the
+ *  page here telling the reader to close other tabs, and a retry would fail the same way. */
+function storageOrNone(read: () => Storage): Storage | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
+function clearMaveaKeys(storage: Storage | undefined): void {
+  if (!storage) return;
   const owned: string[] = [];
   for (let i = 0; i < storage.length; i += 1) {
     const key = storage.key(i);
@@ -76,7 +89,20 @@ async function clearMaveaFiles(): Promise<void> {
   const root = await storage.getDirectory();
   const owned: string[] = [];
   for await (const name of root.keys()) if (isMaveaStoreKey(name)) owned.push(name);
-  for (const name of owned) await root.removeEntry(name, { recursive: true });
+  // Every file gets its turn: one locked mid-write must not leave the ones after it behind.
+  const results = await Promise.allSettled(
+    owned.map((name) => root.removeEntry(name, { recursive: true })),
+  );
+  if (results.some((r) => r.status === 'rejected')) throw new Error('a scratch file is in use');
+}
+
+/** Other tabs of this origin still hold the keys in memory and would write them back to disk on
+ *  their next settings change. Tell them; `useLiveConfig` answers by forgetting and reloading. */
+function announceForgotten(): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const channel = new BroadcastChannel(DEVICE_FORGOTTEN_CHANNEL);
+  channel.postMessage('forgotten');
+  channel.close();
 }
 
 /** Wipe everything Mavéa holds in this browser. Resolves with the steps that failed; the caller
@@ -97,8 +123,12 @@ export async function forgetDevice(): Promise<ForgetDeviceSummary> {
     forgetVaultKeys();
     resetLiveConfig();
   });
-  await attempt('localStorage', () => clearMaveaKeys(localStorage));
-  await attempt('sessionStorage', () => clearMaveaKeys(sessionStorage));
+  // Before the stores go, not after: removing the legal acknowledgement below puts the gate up in
+  // every other tab, which unmounts the surface holding the listener — the message would arrive
+  // to nobody, and that tab's memory still has the keys.
+  await attempt('tabs', announceForgotten);
+  await attempt('localStorage', () => clearMaveaKeys(storageOrNone(() => localStorage)));
+  await attempt('sessionStorage', () => clearMaveaKeys(storageOrNone(() => sessionStorage)));
   await attempt('indexedDB', async () => {
     if (typeof indexedDB === 'undefined') return;
     // Deletions run together (each is its own step) rather than one after another, so a database

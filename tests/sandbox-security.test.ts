@@ -170,6 +170,8 @@ describe('code sandbox adversarial boundaries', () => {
       `import // nothing to see\n('/api/llm')`,
       `import\n\n('/api/llm')`,
       `const u = "//"; import('/api/llm')`,
+      `import<!--x\n('/api/llm')`,
+      `import\n-->x\n('/api/llm')`,
     ];
     for (const code of disguises) {
       const result = await runInSandbox(code, 'js');
@@ -177,6 +179,17 @@ describe('code sandbox adversarial boundaries', () => {
       if (!result.ok) expect(result.error).toMatch(/dynamic imports are disabled/i);
     }
     expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('decides on a long run of comments in bounded time', async () => {
+    // A model writes code; a `/**/` run with no `(` after it must not be a way to freeze the tab.
+    const code = 'import' + '/**/'.repeat(5000) + 'x';
+    const started = performance.now();
+    const pending = runInSandbox(code, 'js');
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(FakeWorker.instances).toHaveLength(1);
+    FakeWorker.instances[0].emit({ ok: true, output: '' });
+    expect((await pending).ok).toBe(true);
   });
 
   it('re-caps worker output at the parent boundary', async () => {
