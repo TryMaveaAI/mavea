@@ -10,11 +10,17 @@ html:has(.legal-gate) body {
   overflow: visible;
 }
 
+/* Focus that scrolls the page (tabbing to a link or a box) stops above the sticky footer instead of
+   landing under it. LegalGate measures the footer into --legal-gate-foot. */
+html:has(.legal-gate) {
+  scroll-padding-bottom: calc(var(--legal-gate-foot, 0px) + var(--s-md));
+}
+
 .legal-gate {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 28px;
+  padding: clamp(14px, 4vw, 28px);
   color: var(--text-primary);
   background:
     radial-gradient(
@@ -26,12 +32,17 @@ html:has(.legal-gate) body {
   font-family: var(--font);
 }
 
+/* One card, two parts: the document (which grows with the page and scrolls with it) and the footer
+   (sticky, so it holds the bottom of the window until the card's own end scrolls up to meet it).
+   No overflow here — an overflow on the card would make IT the sticky footer's scroller, and the
+   card never scrolls, so the footer would stop sticking. */
 .legal-gate-card {
-  width: min(580px, 100%);
-  padding: clamp(24px, 5vw, 42px);
+  --gate-pad: clamp(20px, 5vw, 44px);
+  width: min(42rem, 100%);
+  padding: var(--gate-pad) var(--gate-pad) 0;
   border: 1px solid var(--line-strong);
   border-radius: 22px;
-  background: color-mix(in oklab, var(--surface-elevated) 94%, transparent);
+  background: var(--surface-elevated);
   box-shadow: 0 28px 80px color-mix(in oklab, #000 28%, transparent);
 }
 
@@ -45,18 +56,19 @@ html:has(.legal-gate) body {
 
 .legal-gate h1 {
   margin: 10px 0 14px;
-  font-size: clamp(28px, 5vw, 40px);
+  font-size: clamp(26px, 5vw, 40px);
   font-weight: 650;
   letter-spacing: -0.04em;
   line-height: 1.04;
+  text-wrap: balance;
 }
 
 .legal-gate p,
 .legal-gate li,
 .legal-gate-consent {
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  line-height: 1.62;
+  font-size: var(--fs-md);
+  line-height: 1.6;
 }
 
 .legal-gate-points {
@@ -65,26 +77,30 @@ html:has(.legal-gate) body {
 }
 
 .legal-gate-points li + li {
-  margin-top: 7px;
+  margin-top: 10px;
 }
 
 .legal-gate-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 9px 18px;
+  gap: 4px 18px;
   margin: 0 0 22px;
 }
 
 .legal-gate-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: var(--presence);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   text-underline-offset: 3px;
 }
 
+/* The whole label is the tap target, so the box itself only has to be seen, not hit. */
 .legal-gate-consent {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 11px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
   padding: 16px;
   border: 1px solid var(--line-strong);
@@ -94,6 +110,10 @@ html:has(.legal-gate) body {
   cursor: pointer;
 }
 
+.legal-gate-consent:has(input:checked) {
+  border-color: color-mix(in oklab, var(--presence) 60%, var(--line-strong));
+}
+
 /* Speech consent is a second, separate act — it sits in its own box under the general one, so the
    two never read as a single block of small print with one tick. */
 .legal-gate-consent + .legal-gate-consent {
@@ -101,8 +121,8 @@ html:has(.legal-gate) body {
 }
 
 .legal-gate-consent input {
-  width: 17px;
-  height: 17px;
+  width: 20px;
+  height: 20px;
   margin: 2px 0 0;
   accent-color: var(--presence);
 }
@@ -112,48 +132,123 @@ html:has(.legal-gate) body {
   color: var(--danger);
 }
 
+.legal-gate-body {
+  padding-bottom: var(--s-lg);
+}
+
+.legal-gate-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 16px;
+  margin-inline: calc(-1 * var(--gate-pad));
+  padding: 12px var(--gate-pad) max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 21px 21px;
+  background: var(--surface-elevated);
+  box-shadow: 0 -18px 28px -22px color-mix(in oklab, #000 45%, transparent);
+}
+
+.legal-gate-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: var(--tap-min);
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: 500 var(--fs-sm)/1.3 var(--font);
+  text-align: left;
+  cursor: pointer;
+}
+
+.legal-gate-hint:hover,
+.legal-gate-hint:focus-visible {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .legal-gate-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  margin-top: 24px;
 }
 
-.legal-gate-actions button {
-  min-height: 42px;
-  padding: 0 20px;
+.legal-gate-continue {
+  min-height: var(--tap-min);
+  padding: 0 22px;
   border: 0;
   border-radius: 999px;
   color: white;
   background: linear-gradient(135deg, var(--presence), var(--presence-deep));
-  font: 650 var(--fs-sm)/1 var(--font);
+  font: 650 var(--fs-md)/1 var(--font);
   cursor: pointer;
 }
 
-.legal-gate-actions button:disabled {
+.legal-gate-continue:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
 .legal-gate-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
   color: var(--text-muted);
   font-size: var(--fs-sm);
   text-decoration: none;
 }
 
+/* Under a thumb every link on the card meets the tap floor. */
+@media (pointer: coarse) {
+  .legal-gate-links {
+    gap: 0 18px;
+  }
+
+  .legal-gate-links a {
+    min-height: var(--tap-min);
+  }
+}
+
+/* A phone: text at the size a phone is read at, the card edge to edge, and the footer's two
+   controls sharing one row so it costs the reading column as little height as it can. */
 @media (width <= 560px) {
   .legal-gate {
-    padding: 14px;
+    place-items: start center;
+    padding: 0;
+  }
+
+  .legal-gate-card {
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .legal-gate-foot {
+    border-radius: 0;
+  }
+
+  .legal-gate p,
+  .legal-gate li,
+  .legal-gate-consent {
+    font-size: var(--fs-lg);
+  }
+
+  .legal-gate-hint {
+    flex: 1 1 100%;
   }
 
   .legal-gate-actions {
-    align-items: stretch;
-    flex-direction: column-reverse;
-    text-align: center;
+    flex: 1 1 100%;
   }
 
-  .legal-gate-actions button {
-    width: 100%;
+  .legal-gate-continue {
+    flex: 1;
   }
 }
