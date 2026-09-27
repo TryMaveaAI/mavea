@@ -1216,6 +1216,34 @@ export function TopicCanvas({
                       here is the same sentence twice. */}
                   <div className="zoom-sheet-title">Looking closer</div>
                   <div className="zoom-sheet-tools">
+                    {/* Always a visible way to the next card. The strip is the rich way, and a
+                        short window has no room for it; arrow keys alone are no way at all for
+                        a reader who does not know they exist. */}
+                    {lensSteps.length > 1 && (
+                      <div className="zoom-sheet-stepper" role="group" aria-label="Cards">
+                        <button
+                          type="button"
+                          className="zoom-sheet-zoom-btn"
+                          aria-label="Previous card"
+                          disabled={lensAt <= 0}
+                          onClick={() => stepLens(-1)}
+                        >
+                          <Icon.chevL />
+                        </button>
+                        <span className="zoom-sheet-step-at">
+                          {lensAt + 1} of {lensSteps.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="zoom-sheet-zoom-btn"
+                          aria-label="Next card"
+                          disabled={lensAt >= lensSteps.length - 1}
+                          onClick={() => stepLens(1)}
+                        >
+                          <Icon.chevR />
+                        </button>
+                      </div>
+                    )}
                     <button
                       type="button"
                       className="zoom-sheet-zoom-btn"

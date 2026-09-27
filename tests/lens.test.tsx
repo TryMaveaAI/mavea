@@ -330,6 +330,31 @@ describe('the stage while a narration spotlights another card', () => {
   });
 });
 
+describe('stepping through the answer from the stage', () => {
+  // The strip goes on a short window, and arrow keys alone are no way at all for a reader who
+  // does not know they exist — so the toolbar always carries a stepper that says where you are.
+  it('says which card of how many, and steps without leaving the stage', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('1 of 2');
+    const prev = screen.getByRole('button', { name: 'Previous card' }) as HTMLButtonElement;
+    expect(prev.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+    expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('2 of 2');
+    const next = screen.getByRole('button', { name: 'Next card' }) as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous card' }));
+    expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+  });
+
+  it('shows no stepper for an answer of one card', () => {
+    const { container } = mount({ data: spec([insight('a', 'Alpha')]) });
+    cleanClick(cell0(container, 'a'));
+    expect(screen.queryByRole('button', { name: 'Next card' })).toBeNull();
+  });
+});
+
 describe('getting back to the fit', () => {
   const reset = () =>
     screen.getByRole('button', { name: /Reset zoom to fit/ }) as HTMLButtonElement;

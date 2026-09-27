@@ -1069,6 +1069,19 @@
 .zoom-sheet-zoom-level:disabled {
   cursor: default;
 }
+.zoom-sheet-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+.zoom-sheet-step-at {
+  min-width: 6ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
 .zoom-sheet-body {
   /* Magnify with the `zoom` property, not `transform: scale` — `zoom` affects layout, so the
      sheet's scrollable area grows to match the enlarged content instead of clipping the painted
@@ -1286,12 +1299,12 @@
 /* On the stage, the card outranks everything beneath it. The strip keeps its own height and the
    sheet takes what is left (its flex rules sit with it above) — a strip that shrank instead was a
    row of clipped tiles, which reads as broken rather than as "there is more". On a short window
-   the strip is the first thing to go: a laptop's viewport is 650–800px tall once the browser has
-   its share, and there a full-size strip cost a chart its fit — the card scrolled inside a 200px
-   box so that a row of thumbnails could stay. Compact tiles up to 900px; at 820px and under
-   there is no room for a strip beside a card shown at its own size (measured at 1366×768: the
-   card box was left 247px for a 294px card while a 170px strip stayed), so it goes rather than
-   shrinks to a sliver. */
+   the strip steps down, then goes: a laptop's viewport is 650–800px tall once the browser has
+   its share, and there a full-size strip cost a chart its fit (measured at 1366×768: the card box
+   was left 247px for a 294px card while a 170px strip stayed; smaller tiles barely help, since
+   the strip's labels and inset are most of its height). Compact tiles up to 900px, none at 820px
+   and under — the toolbar's stepper is always there to walk the answer, so the strip is never
+   the only way to the next card. */
 .lens-strip {
   flex: none;
 }
