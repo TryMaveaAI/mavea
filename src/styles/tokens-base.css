@@ -50,7 +50,7 @@
        width:  360 small phone · 430 phone · 480 phone landscape · 560 large phone ·
                640 phablet / narrow window · 720 small tablet · 768 tablet portrait ·
                900 laptop compact · 1024 tablet landscape · 1200 small laptop ·
-               1280 laptop · 1600 desktop · 1920 wide
+               1280 laptop · 1600 desktop · 1920 wide · 2560 ultrawide
        height: 500 phone on its side · 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
      1200, not 1280, is where a "compact" treatment must stop: a 1280px window resolves to ~1265
      CSS px once the scrollbar is counted, so `width <= 1280px` would hand the most common laptop
@@ -239,6 +239,13 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
+  /* A sectioned answer on an ultrawide window (2560 and up) sets its sections two abreast rather
+     than stranding one 1640px column between two empty margins; each half is then about the
+     desktop measure above, which every block is already built to read at. Two of that ceiling
+     plus the gutter between them. Only the board uses it — the dock, the Study and every other
+     surface keep --canvas-col-max. */
+  --board-col-gap: clamp(32px, 1.6vw, 64px);
+  --board-wide-max: calc(2 * 1640px + var(--board-col-gap));
 
   /* --- motion --- */
   --m-instant: 80ms;

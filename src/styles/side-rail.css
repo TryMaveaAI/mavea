@@ -108,6 +108,13 @@
   margin-inline: auto;
   width: 100%;
 }
+/* An ultrawide board sets its sections two abreast (depth.css), so the column around it widens to
+   hold both; any other content in the column keeps the answer measure. */
+@media (width >= 2560px) {
+  .with-rail .canvas-scroll:has(.card-grid > .depth-section) {
+    max-width: calc(var(--board-wide-max) + 52px * var(--vp-scale));
+  }
+}
 .with-rail .presence-stage {
   padding-bottom: 40px;
 }

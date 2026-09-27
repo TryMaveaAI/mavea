@@ -3,7 +3,7 @@
 // scanning the source text, the same idiom canvas-svg-label-patterns.test.ts uses for a layout bug
 // that's likewise invisible to a jsdom render.
 import { fontSizeFloorPx } from './helpers/fluidType';
-import { BREAKPOINT_HEIGHTS } from '../scripts/breakpoints.mjs';
+import { BREAKPOINT_HEIGHTS, BREAKPOINT_WIDTHS } from '../scripts/breakpoints.mjs';
 import {
   CARD_W,
   COMPACT_H,
@@ -1074,5 +1074,36 @@ describe('a collapsed feature notice reads as one bar', () => {
     expect(css).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
     expect(css).toMatch(/\[data-collapsed\] p \{\s*max-width:\s*none/);
     expect(css).toMatch(/\.feature-use-notice\[data-collapsed\] \{[^}]*align-items:\s*center/);
+  });
+});
+
+// An ultrawide window stranded a sectioned answer in one 1640px column with a third of the screen
+// empty either side. Sections go two abreast from the 2560 rung only, in row-major (reading, tab
+// and walk) order, and below it nothing about the board changes.
+describe('board — an ultrawide window sets a sectioned answer two abreast', () => {
+  const depth = read('src/canvas/depth/depth.css');
+  const wide = /@media \(width >= 2560px\)\s*\{[\s\S]*?\n\}/.exec(depth)?.[0] ?? '';
+
+  it('pairs sections only from the 2560 rung, as grid cells in DOM order', () => {
+    expect(BREAKPOINT_WIDTHS).toContain(2560);
+    expect(wide).toMatch(/\.card-grid > \.depth-section\s*\{\s*grid-column:\s*span 6;/);
+    // Row-major grid placement keeps reading order; a multi-column flow would read DOWN each
+    // column and walk the spotlight out of the order the narration speaks it.
+    expect(depth).not.toMatch(/column-count|columns:/);
+    // Outside the rung a section still spans the whole grid.
+    const base = depth.replace(wide, '');
+    expect(base).toMatch(/\.card-grid > \.depth-section\s*\{\s*grid-column:\s*1 \/ -1;/);
+  });
+
+  it('widens only the sectioned board, never the shared answer measure', () => {
+    expect(wide).toMatch(
+      /\.card-grid:has\(> \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
+    );
+    expect(read('src/styles/side-rail.css')).toMatch(
+      /@media \(width >= 2560px\)\s*\{\s*\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section\)/,
+    );
+    expect(read('src/styles/tokens-base.css')).toMatch(
+      /--canvas-col-max: clamp\(1280px, 84vw, 1640px\)/,
+    );
   });
 });

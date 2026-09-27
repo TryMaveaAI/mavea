@@ -7,7 +7,7 @@
 
 /** Window widths, in px, a media query may name. */
 export const BREAKPOINT_WIDTHS = [
-  360, 430, 480, 560, 640, 720, 768, 900, 1024, 1200, 1280, 1600, 1920,
+  360, 430, 480, 560, 640, 720, 768, 900, 1024, 1200, 1280, 1600, 1920, 2560,
 ];
 
 /** Window heights, in px, a media query may name. 500 is a phone on its side (844×390,
