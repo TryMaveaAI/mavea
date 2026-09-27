@@ -540,13 +540,6 @@
   font-weight: 600;
   color: var(--text-primary);
 }
-.su-amt {
-  margin-left: auto;
-  font-weight: 800;
-  color: var(--presence);
-  font-size: var(--fs-md, 15px);
-  font-variant-numeric: tabular-nums;
-}
 /* pill variant — compact presence-tinted chip used by the real SettleUp component */
 .su-amt-pill {
   margin-left: auto;

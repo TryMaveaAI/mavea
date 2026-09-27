@@ -2448,11 +2448,6 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.erb-tip-ci {
-  fill: var(--text-muted);
-  font-size: var(--fs-2xs);
-  font-variant-numeric: tabular-nums;
-}
 
 /* Reference line — dashed, neutral */
 .erb-ref {

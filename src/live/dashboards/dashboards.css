@@ -1814,51 +1814,7 @@
   color: var(--text-primary);
 }
 
-/* ── new from template: grid step ────────────────────────────────────────────────────────── */
-.tpl-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 20px;
-  overflow-y: auto;
-}
-.tpl-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  text-align: left;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface-glass);
-  cursor: pointer;
-  font-family: var(--font);
-  transition:
-    border-color 140ms ease,
-    background 140ms ease;
-}
-.tpl-tile:hover {
-  border-color: var(--presence);
-  background: color-mix(in oklab, var(--presence) 6%, var(--surface-glass));
-}
-.tpl-tile-label {
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.tpl-tile-blurb {
-  font-size: var(--fs-sm);
-  line-height: 1.45;
-  color: var(--text-secondary);
-}
-@media (width <= 640px) {
-  .tpl-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ── new from template: form step ────────────────────────────────────────────────────────── */
+/* ── plan review: form step ───────────────────────────────────────────────────────────────── */
 .tpl-form {
   display: flex;
   flex-direction: column;
@@ -1980,56 +1936,6 @@
   font-family: var(--font);
   color: var(--text-secondary);
   background: var(--surface-glass);
-}
-
-/* ── track anything (the planner ask step) ───────────────────────────────────────────────── */
-.tpl-ask-row {
-  display: flex;
-  gap: 10px;
-}
-.tpl-ask-input {
-  /* The one control that IS this step — sized like Live's composer, not a settings field. */
-  flex: 1;
-  min-width: 0;
-  border-radius: var(--r-full);
-  padding: 14px 20px;
-  font-size: var(--fs-md);
-}
-.tpl-examples {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-.tpl-example-chip {
-  border: 1px solid var(--line);
-  border-radius: var(--r-full);
-  padding: 7px 14px;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  font-family: var(--font);
-  color: var(--text-secondary);
-  background: var(--surface-glass);
-  cursor: pointer;
-  transition:
-    color var(--m-fast) var(--ease-out),
-    border-color var(--m-fast) var(--ease-out),
-    background var(--m-fast) var(--ease-out);
-}
-.tpl-example-chip:hover {
-  color: var(--text-primary);
-  border-color: var(--line-strong);
-  background: var(--surface-glass-strong);
-}
-.tpl-example-chip:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.tpl-gate-note {
-  margin: 14px 0 0;
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  color: var(--text-muted);
 }
 .tpl-cadence-note {
   margin-right: auto;

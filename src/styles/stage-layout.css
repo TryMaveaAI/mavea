@@ -136,12 +136,6 @@
 .greeting .accent {
   color: var(--presence-soft);
 }
-.subgreeting {
-  color: var(--text-secondary);
-  font-size: var(--fs-lg);
-  max-width: 46ch;
-  line-height: 1.5;
-}
 
 /* caption shown under presence */
 .caption {
@@ -202,33 +196,6 @@
   50% {
     opacity: 0.35;
   }
-}
-
-/* try-chips */
-.try-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  max-width: 720px;
-}
-.try-chip {
-  padding: 10px 16px;
-  border-radius: var(--r-full);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
-  white-space: nowrap;
-  background: var(--surface-glass);
-  border: 1px solid var(--line);
-  color: var(--text-secondary);
-  font-size: var(--fs-md);
-  font-weight: 450;
-  transition: all var(--m-fast) var(--ease-out);
-}
-.try-chip:hover {
-  color: var(--text-primary);
-  border-color: rgba(110, 140, 255, 0.35);
-  background: rgba(110, 140, 255, 0.08);
-  transform: translateY(-1px);
 }
 
 /* Live "Or try one" example prompts — a tidy 2×2 grid of equal cells. A grid
