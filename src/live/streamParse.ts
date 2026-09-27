@@ -32,44 +32,82 @@ function unescapeChar(c: string): string {
  * per-turn narration parse O(chunks × buffer). This scanner keeps its phase and cursor across
  * `scan` calls, so a whole turn costs one pass over the stream and `progress()` is a state read.
  *
- * Same tolerances as the pure functions it powers: leading prose before the key, a needle or an
+ * Only a key of the ROOT object counts. The same name inside a nested object is a different field
+ * — every block carries its own `props.title`, and a model that writes the answer's title after
+ * its blocks would otherwise have its first card's title streamed as the answer's. So the walk
+ * tracks depth outside strings until it finds the key.
+ *
+ * Same tolerances as the pure functions it powers: leading prose before the object, a key or an
  * escape split across chunks (the dangling backslash is left for the next scan, so the text so far
  * is byte-identical to a from-scratch walk of the same buffer), and a first occurrence whose value
  * is not a string (permanently null, exactly like the from-scratch walk that re-finds it).
  */
 export class StringFieldScanner {
-  private readonly needle: string;
-  /** Where the next scan resumes: a search floor in 'key'/'colon', the walk cursor after. */
+  private readonly key: string;
+  /** Where the next scan resumes: the walk cursor, in every phase. */
   private from = 0;
   /** 'never' = the first occurrence's value is not a string — progress stays null for good. */
   private phase: 'key' | 'colon' | 'quote' | 'value' | 'done' | 'never' = 'key';
   private text = '';
+  // The walk to the key: object/array depth (0 = before the root object opens, 1 = inside it),
+  // and the string being read, if any. A root-level string's text is kept (only while it can
+  // still equal the key) so it can be told apart from every other string once it closes.
+  private depth = 0;
+  private inString = false;
+  private escaped = false;
+  private candidate: string | null = null;
 
   constructor(key: string) {
-    this.needle = `"${key}"`;
+    this.key = key;
+  }
+
+  /** Walk to the next root-level string equal to the key; true once its closing quote is past. */
+  private findKey(buf: string): boolean {
+    while (this.from < buf.length) {
+      const ch = buf[this.from++];
+      if (this.inString) {
+        if (this.escaped) this.escaped = false;
+        else if (ch === '\\') this.escaped = true;
+        else if (ch === '"') {
+          this.inString = false;
+          if (this.candidate === this.key) return true;
+          continue;
+        }
+        if (this.candidate !== null) {
+          this.candidate = this.candidate.length < this.key.length ? this.candidate + ch : null;
+        }
+        continue;
+      }
+      if (this.depth === 0) {
+        // Prose or a code fence ahead of the object: its quotes are not JSON strings.
+        if (ch === '{') this.depth = 1;
+      } else if (ch === '"') {
+        this.inString = true;
+        this.escaped = false;
+        this.candidate = this.depth === 1 ? '' : null;
+      } else if (ch === '{' || ch === '[') this.depth++;
+      else if (ch === '}' || ch === ']') this.depth--;
+    }
+    return false;
   }
 
   /** Advance over `buf`'s unseen tail. `buf` must extend the previously scanned buffer. */
   scan(buf: string): void {
     if (this.phase === 'done' || this.phase === 'never') return;
-    if (this.phase === 'key') {
-      const k = buf.indexOf(this.needle, this.from);
-      if (k < 0) {
-        // Not here yet. Back the floor up so a needle split across deltas is still found.
-        this.from = Math.max(0, buf.length - this.needle.length + 1);
-        return;
+    while (this.phase === 'key' || this.phase === 'colon') {
+      if (this.phase === 'key') {
+        if (!this.findKey(buf)) return;
+        this.phase = 'colon';
       }
-      this.phase = 'colon';
-      this.from = k + this.needle.length;
-    }
-    if (this.phase === 'colon') {
-      const c = buf.indexOf(':', this.from);
-      if (c < 0) {
-        this.from = buf.length;
-        return;
+      while (this.from < buf.length && /\s/.test(buf[this.from])) this.from++;
+      if (this.from >= buf.length) return; // what follows the string is not here yet
+      if (buf[this.from] === ':') {
+        this.phase = 'quote';
+        this.from++;
+      } else {
+        // A root-level VALUE that happens to read like the key ("mode":"title"): keep looking.
+        this.phase = 'key';
       }
-      this.phase = 'quote';
-      this.from = c + 1;
     }
     if (this.phase === 'quote') {
       while (this.from < buf.length && /\s/.test(buf[this.from])) this.from++;

@@ -97,6 +97,15 @@ describe('onFraming', () => {
     expect(framings.map((f) => f.continuity)).toEqual(['replace']);
   });
 
+  it("names the answer's title, not its first card's, when the title follows the blocks", async () => {
+    // The framing's title reaches the cue's topic check; a card's title there can make the early
+    // cue disagree with the settle.
+    const late = `${HEAD.replace('"title":"Photosynthesis, Deeper",', '')}],"title":"Photosynthesis, Deeper"}`;
+    const { result, framings } = await follow(late);
+    expect(result.spec.title).toBe('Photosynthesis, Deeper');
+    expect(framings.map((f) => f.title)).toEqual(['Photosynthesis, Deeper']);
+  });
+
   it('names the title and narration as the finished answer shows them', async () => {
     // The narration arrives after the blocks, and both fields carry markup the screen must
     // never show.

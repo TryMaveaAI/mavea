@@ -5,6 +5,7 @@ import {
   extractNarrationProgress,
   nextSpeakableChunk,
   ArrayStreamScanner,
+  StringFieldScanner,
 } from '../src/live/streamParse';
 
 // Locks the narration-first parser — the mechanism that lets the face speak the
@@ -90,6 +91,35 @@ describe('extractStringField', () => {
   it('returns null while the field is mid-stream or absent', () => {
     expect(extractStringField('{"title":"Bud', 'title')).toBeNull();
     expect(extractStringField('{"narration":"hi"}', 'title')).toBeNull();
+  });
+
+  it("reads the answer's own title, never a card's, when it comes after the blocks", () => {
+    const buf =
+      '{"narration":"hi","blocks":[{"type":"list","props":{"title":"Inputs","items":["a"]}}],' +
+      '"title":"Photosynthesis, Deeper"}';
+    expect(extractStringField(buf, 'title')).toBe('Photosynthesis, Deeper');
+    // Still streaming the blocks: no root title yet, so none at all.
+    expect(extractStringField(buf.slice(0, buf.indexOf('],')), 'title')).toBeNull();
+  });
+
+  it('is not fooled by a key-shaped value, a quoted brace, or prose ahead of the object', () => {
+    expect(extractStringField('{"mode":"title","title":"Real"}', 'title')).toBe('Real');
+    expect(extractStringField('{"sub":"a { \\"title\\": \\"x\\" }","title":"Real"}', 'title')).toBe(
+      'Real',
+    );
+    expect(extractStringField('Here you go "title": ```json\n{"title":"Real"}', 'title')).toBe(
+      'Real',
+    );
+  });
+
+  it('finds a root key split across any two deltas', () => {
+    const buf = '{"blocks":[{"props":{"title":"No"}}],"title":"Yes"}';
+    for (let cut = 1; cut < buf.length; cut++) {
+      const s = new StringFieldScanner('title');
+      s.scan(buf.slice(0, cut));
+      s.scan(buf);
+      expect(s.value()).toBe('Yes');
+    }
   });
 });
 
