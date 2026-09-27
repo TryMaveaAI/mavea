@@ -16,6 +16,12 @@ function balancedCols(count: number): number {
   return Math.min(Math.max(count, 1), 3);
 }
 
+/** Characters in the longest run a line cannot break inside — a whole figure, or a label's
+ *  longest word. At least 1, so the CSS never divides by zero. */
+function longestRun(text: string): number {
+  return Math.max(1, ...text.split(/\s+/).map((w) => [...w].length));
+}
+
 export function KpiGrid({
   title,
   icon = 'spark',
@@ -39,20 +45,39 @@ export function KpiGrid({
         className="kpi-grid"
         style={{ '--kpi-cols': cols ?? balancedCols(kpis.length) } as CSSProperties}
       >
-        {kpis.map((k, i) => (
-          <div key={i} className="kpi">
-            {/* the lead stat is the one Mavéa's drawn gesture underlines */}
+        {kpis.map((k, i) => {
+          const val = String(k.val);
+          const whole = !/\s/.test(val.trim());
+          return (
             <div
-              className={'kpi-val tab-num' + (String(k.val).length > 8 ? ' kpi-val--long' : '')}
-              data-mark={i === 0 ? 'underline' : undefined}
-              style={k.color ? { color: k.color } : undefined}
+              key={i}
+              className="kpi"
+              // The longest unbreakable run in each line, so the type can be sized to hold it
+              // whole in the tile it gets (the CSS does the fitting — no measuring pass).
+              style={
+                {
+                  '--kpi-val-chars': longestRun(val),
+                  '--kpi-label-chars': longestRun(k.label),
+                } as CSSProperties
+              }
             >
-              {k.val}
+              {/* the lead stat is the one Mavéa's drawn gesture underlines */}
+              <div
+                className={
+                  'kpi-val tab-num' +
+                  (val.length > 8 ? ' kpi-val--long' : '') +
+                  (whole ? ' kpi-val--whole' : '')
+                }
+                data-mark={i === 0 ? 'underline' : undefined}
+                style={k.color ? { color: k.color } : undefined}
+              >
+                {k.val}
+              </div>
+              <div className="kpi-label">{k.label}</div>
+              {k.sub && <div className="kpi-sub">{k.sub}</div>}
             </div>
-            <div className="kpi-label">{k.label}</div>
-            {k.sub && <div className="kpi-sub">{k.sub}</div>}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {footer && (
         <div className="insight-summary" style={{ marginTop: 12 }}>
