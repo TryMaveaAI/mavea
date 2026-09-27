@@ -18,6 +18,15 @@
   width: min(100%, 640px);
   margin: 24px auto 0;
 }
+/* On a short phone the floating bar is a tenth of the screen, and at rest it sat over the Tracking
+   section's own "not a live feed" line — the one sentence that says what the numbers are. There the
+   bar takes its place at the end of the page instead of floating over it; the gate line still
+   travels with it, right under the Track button the reader just pressed. */
+@media (width <= 480px) and (height <= 650px) {
+  .dash-composer {
+    position: static;
+  }
+}
 .dash-composer-bar {
   display: flex;
   align-items: center;
