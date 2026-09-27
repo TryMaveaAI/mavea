@@ -54,8 +54,8 @@ export function LegalApp(): ReactElement {
       <aside className="legal-warranty legal-key-handling" aria-labelledby="legal-key-handling">
         <strong id="legal-key-handling">How your key is handled</strong>
         <p>
-          <b>What is kept.</b> Your key, in this browser only. There is no Mavéa account, and the
-          people who publish Mavéa never receive it.
+          <b>What is kept.</b> Your key, in this browser only. There is no Mavéa account, and
+          Mavéa's maintainers never receive it.
         </p>
         <p>
           <b>Where.</b> In this page's memory while the tab is open. With Remember on, also on this
@@ -96,11 +96,10 @@ export function LegalApp(): ReactElement {
         <p>
           Features, providers, sources, and results can change, fail, or become unavailable. As far
           as the law allows, Mavéa and its outputs are provided “as is” and “as available,” without
-          warranties, and the people who publish Mavéa are not responsible for decisions, actions,
-          losses, harm, unauthorized submissions, credential misuse, provider charges, or
-          third-party processing or retention arising from their use. You use the service and its
-          outputs at your own risk. Nothing here limits rights or liability that cannot legally be
-          limited.
+          warranties, and Mavéa's maintainers are not responsible for decisions, actions, losses,
+          harm, unauthorized submissions, credential misuse, provider charges, or third-party
+          processing or retention arising from their use. You use the service and its outputs at
+          your own risk. Nothing here limits rights or liability that cannot legally be limited.
         </p>
       </aside>
 

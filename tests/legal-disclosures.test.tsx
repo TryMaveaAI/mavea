@@ -35,7 +35,7 @@ describe('app-wide important information', () => {
     expect(screen.getByText(/prompts, attachments, conversation context/i)).toBeInTheDocument();
     // The key primer: what is kept, where, who can read it, how to remove it.
     expect(screen.getByRole('heading', { name: 'Important information' })).toBeInTheDocument();
-    expect(screen.getByText(/people who publish Mavéa never receive it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mavéa's maintainers never receive it/i)).toBeInTheDocument();
     expect(screen.getByText(/key the browser will not export/i)).toBeInTheDocument();
     expect(screen.getByText(/whoever runs this deployment/i)).toBeInTheDocument();
     expect(screen.getByText(/extension with access to this site/i)).toBeInTheDocument();

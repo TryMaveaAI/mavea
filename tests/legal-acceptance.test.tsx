@@ -82,16 +82,20 @@ describe('LegalGate', () => {
 
     expect(screen.queryByText('Connected product mounted')).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(screen.getByText(/Mavéa uses AI and third-party services/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/possibly a remote one\), and the resulting transcript may be sent/i),
+      screen.getByText(/Mavéa relies on artificial intelligence and on third-party services/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /though it may be a remote service\), and the resulting transcript may be sent/i,
+      ),
     ).toBeInTheDocument();
     // The box covers what the reader was just shown, not only the documents behind the links.
     expect(
       screen.getByText(/I have read and understand the points above, I agree to the Terms of Use/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/responsible for avoiding sensitive conversations/i),
+      screen.getByText(/I alone am responsible for avoiding sensitive conversations/i),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Terms of use' })).toHaveAttribute(
       'href',

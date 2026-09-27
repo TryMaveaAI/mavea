@@ -154,11 +154,11 @@ export const FEATURE_NOTICE_COPY: Record<
   },
   upload: {
     title: 'Files may be sent to your providers',
-    body: "Files are staged and extracted locally, but relevant content may be sent through this deployment to the model, search, or connected provider you select — a work document or private file included — and handled under that provider's terms, which may include retention or use for training. The people who publish Mavéa do not control that and, as far as the law allows, are not liable for it. Upload only material you are authorized to share. A map Mavéa builds from a document stays on this device — its claims and the page text they quote — so re-opening the same file does not bill your key again; anyone who can use this browser profile may be able to read it, and clearing site data removes it.",
+    body: "Files are staged and extracted locally, but relevant content may be sent through this deployment to the model, search, or connected provider you select — a work document or private file included — and handled under that provider's terms, which may include retention or use for training. Mavéa's maintainers do not control that and, as far as the law allows, are not liable for it. Upload only material you are authorized to share. A map Mavéa builds from a document stays on this device — its claims and the page text they quote — so re-opening the same file does not bill your key again; anyone who can use this browser profile may be able to read it, and clearing site data removes it.",
   },
   code: {
     title: 'Review and test before shipping',
-    body: 'Repository content and diffs — from a private, employer, or client repository as readily as a public one — may be sent to your selected model and handled under its terms, which may include retention or use for training. The people who publish Mavéa do not control that and, as far as the law allows, are not liable for it. Ripple can miss security, privacy, compatibility, or operational impact and is not a substitute for review, tests, or deployment safeguards.',
+    body: "Repository content and diffs — from a private, employer, or client repository as readily as a public one — may be sent to your selected model and handled under its terms, which may include retention or use for training. Mavéa's maintainers do not control that and, as far as the law allows, are not liable for it. Ripple can miss security, privacy, compatibility, or operational impact and is not a substitute for review, tests, or deployment safeguards.",
   },
   simulation: {
     title: 'A simulation, not a prediction',

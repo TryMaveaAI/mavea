@@ -94,54 +94,57 @@ export function LegalGate({
           </span>
           <h1 id="legal-gate-title">Before using connected features</h1>
           <p id="legal-gate-summary">
-            Mavéa uses AI and third-party services you choose. It cannot guarantee output, privacy,
-            security, or availability.
+            Mavéa relies on artificial intelligence and on third-party services you select. It is
+            provided without any guarantee of accuracy, privacy, security, or availability.
           </p>
 
           <ul className="legal-gate-points">
             <li>
-              <strong>AI can be wrong.</strong> Verify important information and do not use it as
-              professional or emergency help.
+              <strong>AI output may be inaccurate.</strong> You must independently verify any
+              information before relying on it. Mavéa does not provide professional advice,
+              including medical, legal, or financial advice, and must not be used in an emergency.
             </li>
             <li>
               <strong>{VOICE_DATA_NOTICE.title}.</strong> {VOICE_DATA_NOTICE.body}
             </li>
             <li>
-              <strong>A file you upload is sent, not just read locally.</strong> Prompts, documents,
-              code, images and context pass through this deployment to the providers you select,
-              including a work document, anything confidential or personal, and anything belonging
-              to someone else. Those providers handle it under their own terms, which may include
-              keeping it or using it to train their models. The people who publish Mavéa do not
-              control that and, as far as the law allows, are not liable for it. Only upload what
-              you are allowed to share with them.
+              <strong>Uploaded files are transmitted to your providers.</strong> Prompts, documents,
+              code, images, and context are sent through this deployment to the providers you
+              select, including any work, confidential, personal, or third-party material. Those
+              providers process such content under their own terms, which may permit retention or
+              use for model training. Mavéa&apos;s maintainers do not control that processing and,
+              to the extent permitted by law, are not liable for it. You may upload only content you
+              are authorized to share.
             </li>
             <li>
-              <strong>A connected repository is read the same way.</strong> If you connect a code
-              host, the files, docs, diffs, and issues a feature reads can be sent to your model
-              provider, including from a <strong>private</strong> repository, your employer's or a
-              client's, if the access you grant can reach one. Grant the narrowest scope that works,
-              and only connect what you have the right to share, under the law and any agreement
-              that applies to it.
-            </li>
-            <li>
-              <strong>Your key is stored only in this browser and sent with each request.</strong>{' '}
-              It passes through this deployment's proxy to the provider you chose. Any extension or
-              software with access to this browser can read it; Mavéa cannot prevent that. Use a
-              restricted, spend-capped key you can revoke.
-            </li>
-            <li>
-              <strong>You pay for your own usage.</strong> Each answer, search, or voice request you
-              make uses your own provider account and may incur charges, which that provider bills
-              to you under its own pricing and terms. Those charges are your sole responsibility.
-              The people who publish Mavéa do not charge you, pay providers for you, or reimburse
-              any charge. Set a spending cap in your provider's dashboard before you start. It is
-              the one limit that holds even if a key is ever misused.
+              <strong>Connected repositories are transmitted in the same way.</strong> If you
+              connect a code host, the files, documentation, diffs, and issues a feature reads may
+              be sent to your model provider, including content from a <strong>private</strong>,
+              employer, or client repository that your granted access can reach. Grant only the
+              narrowest access necessary, and connect only content you have the right to share under
+              applicable law and any agreement that governs it.
             </li>
             <li>
               <strong>
-                You are responsible for credentials, permission to submit content, connected
-                actions, and what you share.
-              </strong>
+                Your API key is stored only in this browser and sent with each request.
+              </strong>{' '}
+              It passes through this deployment&apos;s proxy to the provider you select. Any browser
+              extension or other software with access to this browser may be able to read it, and
+              Mavéa cannot prevent this. Use a restricted, spend-limited key that you can revoke.
+            </li>
+            <li>
+              <strong>You are solely responsible for all usage charges.</strong> Each request you
+              make, including answers, searches, and voice, runs on your own provider account and
+              may incur fees, which that provider bills to you under its own pricing and terms.
+              Mavéa&apos;s maintainers do not bill you or pay providers on your behalf and, to the
+              extent permitted by law, are not liable for and will not reimburse any such charges.
+              We strongly recommend setting a spending limit with your provider before first use; it
+              is the only safeguard that applies even if your key is misused.
+            </li>
+            <li>
+              <strong>You are responsible for your use of Mavéa,</strong> including your
+              credentials, your right to submit content, any connected actions you take, and
+              anything you share.
             </li>
           </ul>
 

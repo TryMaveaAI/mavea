@@ -36,7 +36,7 @@ describe('FeatureUseNotice', () => {
     const first = render(<FeatureUseNotice kind="voice-data" from="live" />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Dismiss Speech can become provider data notice' }),
+      screen.getByRole('button', { name: 'Dismiss Speech may be shared with providers notice' }),
     );
     first.unmount();
 

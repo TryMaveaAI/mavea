@@ -9,6 +9,6 @@
 // featureRiskAudit imports this rather than restating it, so the gate and the listening surfaces
 // cannot drift into telling a reader two different things about their microphone.
 export const VOICE_DATA_NOTICE = {
-  title: 'Speech can become provider data',
-  body: 'Microphone audio goes to the speech-to-text endpoint this deployment uses (on this computer by default, but possibly a remote one), and the resulting transcript may be sent to your selected model provider. Remote operators may log or retain data under their own terms. Avoid sensitive conversations and get any consent required from nearby people before listening starts.',
+  title: 'Speech may be shared with providers',
+  body: 'Microphone audio is processed by the speech-to-text service this deployment uses (on this computer by default, though it may be a remote service), and the resulting transcript may be sent to the model provider you select. Remote operators may log or retain this data under their own terms. You are responsible for avoiding sensitive conversations and for obtaining any consent required from others before listening begins.',
 } as const;
