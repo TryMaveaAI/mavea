@@ -9,9 +9,13 @@
 //
 // It generates a lesson EXACTLY the way openCourseLesson did — replay a cached frame for free, else
 // run one generateLive turn shaped by lessonSpine's per-lesson directive, then cache the finished
-// canvas so the next visit (or a refresh) replays for zero model calls. Progress + checkpoints
-// route through the same course/store.ts the rest of the course integration writes to, so a lesson
-// graded here is "done" everywhere.
+// canvas so the next visit (or a refresh) replays for zero model calls. An UNCACHED lesson is only
+// built on a press the reader made: the courses home vouches for its "Start course"/"Continue"
+// through the one-shot seed, and Prev/Next are presses on this surface; a bare `#/course?c=&l=`
+// (a link, a reload, the back button) lands on the lesson shell with a "Build this lesson" button,
+// because a URL must never spend the reader's key by itself. Progress + checkpoints route through
+// the same course/store.ts the rest of the course integration writes to, so a lesson graded here
+// is "done" everywhere.
 import './courses.css';
 import './courseRail.css';
 import './course-reader.css';
@@ -63,19 +67,30 @@ function useCourseRevision(): number {
   return useSyncExternalStore(subscribeCourseStore, getCourseStoreVersion, getCourseStoreVersion);
 }
 
-/** Which course + lesson this reader opens, resolved once. The one-shot seed (CoursesApp's
- *  "Start course"/"Continue" hand-off) wins; the hash query is the fallback so a refresh or a
- *  deep link still lands on the right lesson. */
-function resolveTarget(): { courseId: string; lessonIdx: number } | null {
+/** Which course + lesson this reader opens, and whether the app vouches for it. */
+interface Target {
+  courseId: string;
+  lessonIdx: number;
+  /** True when the reader arrived by an in-app gesture — the courses home's "Start course" /
+   *  "Continue" stashes the one-shot seed before it navigates — so an uncached lesson may be built
+   *  on arrival. False when only the URL named the lesson: a shared or bookmarked link, a reload,
+   *  the back button. A URL may pre-fill, never spend; a crafted link would otherwise run a paid
+   *  model call on the reader's remembered key with no click of theirs. */
+  vouched: boolean;
+}
+
+/** Resolved once on mount. The one-shot seed wins; the hash query is the fallback so a refresh or
+ *  a deep link still lands on the right lesson (a cached one replays for free either way). */
+function resolveTarget(): Target | null {
   const seed = takeCourseLesson();
-  if (seed) return { courseId: seed.courseId, lessonIdx: seed.lessonIdx };
+  if (seed) return { courseId: seed.courseId, lessonIdx: seed.lessonIdx, vouched: true };
   try {
     const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
     const courseId = params.get('c')?.trim();
     if (!courseId) return null;
     const raw = Number(params.get('l'));
     const lessonIdx = Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : 0;
-    return { courseId, lessonIdx };
+    return { courseId, lessonIdx, vouched: false };
   } catch {
     return null;
   }
@@ -118,7 +133,9 @@ function toLessonFrame(result: LiveResult, question: string): TurnFrame {
   };
 }
 
-type Phase = 'loading' | 'streaming' | 'ready' | 'error';
+/** `held`: the lesson is not cached and nothing vouched for building it — the shell waits for
+ *  the reader's own press. */
+type Phase = 'held' | 'loading' | 'streaming' | 'ready' | 'error';
 
 /** One in-flight lesson generation, so a superseded turn (Prev/Next, unmount) can be aborted and
  *  told apart from a real timeout. */
@@ -162,6 +179,10 @@ export function CourseLessonReader(): ReactElement {
   const [error, setError] = useState<string | null>(null);
 
   const genRef = useRef<Generation | null>(null);
+  // Whether the next uncached lesson may be BUILT. Seeded from the arrival (see Target.vouched) and
+  // set by every gesture on this surface — Prev/Next, the held shell's own button — since a press
+  // the reader made here vouches for itself. Never set by a URL, a re-render or a remount.
+  const vouched = useRef(target.current?.vouched ?? false);
 
   // Open a lesson: replay its cached canvas for free, else run one real lesson turn shaped by
   // lessonSpine's per-lesson directive and cache the result. Guarded against races — a superseded
@@ -194,8 +215,13 @@ export function CourseLessonReader(): ReactElement {
       setNarration('');
       setPendingShape(null);
       setThinking(false);
-      setPhase('loading');
       setError(null);
+      if (!vouched.current) {
+        genRef.current = null;
+        setPhase('held');
+        return;
+      }
+      setPhase('loading');
       const gen: Generation = { ctrl: new AbortController(), timedOut: false };
       genRef.current = gen;
       const timer = setTimeout(() => {
@@ -311,11 +337,17 @@ export function CourseLessonReader(): ReactElement {
     [courseId],
   );
 
-  // Generate on mount and whenever the lesson changes; abort any in-flight turn on the way out.
+  // Open the lesson on mount and whenever it changes; abort any in-flight turn on the way out.
   useEffect(() => {
     loadLesson(lessonIdx);
     return () => genRef.current?.ctrl.abort();
   }, [lessonIdx, loadLesson]);
+
+  // The held shell's button is the reader's own press, so it may build.
+  const buildLesson = useCallback(() => {
+    vouched.current = true;
+    loadLesson(lessonIdx);
+  }, [loadLesson, lessonIdx]);
 
   const onCheckpoint = useCallback(
     (result: CheckpointResult) => {
@@ -377,11 +409,22 @@ export function CourseLessonReader(): ReactElement {
             course={course}
             lessonIdx={lessonIdx}
             progress={progress}
-            onPrev={() => setLessonIdx((i) => Math.max(0, i - 1))}
-            onNext={() => setLessonIdx((i) => Math.min(course.lessons.length - 1, i + 1))}
+            // Prev/Next are presses the reader made here, so the lesson they open may be built.
+            onPrev={() => {
+              vouched.current = true;
+              setLessonIdx((i) => Math.max(0, i - 1));
+            }}
+            onNext={() => {
+              vouched.current = true;
+              setLessonIdx((i) => Math.min(course.lessons.length - 1, i + 1));
+            }}
             onCheckpoint={onCheckpoint}
             busy={busy}
           />
+
+          {phase === 'held' && (
+            <HeldStage lessonNumber={lessonIdx + 1} course={course} onBuild={buildLesson} />
+          )}
 
           {phase === 'loading' && <LoadingStage lessonNumber={lessonIdx + 1} course={course} />}
 
@@ -405,6 +448,37 @@ export function CourseLessonReader(): ReactElement {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+/** The lesson shell for an arrival nothing vouched for: the URL named the lesson, the reader has
+ *  not asked for it yet. The rail above already says which lesson this is; this stage says only
+ *  what it is about, why nothing ran (the same hint Deep Zoom's start screen gives a `?q=` link),
+ *  and how to run it — in the wait's and the failure's own voice ("build"). */
+function HeldStage({
+  lessonNumber,
+  course,
+  onBuild,
+}: {
+  lessonNumber: number;
+  course: TopicCourse;
+  onBuild: () => void;
+}): ReactElement {
+  const lesson = course.lessons[lessonNumber - 1];
+  return (
+    <div className="clr-state">
+      <div className="clr-state-icon" aria-hidden="true">
+        <Icon.layers />
+      </div>
+      <div className="clr-state-head">Lesson {lessonNumber} isn’t built yet</div>
+      {lesson && <div className="clr-state-sub">{lesson.goal}</div>}
+      <p className="clr-state-sub" role="status">
+        Opened from a link — build it when you are ready.
+      </p>
+      <button type="button" className="clr-btn clr-btn-primary" onClick={onBuild}>
+        <Icon.sparkle /> Build this lesson
+      </button>
     </div>
   );
 }

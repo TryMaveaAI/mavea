@@ -1,7 +1,9 @@
 // courseSeed.ts — one-shot handoffs into and out of the course surfaces. Three of them:
 //   - the LESSON seed: "Continue" (or a fresh course's lesson 1) — CoursesApp stashes which
-//     lesson to open, then routes to #/live. LiveApp reads it once on mount and either replays
-//     a cached canvas for free or runs a normal lesson turn.
+//     lesson to open, then routes to #/course. The reader reads it once on mount and either
+//     replays a cached canvas for free or runs a normal lesson turn. The stash is also the VOUCH
+//     for that turn: a bare #/course?c=&l= (a link, a reload, the back button) opens the lesson
+//     shell with a button instead, because a link must never spend the reader's key by itself.
 //   - the TOPIC seed: another surface (Deep Zoom) already has a topic in hand and wants a course
 //     built from it — it stashes the plain string, then routes to #/courses, which reads it once
 //     on mount and drives it through the same generateCourse() flow a typed topic uses.
