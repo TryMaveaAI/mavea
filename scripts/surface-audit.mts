@@ -320,9 +320,11 @@ const MEASURE_SCRIPT = (
       const parentTruncates = el.parentElement && ((getComputedStyle(el.parentElement).textOverflow === 'ellipsis') ||
         (getComputedStyle(el.parentElement).webkitLineClamp !== 'none' && getComputedStyle(el.parentElement).webkitLineClamp !== ''));
       // A reel marquee's track is wider than its band by design: the band's overflow is what turns an
-      // endless strip into a crawl, so its off-band words are the next frames, not lost text. The
+      // endless strip into a crawl, so words the BAND cuts are the next frames, not lost text. The
+      // band itself gets no pass — clipped by anything else, it is judged like any other text. The
       // reel gallery's own board audit excuses the same attribute (src/clip/reel/auditBoard.ts).
-      if (lost > 4 && !truncates && !parentTruncates && !el.closest('.zoom-scrim, [data-text-disclosure], [data-reel-marquee]')) {
+      const byMarquee = !!clipper.closest('[data-reel-marquee]');
+      if (lost > 4 && !truncates && !parentTruncates && !byMarquee && !el.closest('.zoom-scrim, [data-text-disclosure]')) {
         clipped.push(name(el) + ' loses ' + Math.round(lost) + 'px to ' + name(clipper));
       }
     }
