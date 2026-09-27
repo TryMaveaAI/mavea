@@ -18,6 +18,25 @@ describe('spokenText — [[shown|said]] parsing', () => {
     expect(forSpeech(s)).toBe('It runs on a five thousand dollars a month rig with kooda.');
   });
 
+  it('resolves a note with one closing bracket missing, never showing its markup', () => {
+    // Baked into the PM replay: the KPI read "Down from [[21.6k|twenty-one point six thousand]".
+    const s = 'Down from [[21.6k|twenty-one point six thousand] last quarter';
+    expect(forDisplay(s)).toBe('Down from 21.6k last quarter');
+    expect(forSpeech(s)).toBe('Down from twenty-one point six thousand last quarter');
+  });
+
+  it('resolves the mirror slip, one opening bracket missing', () => {
+    const s = 'Runs on [CUDA|kooda]] cores';
+    expect(forDisplay(s)).toBe('Runs on CUDA cores');
+    expect(forSpeech(s)).toBe('Runs on kooda cores');
+  });
+
+  it('a half-closed note beside a whole one resolves both', () => {
+    const s = '[[SQL|sequel] and [[CUDA|kooda]]';
+    expect(forDisplay(s)).toBe('SQL and CUDA');
+    expect(forSpeech(s)).toBe('sequel and kooda');
+  });
+
   it('handles an equation span', () => {
     const s = '[[E=mc²|E equals m c squared]] ties energy to mass.';
     expect(forDisplay(s)).toBe('E=mc² ties energy to mass.');
