@@ -26,8 +26,8 @@ describe.skipIf(!KEY || !DIR)('Synthesis World — LIVE gemini-3.1-flash-lite on
       provider: 'gemini',
       model: 'gemini-3.1-flash-lite',
       apiKey: KEY,
-      // The app calls Gemini through the same-origin /llm/gemini dev proxy (which injects the key). A
-      // Node harness has no proxy, so point baseUrl straight at Google and let keyHeader send the key.
+      // The app calls Gemini through the same-origin /llm/gemini proxy. A Node harness has no
+      // proxy, so point baseUrl straight at Google and let keyHeader send the key.
       baseUrl: 'https://generativelanguage.googleapis.com',
     });
 

@@ -184,10 +184,6 @@ const ALTITUDES: { id: Altitude; label: string; description: string }[] = [
   },
 ];
 
-/** Providers capable of a deep read. With nothing connected, Ripple falls back to Gemini for
- *  the analysis — the floor still serves every visitor. */
-const CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'gemini', 'grok', 'openrouter']);
-
 export interface RippleOverlayProps {
   /** The grounded picture of consequence to render (a worked example today, a real diff/repo later). */
   model: ShipModel;
@@ -527,10 +523,10 @@ export function RippleOverlay({
   // Ripple's analysis runs on the connected model or not at all. With nothing connected it carries
   // no model id, so modelCanGenerate refuses and the reader is asked to connect one — Ripple never
   // reads a repo through a model they did not choose.
-  const analysisCfg = useMemo<ModelConfig>(() => {
-    if (cfg && CAPABLE_PROVIDERS.has(cfg.provider)) return cfg;
-    return { provider: cfg?.provider ?? 'gemini', model: '', apiKey: '' };
-  }, [cfg]);
+  const analysisCfg = useMemo<ModelConfig>(
+    () => cfg ?? { provider: 'gemini', model: '', apiKey: '' },
+    [cfg],
+  );
   const canGenerate = modelCanGenerate(analysisCfg);
 
   // Size the work to the model WITHOUT ever changing it (token caps, course count, code-context gate,
