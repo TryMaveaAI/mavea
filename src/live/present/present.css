@@ -16,7 +16,6 @@
 
 .mavea-app.presenting .topbar,
 .mavea-app.presenting .side-rail,
-.mavea-app.presenting .scrubber,
 .mavea-app.presenting .dock-modes,
 .mavea-app.presenting .dock-hint {
   display: none;

@@ -1,7 +1,6 @@
 import {
   deriveChapters,
   classifyIntent,
-  currentMoment,
   countMoments,
   CHAPTER_PALETTE,
 } from '../src/live/scrubber/chapters';
@@ -215,16 +214,14 @@ describe('deriveChapters — the semantic (vectors) boundary', () => {
   });
 });
 
-describe('currentMoment + countMoments', () => {
+describe('countMoments', () => {
   const chapters = deriveChapters([
     frame('a', 'replace'),
     frame('b', 'augment'),
     frame('c', 'replace'),
   ]);
 
-  it('finds the moment showing on screen and totals them', () => {
-    expect(currentMoment(chapters, 1)?.frameIndex).toBe(1);
-    expect(currentMoment(chapters, 99)).toBeNull();
+  it('totals the moments across chapters', () => {
     expect(countMoments(chapters)).toBe(3);
   });
 });
