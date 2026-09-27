@@ -15,6 +15,9 @@ import { cachedImport } from '../../lib/cachedImport';
 import { usePrismWorld } from './usePrismWorld';
 import { usePanZoom } from './usePanZoom';
 import { layout, CARD_W, CARD_H, type LayoutResult, type Placed } from './layout';
+
+/** How far a consensus ring's count badge rises above the rim (synthesis.css `.syn-consensus-badge`). */
+const CONSENSUS_BADGE_H = 24;
 import { layoutPrismOffMain } from './layoutOffMain';
 import { DocPageView } from './DocPageView';
 import { destroyRenderDoc } from './extractPdf';
@@ -438,29 +441,37 @@ export function PrismOverlay({
   // Pan + zoom the map. The world is rendered at its natural size and moved by a camera transform, so
   // the whole map is framed to fit on open AND re-frames when the source panel steals half the width.
   const stageRef = useRef<HTMLDivElement>(null);
-  // The tight bounding box of the actual content (cards + region labels), so the camera frames THAT
-  // and fills the viewport — a 5-claim map shouldn't sit tiny inside the whole (much larger) world.
+  // The tight bounding box of the actual content (cards, region labels and, on a fused map, the
+  // corpus objects), so the camera frames THAT and fills the viewport — a 5-claim map shouldn't sit
+  // tiny inside the whole (much larger) world. Cards and objects are CENTRED on their point
+  // (`translate(-50%, -50%)`), and a consensus ring carries its count badge above its rim, so a box
+  // built from top-left corners or from the cards alone let the fit slide the top cluster under the
+  // toolbar.
+  const corpusContradictions = corpusChrome?.contradictions;
+  const corpusGaps = corpusChrome?.gaps;
+  const corpusConsensus = corpusChrome?.consensus;
   const contentBox = useMemo(() => {
     if (!placed || placed.claims.length === 0) return undefined;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const c of placed.claims) {
-      minX = Math.min(minX, c.x);
-      minY = Math.min(minY, c.y);
-      maxX = Math.max(maxX, c.x + CARD_W);
-      maxY = Math.max(maxY, c.y + CARD_H);
+    const cover = (x: number, y: number, hw: number, top: number, bottom = top): void => {
+      minX = Math.min(minX, x - hw);
+      minY = Math.min(minY, y - top);
+      maxX = Math.max(maxX, x + hw);
+      maxY = Math.max(maxY, y + bottom);
+    };
+    for (const c of placed.claims) cover(c.x, c.y, CARD_W / 2, CARD_H / 2);
+    for (const r of placed.regions) cover(r.cx, r.cy, 0, 0);
+    for (const o of [...(corpusContradictions ?? []), ...(corpusGaps ?? [])]) {
+      cover(o.x, o.y, CARD_W / 2, CARD_H / 2);
     }
-    for (const r of placed.regions) {
-      minX = Math.min(minX, r.cx);
-      minY = Math.min(minY, r.cy);
-      maxX = Math.max(maxX, r.cx);
-      maxY = Math.max(maxY, r.cy);
-    }
+    for (const c of corpusConsensus ?? []) cover(c.x, c.y, c.r, c.r + CONSENSUS_BADGE_H, c.r);
     const pad = 56;
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
-  }, [placed]);
+    // The chrome object is rebuilt every render; its placed arrays are what is stable.
+  }, [placed, corpusContradictions, corpusGaps, corpusConsensus]);
   const pan = usePanZoom(stageRef, placed?.width ?? 1, placed?.height ?? 1, contentBox, {
     wheelZoom: settled,
   });
@@ -632,11 +643,22 @@ export function PrismOverlay({
     // pad by a card so the framed cards aren't flush against the viewport edge
     const padW = CARD_W;
     const padH = CARD_H * 1.3;
-    frameCamera(
-      { x: minX - padW, y: minY - padH, w: maxX - minX + padW * 2, h: maxY - minY + padH * 2 },
-      { maxScale: 1.2 },
-    );
-  }, [settled, placed, spec, frameCamera]);
+    minX -= padW;
+    minY -= padH;
+    maxX += padW;
+    maxY += padH;
+    // On a fused map a key claim can sit inside a consensus ring; frame the whole ring and its count
+    // badge too, or the answer-first view opens with the ring's top sliced off at the stage edge.
+    const keyIds = new Set(key.map((c) => c.id));
+    for (const c of corpusConsensus ?? []) {
+      if (!c.memberClaimIds.some((id) => keyIds.has(id))) continue;
+      minX = Math.min(minX, c.x - c.r);
+      minY = Math.min(minY, c.y - c.r - CONSENSUS_BADGE_H);
+      maxX = Math.max(maxX, c.x + c.r);
+      maxY = Math.max(maxY, c.y + c.r);
+    }
+    frameCamera({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }, { maxScale: 1.2 });
+  }, [settled, placed, spec, frameCamera, corpusConsensus]);
 
   // Veracity pass: once the map settles, check the load-bearing claims against the live world — but
   // ONLY when the user has web search enabled in their Live settings (off by default). When it's off,
