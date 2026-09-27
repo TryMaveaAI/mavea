@@ -27,16 +27,31 @@ export const NODE_H = 76;
 const GAP = 36; // minimum clear space between card edges
 const RY = 0.82; // squeeze the vertical axis so the field reads wide, not a tall circle
 
-/** A verb label's footprint in world units: `.ripple-edge-verb` is 10.5px mono at its ceiling with
- *  0.05em tracking (~6.8px a character) and 6px of padding each side, and a line box ~18px tall. */
-const VERB_CHAR_W = 6.8;
+/** A verb label's footprint scales with the size it is actually rendered at — the viewport's type
+ *  scale and the reader's text-size choice both move it — so the map is handed that rendered size
+ *  (ImpactMap reads it off a `.ripple-edge-verb`) and derives the box from it. The label is IBM Plex
+ *  Mono, whose every glyph advances 0.6em, plus the rule's 0.05em tracking; its padding is 1px 6px
+ *  and its line box `normal` (~1.3em for Plex Mono). */
+const VERB_ADVANCE_EM = 0.65;
 const VERB_PAD_X = 12;
-export const VERB_H = 18;
+const VERB_PAD_Y = 2;
+const VERB_LINE_EM = 1.3;
+/** The rendered size a label is assumed at before one has been measured: --fs-2xs's ceiling. */
+export const DEFAULT_VERB_FONT_PX = 10.5;
 /** Clear space kept either side of a verb label so it reads as sitting ON its edge, not on a card. */
 const VERB_CLEAR = 8;
+/** How far a label slides along its line between tries when the middle is taken. */
+const VERB_SLIDE_STEP = 12;
 
-export function verbWidth(verb: string | undefined): number {
-  return verb ? verb.length * VERB_CHAR_W + VERB_PAD_X : 0;
+export function verbSize(
+  verb: string | undefined,
+  fontPx = DEFAULT_VERB_FONT_PX,
+): { w: number; h: number } {
+  if (!verb) return { w: 0, h: 0 };
+  return {
+    w: verb.length * VERB_ADVANCE_EM * fontPx + VERB_PAD_X,
+    h: VERB_LINE_EM * fontPx + VERB_PAD_Y,
+  };
 }
 
 /** Where an edge's verb sits: the middle of the stretch of the line that is NOT under either card.
@@ -46,7 +61,7 @@ export function verbWidth(verb: string | undefined): number {
 export function verbPoint(
   from: { x: number; y: number },
   to: { x: number; y: number },
-): { x: number; y: number; free: number; horizontal: boolean } {
+): { x: number; y: number; free: number } {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const len = Math.hypot(dx, dy) || 1;
@@ -62,7 +77,6 @@ export function verbPoint(
     x: from.x + dx * tm,
     y: from.y + dy * tm,
     free: Math.max(0, (t1 - t0) * len),
-    horizontal: Math.abs(dx) * NODE_H >= Math.abs(dy) * NODE_W,
   };
 }
 
@@ -74,6 +88,7 @@ export function verbPoint(
 export function placeVerbs(
   placed: readonly PlacedNode[],
   edges: readonly ShipEdge[],
+  fontPx = DEFAULT_VERB_FONT_PX,
 ): ({ x: number; y: number } | null)[] {
   const at = new Map(placed.map((p) => [p.node.id, p]));
   const boxes = placed.map((p) => ({
@@ -91,18 +106,17 @@ export function placeVerbs(
   return edges.map((e) => {
     const from = at.get(e.from);
     const to = at.get(e.to);
-    const w = verbWidth(e.verb);
+    const { w, h } = verbSize(e.verb, fontPx);
     if (!from || !to || !w) return null;
     const mid = verbPoint(from, to);
     const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
     const ux = (to.x - from.x) / len;
     const uy = (to.y - from.y) / len;
-    const step = 12;
-    for (let k = 0; k * step <= mid.free / 2; k++) {
+    for (let k = 0; k * VERB_SLIDE_STEP <= mid.free / 2; k++) {
       for (const sign of k === 0 ? [0] : [-1, 1]) {
-        const x = mid.x + ux * step * k * sign;
-        const y = mid.y + uy * step * k * sign;
-        const box = { l: x - w / 2, t: y - VERB_H / 2, r: x + w / 2, b: y + VERB_H / 2 };
+        const x = mid.x + ux * VERB_SLIDE_STEP * k * sign;
+        const y = mid.y + uy * VERB_SLIDE_STEP * k * sign;
+        const box = { l: x - w / 2, t: y - h / 2, r: x + w / 2, b: y + h / 2 };
         if (hits(box)) continue;
         taken.push(box);
         return { x, y };
@@ -112,7 +126,11 @@ export function placeVerbs(
   });
 }
 
-export function layoutImpact(nodes: readonly ShipNode[], edges: readonly ShipEdge[]): ImpactLayout {
+export function layoutImpact(
+  nodes: readonly ShipNode[],
+  edges: readonly ShipEdge[],
+  verbFontPx = DEFAULT_VERB_FONT_PX,
+): ImpactLayout {
   const center = nodes.find((n) => n.type === 'pr') ?? nodes[0];
   const centerId = center?.id ?? '';
   const others = nodes.filter((n) => n.id !== centerId);
@@ -151,13 +169,13 @@ export function layoutImpact(nodes: readonly ShipNode[], edges: readonly ShipEdg
   const labelRoom = new Map<string, { x: number; y: number }>();
   const pairKey = (a: string, b: string): string => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
   for (const e of edges) {
-    const wv = verbWidth(e.verb);
-    if (!wv) continue;
+    const label = verbSize(e.verb, verbFontPx);
+    if (!label.w) continue;
     const key = pairKey(e.from, e.to);
     const prev = labelRoom.get(key) ?? { x: GAP, y: GAP };
     labelRoom.set(key, {
-      x: Math.max(prev.x, wv + VERB_CLEAR * 2),
-      y: Math.max(prev.y, VERB_H + VERB_CLEAR * 2),
+      x: Math.max(prev.x, label.w + VERB_CLEAR * 2),
+      y: Math.max(prev.y, label.h + VERB_CLEAR * 2),
     });
   }
   for (let iter = 0; iter < 240; iter++) {

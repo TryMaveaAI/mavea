@@ -13,9 +13,8 @@ import {
   NODE_H,
   NODE_W,
   placeVerbs,
-  VERB_H,
   verbPoint,
-  verbWidth,
+  verbSize,
 } from '../src/live/ripple/layout';
 import type { ShipEdge, ShipNode } from '../src/live/ripple/model';
 import { SEED_SHIP } from '../src/live/ripple/seed';
@@ -37,8 +36,8 @@ function verbsOnCards(nodes: readonly ShipNode[], edges: readonly ShipEdge[]): s
   edges.forEach((e, i) => {
     const p = spots[i];
     if (!p) return;
-    const w = verbWidth(e.verb);
-    const label = { l: p.x - w / 2, t: p.y - VERB_H / 2, r: p.x + w / 2, b: p.y + VERB_H / 2 };
+    const { w, h } = verbSize(e.verb);
+    const label = { l: p.x - w / 2, t: p.y - h / 2, r: p.x + w / 2, b: p.y + h / 2 };
     for (const c of cards) if (overlaps(label, c.box)) hits.push(`"${e.verb}" on ${c.id}`);
   });
   return hits;
@@ -78,6 +77,23 @@ describe('impact map verb labels', () => {
     const q = verbPoint({ x: 0, y: 0 }, { x: 300, y: 30 });
     expect(q.x).toBeGreaterThan(NODE_W / 2);
     expect(q.x).toBeLessThan(300 - NODE_W / 2);
+  });
+});
+
+describe('impact map verb size', () => {
+  it('follows the size the label renders at, not a fixed pixel count', () => {
+    const base = verbSize('is imported by', 10.5);
+    const big = verbSize('is imported by', 15.75);
+    expect(big.w - 12).toBeCloseTo((base.w - 12) * 1.5);
+    expect(big.h).toBeGreaterThan(base.h);
+  });
+
+  it('spreads labelled neighbours further when the type is bigger', () => {
+    const small = layoutImpact(SEED_SHIP.nodes, SEED_SHIP.edges, 10.5);
+    const large = layoutImpact(SEED_SHIP.nodes, SEED_SHIP.edges, 18);
+    expect(large.w * large.h).toBeGreaterThan(small.w * small.h);
+    const spots = placeVerbs(large.nodes, SEED_SHIP.edges, 18);
+    expect(spots.every((p, i) => !SEED_SHIP.edges[i]!.verb || p)).toBe(true);
   });
 });
 

@@ -8,7 +8,14 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactEle
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
 import { statusVar, statusLabel } from './colors';
 import { findImpactPath, traceImpact, type TraceDirection } from './impactTrace';
-import { layoutImpact, NODE_W, NODE_H, placeVerbs, type PlacedNode } from './layout';
+import {
+  DEFAULT_VERB_FONT_PX,
+  layoutImpact,
+  NODE_W,
+  NODE_H,
+  placeVerbs,
+  type PlacedNode,
+} from './layout';
 import type { Altitude, ChangeDelta, ShipChange, ShipEdge, ShipNode } from './model';
 
 export interface ImpactMapProps {
@@ -70,10 +77,33 @@ export function ImpactMap({
     const visibleEdges = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
     return { nodes: visibleNodes, edges: visibleEdges };
   }, [nodes, edges, crossRepoOnly]);
-  const view = useMemo(() => layoutImpact(visibleGraph.nodes, visibleGraph.edges), [visibleGraph]);
+  // The size a verb label actually renders at, read off a hidden label in the world layer (so it is
+  // in world units, before the camera scales it). The viewport's type scale and the reader's text
+  // size both move it; the probe's box moves with it, which is what the observer answers to.
+  const verbProbe = useRef<HTMLSpanElement>(null);
+  const [verbFontPx, setVerbFontPx] = useState(DEFAULT_VERB_FONT_PX);
+  useEffect(() => {
+    const el = verbProbe.current;
+    if (!el) return;
+    const read = (): void => {
+      const px = parseFloat(getComputedStyle(el).fontSize);
+      if (Number.isFinite(px) && px > 0) {
+        setVerbFontPx((prev) => (Math.abs(prev - px) < 0.05 ? prev : px));
+      }
+    };
+    read();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const view = useMemo(
+    () => layoutImpact(visibleGraph.nodes, visibleGraph.edges, verbFontPx),
+    [visibleGraph, verbFontPx],
+  );
   const verbSpots = useMemo(
-    () => placeVerbs(view.nodes, visibleGraph.edges),
-    [view, visibleGraph.edges],
+    () => placeVerbs(view.nodes, visibleGraph.edges, verbFontPx),
+    [view, visibleGraph.edges, verbFontPx],
   );
 
   const placedById = useMemo(() => {
@@ -527,6 +557,15 @@ export function ImpactMap({
               );
             })}
           </svg>
+
+          {/* measures the rendered verb size for the layout; never seen */}
+          <span
+            ref={verbProbe}
+            className="ripple-edge-verb ripple-edge-verb-probe"
+            aria-hidden="true"
+          >
+            m
+          </span>
 
           {/* edge verb labels */}
           {visibleGraph.edges.map((edge, index) => {

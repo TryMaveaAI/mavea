@@ -1401,6 +1401,11 @@
     opacity var(--m-fast) var(--ease-out),
     box-shadow var(--m-fast) var(--ease-out);
 }
+.ripple-edge-verb-probe {
+  visibility: hidden;
+  left: 0;
+  top: 0;
+}
 .ripple-edge-verb[data-active='true'] {
   opacity: 1;
   box-shadow: 0 0 0 1px currentColor;
