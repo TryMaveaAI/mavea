@@ -41,7 +41,10 @@ flowchart LR
 ```
 
 The default development/self-hosted topology runs on infrastructure you control. Provider keys are
-session-only by default; optional remembering encrypts them locally. The browser sends each key and
+session-only by default; optional remembering encrypts them locally, and Settings → Your data →
+Forget everything on this device destroys the device key along with every store. The encryption
+removes plaintext at rest; it does not stop code running as this origin (an injected script, or an
+extension with access to the site), which `pnpm probe:extensions` demonstrates. The browser sends each key and
 prompt through a **same-origin proxy**, which can see the credential in transit and must not log or
 persist it, then onward to the chosen provider. This repository has no hosted account, telemetry, or
 conversation-retention service, but a production deployment's proxy is still a privileged trust

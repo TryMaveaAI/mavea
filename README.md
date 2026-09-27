@@ -69,7 +69,8 @@ rates — the model call is the part of a turn that costs money; the app and the
 run on your machine. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that
 provider — your key and prompts never pass through Mavéa's own servers, because there aren't
-any. Full options — models, hosting, and the trust boundary — are in
+any. Settings → Your data → **Forget everything on this device** removes the key, the encryption
+key that sealed it, and everything else Mavéa stored in your browser. Full options — models, hosting, and the trust boundary — are in
 [docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
 
 **Local speech:** Mavéa speaks through Apache-2.0

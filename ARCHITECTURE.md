@@ -541,7 +541,9 @@ never poison an answer**. It reuses existing seams rather than adding a pipeline
   may steer, so behaviour degrades cleanly to baseline when memory is off or on a small model.
 - **Honest, user-owned, and measured.** Facts leave the device only inside the next prompt to the
   chosen provider (on a local model, never). `LiveSettings` lists every node with per-item delete,
-  Forget-all, and OKF export; a quiet toast marks a save. A multi-turn eval (`eval/runMemory`) answers
+  Forget-all, and OKF export; a quiet toast marks a save. A memory restored from a backup file
+  arrives as `model-inferred` whatever tier the file claims, so a doctored backup cannot plant a
+  "you said so" fact. A multi-turn eval (`eval/runMemory`) answers
   each probe with memory on vs off and reports the personalization lift with a groundedness guard, so
   the benefit is provable, not asserted. No new dependency, and the memory modules are framework-free
   leaves so the Node eval path stays clean.
@@ -854,6 +856,13 @@ cold start, non-secret preferences are read from `mavea-live-v2`. Every main-con
 The `rememberKey` flag controls whether keys are also written to `mavea-live-v2:secrets` as AES-GCM
 ciphertext. Its non-extractable device key lives in IndexedDB (`mavea-key-vault`). If remembering is
 off, or Web Crypto/IndexedDB encryption fails, keys remain in memory only and vanish on reload.
+
+**Forget everything on this device** (`live/forgetDevice.ts`, Settings → Your data) is the one sweep
+over all of it: it drops the in-memory keys, removes every `mavea`-prefixed local and session
+storage key, deletes the three databases (the vault included, so an old disk backup's ciphertext
+can no longer be opened), the caches and the export scratch files, tells other tabs over a
+`BroadcastChannel` so they drop their keys and reload too, then reloads. It imports no store module;
+the database names are literals that a test holds against every `indexedDB.open(` in `src`.
 
 ```
 setLiveConfigV2(patch):
