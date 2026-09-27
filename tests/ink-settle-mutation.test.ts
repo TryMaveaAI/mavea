@@ -86,10 +86,91 @@ describe('pollUntilSettled — content mutations re-arm the measurement', () => 
     await vi.advanceTimersByTimeAsync(700);
     expect(onMissing).toHaveBeenCalledTimes(1);
 
+    const beforeReturn = onResult.mock.calls.length;
     available = true;
     panel.className = 'open';
     await vi.advanceTimersByTimeAsync(700);
-    expect(onResult.mock.calls.length).toBeGreaterThan(2);
+    // Redrawn once it holds still again — once, not on every read.
+    expect(onResult.mock.calls.length).toBe(beforeReturn + 1);
+    stop();
+    host.remove();
+  });
+});
+
+describe('pollUntilSettled — a mark is drawn once, where it comes to rest', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('reports nothing while the geometry is still changing, then the resting read once', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let y = 0;
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host, y }),
+      (r) => String(r.y),
+      (r) => r.host,
+      onResult,
+    );
+    // A card entering: every read finds it somewhere new.
+    for (let i = 0; i < 5; i++) {
+      y += 12;
+      await vi.advanceTimersByTimeAsync(100);
+    }
+    expect(onResult).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect(onResult.mock.calls[0][0].y).toBe(60);
+    stop();
+    host.remove();
+  });
+
+  it('waits out a transition that moves the card even when the mark reads the same', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let lifting = true;
+    const lift = {
+      playState: 'running',
+      transitionProperty: 'transform',
+      effect: { getComputedTiming: () => ({ endTime: 520 }) },
+    } as unknown as Animation;
+    host.getAnimations = () => (lifting ? [lift] : []);
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host }),
+      () => 'same',
+      (r) => r.host,
+      onResult,
+    );
+    await vi.advanceTimersByTimeAsync(600);
+    expect(onResult).not.toHaveBeenCalled();
+    lifting = false;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(onResult).toHaveBeenCalledTimes(1);
+    stop();
+    host.remove();
+  });
+
+  it('ignores an endless loop, which never comes to rest', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const pulse = {
+      playState: 'running',
+      effect: {
+        getComputedTiming: () => ({ endTime: Infinity }),
+        getKeyframes: () => [{ transform: 'scale(1.02)' }],
+      },
+    } as unknown as Animation;
+    host.getAnimations = () => [pulse];
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host }),
+      () => 'same',
+      (r) => r.host,
+      onResult,
+    );
+    await vi.advanceTimersByTimeAsync(300);
+    expect(onResult).toHaveBeenCalledTimes(1);
     stop();
     host.remove();
   });

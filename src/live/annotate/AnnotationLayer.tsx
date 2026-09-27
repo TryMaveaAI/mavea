@@ -50,8 +50,9 @@ interface Placed {
    *  mark is part of a numbered sequence) anchors, independent of each gesture kind's own
    *  stroke geometry. */
   anchor: Rect;
-  /** The host's VISUAL size (its on-screen rect) — the SVG's viewBox, so geometry plotted in
-   *  visual space lands on the pixels the reader sees whatever transforms scaled the card. */
+  /** The container's LAYOUT size — the SVG's viewBox. The SVG fills the container at that same
+   *  size and scales with any transform on it, so geometry plotted in layout space lands on the
+   *  pixels the reader sees whatever scale the card is at. */
   view: { w: number; h: number };
   /** Where the numbered step chip may sit — the first clear-space candidate around the target.
    *  Absent when the card is too dense for any spot: the chip stays undrawn (the 900ms draw
@@ -330,21 +331,27 @@ function measure(
   // inline size below) ignore ancestor transforms — while every measured rect is VISUAL px
   // (getBoundingClientRect bakes the spotlight's 1.03 in). Divide the visual deltas back by the
   // ancestor scale so both live in layout space; without it a spotlit card draws its
-  // inner-scroller ink ~3% oversized and displaced. The card branch needs no correction: its SVG
-  // fills the host (layout size) with a viewBox of the host's VISUAL rect, so the two scales
-  // cancel by construction.
+  // inner-scroller ink ~3% oversized and displaced. The card branch below does the same.
   const scale =
     scrRect && scrRect.width > 0 && scroller!.offsetWidth > 0
       ? scrRect.width / scroller!.offsetWidth
       : 1;
+  // A plain card is plotted in its LAYOUT space too: the visual deltas are divided back by the
+  // card's own transform scale, and the SVG (which fills the card at layout size) carries a viewBox
+  // of that same layout size. Plotting in visual space drew the same mark correctly, but every
+  // stroke parameter measured in px — the loop's padding, the hand's wobble, a note's type size —
+  // then depended on the scale the card happened to be at when it was read. The spotlight lifts a
+  // card to 1.03 and dims its neighbours to 0.984, so each spotlight move rewrote every mark on the
+  // cards it touched, frame by frame through the 520ms lift: the pen visibly re-drawing marks it
+  // had already finished. In layout space a transform cannot change the path at all.
+  const hostScaleX = host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
+  const hostScaleY = host.offsetHeight > 0 ? hostRect.height / host.offsetHeight : 1;
   const box = scroller
     ? { w: scroller.scrollWidth, h: scroller.scrollHeight }
-    : { w: hostRect.width, h: hostRect.height };
-  // For a plain card, geometry lives in VISUAL space via subtraction from the host's rect — any
-  // transform scaling the card scales the ink identically. For a scroller, the same subtraction
-  // runs from the content's top-left (its rect minus its scroll offsets), de-scaled into the
-  // content's own layout space, so a mark on a scrolled-out item lands at the right place in the
-  // content and simply clips until scrolled into view.
+    : { w: hostRect.width / hostScaleX, h: hostRect.height / hostScaleY };
+  // For a scroller, the subtraction runs from the content's top-left (its rect minus its scroll
+  // offsets), de-scaled into the content's own layout space, so a mark on a scrolled-out item lands
+  // at the right place in the content and simply clips until scrolled into view.
   const toLocal = (rect: DOMRect): Rect =>
     scroller && scrRect
       ? {
@@ -354,10 +361,10 @@ function measure(
           height: rect.height / scale,
         }
       : {
-          left: rect.left - hostRect.left,
-          top: rect.top - hostRect.top,
-          width: rect.width,
-          height: rect.height,
+          left: (rect.left - hostRect.left) / hostScaleX,
+          top: (rect.top - hostRect.top) / hostScaleY,
+          width: rect.width / hostScaleX,
+          height: rect.height / hostScaleY,
         };
   const local = toLocal(target.rect);
   const hostBox: Rect = { left: 0, top: 0, width: box.w, height: box.h };
@@ -593,8 +600,8 @@ function SpotInk({
       : {}),
   } as React.CSSProperties;
   return createPortal(
-    // viewBox = the container's size; the element fills it (the card, or the full scroll content).
-    // Together they map visual-space geometry back onto the exact on-screen pixels. See measure().
+    // viewBox = the container's layout size; the element fills it (the card, or the full scroll
+    // content) and rides its transforms, so layout-space geometry lands on the on-screen pixels.
     <svg
       className={'ink-layer' + (residue ? ' is-residue' : '')}
       aria-hidden="true"
