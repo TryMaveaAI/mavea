@@ -130,14 +130,16 @@ describe('useKeepSpotInView', () => {
   });
 
   it.each([
-    ['a letter', 'a'],
-    ['Space', ' '],
-    ['an arrow', 'ArrowDown'],
-  ])('typing %s in the dock is not the reader scrolling away', (_name, key) => {
-    // The page shifts under the reader as they type their next question (a card growing above
-    // it, the browser's scroll anchoring following), then a reflow pushes the card out.
+    ['a letter in the dock', 'a', 'textarea'],
+    ['Space in the dock', ' ', 'textarea'],
+    ['an arrow in the dock', 'ArrowDown', 'textarea'],
+    ['Space on a button', ' ', 'button'],
+  ])('%s is not the reader scrolling away', (_name, key, tag) => {
+    // The page shifts under the reader as they type their next question or press "Next step"
+    // (a card growing above it, the browser's scroll anchoring following), then a reflow pushes
+    // the card out.
     const { cont, at, ref } = setup(100);
-    const field = document.createElement('textarea');
+    const field = document.createElement(tag);
     document.body.appendChild(field);
     renderHook(() => useKeepSpotInView(ref, true));
     observers[0].cb();

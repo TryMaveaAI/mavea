@@ -44,9 +44,18 @@ function isEditable(target: EventTarget | null): boolean {
   );
 }
 
-/** A key that scrolls the page rather than editing a field. */
+/** Space on a control presses it — "Next step", a toggle — and scrolls nothing. */
+function isPressable(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.matches('button, summary, [role="button"], [role="checkbox"], [role="switch"]')
+  );
+}
+
+/** A key that scrolls the page rather than editing a field or pressing a control. */
 function isScrollKey(e: Pick<KeyboardEvent, 'key' | 'target'>): boolean {
-  return SCROLL_KEYS.has(e.key) && !isEditable(e.target);
+  if (!SCROLL_KEYS.has(e.key) || isEditable(e.target)) return false;
+  return e.key !== ' ' || !isPressable(e.target);
 }
 
 /**
