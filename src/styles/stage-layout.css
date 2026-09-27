@@ -269,22 +269,10 @@
   background: var(--surface-elevated-2);
 }
 .entry-action.primary {
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   border-color: transparent;
   box-shadow: 0 6px 18px -10px var(--glow-presence);
-  color: #fff;
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .entry-action.primary {
-    background: linear-gradient(
-      180deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
+  color: var(--on-presence);
 }
 .entry-action.primary.is-active {
   outline: 2px solid var(--presence-soft);
@@ -307,17 +295,9 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--presence-deep);
-  background: var(--presence-soft);
+  color: var(--on-presence);
+  background: var(--presence-soft-held);
   border: 1px solid var(--presence-soft);
-}
-/* A soft fill can land between the two inks' ranges, so its lightness is held on the accent's
-   side of the ink bounds (--accent-side) and it carries the accent's ink. */
-@supports (color: oklch(from red l c h)) {
-  .live-badge {
-    background: oklch(from var(--presence-soft) var(--accent-side));
-    color: var(--on-presence);
-  }
 }
 .live-badge .live-dot {
   width: 7px;

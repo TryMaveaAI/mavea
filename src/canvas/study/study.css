@@ -121,8 +121,8 @@
 
 /* The approved design, verbatim: the lamplit parchment desk. */
 :root[data-theme='light'] .study-stage {
-  /* The light desk's amber is deep and carries white (see --accent-side in the tokens). */
-  --accent-side: min(l, var(--ink-ceiling-l)) c h;
+  /* The light desk's amber is deep and carries white (see --hold-for-ink in the tokens). */
+  --hold-for-ink: min(l, var(--white-ink-max-l)) c h;
   --study-bg: #efe7d6;
   --study-glow-1: #faf3e3;
   --study-glow-2: #efe1c4;
@@ -226,10 +226,15 @@
 /* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
 
 /* The desk rebinds --presence to its amber, and a custom property is resolved where it is
-   declared: the root's --on-presence was derived from the root's accent, not this one. */
-@supports (color: oklch(from red l c h)) {
+   declared: the root's ink was derived from the root's accent and its held stops were held on
+   that accent's side, not this one's. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .study-stage {
-    --on-presence: oklch(from var(--presence) var(--ink-on-fill));
+    --on-presence: color(from var(--presence) srgb-linear var(--ink-on-fill));
+    --presence-deep-held: oklch(from var(--presence-deep) var(--hold-for-ink));
+    --presence-soft-held: oklch(from var(--presence-soft) var(--hold-for-ink));
+    --insight-held: oklch(from var(--insight) var(--hold-for-ink));
   }
 }
 
@@ -1620,6 +1625,19 @@
 
 .study-intro-enter:hover {
   background: var(--study-amber-press);
+}
+
+/* The desk's amber follows the skin (a template hands it its own accent), so the words on an
+   amber button take an ink derived from the amber they sit on. Cream where that is unsupported. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .study-beat-next,
+  .study-intro-enter {
+    color: color(from var(--study-amber) srgb-linear var(--ink-on-fill));
+  }
+  .study-beat-next:hover,
+  .study-intro-enter:hover {
+    color: color(from var(--study-amber-press) srgb-linear var(--ink-on-fill));
+  }
 }
 
 /* While gathered, every card waits at the centre of the desk, tiny and unlit; entering removes

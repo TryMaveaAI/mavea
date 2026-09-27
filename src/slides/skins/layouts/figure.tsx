@@ -3,7 +3,8 @@
 // instead of being flattened to bars. The heading and caption are set in the deck's own type; the
 // visual comes from `canvas/embed`. The presentation cousin of the document's figure section.
 import { useContext } from 'react';
-import { FigureEmbed, type FigurePalette } from '../../../canvas/embed';
+import { FigureEmbed } from '../../../canvas/embed';
+import { paletteFor } from './figurePalette';
 import { parsePadding } from '../../../export/paginate/geometry';
 import { SlideFrame, STAGE_H, STAGE_W } from '../chrome/bits';
 import { FigureStatic } from '../figureMotion';
@@ -12,28 +13,6 @@ import { clampStyle, titleTier } from './fit';
 
 const displayWeight = (skin: SlideSkin): number =>
   skin.fonts.displayWeight ?? (skin.fonts.allSerif ? 500 : 700);
-
-/** Adapt the slide skin's palette to the shared figure-embed token bridge. */
-function paletteFor(skin: SlideSkin): FigurePalette {
-  const t = skin.tokens;
-  return {
-    dark: !!t.dark,
-    paper: t.paper,
-    ink: t.ink,
-    muted: t.muted,
-    faint: t.faint,
-    accent: t.accent,
-    accentInk: t.accentInk,
-    accent2: t.accent2,
-    tint: t.tint,
-    rule: t.rule,
-    ruleStrong: t.ruleStrong,
-    track: t.track,
-    card: t.card,
-    font: skin.fonts.body,
-    mono: skin.fonts.mono,
-  };
-}
 
 export const Figure: SlideLayout<'figure'> = ({ slide, skin, ctx }) => {
   const t = skin.tokens;

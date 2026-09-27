@@ -19,9 +19,9 @@
   --bar-glass-blur: none;
 }
 /* Every template's light accent is deep and carries white, so a gradient's partner stops are held
-   at or below the lightness white still reads on (see --accent-side). */
+   at or below the lightness white still reads on (see --hold-for-ink). */
 :root[data-template][data-theme='light'] {
-  --accent-side: min(l, var(--ink-ceiling-l)) c h;
+  --hold-for-ink: min(l, var(--white-ink-max-l)) c h;
 }
 :root[data-template] .topbar {
   background: var(--surface-default);

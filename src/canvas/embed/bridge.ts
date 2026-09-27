@@ -48,6 +48,30 @@ export interface FigurePalette {
 
 const mix = (a: string, pct: number, b: string) => `color-mix(in oklab, ${a} ${pct}%, ${b})`;
 
+/** WCAG relative luminance of a #rgb / #rrggbb colour; null for anything else. */
+function luminanceOf(color: string): number | null {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())?.[1];
+  if (!hex) return null;
+  const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex;
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const v = parseInt(full.slice(i, i + 2), 16) / 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** The --hold-for-ink channels for an accent: a deep one (luminance under the inks' crossing,
+ *  0.1791 — see --ink-level in tokens-base.css) carries white, a light one black.
+ *  An accent that is not a hex literal sets nothing and keeps the app's side. */
+function holdFor(accent: string): Record<string, string> {
+  const y = luminanceOf(accent);
+  if (y === null) return {};
+  return {
+    '--hold-for-ink':
+      y < 0.1791 ? 'min(l, var(--white-ink-max-l)) c h' : 'max(l, var(--dark-ink-min-l)) c h',
+  };
+}
+
 /**
  * The CSS custom properties to set on the figure wrapper. Spread into the wrapper `style`; every
  * descendant component then reads the skin palette. Pure — the same palette always yields the same
@@ -68,14 +92,13 @@ export function bridgeVars(p: FigurePalette): Record<string, string> {
     // accents — a monochrome category ramp anchored on the brand accent, so a multi-series
     // chart stays distinguishable AND on-brand; a genuine second hue is used when the skin has one.
     '--presence': p.accent,
-    // A custom property resolves where it is declared, so the ink the root derived from the app's
-    // accent would sit on this skin's accent unchanged; the wrapper derives its own.
-    '--on-presence': 'oklch(from var(--presence) var(--ink-on-fill))',
+    // The inks and held stops are re-derived from these on the wrapper (embed.css); this says
+    // which side of the ink band this skin's accent sits on, so its gradients are held there.
+    ...holdFor(p.accent),
     '--presence-soft': mix(p.accent, 72, p.paper),
     '--presence-deep': accentInk,
     '--accent-ink': accentInk,
     '--insight': second,
-    '--on-insight': 'oklch(from var(--insight) var(--ink-on-fill))',
     '--insight-soft': mix(second, 60, p.paper),
     '--warning': mix(p.accent, 42, p.ink),
     '--warning-soft': mix(p.accent, 30, p.paper),

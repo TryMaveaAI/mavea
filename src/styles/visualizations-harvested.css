@@ -438,6 +438,7 @@
 }
 .plan-row.st-done .plan-check {
   background: var(--insight);
+  color: var(--on-insight);
   border-color: var(--insight);
 }
 .plan-row.st-done .plan-t {

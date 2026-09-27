@@ -304,3 +304,11 @@
   color: var(--text-muted);
   text-wrap: pretty;
 }
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself. Where relative colour is unsupported the ink above stands, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ripple-gate-badge {
+    color: color(from var(--gate-accent) srgb-linear var(--ink-on-fill));
+  }
+}

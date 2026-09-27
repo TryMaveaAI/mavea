@@ -193,22 +193,14 @@
 }
 .const-step.is-current .const-disc {
   position: relative;
-  background: radial-gradient(circle at 50% 32%, var(--presence-soft), var(--presence-deep));
+  background: radial-gradient(
+    circle at 50% 32%,
+    var(--presence-soft-held),
+    var(--presence-deep-held)
+  );
   border-color: var(--presence-soft);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
-  color: #fff;
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .const-step.is-current .const-disc {
-    background: radial-gradient(
-      circle at 50% 32%,
-      oklch(from var(--presence-soft) var(--accent-side)),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
+  color: var(--on-presence);
 }
 /* A bright, softly-breathing core turns "you are here" from a flat blob into a live, ready pulse.
    The halo animates transform/opacity only (compositor-cheap on weak hardware, see [[feedback-runs-on-all-hardware]]). */
@@ -369,10 +361,10 @@
 .setup-done {
   align-items: center;
   appearance: none;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
   flex-shrink: 0;
@@ -385,21 +377,20 @@
     opacity var(--m-fast),
     transform var(--m-fast);
 }
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .setup-done {
-    background: linear-gradient(
-      135deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
-}
 .setup-done:hover {
   opacity: 0.88;
   transform: translateY(-1px);
+}
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .setup-done:hover {
+    opacity: 1;
+    background: linear-gradient(
+      135deg,
+      color(from var(--presence) srgb-linear var(--lift-for-ink)),
+      color(from var(--presence-deep-held) srgb-linear var(--lift-for-ink))
+    );
+  }
 }
 .setup-done svg {
   height: 14px;
@@ -1033,10 +1024,10 @@
 .go-start {
   align-items: center;
   appearance: none;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
   font: 700 var(--fs-md)/1 var(--font);
@@ -1048,21 +1039,20 @@
     transform var(--m-fast);
   width: 100%;
 }
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .go-start {
-    background: linear-gradient(
-      135deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
-}
 .go-start:hover {
   opacity: 0.88;
   transform: translateY(-1px);
+}
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .go-start:hover {
+    opacity: 1;
+    background: linear-gradient(
+      135deg,
+      color(from var(--presence) srgb-linear var(--lift-for-ink)),
+      color(from var(--presence-deep-held) srgb-linear var(--lift-for-ink))
+    );
+  }
 }
 .go-start svg {
   height: 16px;
@@ -1139,6 +1129,14 @@
 .go-composer-mic:hover,
 .go-composer-send:hover {
   opacity: 0.85;
+}
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .go-composer-attach:hover,
+  .go-composer-mic:hover,
+  .go-composer-send:hover {
+    opacity: 1;
+    background: color(from var(--presence) srgb-linear var(--lift-for-ink));
+  }
 }
 .go-composer-attach svg,
 .go-composer-mic svg,

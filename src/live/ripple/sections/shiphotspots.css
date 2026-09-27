@@ -293,19 +293,8 @@
   background: linear-gradient(
     135deg,
     var(--presence),
-    color-mix(in oklab, var(--presence) 55%, var(--insight))
+    color-mix(in oklab, var(--presence) 55%, var(--insight-held))
   );
-}
-/* The far stop is held on the accent's side of the ink bounds (--accent-side), so the accent's
-   own ink reads at every stop. Without relative colour the plain gradient stays. */
-@supports (color: oklch(from red l c h)) {
-  .ripple-hot-avatar {
-    background: linear-gradient(
-      135deg,
-      var(--presence),
-      oklch(from color-mix(in oklab, var(--presence) 55%, var(--insight)) var(--accent-side))
-    );
-  }
 }
 .ripple-hot-ask-who {
   display: flex;

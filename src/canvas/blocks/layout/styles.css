@@ -4325,3 +4325,14 @@
   height: 15px;
   flex-shrink: 0;
 }
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself. Where relative colour is unsupported the ink above stands, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .lay-cs-stage.open .lay-cs-node {
+    color: color(from var(--st) srgb-linear var(--ink-on-fill));
+  }
+  .lay-ta-item.done .lay-ta-num {
+    color: color(from var(--tc) srgb-linear var(--ink-on-fill));
+  }
+}

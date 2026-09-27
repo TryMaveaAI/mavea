@@ -855,9 +855,10 @@
 }
 /* The ink is derived from this fill itself, which is not the accent (the plain ink stays where
    relative colour is unsupported). */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .fl-ms-point.is-on .fl-ms-dot {
-    color: oklch(from var(--c, var(--presence)) var(--ink-on-fill));
+    color: color(from var(--c, var(--presence)) srgb-linear var(--ink-on-fill));
   }
 }
 .fl-ms-cap {

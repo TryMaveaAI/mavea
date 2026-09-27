@@ -2142,7 +2142,7 @@
 .pl-item.packed .pl-check .ic {
   width: 11px;
   height: 11px;
-  color: #fff;
+  color: var(--on-presence);
 }
 .pl-item.packed .pl-item-label {
   color: var(--text-muted);
@@ -4433,18 +4433,7 @@
   font-size: var(--fs-sm, 14px);
   font-weight: 800;
   color: var(--on-presence);
-  background: linear-gradient(160deg, var(--presence), var(--presence-deep));
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .up-portrait {
-    background: linear-gradient(
-      160deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-  }
+  background: linear-gradient(160deg, var(--presence), var(--presence-deep-held));
 }
 .up-identity {
   display: flex;
@@ -4654,19 +4643,10 @@
   justify-content: center;
   font-size: var(--fs-2xs);
   font-weight: 800;
-  color: var(--surface-elevated);
-  background: var(--presence-soft);
+  color: var(--on-presence);
+  background: var(--presence-soft-held);
   flex-shrink: 0;
 }
-/* A soft fill can land between the two inks' ranges, so its lightness is held on the accent's
-   side of the ink bounds (--accent-side) and it carries the accent's ink. */
-@supports (color: oklch(from red l c h)) {
-  .ro-owner-chip {
-    background: oklch(from var(--presence-soft) var(--accent-side));
-    color: var(--on-presence);
-  }
-}
-
 /* done: quiet, struck-through */
 .ro-cue--done .ro-dot {
   background: var(--insight);

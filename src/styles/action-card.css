@@ -41,8 +41,8 @@
   height: 42px;
   border-radius: var(--r-sm);
   border: none;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
-  color: #fff;
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
+  color: var(--on-presence);
   font-weight: 600;
   font-size: var(--fs-md);
   display: inline-flex;
@@ -53,18 +53,6 @@
   transition:
     transform var(--m-fast),
     filter var(--m-fast);
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .btn-primary {
-    background: linear-gradient(
-      180deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
 }
 .btn-primary:hover {
   filter: brightness(1.08);

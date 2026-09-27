@@ -1597,6 +1597,7 @@
     transform var(--m-fast) var(--ease-spring);
 }
 .pf-box.on {
+  color: var(--on-presence);
   background: var(--presence);
   border-color: var(--presence);
 }
@@ -1914,4 +1915,27 @@
   width: 12px;
   height: 12px;
   flex-shrink: 0;
+}
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself, and a hover shades the fill away from that ink. Where relative colour is
+   unsupported the ink and hover above stand, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ac-box.on {
+    color: color(from var(--ac-c) srgb-linear var(--ink-on-fill));
+  }
+  .bb-loading {
+    color: color(from var(--bb-c) srgb-linear var(--ink-on-fill));
+  }
+  .bb-primary {
+    color: color(from var(--bb-c) srgb-linear var(--ink-on-fill));
+  }
+  .cg-box.on,
+  .cg-box.mixed {
+    color: color(from var(--cg-c) srgb-linear var(--ink-on-fill));
+  }
+  .bb-primary:not(.is-disabled):hover {
+    background: color(from var(--bb-c) srgb-linear var(--lift-for-ink));
+    filter: none;
+  }
 }

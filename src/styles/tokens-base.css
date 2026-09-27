@@ -155,24 +155,49 @@
   --presence: #6e8cff; /* the face / actions */
   --presence-soft: #8aa0ff;
   --presence-deep: #4458c9;
-  /* Text on a --presence fill. White where relative colour is unsupported; everywhere else
-     derived (the @supports block after this rule) rather than chosen. */
+  /* Text on --presence and on --insight. White where relative colour is unsupported; everywhere
+     else derived from the fill (the @supports block after this rule) rather than chosen. */
   --on-presence: #fff;
   --on-insight: #fff;
-  /* The relative-colour channels of an ink derived from a fill: near-black on a light fill, white
-     on a deep one, each clearing 4.5:1. Read as oklch(from <fill> var(--ink-on-fill)); the one
-     place the cut (0.585, between the nearest accents either side of the inks' crossing) and the
-     dark ink's lightness live. The tint is capped so the white side stays white. */
-  --ink-on-fill: clamp(0.16, (0.585 - l) * 1000, 1) min(c * 0.25, 0.02) h;
-  /* The lightness a fill has to stay within to keep one ink at 4.5:1: at or above the floor it
-     carries the near-black ink, at or below the ceiling it carries white. */
-  --ink-floor-l: 0.61;
-  --ink-ceiling-l: 0.52;
-  /* Moves a gradient's partner stop onto the accent's own side of those bounds, keeping the stop's
-     hue and chroma: oklch(from <stop> var(--accent-side)). Then the accent's ink holds at every
-     stop. The stock accent is light and carries the dark ink; the light templates and the light
-     Study desk, whose accents are deep, restate it. */
-  --accent-side: max(l, var(--ink-floor-l)) c h;
+  /* The srgb-linear channels of the ink with the higher contrast on a fill, read as
+     color(from <fill> srgb-linear var(--ink-on-fill)). It steps on the fill's WCAG luminance Y,
+     with nothing blended between, from white to black where the two inks' contrasts cross:
+     (Y + 0.05)² = 1.05 × 0.05, so Y = 0.1791, and either ink reads 4.58:1 there. Every fill
+     therefore gets an ink of at least 4.58:1. Any ink lighter than black opens a band around the
+     crossing where neither clears 4.5:1; a near-black at linear 0.0041 leaves every fill with Y
+     between 0.183 and 0.194 short. */
+  --ink-on-fill: var(--ink-level) var(--ink-level) var(--ink-level);
+  --ink-level: clamp(0, sign(0.1791 - var(--fill-y)), 1);
+  --fill-y: (0.2126 * r + 0.7152 * g + 0.0722 * b);
+  /* A deeper shade of a fill that keeps the fill's own ink, for the far stop of a gradient whose
+     origin is set per card: color(from <fill> srgb-linear var(--deepen-for-ink)). It scales the
+     linear channels (hue kept), to 55% on a fill that carries white and no further than the
+     crossing on one that carries black. */
+  --deepen-for-ink: calc(r * var(--deepen-k)) calc(g * var(--deepen-k)) calc(b * var(--deepen-k));
+  --deepen-k: max(
+    0.55,
+    clamp(0, sign(var(--fill-y) - 0.1791) + 1, 1) * 0.1791 / max(var(--fill-y), 0.001)
+  );
+  /* A hover shade of a fill that moves AWAY from the fill's ink: lighter under black, deeper
+     under white, so a hover only ever adds contrast. brightness() lightens both kinds, which
+     takes a fill that carries white towards it. */
+  --lift-for-ink: calc(r * var(--lift-k)) calc(g * var(--lift-k)) calc(b * var(--lift-k));
+  --lift-k: calc(1.16 - 0.3 * var(--ink-level));
+  /* The OKLCH lightness that keeps a stop on one side of the crossing: at or above
+     --dark-ink-min-l black clears 4.5:1 on it, at or below --white-ink-max-l white does. Lightness rather than luminance so a held stop keeps its hue and chroma; both were
+     measured across the accents' hues, whose luminance at one lightness differs. */
+  --dark-ink-min-l: 0.61;
+  --white-ink-max-l: 0.52;
+  /* The relative-colour channels that hold a stop on the side of the band where the accent's own
+     ink reads: oklch(from <stop> var(--hold-for-ink)). The stock accent carries black; a
+     scope whose accent carries white restates this as min(l, var(--white-ink-max-l)). */
+  --hold-for-ink: max(l, var(--dark-ink-min-l)) c h;
+  /* The accent's gradient partners, held that way, so --on-presence reads at every stop of a
+     gradient between them and the accent. Plain without relative colour, where the ink is white
+     and so are the gradients it was designed on. */
+  --presence-deep-held: var(--presence-deep);
+  --presence-soft-held: var(--presence-soft);
+  --insight-held: var(--insight);
   --insight: #3ed8a6; /* findings / verified */
   --insight-soft: #6fe8c0;
   --warning: #f5b95c; /* risk / inferred / uncertainty */
@@ -296,15 +321,20 @@
 }
 
 /* Every template x theme restates --presence on this same element, so ONE derived declaration
-   serves them all: a light accent (every dark theme's) takes a near-black ink and a deep one (the
-   light templates') takes white, each clearing 4.5:1 — plain white on the dark themes' accents
-   measured 1.85-3.1:1. The 0.585 cut sits between the two nearest accents on either side of the
-   crossing (the Study's #b06018 wants white, a template's #c75b39 the ink). A scope that rebinds
-   --presence below the root (the Study desk) must restate this, or it keeps the root's ink. */
-@supports (color: oklch(from red l c h)) {
+   serves them all: a light accent (every dark theme's) takes black and a deep one
+   (the light templates') takes white. A scope that rebinds --presence below the root (the Study
+   desk, an embedded figure) must restate these, or it keeps the root's ink.
+   The probe asks for arithmetic on a channel and for sign(), not just the syntax: an engine that
+   parses relative colour but reads l as a percentage finds max(l, 0.61) invalid, and a held stop
+   that is invalid takes the whole gradient that reads it down with it. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   :root {
-    --on-presence: oklch(from var(--presence) var(--ink-on-fill));
-    --on-insight: oklch(from var(--insight) var(--ink-on-fill));
+    --on-presence: color(from var(--presence) srgb-linear var(--ink-on-fill));
+    --on-insight: color(from var(--insight) srgb-linear var(--ink-on-fill));
+    --presence-deep-held: oklch(from var(--presence-deep) var(--hold-for-ink));
+    --presence-soft-held: oklch(from var(--presence-soft) var(--hold-for-ink));
+    --insight-held: oklch(from var(--insight) var(--hold-for-ink));
   }
 }
 

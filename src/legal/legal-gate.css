@@ -185,24 +185,11 @@ html:has(.legal-gate) {
   padding: 0 22px;
   border: 0;
   border-radius: 999px;
-  color: white;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  color: var(--on-presence);
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
   font: 650 var(--fs-md)/1 var(--font);
   cursor: pointer;
 }
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .legal-gate-continue {
-    background: linear-gradient(
-      135deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
-}
-
 .legal-gate-continue:disabled {
   opacity: 0.4;
   cursor: not-allowed;

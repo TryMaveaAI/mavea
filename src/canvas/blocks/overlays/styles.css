@@ -1354,3 +1354,21 @@
 .ov-root {
   display: contents;
 }
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself, and a hover shades the fill away from that ink. Where relative colour is
+   unsupported the ink and hover above stand, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ov-btn.solid,
+  .ov-hc-avatar,
+  .ov-hc-follow,
+  .ov-sheet-opt.on .ov-sheet-radio,
+  .ov-trigger-badge {
+    color: color(from var(--ov-c) srgb-linear var(--ink-on-fill));
+  }
+  .ov-btn.solid:hover,
+  .ov-hc-follow:not(.on):hover {
+    background: color(from var(--ov-c) srgb-linear var(--lift-for-ink));
+    filter: none;
+  }
+}

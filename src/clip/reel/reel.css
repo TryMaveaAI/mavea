@@ -47,7 +47,7 @@
 .reel[data-palette='aurora'] {
   --reel-accent: #4f46e5;
   --reel-accent-2: #7c3aed;
-  --reel-accent-side: min(l, var(--ink-ceiling-l)) c h;
+  --reel-hold-for-ink: min(l, var(--white-ink-max-l)) c h;
   --reel-glow: rgba(99, 91, 255, 0.55);
   --reel-bg: linear-gradient(180deg, #edecfe 0%, #f8f7ff 62%, #efeefb 100%);
   --reel-wash: radial-gradient(120% 90% at 50% 0%, #1a1840 0%, #0b0a18 60%, #07060f 100%);
@@ -58,7 +58,7 @@
 .reel[data-palette='ember'] {
   --reel-accent: #e0603a;
   --reel-accent-2: #f4923c;
-  --reel-accent-side: max(l, var(--ink-floor-l)) c h;
+  --reel-hold-for-ink: max(l, var(--dark-ink-min-l)) c h;
   --reel-glow: rgba(224, 96, 58, 0.5);
   --reel-bg: linear-gradient(180deg, #fde9de 0%, #fff6f1 62%, #fdeee6 100%);
   --reel-wash: radial-gradient(120% 90% at 50% 0%, #3a160c 0%, #170a07 60%, #0d0605 100%);
@@ -69,7 +69,7 @@
 .reel[data-palette='ocean'] {
   --reel-accent: #0f9bad;
   --reel-accent-2: #2ad0e6;
-  --reel-accent-side: max(l, var(--ink-floor-l)) c h;
+  --reel-hold-for-ink: max(l, var(--dark-ink-min-l)) c h;
   --reel-glow: rgba(15, 170, 189, 0.5);
   --reel-bg: linear-gradient(180deg, #e2f4f6 0%, #f1fbfc 62%, #e8f7f8 100%);
   --reel-wash: radial-gradient(120% 90% at 50% 0%, #06343a 0%, #04181c 60%, #03090c 100%);
@@ -80,7 +80,7 @@
 .reel[data-palette='chalk'] {
   --reel-accent: #6f7588;
   --reel-accent-2: #9aa1b4;
-  --reel-accent-side: min(l, var(--ink-ceiling-l)) c h;
+  --reel-hold-for-ink: min(l, var(--white-ink-max-l)) c h;
   --reel-glow: rgba(125, 131, 152, 0.4);
   --reel-bg: linear-gradient(180deg, #eaecf1 0%, #f8f9fb 62%, #eef0f4 100%);
   --reel-wash: radial-gradient(120% 90% at 50% 0%, #2a2d3a 0%, #131520 60%, #0c0d14 100%);
@@ -90,22 +90,23 @@
 }
 
 /* The ink for each palette fill is derived from that fill, as --on-presence is from the app's
-   accent: white on aurora's indigo and chalk's slate, near-black on ember's orange and ocean's teal,
+   accent: white on aurora's indigo and chalk's slate, black on ember's orange and ocean's teal,
    where white read at about 3.3:1. A gradient from the accent to its second hue carries the
    accent's ink, so its far stop keeps its hue but is held on the accent's side of the ink bounds
-   (--reel-accent-side, set with each palette). White without relative colour. */
+   (--reel-hold-for-ink, set with each palette). White without relative colour. */
 .reel {
   --reel-on-accent: #fff;
   --reel-on-accent-2: #fff;
   --reel-on-orb-1: #fff;
   --reel-accent-2-fill: var(--reel-accent-2);
 }
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .reel {
-    --reel-on-accent: oklch(from var(--reel-accent) var(--ink-on-fill));
-    --reel-on-accent-2: oklch(from var(--reel-accent-2) var(--ink-on-fill));
-    --reel-on-orb-1: oklch(from var(--reel-orb-1) var(--ink-on-fill));
-    --reel-accent-2-fill: oklch(from var(--reel-accent-2) var(--reel-accent-side));
+    --reel-on-accent: color(from var(--reel-accent) srgb-linear var(--ink-on-fill));
+    --reel-on-accent-2: color(from var(--reel-accent-2) srgb-linear var(--ink-on-fill));
+    --reel-on-orb-1: color(from var(--reel-orb-1) srgb-linear var(--ink-on-fill));
+    --reel-accent-2-fill: oklch(from var(--reel-accent-2) var(--reel-hold-for-ink));
   }
 }
 

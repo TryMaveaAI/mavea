@@ -1,238 +1,105 @@
-// Text on a --presence fill is --on-presence, which picks its ink from the accent's OKLab
-// lightness (tokens-base.css). Every template x theme restates --presence, and on the dark themes
-// the accent is light: plain white on them measured 1.85-3.1:1. This holds the rule against every
-// accent the stylesheets declare, so a new template whose accent lands where neither ink reads
-// fails here instead of on a button.
+// Text on an accent fill takes an ink derived from the fill (tokens-base.css: --ink-on-fill picks
+// black or white by the fill's luminance, at the crossing where both read 4.58:1). These pin the
+// seams that keep that true everywhere: one derivation, restated wherever the accent is rebound
+// below the root, and never used where a browser without relative colour would drop the whole
+// declaration. Whether each fill and ink actually clear 4.5:1 is accent-ink-contrast.test.ts.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { Resolver, contrast, readRules } from './helpers/cssInk';
 
-const read = (p: string) => readFileSync(p, 'utf8');
-
-const linear = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-
-function parseHex(hex: string): [number, number, number] {
-  const h = hex.length === 4 ? [...hex.slice(1)].map((c) => c + c).join('') : hex.slice(1);
-  return [0, 2, 4].map((i) => linear(parseInt(h.slice(i, i + 2), 16) / 255)) as [
-    number,
-    number,
-    number,
-  ];
-}
-
-const luminance = ([r, g, b]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-/** OKLab lightness of a linear-sRGB colour (Ottosson's matrices). */
-function oklabL([r, g, b]: [number, number, number]): number {
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
-}
-
-const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-
-type Lab = [number, number, number];
-
-function toOklab([r, g, b]: [number, number, number]): Lab {
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-  return [
-    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
-    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
-    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
-  ];
-}
-
-/** Linear sRGB of an OKLab colour, clipped to the gamut as a browser paints it. */
-function fromOklab([L, a, b]: Lab): [number, number, number] {
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  const clip = (v: number) => Math.min(1, Math.max(0, v));
-  return [
-    clip(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-    clip(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-    clip(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
-  ];
-}
-
-const tokens = read('src/styles/tokens-base.css');
-const rule = /--ink-on-fill:\s*clamp\(([\d.]+), \(([\d.]+) - l\)/.exec(tokens);
-/** The accent's ink, as the root and any rebinding scope derive it. */
-const DERIVED = /--on-presence:\s*oklch\(\s*from var\(--presence\) var\(--ink-on-fill\)\s*\)/;
-
-function cssFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const p = join(dir, name);
-    return statSync(p).isDirectory() ? cssFiles(p) : p.endsWith('.css') ? [p] : [];
-  });
-}
-
-const sheets = cssFiles('src').map((f) => ({ f, css: read(f) }));
+const rules = readRules();
+const resolver = new Resolver(rules);
+const DERIVED = (token: string) => `color(from var(--${token}) srgb-linear var(--ink-on-fill))`;
+/** The accent tokens whose ink and held stops are derived at the root. */
+const ACCENTS: Record<string, string[]> = {
+  presence: ['--on-presence', '--presence-deep-held', '--presence-soft-held'],
+  insight: ['--on-insight', '--insight-held'],
+};
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
-    return statSync(p).isDirectory() ? sourceFiles(p) : /\.tsx?$/.test(p) ? [p] : [];
+    return statSync(p).isDirectory() ? sourceFiles(p) : /\.(tsx?|css)$/.test(p) ? [p] : [];
   });
 }
+const sources = sourceFiles('src').map((f) => ({ f, src: readFileSync(f, 'utf8') }));
 
-/** Every value any stylesheet gives a custom property. */
-const declared = new Map<string, string[]>();
-for (const { css } of sheets) {
-  for (const [, name, value] of css.matchAll(/(--[\w-]+):\s*([^;{}]+);/g)) {
-    declared.set(name, [...(declared.get(name) ?? []), value.trim()]);
-  }
-}
-
-/** The literal colours a property can end up as, following var() chains through every sheet. */
-function literals(name: string, seen = new Set<string>()): string[] {
-  if (seen.has(name)) return [];
-  seen.add(name);
-  return (declared.get(name) ?? []).flatMap((v) => {
-    if (/^#[0-9a-f]{3,6}$/i.test(v)) return [v];
-    const ref = /^var\((--[\w-]+)\)$/.exec(v);
-    return ref ? literals(ref[1], seen) : [];
-  });
-}
-
-describe('text on a --presence fill', () => {
-  it('derives its ink from the accent', () => {
-    expect(rule).not.toBeNull();
-    expect(tokens).toMatch(DERIVED);
+describe('the ink on an accent fill', () => {
+  it('is derived at the root from the accent itself', () => {
+    const root = rules.filter((r) => !r.path.length && r.cond === ':root' && r.supports);
+    const decl = (name: string) => root.map((r) => r.decls.get(name)).find(Boolean);
+    expect(decl('--on-presence')).toBe(DERIVED('presence'));
+    expect(decl('--on-insight')).toBe(DERIVED('insight'));
   });
 
-  it('keeps the derivation in one property every derived ink reads', () => {
-    // The cut and the dark ink's lightness were once copied into 28 rules; a copy that drifts
-    // would pick a different ink for the same fill.
-    for (const { f, css } of sheets) {
-      if (f.endsWith('tokens-base.css')) continue;
-      expect(css, f).not.toMatch(/-\s*l\)\s*\*\s*1000/);
-      for (const [expr] of css.matchAll(/(?<![-\w(])color:\s*oklch\(\s*from[^;{}]*;/g)) {
-        expect(expr, f).toMatch(/var\(--ink-on-fill\)\s*\)\s*;$/);
-      }
+  it('keeps the crossing in one place every derived ink reads', () => {
+    // A copy of the cut that drifts would pick a different ink for the same fill.
+    const copies = sources
+      .filter(({ f }) => f.endsWith('.css') && !f.endsWith('tokens-base.css'))
+      .filter(({ src }) => /sign\(0\.1791|0\.2126 \* r/.test(src))
+      .map(({ f }) => f);
+    expect(copies).toEqual([]);
+  });
+
+  it('reads 4.5:1 on either side of the crossing, where a near-black would not', () => {
+    // Every fill takes the ink the token picks; fills just past the crossing are the tightest.
+    const ctx = { scope: { template: null, theme: 'dark' as const, host: null }, media: null };
+    for (let grey = 100; grey <= 140; grey++) {
+      const hex = `#${grey.toString(16).repeat(3)}`;
+      const fill = resolver.color(hex, ctx);
+      const ink = resolver.color(`color(from ${hex} srgb-linear var(--ink-on-fill))`, ctx);
+      expect(contrast(fill, ink), hex).toBeGreaterThanOrEqual(4.5);
     }
   });
 
-  it('clears 4.5:1 on every accent any stylesheet declares', () => {
-    const [, darkInkL, threshold] = rule!;
-    // An achromatic OKLab lightness L has relative luminance L³.
-    const darkInk = Number(darkInkL) ** 3;
-    const accents = [...new Set(literals('--presence'))];
-    // The Study's amber arrives through --study-amber, so it is only found by following var().
-    expect(accents).toContain('#d98f45');
-    expect(accents.length).toBeGreaterThan(10);
-    for (const hex of accents) {
-      const rgb = parseHex(hex);
-      const ink = oklabL(rgb) < Number(threshold) ? 1 : darkInk;
-      expect(contrast(luminance(rgb), ink), hex).toBeGreaterThanOrEqual(4.5);
+  it('is restated, with its held stops, wherever the accent is rebound below the root', () => {
+    // A custom property resolves where it is declared, so the root's ink belongs to the root's
+    // accent; a scope with its own accent must derive its own.
+    const rebinds = new Map<string, string[]>();
+    for (const r of rules) {
+      if (!r.path.length) continue;
+      for (const accent of Object.keys(ACCENTS))
+        if (r.decls.has(`--${accent}`))
+          rebinds.set(r.selector, [...(rebinds.get(r.selector) ?? []), accent]);
     }
-  });
-
-  it('is restated wherever --presence is rebound below the root', () => {
-    // A custom property resolves where it is declared, so the root's --on-presence was derived
-    // from the root's accent; a scope with its own accent must derive its own ink.
-    for (const { f, css } of sheets) {
-      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*--presence:[^{}]*)\}/g)) {
-        const sel = selector.trim().split('\n').pop()!.trim();
-        if (sel.startsWith(':root')) continue;
-        const restated = new RegExp(
-          `${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*--on-presence:`,
-        );
-        expect(restated.test(css), `${f} ${sel}`).toBe(true);
-        expect(css, f).toMatch(DERIVED);
-        void body;
-      }
-    }
-    // Markup rebinds it too, through inline style objects; the root's own inline value (the
-    // landing's presence colour) is exempt, since the root's derivation already reads it.
-    for (const f of sourceFiles('src')) {
-      const src = read(f);
-      for (const accent of ['presence', 'insight']) {
-        if (!new RegExp(`['"\`]--${accent}['"\`]\\s*[:\\]]`).test(src)) continue;
-        expect(src, `${f} --${accent}`).toMatch(
-          new RegExp(
-            `['"\`]--on-${accent}['"\`]\\s*:\\s*['"\`]oklch\\(from var\\(--${accent}\\) var\\(--ink-on-fill\\)\\)['"\`]`,
+    // The markup rebinds it too: the root's live colour, and an embedded figure's skin on its
+    // wrapper. A new inline rebinding has to be named here with the selector it lands on.
+    const inline = sources
+      .filter(
+        ({ f, src }) =>
+          !f.endsWith('.css') &&
+          /setProperty\(\s*['"`]--(presence|insight)['"`]|['"`]--(presence|insight)['"`]\s*:/.test(
+            src,
           ),
-        );
-      }
+      )
+      .map(({ f }) => f)
+      .sort();
+    expect(inline).toEqual(['src/app/usePresenceColor.ts', 'src/canvas/embed/bridge.ts']);
+    rebinds.set('.figure-embed', ['presence', 'insight']);
+
+    expect(rebinds.has('.study-stage')).toBe(true);
+    const missing: string[] = [];
+    for (const [selector, accents] of rebinds) {
+      const restated = rules.filter((r) => r.selector === selector && r.supports);
+      for (const accent of accents)
+        for (const token of ACCENTS[accent])
+          if (!restated.some((r) => r.decls.has(token))) missing.push(`${selector} ${token}`);
     }
+    expect(missing).toEqual([]);
   });
 
-  it('never sets white on an accent fill without deriving the ink', () => {
-    const accentFilled = new Map<string, Set<string>>();
-    for (const { f, css } of sheets) {
-      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-        if (/background(?:-color|-image)?:[^;]*var\(--(presence|accent)\b/.test(body)) {
-          const set = accentFilled.get(f) ?? new Set<string>();
-          set.add(selector.split('*/').pop()!.trim());
-          accentFilled.set(f, set);
-        }
-      }
-    }
-    // A rule filled from the accent (solid, mixed or a gradient) reads --on-presence, or keeps
-    // white only as the fallback beneath an @supports rule that derives its ink from its own fill
-    // (or bounds that fill so the accent's own ink holds on it).
-    const offenders: string[] = [];
-    for (const { f, css } of sheets) {
-      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-        if (!/(?<![-\w])color:\s*(#fff\b|#ffffff\b|white\b)/i.test(body)) continue;
-        const fills = [...body.matchAll(/background(?:-color|-image)?:\s*([^;]*)/gi)].map(
-          (m) => m[1],
-        );
-        const state = selector.split('*/').pop()!.trim();
-        // A :hover / :focus / :active / attribute variant of an accent-filled control paints on
-        // that same fill, and it outranks the base rule's derived ink.
-        const base = state.replace(/(:[\w-]+(\([^)]*\))?|\[[^\]]*\])+$/, '');
-        if (base !== state && accentFilled.get(f)?.has(base)) {
-          offenders.push(`${f} ${state}`);
-          continue;
-        }
-        if (!fills.some((b) => /var\(--(presence|accent)\b/.test(b))) continue;
-        const sel = selector.split('*/').pop()!.trim();
-        const escaped = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const derived = new RegExp(
-          `@supports[^{]*\\{\\s*${escaped}\\s*\\{[^}]*?(?<![-\\w])color:\\s*(oklch\\(\\s*from|var\\(--on-)`,
-        );
-        if (!derived.test(css)) offenders.push(`${f} ${sel}`);
-      }
-    }
-    expect(offenders).toEqual([]);
-  });
-});
-
-describe('text on a two-stop gradient', () => {
-  const [, darkInkL, threshold] = rule!;
-  const shadeL = Number(/--ink-floor-l:\s*([\d.]+)/.exec(tokens)?.[1]);
-  /** The ink a rule derives from its gradient's midpoint, and its contrast at every stop. */
-  const atStops = (stops: Lab[]) => {
-    const mid = stops[0].map((v, i) => (v + stops.at(-1)![i]) / 2) as Lab;
-    const ink = mid[0] < Number(threshold) ? 1 : Number(darkInkL) ** 3;
-    return stops.map((stop) => contrast(luminance(fromOklab(stop)), ink));
-  };
-  /** color-mix(in oklab, accent p%, black), its lightness raised to the avatar shade floor. */
-  const shade = (accent: Lab, p: number): Lab => [
-    Math.max(accent[0] * p, shadeL),
-    accent[1] * p,
-    accent[2] * p,
-  ];
-  const personas = [...read('src/demo/cast.ts').matchAll(/accent:\s*'(#[0-9a-f]{6})'/gi)].map(
-    (m) => m[1],
-  );
-
-  it('keeps an avatar initial legible at both ends of its gradient', () => {
-    expect(shadeL).toBeGreaterThan(0);
-    expect(personas.length).toBeGreaterThan(2);
-    // The replay's avatar gradient, as its stylesheet declares it.
-    const demo = read('src/demo/demo.css');
-    expect(demo).toMatch(/var\(--accent\) 55%, #000\)\s+max\(l, var\(--ink-floor-l\)\) c h\s*\)/);
-    for (const hex of personas) {
-      const accent = toOklab(parseHex(hex));
-      for (const ratio of atStops([accent, shade(accent, 0.55)])) {
-        expect(ratio, hex).toBeGreaterThanOrEqual(4.5);
-      }
-    }
+  it('never reaches a browser without relative colour through an unguarded declaration', () => {
+    // Outside @supports, a relative colour is dropped whole by an engine that cannot parse it —
+    // taking its property back to the inherited or initial value (white text on white, a
+    // gradient gone) instead of the fallback beside it.
+    const unguarded = rules
+      .filter((r) => !r.supports)
+      .flatMap((r) =>
+        [...r.decls]
+          .filter(([, v]) => /(?:oklch|color)\(\s*from\b/.test(v))
+          .map(([p]) => `${r.file} ${r.selector} ${p}`),
+      );
+    expect(unguarded).toEqual([]);
   });
 });

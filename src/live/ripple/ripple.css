@@ -1838,9 +1838,10 @@
   background: var(--presence-deep);
 }
 /* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .ripple-paste-go:hover {
-    color: oklch(from var(--presence-deep) var(--ink-on-fill));
+    color: color(from var(--presence-deep) srgb-linear var(--ink-on-fill));
   }
 }
 .ripple-paste-cancel {

@@ -146,26 +146,14 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
-  color: #fff;
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
+  color: var(--on-presence);
   font-weight: 700;
   font-size: var(--fs-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .ripple-inc-avatar {
-    background: linear-gradient(
-      135deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
 }
 .ripple-inc-person-name {
   font-size: var(--fs-md);

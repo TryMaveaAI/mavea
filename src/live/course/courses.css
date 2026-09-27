@@ -115,9 +115,12 @@
   border-color: color-mix(in oklab, var(--presence) 88%, #000);
 }
 /* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .cr-btn-primary:hover {
-    color: oklch(from color-mix(in oklab, var(--presence) 88%, #000) var(--ink-on-fill));
+    color: color(
+      from color-mix(in oklab, var(--presence) 88%, #000) srgb-linear var(--ink-on-fill)
+    );
   }
 }
 .cr-btn-wide {

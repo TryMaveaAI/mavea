@@ -674,6 +674,7 @@ function SpotInk({
             y={chip.y}
             textAnchor="middle"
             dominantBaseline="middle"
+            {...(colorAttr ? { 'data-color': colorAttr } : {})}
           >
             {stepNumber}
           </text>

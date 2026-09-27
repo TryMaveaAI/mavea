@@ -287,26 +287,14 @@
   display: grid;
   place-items: center;
   border: none;
-  color: #fff;
+  color: var(--on-presence);
   position: relative;
   flex-shrink: 0;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   box-shadow: 0 8px 22px -8px var(--glow-presence);
   transition:
     transform var(--m-fast),
     filter var(--m-fast);
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .mic-btn {
-    background: linear-gradient(
-      180deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
 }
 .mic-btn:hover {
   filter: brightness(1.08);
@@ -425,25 +413,13 @@
   display: grid;
   place-items: center;
   border: none;
-  color: #fff;
+  color: var(--on-presence);
   flex-shrink: 0;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   box-shadow: 0 8px 22px -8px var(--glow-presence);
   transition:
     transform var(--m-fast),
     opacity var(--m-fast);
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .send-btn {
-    background: linear-gradient(
-      180deg,
-      var(--presence),
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-    color: var(--on-presence);
-  }
 }
 .send-btn:disabled {
   opacity: 0.4;

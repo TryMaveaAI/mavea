@@ -2035,31 +2035,21 @@
     color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
   );
 }
-/* A persona accent is light and carries the dark ink, so the shaded stop keeps its hue and chroma
-   but not a lightness below --ink-floor-l, and one ink reads at both ends (white, on the plain
-   gradient, without relative colour). */
-@supports (color: oklch(from red l c h)) {
+/* A persona accent is light and carries black, so the shaded stop is lifted no
+   further than that ink needs (--dark-ink-min-l) and the ink is derived from the accent. Where
+   relative colour is unsupported the gradient stays as drawn, in white. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .fl-demo-avatar {
     background: linear-gradient(
       135deg,
       var(--accent, var(--presence)),
       oklch(
         from color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
-          max(l, var(--ink-floor-l)) c h
+          max(l, var(--dark-ink-min-l)) c h
       )
     );
-    color: oklch(
-      from
-        color-mix(
-          in oklab,
-          var(--accent, var(--presence)),
-          oklch(
-            from color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
-              max(l, var(--ink-floor-l)) c h
-          )
-        )
-        var(--ink-on-fill)
-    );
+    color: color(from var(--accent, var(--presence)) srgb-linear var(--ink-on-fill));
   }
 }
 .fl-demo-avatar.emoji {
@@ -2274,9 +2264,9 @@
   color: var(--on-presence);
   background: linear-gradient(
     180deg,
-    var(--presence-soft),
+    var(--presence-soft-held),
     var(--presence) 52%,
-    var(--presence-deep)
+    var(--presence-deep-held)
   );
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
@@ -2284,18 +2274,6 @@
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition: transform var(--m-fast);
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .fl-nav-cta {
-    background: linear-gradient(
-      180deg,
-      oklch(from var(--presence-soft) var(--accent-side)),
-      var(--presence) 52%,
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-  }
 }
 [data-theme='light'] .fl-nav-cta {
   box-shadow:

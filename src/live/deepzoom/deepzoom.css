@@ -970,7 +970,7 @@
 .dz-start-btn {
   padding: 11px 22px;
   border-radius: var(--r-md);
-  background: linear-gradient(120deg, var(--presence-deep), var(--presence));
+  background: linear-gradient(120deg, var(--presence-deep-held), var(--presence));
   color: var(--on-presence);
   font-size: var(--fs-md);
   font-weight: 600;
@@ -984,25 +984,7 @@
     transform var(--m-fast);
 }
 [data-theme='dark'] .dz-start-btn {
-  background: linear-gradient(120deg, var(--presence), var(--presence-soft));
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .dz-start-btn {
-    background: linear-gradient(
-      120deg,
-      oklch(from var(--presence-deep) var(--accent-side)),
-      var(--presence)
-    );
-  }
-  [data-theme='dark'] .dz-start-btn {
-    background: linear-gradient(
-      120deg,
-      var(--presence),
-      oklch(from var(--presence-soft) var(--accent-side))
-    );
-  }
+  background: linear-gradient(120deg, var(--presence), var(--presence-soft-held));
 }
 .dz-start-btn:hover:not(:disabled) {
   opacity: 0.9;

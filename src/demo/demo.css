@@ -42,27 +42,8 @@
   font-weight: 700;
   font-size: var(--fs-md);
   color: #fff;
-  background: linear-gradient(
-    135deg,
-    var(--accent),
-    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
-  );
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #000));
   flex: none;
-}
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
-@supports (color: oklch(from red l c h)) {
-  .demox-avatar {
-    color: oklch(
-      from
-        color-mix(
-          in oklab,
-          var(--accent),
-          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
-        )
-        var(--ink-on-fill)
-    );
-  }
 }
 .demox-avatar.emoji {
   font-size: var(--fs-lg);
@@ -300,13 +281,25 @@
 }
 /* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
    text sits on, the way --on-presence is from the accent. */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .demox-skip {
-    color: oklch(from color-mix(in oklab, var(--accent) 58%, #0b0f14) var(--ink-on-fill));
+    color: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--ink-on-fill)
+    );
   }
 }
 .demox-skip:hover {
   filter: brightness(1.08);
+}
+/* Brightening lifts the fill towards a white label; shade it away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-skip:hover {
+    background: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--lift-for-ink)
+    );
+    filter: none;
+  }
 }
 .demox-skip-short {
   display: none;
@@ -440,13 +433,25 @@
 }
 /* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
    text sits on, the way --on-presence is from the accent. */
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
   .demox-primary {
-    color: oklch(from color-mix(in oklab, var(--accent) 58%, #0b0f14) var(--ink-on-fill));
+    color: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--ink-on-fill)
+    );
   }
 }
 .demox-primary:hover {
   filter: brightness(1.08);
+}
+/* Brightening lifts the fill towards a white label; shade it away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-primary:hover {
+    background: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--lift-for-ink)
+    );
+    filter: none;
+  }
 }
 .demox-ghost {
   padding: 10px 16px;
@@ -503,25 +508,21 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(
-    135deg,
-    var(--accent),
-    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
-  );
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #000));
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
-@supports (color: oklch(from red l c h)) {
+/* Every persona accent is light and carries black, so the shaded stop is lifted no
+   further than that ink needs (--dark-ink-min-l) and the ink is derived from the accent. Where
+   relative colour is unsupported the gradient stays as drawn, in white. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-avatar,
   .demox-other-avatar {
-    color: oklch(
-      from
-        color-mix(
-          in oklab,
-          var(--accent),
-          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
-        )
-        var(--ink-on-fill)
+    background: linear-gradient(
+      135deg,
+      var(--accent),
+      oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--dark-ink-min-l)) c h)
     );
+    color: color(from var(--accent) srgb-linear var(--ink-on-fill));
   }
 }
 .demox-other-avatar.emoji {

@@ -1,133 +1,150 @@
-// Every control filled from an accent — solid, mixed or a gradient, at rest and on hover, focus
-// and press — is judged at every stop of its fill against the ink it actually sets, in every skin
-// the app can paint it in: stock and each template, dark and light, and, for the canvas blocks the
-// Study desk hosts, inside the desk, which rebinds the accent. Hand-picked lists missed the hover
-// fills and the gradients' deep ends; this walks the stylesheets instead.
+// Every control filled from an accent — solid, mixed or a gradient, at rest and in each state,
+// under each @media condition it is restyled in — is judged at every stop of its fill against the
+// ink the cascade actually gives it, and against every ink drawn inside it (an icon, a label, SVG
+// text over its shape). It is judged in every skin the app can paint it in: stock and each
+// template, dark and light, inside the Study desk (which rebinds the accent) and inside every
+// export and slide skin's embedded figure. A colour the markup sets per card (`--nav-c`) or a
+// property no stylesheet declares is judged as each skin's accent and its second hue in turn.
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { bridgeVars } from '../src/canvas/embed';
+import { SKINS } from '../src/export/skins/registry';
+import { paletteFor as docPalette } from '../src/export/skins/sections/figurePalette';
+import { SLIDE_SKINS } from '../src/slides/skins/registry';
+import { paletteFor as slidePalette } from '../src/slides/skins/layouts/figurePalette';
 import {
   Resolver,
   SCOPES,
+  STUDY,
   TEMPLATES,
+  auditInk,
   contrast,
-  fillStops,
+  markupVars,
+  parseSheet,
   readRules,
-  rootMatches,
-  scopeName,
-  splitRoot,
-  splitTop,
-  type Rule,
+  type Host,
+  type Scope,
 } from './helpers/cssInk';
 
-/** A fill counts as an accent fill when it reads one of these. */
-const ACCENT = /var\(--(presence|accent|insight|nav-c|tone|geo-c)\b/;
-/** The states a control is restyled in, stripped to find the control itself. */
-const STATE = /((:hover|:focus|:focus-visible|:focus-within|:active|:disabled)|:not\([^)]*\))+$/;
 /** Controls whose only content is an icon: WCAG's 3:1 for graphical objects applies. */
 const ICON_ONLY = new Set(['.mic-btn', '.send-btn']);
-/** What the markup sets inline: the persona accent a replay or gallery card carries, and the
- *  per-card colours the nav, map and landing blocks default to the accent. */
+/** The persona accents a replay or gallery card carries inline as --accent. */
 const personas = [
   ...readFileSync('src/demo/cast.ts', 'utf8').matchAll(/accent:\s*'(#[0-9a-f]{6})'/gi),
 ].map((m) => m[1]);
-const INLINE = {
-  '--nav-c': 'var(--presence)',
-  '--tone': 'var(--presence)',
-  '--geo-c': 'var(--presence)',
-};
 
 const rules = readRules();
 const resolver = new Resolver(rules);
-const bgOf = (r: Rule) =>
-  r.decls.get('background') ?? r.decls.get('background-color') ?? r.decls.get('background-image');
 
-interface Finding {
-  where: string;
-  ratio: number;
-  floor: number;
-}
+/** Each export and slide skin, as the wrapper its embedded figures sit in. */
+const embedHosts: Host[] = [
+  ...Object.entries(SKINS).map(([id, skin]) => ({ id, palette: docPalette(skin) })),
+  ...Object.entries(SLIDE_SKINS).map(([id, skin]) => ({ id, palette: slidePalette(skin) })),
+].map(({ id, palette }) => ({
+  selector: `.figure-embed[data-theme-mode='${palette.dark ? 'dark' : 'light'}']`,
+  inline: bridgeVars(palette),
+  name: `embed:${id}`,
+}));
+const EMBED_SCOPES: Scope[] = embedHosts.flatMap((host) =>
+  (['dark', 'light'] as const).map((theme) => ({ template: null, theme, host })),
+);
 
-function audit(): { findings: Finding[]; checked: number } {
-  const groups = new Map<string, Rule[]>();
-  for (const r of rules) {
-    const { rest } = splitRoot(r.selector);
-    if (!rest) continue;
-    const key = `${r.file}|${rest.replace(STATE, '')}`;
-    groups.set(key, [...(groups.get(key) ?? []), r]);
-  }
-  const findings: Finding[] = [];
-  let checked = 0;
-  for (const [key, group] of groups) {
-    if (!group.some((r) => ACCENT.test(bgOf(r) ?? ''))) continue;
-    const [file, base] = key.split('|');
-    const variants = [...new Set(group.map((r) => splitRoot(r.selector).rest))].filter(
-      // An inactive control is exempt from contrast minimums.
-      (v) => !/:disabled|\[aria-disabled/.test(v),
-    );
-    // Custom properties the control sets on itself.
-    const own = Object.fromEntries(
-      group.flatMap((r) => [...r.decls].filter(([n]) => n.startsWith('--'))),
-    );
-    for (const scope of SCOPES) {
-      if (scope.study && !file.startsWith('src/canvas/')) continue;
-      // Templates are a Live skin, dropped when Live unmounts: the landing only paints stock.
-      if (scope.template && file.startsWith('src/flagship/')) continue;
-      const live = group.filter((r) => rootMatches(splitRoot(r.selector).cond, scope));
-      const last = (sel: string, pick: (r: Rule) => string | undefined) =>
-        live
-          .filter((r) => splitRoot(r.selector).rest === sel)
-          .map(pick)
-          .filter((v): v is string => !!v)
-          .at(-1);
-      for (const variant of variants) {
-        const bg = last(variant, bgOf) ?? last(base, bgOf);
-        const ink =
-          last(variant, (r) => r.decls.get('color')) ?? last(base, (r) => r.decls.get('color'));
-        if (!bg || !ink || !ACCENT.test(bg) || /inherit|currentcolor|transparent/i.test(ink))
-          continue;
-        for (const accent of /var\(--accent\b/.test(bg + ink) ? personas : ['']) {
-          const on = resolver.on({ ...INLINE, ...own, ...(accent ? { '--accent': accent } : {}) });
-          const where = `${file} ${variant} ${scopeName(scope)}${accent ? ' ' + accent : ''}`;
-          const floor = ICON_ONLY.has(base) ? 3 : 4.5;
-          try {
-            const text = on.color(ink, scope);
-            for (const stop of splitTop(bg).flatMap(fillStops)) {
-              if (!/var\(|#|rgb|oklch|color-mix|\bwhite\b|\bblack\b/.test(stop)) continue;
-              // A surface tinted with the accent is still a surface: its text is ordinary text.
-              if (/var\(--(surface|bg|app-bg)\b/.test(stop)) continue;
-              const fill = on.color(stop, scope);
-              if (fill[3] < 0.95) continue; // a tint over whatever lies beneath, not a fill
-              checked++;
-              const ratio = contrast(fill, text);
-              if (ratio < floor) findings.push({ where: `${where} @ ${stop}`, ratio, floor });
-            }
-          } catch (e) {
-            // A var() nothing declares makes the whole declaration invalid at computed time, as
-            // CSS does: that background paints nothing, or that ink is inherited. Anything else
-            // this evaluator cannot read is a gap in it, and fails.
-            if (!/^unresolved /.test((e as Error).message)) {
-              findings.push({ where: `${where}: ${(e as Error).message}`, ratio: 0, floor });
-            }
-          }
-        }
-      }
-    }
-  }
-  return { findings, checked };
-}
+/** Where a stylesheet paints: the landing only in stock (templates are a Live skin, dropped when
+ *  Live unmounts); the canvas also inside the desk, and its blocks inside an embedded figure; the
+ *  desk's own sheet only inside the desk. The reel paints in its palettes, judged below. */
+const paints = (file: string, scope: Scope) => {
+  if (file.startsWith('src/clip/reel/')) return false;
+  if (scope.host?.name?.startsWith('embed:'))
+    return file.startsWith('src/canvas/blocks/') || file.startsWith('src/canvas/embed/');
+  if (file.startsWith('src/canvas/study/')) return scope.host === STUDY;
+  if (scope.host && !file.startsWith('src/canvas/')) return false;
+  if (scope.template && file.startsWith('src/flagship/')) return false;
+  return true;
+};
+const markup = markupVars();
+
+const report = (findings: { ratio: number; floor: number; where: string }[]) =>
+  findings
+    .sort((a, b) => a.ratio - b.ratio)
+    .map((f) => `${f.ratio.toFixed(2)} < ${f.floor} ${f.where}`);
 
 describe('text on an accent fill', () => {
-  it('clears 4.5:1 (3:1 for an icon) at every stop, in every state and skin', () => {
+  it('clears 4.5:1 (3:1 for an icon) at every stop, in every state, skin and host', () => {
     // Stock and six templates, each dark and light, each with and without the Study desk.
     expect(TEMPLATES.length).toBeGreaterThanOrEqual(6);
     expect(SCOPES).toHaveLength((TEMPLATES.length + 1) * 4);
-    const { findings, checked } = audit();
-    expect(checked).toBeGreaterThan(500);
-    const worst = findings
-      .sort((a, b) => a.ratio - b.ratio)
-      .map((f) => `${f.ratio.toFixed(2)} < ${f.floor} ${f.where}`);
+    expect(embedHosts.length).toBeGreaterThanOrEqual(6);
+    const { findings, checked } = auditInk(rules, {
+      scopes: [...SCOPES, ...EMBED_SCOPES],
+      personas,
+      markup,
+      paints,
+      iconOnly: ICON_ONLY,
+    });
+    expect(checked).toBeGreaterThan(5000);
+    const worst = report(findings);
     if (process.env.INK_DUMP) writeFileSync(process.env.INK_DUMP, worst.join('\n'));
     expect(worst).toEqual([]);
+  });
+
+  describe('catches what a rule-by-rule reading misses', () => {
+    // Each case is a real shape of bug, appended to the real stylesheets so it resolves through
+    // the real tokens. The last one is the control: a correct rule must not be flagged.
+    const synthetic = (css: string) => {
+      const sheet = parseSheet('synthetic.css', css, 9999);
+      return report(
+        auditInk([...rules, ...sheet], {
+          scopes: SCOPES.filter((s) => !s.host),
+          paints: (file) => file === 'synthetic.css',
+          markup,
+        }).findings,
+      );
+    };
+
+    it('a per-card colour the markup sets inline', () => {
+      expect(synthetic('.syn-pin { background: var(--pc); color: #fff; }')).not.toEqual([]);
+    });
+
+    it('a state that fills a control whose base rule sets the ink', () => {
+      const css = '.syn-b { color: var(--presence); } .syn-b.on { background: var(--presence); }';
+      expect(synthetic(css).some((f) => f.includes('.syn-b.on'))).toBe(true);
+    });
+
+    it('an icon inside the fill that sets its own ink', () => {
+      const css =
+        '.syn-box { background: var(--presence); color: var(--on-presence); }' +
+        ' .syn-box .ic { color: var(--presence); }';
+      expect(synthetic(css).some((f) => f.includes('.ic(color)'))).toBe(true);
+    });
+
+    it('SVG text drawn in the same colour as the shape under it', () => {
+      const css =
+        '.syn-pin-dot { fill: var(--text-primary); }' +
+        ' .syn-pin-num { fill: var(--text-primary); font-size: 10px; text-anchor: middle; }';
+      expect(synthetic(css).some((f) => f.includes('.syn-pin-num(fill)'))).toBe(true);
+    });
+
+    it('an ink one @media condition swaps in', () => {
+      const css =
+        '.syn-m { background: var(--presence); color: var(--on-presence); }' +
+        ' @media (width <= 720px) { .syn-m { color: var(--presence); } }';
+      expect(synthetic(css).some((f) => f.includes('@media (width <= 720px)'))).toBe(true);
+    });
+
+    it('a hover that brightens the fill and its ink together', () => {
+      // White on a fill that only just carries it, pushed lighter.
+      const css =
+        '.syn-h { background: color-mix(in oklab, var(--presence) 0%, #6d6d6d); color: #fff; }' +
+        ' .syn-h:hover { filter: brightness(1.2); }';
+      expect(synthetic(css).some((f) => f.includes('.syn-h:hover'))).toBe(true);
+      expect(synthetic(css).some((f) => /\.syn-h stock/.test(f))).toBe(false);
+    });
+
+    it('but not a control that reads the derived ink', () => {
+      expect(
+        synthetic('.syn-ok { background: var(--presence); color: var(--on-presence); }'),
+      ).toEqual([]);
+    });
   });
 });
 
@@ -140,28 +157,19 @@ describe('text on a reel palette fill', () => {
     ['var(--reel-accent-2)', 'var(--reel-on-accent-2)'],
     ['var(--reel-orb-1)', 'var(--reel-on-orb-1)'],
   ];
-  const sheet = rules.filter((r) => r.file === 'src/clip/reel/reel.css');
-  const palettes = sheet
+  const palettes = rules
+    .filter((r) => r.file === 'src/clip/reel/reel.css')
     .map((r) => /^\.reel\[data-palette='(\w+)'\]$/.exec(r.selector)?.[1])
     .filter((p): p is string => !!p);
-  const own = (selector: string, supports: boolean) =>
-    Object.fromEntries(
-      sheet
-        .filter((r) => r.selector === selector && r.supports === supports)
-        .flatMap((r) => [...r.decls].filter(([n]) => n.startsWith('--'))),
-    );
 
   it('clears 4.5:1 for every palette', () => {
     expect(palettes).toHaveLength(4);
-    const scope = SCOPES[0];
     const findings: string[] = [];
     for (const palette of palettes) {
-      const on = resolver.on({
-        ...own('.reel', true),
-        ...own(`.reel[data-palette='${palette}']`, false),
-      });
+      const host = { selector: `.reel[data-palette='${palette}']` };
+      const ctx = { scope: { template: null, theme: 'dark' as const, host }, media: null };
       for (const [fill, ink] of PAIRS) {
-        const ratio = contrast(on.color(fill, scope), on.color(ink, scope));
+        const ratio = contrast(resolver.color(fill, ctx), resolver.color(ink, ctx));
         if (ratio < 4.5) findings.push(`${ratio.toFixed(2)} ${palette} ${ink} on ${fill}`);
       }
     }

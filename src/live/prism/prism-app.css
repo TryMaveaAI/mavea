@@ -247,6 +247,13 @@
 .prism-confirm-btn:hover {
   opacity: 0.88;
 }
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .prism-confirm-btn:hover {
+    opacity: 1;
+    background: color(from var(--presence) srgb-linear var(--lift-for-ink));
+  }
+}
 .prism-confirm-btn:active {
   transform: translateY(1px);
 }
