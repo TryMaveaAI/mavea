@@ -321,6 +321,25 @@ function priorInkRects(container: HTMLElement, stepNumber: number): DOMRect[] {
   return out;
 }
 
+/** An element's border-box size in LAYOUT px, unrounded. `offsetWidth`/`offsetHeight` round to
+ *  whole pixels, so a scale derived from them is off by up to half a pixel over the card's width —
+ *  enough that the same mark re-measured on a card a fraction wider or narrower (a lift easing
+ *  out, a neighbour dimming) landed a pixel from where it had been drawn: visible jitter. */
+function layoutSize(el: HTMLElement): { w: number; h: number } {
+  const cs = getComputedStyle(el);
+  let w = parseFloat(cs.width);
+  let h = parseFloat(cs.height);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return { w: el.offsetWidth, h: el.offsetHeight };
+  if (cs.boxSizing !== 'border-box') {
+    const px = (v: string): number => parseFloat(v) || 0;
+    w +=
+      px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
+    h +=
+      px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+  }
+  return { w, h };
+}
+
 function measure(
   spot: string,
   line?: string,
@@ -355,10 +374,8 @@ function measure(
   // (getBoundingClientRect bakes the spotlight's 1.03 in). Divide the visual deltas back by the
   // ancestor scale so both live in layout space; without it a spotlit card draws its
   // inner-scroller ink ~3% oversized and displaced. The card branch below does the same.
-  const scale =
-    scrRect && scrRect.width > 0 && scroller!.offsetWidth > 0
-      ? scrRect.width / scroller!.offsetWidth
-      : 1;
+  const scrLayoutW = scroller ? layoutSize(scroller).w : 0;
+  const scale = scrRect && scrRect.width > 0 && scrLayoutW > 0 ? scrRect.width / scrLayoutW : 1;
   // A plain card is plotted in its LAYOUT space too: the visual deltas are divided back by the
   // card's own transform scale, and the SVG (which fills the card at layout size) carries a viewBox
   // of that same layout size. Plotting in visual space drew the same mark correctly, but every
@@ -367,8 +384,9 @@ function measure(
   // card to 1.03 and dims its neighbours to 0.984, so each spotlight move rewrote every mark on the
   // cards it touched, frame by frame through the 520ms lift: the pen visibly re-drawing marks it
   // had already finished. In layout space a transform cannot change the path at all.
-  const hostScaleX = host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
-  const hostScaleY = host.offsetHeight > 0 ? hostRect.height / host.offsetHeight : 1;
+  const layout = layoutSize(host);
+  const hostScaleX = layout.w > 0 ? hostRect.width / layout.w : 1;
+  const hostScaleY = layout.h > 0 ? hostRect.height / layout.h : 1;
   const box = scroller
     ? { w: scroller.scrollWidth, h: scroller.scrollHeight }
     : { w: hostRect.width / hostScaleX, h: hostRect.height / hostScaleY };
