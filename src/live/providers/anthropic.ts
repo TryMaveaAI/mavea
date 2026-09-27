@@ -31,7 +31,7 @@ import type {
   ProbeOptions,
   RawResult,
 } from './types';
-import { forgetVerified, isVerified, markVerified, readinessFingerprint } from './readiness';
+import { forgetVerified, isVerified, readinessFingerprint, sharedPaidCheck } from './readiness';
 import {
   fetchWithTimeout,
   providerErrorDetail,
@@ -104,6 +104,32 @@ function probeUsage(body: string): { usage?: TokenUsage } {
   } catch {
     return {};
   }
+}
+
+/** The paid half of the readiness probe: a one-token messages call on the configured model. */
+async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProbe> {
+  const gen = await fetchWithTimeout(
+    `${base}${MESSAGES}`,
+    {
+      method: 'POST',
+      headers: headers(cfg),
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'ping' }],
+      }),
+    },
+    PROBE_TIMEOUT_MS,
+  );
+  if (!gen.ok) {
+    return {
+      ok: false,
+      model: false,
+      statusCode: gen.status,
+      detail: await providerErrorDetail(gen),
+    };
+  }
+  return { ok: true, model: true, statusCode: gen.status, ...probeUsage(await gen.text()) };
 }
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
@@ -184,29 +210,8 @@ export const anthropicAdapter: ProviderAdapter = {
       if (fingerprint && !opts.fresh && isVerified(fingerprint)) {
         return { ok: true, model: true, statusCode: res.status };
       }
-      const gen = await fetchWithTimeout(
-        `${base}${MESSAGES}`,
-        {
-          method: 'POST',
-          headers: headers(cfg),
-          body: JSON.stringify({
-            model: cfg.model,
-            max_tokens: 1,
-            messages: [{ role: 'user', content: 'ping' }],
-          }),
-        },
-        PROBE_TIMEOUT_MS,
-      );
-      if (!gen.ok)
-        return {
-          ok: false,
-          model: false,
-          statusCode: gen.status,
-          detail: await providerErrorDetail(gen),
-        };
-      const billed = probeUsage(await gen.text());
-      if (fingerprint) markVerified(fingerprint);
-      return { ok: true, model: true, statusCode: gen.status, ...billed };
+      const check = (): Promise<LiveProbe> => generationCheck(base, cfg);
+      return await (fingerprint ? sharedPaidCheck(fingerprint, check) : check());
     } catch {
       return { ok: false, model: false };
     }

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { anthropicAdapter } from '../src/live/providers/anthropic';
-import { forgetReadiness } from '../src/live/providers/readiness';
+import { forgetReadiness, isVerified, sharedPaidCheck } from '../src/live/providers/readiness';
 import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
 import { grokAdapter } from '../src/live/providers/grok';
 import { ADAPTERS, PROVIDERS, VISIBLE_PROVIDERS, getAdapter } from '../src/live/providers';
 import { getUsageLedger, resetUsageLedgerForTest } from '../src/live/usage/ledger';
-import type { LiveRequest } from '../src/live/providers/types';
+import type { LiveProbe, LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
 import {
@@ -339,6 +339,63 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     await getAdapter('anthropic').probe({ ...cfg, model: 'claude-sonnet-5' });
     await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
     expect(messages()).toBe(3);
+  });
+
+  /** Holds every messages call open until `release`, so two checks genuinely overlap. */
+  function holdMessages(status: number): { messages: () => number; release: () => void } {
+    let messages = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        messages++;
+        await gate;
+        return new Response(JSON.stringify({ usage: { input_tokens: 8, output_tokens: 1 } }), {
+          status,
+        });
+      }),
+    );
+    return { messages: () => messages, release };
+  }
+
+  /** Resolves once `count()` reaches `n`, polling across the probe's own awaits. */
+  async function until(count: () => number, n: number): Promise<void> {
+    await vi.waitFor(() => expect(count()).toBe(n));
+  }
+
+  it('shares one paid pass between overlapping checks, and ledgers it once', async () => {
+    const held = holdMessages(200);
+    const first = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    const second = getAdapter('anthropic').probe(cfg);
+    held.release();
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(held.messages()).toBe(1);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toHaveLength(1);
+  });
+
+  it('shares a check in flight, and keeps nothing from a failed one', async () => {
+    let settle!: (verdict: LiveProbe) => void;
+    const run = vi.fn(
+      () =>
+        new Promise<LiveProbe>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const first = sharedPaidCheck('fp', run);
+    const second = sharedPaidCheck('fp', run);
+    expect(run).toHaveBeenCalledTimes(1);
+    settle({ ok: false, model: false, statusCode: 401 });
+    expect((await first).ok).toBe(false);
+    expect((await second).ok).toBe(false);
+
+    // Settled and failed: nothing is remembered and nothing is left in flight.
+    expect(isVerified('fp')).toBe(false);
+    void sharedPaidCheck('fp', run);
+    expect(run).toHaveBeenCalledTimes(2);
   });
 
   it('re-runs the paid pass when the reader asks for a fresh check', async () => {
