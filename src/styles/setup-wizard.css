@@ -958,6 +958,17 @@
   transition: background var(--m-fast);
   width: 100%;
 }
+/* A short laptop window (1366×657) put the voice notice across the fold of the hub's scroller, its
+   Details and dismiss controls cut off at the composer's edge. The settled rows give back their
+   spare padding there so the notice lands whole above the composer. */
+@media (height <= 700px) {
+  .go-left {
+    gap: var(--s-md);
+  }
+  .go-left .check-row {
+    padding-block: 4px;
+  }
+}
 .go-left .check-row:hover {
   background: var(--surface-glass);
 }
