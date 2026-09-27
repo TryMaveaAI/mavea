@@ -102,7 +102,13 @@
 .cx-fail {
   color: var(--warning);
 }
+/* A text action with a button's hit box: the box is 32px tall and its negative margins give the
+   difference back, so the row keeps the rhythm of its one line of type. */
 .cx-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-block: calc((1em - 32px) / 2);
   border: none;
   background: none;
   color: var(--presence);
@@ -279,13 +285,13 @@
   color: var(--presence);
 }
 
+/* A pager, not a pair of banners: each button is as wide as its label, Prev at the start and Next
+   at the end. Stretched to share the row they became 600px pills that read as page sections. */
 .cx-nav {
   display: flex;
+  justify-content: space-between;
   gap: 8px;
   margin-top: 2px;
-}
-.cx-nav .cx-btn {
-  flex: 1;
 }
 
 /* Under a thumb the rail's text actions are still text, but each is a full tap target: they were
@@ -298,11 +304,9 @@
     min-height: var(--tap-min);
   }
   .cx-link {
-    display: inline-flex;
-    align-items: center;
+    margin-block: calc((1em - var(--tap-min)) / 2);
   }
   /* The taller hit boxes keep the rows' visual rhythm: they overlap the rail's gap, not add to it. */
-  .cx-checkpoint-status,
   .cx-secondary-links {
     row-gap: 0;
     margin-block: -8px;
