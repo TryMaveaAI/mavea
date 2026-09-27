@@ -12,7 +12,7 @@
 // The provider adapter is spied (tests/world-cost.test.tsx's approach) so "one call" means one call
 // by any route; `fetch` is stubbed to reject so a stray network read fails loudly.
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import type { ChatMessage } from '../src/live/providers/types';
 import type { TurnFrame } from '../src/live/history';
@@ -178,6 +178,14 @@ const worldCalls = (): unknown[] =>
     ([req]) => typeof req?.system === 'string' && req.system.includes('causal world-builder'),
   );
 
+// The world overlay is a lazy chunk. Under a full parallel run its first transform alone can
+// outlast a default 1s wait, so it is loaded once up front and the waits below measure the view,
+// not the module graph; the ones that still cross a lazy boundary get the suite's cold-load leash.
+const COLD_MS = 8000;
+beforeAll(async () => {
+  await import('../src/live/world/WorldOverlay');
+});
+
 beforeEach(() => {
   localStorage.clear();
   clearSession();
@@ -238,14 +246,18 @@ describe('the world control in the answer header', () => {
     generateMock.mockResolvedValue({ raw: JSON.stringify(built(question)) });
     render(<LiveApp />);
 
-    const chip = await screen.findByRole('button', { name: WORLD_CHIP });
+    const chip = await screen.findByRole('button', { name: WORLD_CHIP }, { timeout: COLD_MS });
     expect(chip).toBeEnabled();
     await act(async () => {
       fireEvent.click(chip);
     });
 
     // The view is up — the overlay names itself, and the reader's question is its heading.
-    const surface = await screen.findByLabelText(`Living answer: ${question}`);
+    const surface = await screen.findByLabelText(
+      `Living answer: ${question}`,
+      {},
+      { timeout: COLD_MS },
+    );
     expect(surface).toBeTruthy();
     expect(getViewMode()).toBe('world');
 
@@ -291,16 +303,18 @@ describe('what entering the view costs', () => {
     generateMock.mockResolvedValue({ raw: JSON.stringify(built(question)) });
     render(<LiveApp />);
 
-    const chip = await screen.findByRole('button', { name: WORLD_CHIP });
+    const chip = await screen.findByRole('button', { name: WORLD_CHIP }, { timeout: COLD_MS });
     expect(worldCalls()).toHaveLength(0); // sitting in the canvas costs nothing
 
     await act(async () => {
       fireEvent.click(chip);
     });
-    await waitFor(() => expect(worldCalls()).toHaveLength(1));
+    await waitFor(() => expect(worldCalls()).toHaveLength(1), { timeout: COLD_MS });
     // The built world is on screen, not the wait state. Asserted on the STAGE rather than on a
     // named chip: which views a world offers, and how many, is now a property of the world.
-    await waitFor(() => expect(document.querySelector('.wo-stage')).toBeTruthy());
+    await waitFor(() => expect(document.querySelector('.wo-stage')).toBeTruthy(), {
+      timeout: COLD_MS,
+    });
     expect(document.querySelector('.wo-shell')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to the board' }));
@@ -310,7 +324,7 @@ describe('what entering the view costs', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: WORLD_CHIP }));
     });
-    await screen.findByLabelText(`Living answer: ${question}`);
+    await screen.findByLabelText(`Living answer: ${question}`, {}, { timeout: COLD_MS });
     expect(worldCalls()).toHaveLength(1);
   });
 
