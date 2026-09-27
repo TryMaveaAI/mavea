@@ -26,6 +26,14 @@ export const FORGOTTEN_DATABASES: readonly string[] = [
   'mavea-dashboards',
 ];
 
+/** Keys an older build wrote without the `mavea` prefix, which the name rule cannot find. The
+ *  app still reads them (so nobody sees a first-run moment twice), so they are swept by name; a
+ *  test fails on any unprefixed key the app reads that is missing here. */
+export const LEGACY_UNPREFIXED_KEYS: readonly string[] = [
+  'ripple.seenWorkedExample',
+  'ripple.hint.fastModel.dismissed',
+];
+
 /** How long a database deletion may wait on another tab's open connection before it is reported
  *  as failed rather than left hanging the whole sweep. */
 const DELETE_DB_TIMEOUT_MS = 5_000;
@@ -51,7 +59,7 @@ function clearMaveaKeys(storage: Storage | undefined): void {
   const owned: string[] = [];
   for (let i = 0; i < storage.length; i += 1) {
     const key = storage.key(i);
-    if (key && isMaveaStoreKey(key)) owned.push(key);
+    if (key && (isMaveaStoreKey(key) || LEGACY_UNPREFIXED_KEYS.includes(key))) owned.push(key);
   }
   for (const key of owned) storage.removeItem(key);
 }

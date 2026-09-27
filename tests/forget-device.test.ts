@@ -1,7 +1,11 @@
 // "Forget everything on this device" has to reach every store, and a browser missing one API
 // (or refusing one database) must cost that one step, not the rest of the sweep.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { forgetDevice, FORGOTTEN_DATABASES } from '../src/live/forgetDevice';
+import {
+  forgetDevice,
+  FORGOTTEN_DATABASES,
+  LEGACY_UNPREFIXED_KEYS,
+} from '../src/live/forgetDevice';
 import { getLiveConfigV2, setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { KEY_VAULT_DB_NAME } from '../src/live/keyVault';
 import { isVerified, sharedPaidCheck } from '../src/live/providers/readiness';
@@ -36,6 +40,8 @@ function seedStorage(): void {
   localStorage.setItem('mavea-ripple-gh-token', 'ciphertext');
   localStorage.setItem('mavea.ripple.tracked.v1', '[]');
   localStorage.setItem('maveaLegalAnchor', 'terms');
+  localStorage.setItem('ripple.seenWorkedExample', '1');
+  localStorage.setItem('ripple.hint.fastModel.dismissed', '1');
   localStorage.setItem('unrelated-app', 'keep me');
   sessionStorage.setItem('mavea-live-seed', 'a question');
   sessionStorage.setItem('other-session', 'keep me');
@@ -104,6 +110,29 @@ describe('forgetDevice', () => {
       if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
       else delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
     }
+  });
+
+  it('names every unprefixed key the app still reads, so the sweep can find it', () => {
+    // The sweep owns keys by their `mavea` prefix. A key read under any other name is one an
+    // older build wrote, and it outlives "Forget everything" unless it is named here.
+    const call =
+      /\b(?:safeLocal(?:Get|Set)|safeSession(?:Get|Set)|(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*'([^']+)'/g;
+    const files = execFileSync(
+      'git',
+      ['grep', '-lE', 'safeLocal|safeSession|Storage\\.', '--', 'src'],
+      {
+        encoding: 'utf8',
+      },
+    )
+      .trim()
+      .split('\n');
+    const unprefixed = new Set<string>();
+    for (const file of files) {
+      for (const [, key] of readFileSync(file, 'utf8').matchAll(call)) {
+        if (!key.startsWith('mavea')) unprefixed.add(key);
+      }
+    }
+    expect([...unprefixed].sort()).toEqual([...LEGACY_UNPREFIXED_KEYS].sort());
   });
 
   it('clears every Mavéa key, every Mavéa database and cache, and leaves the rest alone', async () => {
