@@ -44,6 +44,9 @@ export function clampToClippingAncestors(rect: DOMRect, el: HTMLElement): DOMRec
   return new DOMRect(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
 }
 
+/** How long a ring waits for a target that keeps moving before it rings it where it is. */
+const MAX_HOLD_MS = 900;
+
 export function useElementRect(selector: string | undefined, active: boolean): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);
 
@@ -54,17 +57,23 @@ export function useElementRect(selector: string | undefined, active: boolean): D
     }
     let alive = true;
     let lastScrollAt = 0;
+    // The previous read, confirmed or not. A ring that is not yet showing appears only once two
+    // frames agree on where its target is: a control still gliding into view (the smooth scroll
+    // below, a panel sliding in) otherwise got its ring on the first frame it crossed the fold,
+    // and the ring then chased it across the screen on its own transition — the pointer looking
+    // for the thing it was meant to point at.
+    let lastRead: DOMRect | null = null;
+    let movingSince = 0;
+    let confirmRaf = 0;
+    const sameRect = (a: DOMRect, b: DOMRect): boolean =>
+      Math.abs(a.top - b.top) < 0.5 &&
+      Math.abs(a.left - b.left) < 0.5 &&
+      Math.abs(a.width - b.width) < 0.5 &&
+      Math.abs(a.height - b.height) < 0.5;
     // Re-render only on real movement — a fresh DOMRect every poll would re-render the overlay 4×/s.
     let last: DOMRect | null = null;
     const put = (r: DOMRect | null): void => {
-      const same =
-        r === last ||
-        (r !== null &&
-          last !== null &&
-          Math.abs(r.top - last.top) < 0.5 &&
-          Math.abs(r.left - last.left) < 0.5 &&
-          Math.abs(r.width - last.width) < 0.5 &&
-          Math.abs(r.height - last.height) < 0.5);
+      const same = r === last || (r !== null && last !== null && sameRect(r, last));
       if (same) return;
       last = r;
       setRect(r);
@@ -111,6 +120,22 @@ export function useElementRect(selector: string | undefined, active: boolean): D
         return;
       }
       const r = measured;
+      const settled = lastRead !== null && sameRect(r, lastRead);
+      lastRead = r;
+      if (settled) movingSince = 0;
+      else if (!movingSince) movingSince = performance.now();
+      // A target that never holds still (a control breathing on a loop) is rung anyway, late.
+      const restless = movingSince > 0 && performance.now() - movingSince > MAX_HOLD_MS;
+      if (!last && !settled && !restless) {
+        // Hold the ring until the target stops moving; the next frame's read confirms it.
+        if (!confirmRaf) {
+          confirmRaf = requestAnimationFrame(() => {
+            confirmRaf = 0;
+            measure();
+          });
+        }
+        return;
+      }
       if (!onScreen(r)) {
         // Bring an off-screen target into frame (throttled — smooth scrolling takes a moment),
         // and hold the ring until it arrives so it never pulses over the viewport's edge.
@@ -146,6 +171,7 @@ export function useElementRect(selector: string | undefined, active: boolean): D
       alive = false;
       window.clearInterval(id);
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(confirmRaf);
       window.removeEventListener('resize', schedule);
       window.removeEventListener('scroll', schedule, true);
     };

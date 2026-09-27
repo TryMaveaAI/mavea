@@ -149,8 +149,7 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
         <div
           className="tourx-ring"
           style={{
-            top: rect.top - pad,
-            left: rect.left - pad,
+            translate: `${rect.left - pad}px ${rect.top - pad}px`,
             width: rect.width + pad * 2,
             height: rect.height + pad * 2,
           }}
