@@ -43,6 +43,11 @@ import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadable
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { SecretInput } from '../../lib/SecretInput';
 
+// Every key Mavéa writes carries the `mavea` prefix so "Forget everything on this device" can find
+// it by name; the unprefixed spellings are still read so nobody sees the worked example twice.
+const SEEN_EXAMPLE_KEY = 'mavea.ripple.seenWorkedExample';
+const HINT_DISMISSED_KEY = 'mavea.ripple.hint.fastModel.dismissed';
+
 type RippleGeneration = typeof import('./ingest/generate');
 const loadRippleGeneration = cachedImport(
   (): Promise<RippleGeneration> => import('./ingest/generate'),
@@ -508,11 +513,14 @@ export function RippleOverlay({
     if (didInitIntake.current) return;
     didInitIntake.current = true;
     if (!model.provenance.example || showcase) return;
-    if (safeLocalGet('ripple.seenWorkedExample') === '1') {
+    if (
+      safeLocalGet(SEEN_EXAMPLE_KEY) === '1' ||
+      safeLocalGet('ripple.seenWorkedExample') === '1'
+    ) {
       setIntakeMode('github');
       setPasteOpen(true);
     } else {
-      safeLocalSet('ripple.seenWorkedExample', '1');
+      safeLocalSet(SEEN_EXAMPLE_KEY, '1');
     }
   }, [model.provenance.example, showcase]);
 
@@ -532,12 +540,14 @@ export function RippleOverlay({
   // A quiet, one-time nudge: only when the connected model is slow AND the user hasn't dismissed it.
   // We never auto-switch; this just lets them know a flash/lite model would feel instant.
   const [hintDismissed, setHintDismissed] = useState(
-    () => safeLocalGet('ripple.hint.fastModel.dismissed') === '1',
+    () =>
+      safeLocalGet(HINT_DISMISSED_KEY) === '1' ||
+      safeLocalGet('ripple.hint.fastModel.dismissed') === '1',
   );
   const [analyzed, setAnalyzed] = useState(false); // an analysis has run this session (gates the hint)
   const dismissHint = useCallback(() => {
     setHintDismissed(true);
-    safeLocalSet('ripple.hint.fastModel.dismissed', '1');
+    safeLocalSet(HINT_DISMISSED_KEY, '1');
   }, []);
 
   // The verdict read itself — shared by a fresh analysis and a "try again" after a failure. `built`

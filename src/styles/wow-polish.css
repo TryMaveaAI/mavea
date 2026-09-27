@@ -152,7 +152,8 @@
 
 /* Shared Connect/Settings disclosure: conspicuous without impersonating an error state. */
 .provider-responsibility {
-  padding: 12px 14px;
+  position: relative;
+  padding: 12px var(--tap-min) 12px 14px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
   background: color-mix(in oklab, var(--surface-elevated) 88%, var(--warning) 12%);
@@ -168,6 +169,37 @@
 }
 .provider-responsibility p {
   margin: 0;
+}
+
+.provider-responsibility-dismiss {
+  appearance: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.provider-responsibility-dismiss:hover,
+.provider-responsibility-dismiss:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--text-primary) 7%, transparent);
+  outline: none;
+}
+
+.provider-responsibility-dismiss:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--presence) 65%, transparent);
 }
 
 .provider-responsibility p + p {

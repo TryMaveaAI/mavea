@@ -1,6 +1,6 @@
 # Mavéa Privacy Notice
 
-Effective: September 3, 2026
+Effective: September 27, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
@@ -40,6 +40,8 @@ Browser and operating-system caches may retain application assets and optional v
 ## 3. Credentials and connected-service tokens
 
 Provider and search keys stay in memory until reload unless you choose Remember. When supported, Remember encrypts them with a non-extractable, device-bound browser key and stores ciphertext locally. Without the required browser cryptography, the unmodified app keeps them session-only rather than writing plaintext. Settings exports exclude provider and search keys.
+
+While a tab is open, a key you have entered is held unencrypted in that page's memory so requests can use it, with Remember on or off. Turning Remember off deletes the saved copy but keeps the key in memory until you reload. Anything that can read the page can read it there: a browser extension with access to this site, developer tools, or other software on the device. Encryption protects only the copy on disk. A GitHub token you save in Ripple is stored encrypted the same way whether or not Remember is on; remove it with Ripple's Remove control or with Forget everything on this device.
 
 Keys are decrypted when needed and pass through the deployment's same-origin proxy to the provider you selected. The proxy and its host can technically access credentials and content in transit. Browser encryption does not protect against an active compromise of the device, browser, extension, deployment, proxy, or provider.
 
@@ -98,7 +100,7 @@ The unmodified project does not sell personal information or use it for cross-co
 
 ## 8. Retention and deletion
 
-Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. A dashboard's fetched reading history is capped per tracked item, and deleting a dashboard deletes its readings and its record of recent checks with it. Clearing all browser site data is the broadest local deletion control. Removing browser data does not delete copies already sent elsewhere.
+Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. A dashboard's fetched reading history is capped per tracked item, and deleting a dashboard deletes its readings and its record of recent checks with it. Settings offers Forget everything on this device, which removes saved keys, the browser key that sealed them, and every Mavéa store and cache in this browser, then reloads. Clearing all browser site data does the same from the browser's side. Neither reaches a disk or profile backup taken earlier, and removing browser data does not delete copies already sent elsewhere.
 
 Gateway tokens remain until disconnected or removed by the gateway operator. Server, proxy, infrastructure, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
 

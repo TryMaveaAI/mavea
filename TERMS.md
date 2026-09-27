@@ -1,6 +1,6 @@
 # Mavéa Terms of Use
 
-Effective: September 3, 2026
+Effective: September 27, 2026
 
 These Terms of Use (the **Terms**) govern your use of the Mavéa application, command-line package, demos, documentation, and related materials (collectively, the **Service**). **Licensor** means each applicable copyright holder offering software under the PolyForm license. **Maintainers** means the people who publish or contribute to Mavéa; a Maintainer is not necessarily a Licensor. **Deployment operator** means the person or organization hosting the copy you use. **Responsible Party** means the applicable Licensor, Maintainer, or deployment operator responsible for a statement, obligation, service, or claim. In these Terms, **we**, **us**, or **our** means the relevant Responsible Party or Parties in context. A separately operated deployment remains independent from the Licensors and Maintainers unless the same person or organization serves both roles.
 
@@ -41,6 +41,8 @@ Mavéa can communicate with model, search, speech, media, hosting, OAuth, and ac
 Connecting a code host or other content account authorizes Mavéa to read what that credential can reach and to include the relevant parts in requests to the provider you select. This applies to private repositories exactly as it does to public ones: if the scope you grant can read private source, internal documentation, diffs, or issues, that material can be sent to a third party under that party's own terms. You are responsible for having the right to disclose it, for granting the narrowest scope that works, and for revoking connections you no longer use.
 
 You provide and control your own accounts, API keys, OAuth grants, and other credentials. Requests send relevant credentials and content through the deployment's same-origin proxy before reaching the selected third party. The proxy operator can access that material in transit. You must use a deployment operator you trust.
+
+Software you install in your browser or on your device, including extensions, runs with the same access to the Service as the Service itself and can read a credential while you use it. You are responsible for what runs on a device where you enter credentials, for using restricted, revocable keys with spending limits, and for revoking a key you believe is exposed.
 
 All costs of using the Service are your responsibility, including hardware, electricity, network access, hosting, domains, model tokens, search requests, speech services, storage, OAuth applications, connected-account activity, taxes, and any other third-party charges. Labels such as "fast", "balanced", or "thorough" are relative product descriptions, not price quotes or spending limits. Any token counts or usage figures the Service displays are informational only: they report what a provider stated for the current session in this browser, are not a billing record, and may be incomplete, unavailable, or wrong — your provider's own account is the authoritative measure of what you were charged. You are responsible for provider budgets, quotas, and billing alerts.
 

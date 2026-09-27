@@ -53,6 +53,13 @@ decrypted JSON to a file the user explicitly downloads; it deliberately **exclud
 search keys**, and import forces `rememberKey:false`, so no export or import path can persist a
 credential. The resulting file is unencrypted and under the user's control.
 
+### The development server's own key
+
+`pnpm dev` reads one Gemini key from a gitignored `.env` and lets the local `/llm/gemini` proxy use
+it when the page sends none. The proxy answers only this app's own pages (a matching Origin or
+Referer, or `Sec-Fetch-Site: same-origin`), but anyone using that browser profile can still spend
+it. Use a spend-capped key there and never expose the dev server beyond your machine.
+
 ## Accepted risks (defense-in-depth tradeoffs)
 
 A couple of Content-Security-Policy relaxations are intentional and bounded. Each only becomes

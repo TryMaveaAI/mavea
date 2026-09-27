@@ -1,16 +1,22 @@
-// courseSeed.ts — one-shot handoffs into the course surfaces. Two of them:
+// courseSeed.ts — one-shot handoffs into and out of the course surfaces. Three of them:
 //   - the LESSON seed: "Continue" (or a fresh course's lesson 1) — CoursesApp stashes which
-//     lesson to open, then routes to #/live. LiveApp reads it once on mount and either replays
-//     a cached canvas for free or runs a normal lesson turn.
+//     lesson to open, then routes to #/course. The reader reads it once on mount and either
+//     replays a cached canvas for free or runs a normal lesson turn. The stash is also the VOUCH
+//     for that turn: a bare #/course?c=&l= (a link, a reload, the back button) opens the lesson
+//     shell with a button instead, because a link must never spend the reader's key by itself.
 //   - the TOPIC seed: another surface (Deep Zoom) already has a topic in hand and wants a course
 //     built from it — it stashes the plain string, then routes to #/courses, which reads it once
 //     on mount and drives it through the same generateCourse() flow a typed topic uses.
-// Both follow the EXACT pattern ../seedQuery.ts already uses for the landing's hero composer:
+//   - the ZOOM seed: a lesson's "Zoom into this" — the rail stashes the title, then routes to
+//     #/deepzoom?q=. Deep Zoom runs a ?q= only when this stash vouches for it; a bare link with
+//     the same query only pre-fills, because a link must never spend the reader's key by itself.
+// All three follow the EXACT pattern ../seedQuery.ts already uses for the landing's hero composer:
 // sessionStorage so it survives the hash navigation but not a fresh tab, cleared on read so a
 // later refresh never re-opens a stale seed, and storage failures are swallowed — a seed is a
 // nicety, never load-bearing.
 const KEY = 'mavea-course-seed';
 const TOPIC_KEY = 'mavea-course-topic-seed';
+const ZOOM_KEY = 'mavea-zoom-seed';
 
 export interface CourseLessonSeed {
   courseId: string;
@@ -62,6 +68,30 @@ export function takeCourseTopic(): string | undefined {
     const raw = sessionStorage.getItem(TOPIC_KEY);
     if (!raw) return undefined;
     sessionStorage.removeItem(TOPIC_KEY);
+    const topic = raw.trim();
+    return topic || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Vouch for the next `#/deepzoom?q=` navigation: the reader just asked for this topic with a
+ *  click, so Deep Zoom may run it without a second press. */
+export function stashZoomTopic(topic: string): void {
+  try {
+    sessionStorage.setItem(ZOOM_KEY, topic);
+  } catch {
+    /* storage unavailable — the start screen still opens pre-filled from the URL */
+  }
+}
+
+/** Read and consume the vouched topic. Returns undefined when nothing was stashed, so a `?q=`
+ *  that arrived by link (or by reload, or by the back button) is only ever a pre-fill. */
+export function takeZoomTopic(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem(ZOOM_KEY);
+    if (!raw) return undefined;
+    sessionStorage.removeItem(ZOOM_KEY);
     const topic = raw.trim();
     return topic || undefined;
   } catch {

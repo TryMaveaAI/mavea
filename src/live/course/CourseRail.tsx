@@ -20,6 +20,7 @@ import { getCounts } from '../srs/store';
 import { flashHref } from '../srs/route';
 import { deckLine } from '../srs/deckLine';
 import { useSrsRevision } from '../srs/useSrsCards';
+import { stashZoomTopic } from './courseSeed';
 import { Icon } from '../../icons/icons';
 import './courseRail.css';
 
@@ -268,13 +269,13 @@ export function CourseRail({
 
       <div className="cx-secondary-links">
         <CourseDeckLink courseTitle={course.title} />
-        {/* Same #/deepzoom?q= deep-link LiveApp's own "Deep Zoom" affordances already build
-            (see LiveApp.tsx's AnswerFooter onDeepZoom + palette action) — one-way navigation
-            only, never an embedded surface. */}
+        {/* One-way navigation to Deep Zoom, never an embedded surface. The stash is what lets
+            it zoom straight away: a #/deepzoom?q= reached by link alone only pre-fills. */}
         <button
           type="button"
           className="cx-zoom-link"
           onClick={() => {
+            stashZoomTopic(lesson.title);
             window.location.hash = `#/deepzoom?q=${encodeURIComponent(lesson.title)}`;
           }}
         >

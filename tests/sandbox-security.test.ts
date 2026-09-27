@@ -77,6 +77,9 @@ describe('code sandbox adversarial boundaries', () => {
     expect(worker.options).toEqual({ name: 'mavea-code-sandbox' });
     expect(sandboxSource).toContain("locked('fetch'");
     expect(sandboxSource).toContain("locked('indexedDB',undefined)");
+    expect(sandboxSource).toContain("locked('caches',undefined)");
+    expect(sandboxSource).toContain("lockOn(self.navigator,'storage',undefined)");
+    expect(sandboxSource).toContain("lockOn(self.navigator,'locks',undefined)");
     expect(sandboxSource).toContain("locked('Worker',undefined)");
     expect(sandboxSource).toContain("locked('BroadcastChannel',undefined)");
     expect(sandboxSource).toContain("locked('postMessage'");
@@ -158,6 +161,35 @@ describe('code sandbox adversarial boundaries', () => {
     expect(result).toMatchObject({ ok: false, elapsed: 0 });
     if (!result.ok) expect(result.error).toMatch(/dynamic imports are disabled/i);
     expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('rejects a dynamic import hidden behind comments or line breaks', async () => {
+    const disguises = [
+      `import/**/('/api/llm')`,
+      `import /* a */ /* b */ ('/api/llm')`,
+      `import // nothing to see\n('/api/llm')`,
+      `import\n\n('/api/llm')`,
+      `const u = "//"; import('/api/llm')`,
+      `import<!--x\n('/api/llm')`,
+      `import\n-->x\n('/api/llm')`,
+    ];
+    for (const code of disguises) {
+      const result = await runInSandbox(code, 'js');
+      expect(result, code).toMatchObject({ ok: false, elapsed: 0 });
+      if (!result.ok) expect(result.error).toMatch(/dynamic imports are disabled/i);
+    }
+    expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('decides on a long run of comments in bounded time', async () => {
+    // A model writes code; a `/**/` run with no `(` after it must not be a way to freeze the tab.
+    const code = 'import' + '/**/'.repeat(5000) + 'x';
+    const started = performance.now();
+    const pending = runInSandbox(code, 'js');
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(FakeWorker.instances).toHaveLength(1);
+    FakeWorker.instances[0].emit({ ok: true, output: '' });
+    expect((await pending).ok).toBe(true);
   });
 
   it('re-caps worker output at the parent boundary', async () => {

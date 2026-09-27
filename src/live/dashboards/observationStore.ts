@@ -27,7 +27,9 @@
 import { decryptContent, encryptContent } from '../contentVault';
 import type { ObservationData } from './observation';
 
-const DB_NAME = 'mavea-dashboards';
+/** Exported so "forget this device" can delete the database by its real name. */
+export const OBSERVATION_DB_NAME = 'mavea-dashboards';
+const DB_NAME = OBSERVATION_DB_NAME;
 const STORE = 'observations';
 const DB_VERSION = 1;
 /** Readings kept per tracker — comfortably more than any sparkline reads, bounded for a tab left
@@ -64,7 +66,7 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
+  const opened: Promise<IDBDatabase> = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -76,14 +78,24 @@ function openDb(): Promise<IDBDatabase> {
         store.createIndex('byDashboard', 'dashboardId');
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // A delete (this tab forgetting the device, or another one) waits on every open connection
+      // — a held handle would block it forever. Let go at once; the next save reopens.
+      db.onversionchange = () => {
+        db.close();
+        if (dbPromise === opened) dbPromise = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error ?? new Error('indexedDB open failed'));
   });
+  dbPromise = opened;
   // A failed open must not poison every later call — clear the memo so a retry can succeed.
-  dbPromise.catch(() => {
-    dbPromise = null;
+  opened.catch(() => {
+    if (dbPromise === opened) dbPromise = null;
   });
-  return dbPromise;
+  return opened;
 }
 
 function txDone(tx: IDBTransaction): Promise<void> {

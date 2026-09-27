@@ -141,8 +141,15 @@ function buildWorkerSource(code: string): string {
   locked('caches',undefined);
   locked('postMessage',function(){});
   locked('close',function(){});
-  // sendBeacon is egress that isn't a global — it hangs off navigator, and works in workers.
-  try{if(self.navigator)lockOn(self.navigator,'sendBeacon',blockedNetwork);}catch(_err){}
+  // Egress and persistence that hang off navigator rather than the global: sendBeacon works in
+  // workers, storage is the origin-private file system, and locks reach across contexts.
+  try{
+    if(self.navigator){
+      lockOn(self.navigator,'sendBeacon',blockedNetwork);
+      lockOn(self.navigator,'storage',undefined);
+      lockOn(self.navigator,'locks',undefined);
+    }
+  }catch(_err){}
 
   function done(result){
     if(output===''&&result!==undefined)append(result);
@@ -232,6 +239,15 @@ function runJs(code: string): Promise<SandboxResult> {
 }
 
 /** Execute only an explicitly supported language. Always resolves; never throws. */
+// `import` followed by a `(`, with any run of whitespace or comments between — `import/**/(`
+// and `import // note\n(` are the same call to the parser. The worker is a classic script, so
+// the HTML-like `<!--` and `-->` line comments parse too. Each comment form is matched by an
+// unrolled loop with exactly one way to consume it: the lazy `[\s\S]*?` version let a run of
+// `/**/` be split exponentially many ways when no `(` followed, and a 150-character block froze
+// the tab for minutes.
+const DYNAMIC_IMPORT =
+  /\bimport(?:\s|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|(?:\/\/|<!--|-->)[^\n]*(?:\n|$))*\(/;
+
 export async function runInSandbox(code: string, lang: SandboxLang): Promise<SandboxResult> {
   const normalized = lang.toLowerCase().trim() as SandboxLang;
   if (normalized === 'python' || normalized === 'py') {
@@ -244,15 +260,15 @@ export async function runInSandbox(code: string, lang: SandboxLang): Promise<San
   if (!RUNNABLE_LANGS.has(normalized)) {
     return { ok: false, error: `Execution is not supported for ${lang}.`, elapsed: 0 };
   }
-  if (/\bimport\s*\(/.test(code)) {
-    return { ok: false, error: 'Dynamic imports are disabled in the code sandbox.', elapsed: 0 };
-  }
   if (new TextEncoder().encode(code).byteLength > MAX_SANDBOX_CODE_BYTES) {
     return {
       ok: false,
       error: `Code is too large to run safely (max ${MAX_SANDBOX_CODE_BYTES / 1024} KB).`,
       elapsed: 0,
     };
+  }
+  if (DYNAMIC_IMPORT.test(code)) {
+    return { ok: false, error: 'Dynamic imports are disabled in the code sandbox.', elapsed: 0 };
   }
   if (activeJobs >= MAX_CONCURRENT_JOBS) {
     return { ok: false, error: 'Two snippets are already running. Try again shortly.', elapsed: 0 };

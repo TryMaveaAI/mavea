@@ -74,6 +74,12 @@ export function LegalGate({
             and only connect what you may disclose.
           </li>
           <li>
+            <strong>Your key stays in this browser.</strong> It is held in this page while you use
+            it and, with Remember on, saved encrypted on this device. Any extension or software with
+            access to this browser can read it; Mavéa cannot prevent that. Use a restricted,
+            spend-capped key you can revoke.
+          </li>
+          <li>
             All provider charges are your sole responsibility. Mavéa does not charge you or pay
             providers on your behalf — use of your API keys and accounts is billed to you under each
             provider's own pricing and terms. Most provider dashboards let you track usage and set a

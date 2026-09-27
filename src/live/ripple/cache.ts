@@ -18,7 +18,9 @@ export { fnv1a } from '../../lib/hash';
  *  carries quiz/capstone the new light outline no longer expects. */
 export const CACHE_VERSION = 5;
 
-const DB_NAME = 'mavea-ripple';
+/** Exported so "forget this device" can delete the database by its real name. */
+export const RIPPLE_CACHE_DB_NAME = 'mavea-ripple';
+const DB_NAME = RIPPLE_CACHE_DB_NAME;
 const STORE = 'analyses';
 /** Bumped to 2 to add the `bytes` index the size budget walks. Entries written by v1 carry no
  *  `bytes`, so IndexedDB leaves them out of that index and they count as 0 until they are rewritten

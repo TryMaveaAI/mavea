@@ -16,7 +16,7 @@ const DISCLOSURES = [
   },
   {
     title: 'Remembered keys remain your responsibility',
-    body: 'Provider and search keys are secrets. With Remember off, Mavéa keeps them in memory only until reload. With Remember on, Mavéa stores encrypted ciphertext in this browser using a device-bound key when browser cryptography is available; otherwise keys remain session-only. Encryption at rest is a convenience, not a guarantee against an unlocked, shared, lost, or compromised device, browser profile, extension, same-origin app code, deployment, or provider. Keys pass through this deployment’s same-origin request proxy when used. Use restricted, revocable keys on a trusted device, rotate or revoke them if exposure is possible, and monitor your provider account. Settings exports exclude provider and search keys.',
+    body: 'Provider and search keys are secrets. Encryption at rest is a convenience, not a guarantee against an unlocked, shared, lost, or compromised device, browser profile, extension, deployment, or provider. Use restricted, revocable keys on a trusted device, rotate or revoke them if exposure is possible, and monitor your provider account.',
   },
   {
     title: 'Protect sensitive and confidential information',
@@ -51,6 +51,32 @@ export function LegalApp(): ReactElement {
         </p>
       }
     >
+      <aside className="legal-warranty legal-key-handling" aria-labelledby="legal-key-handling">
+        <strong id="legal-key-handling">How your key is handled</strong>
+        <p>
+          <b>What is kept.</b> Your key, in this browser only. There is no Mavéa account, and the
+          people who publish Mavéa never receive it.
+        </p>
+        <p>
+          <b>Where.</b> In this page's memory while the tab is open. With Remember on, also on this
+          device, encrypted with a key the browser will not export, when this browser supports that.
+          Never in plain text on disk, never in a settings export or backup.
+        </p>
+        <p>
+          <b>Who can see it.</b> The provider you chose, and whoever runs this deployment — the key
+          crosses its proxy on every request. Also anything that runs inside this browser: an
+          extension with access to this site, developer tools, other software on the device, or
+          anyone using this browser profile. Mavéa cannot prevent that, so use a restricted key with
+          a spending limit, and revoke it at the provider if you think it was exposed.
+        </p>
+        <p>
+          <b>How to remove it.</b> Clear the field, or turn Remember off, and the saved copy is
+          deleted; reload the tab to clear it from memory. Settings → Forget everything on this
+          device also destroys the encryption key and every Mavéa store in this browser. A backup
+          taken earlier still holds what was there.
+        </p>
+      </aside>
+
       <div className="legal-grid">
         {DISCLOSURES.map((item, index) => (
           <section className="legal-item" key={item.title}>

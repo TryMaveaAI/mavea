@@ -27,6 +27,12 @@
 /** Every key Mavéa writes starts with this — `mavea-…` for most, `mavea.…` for the ripple keys. */
 const MAVEA_PREFIX = 'mavea';
 
+/** Whether a storage key is one of Mavéa's own — every store the app writes carries this prefix,
+ *  and it is the one rule "measure what Mavéa holds" and "forget this device" both go by. */
+export function isMaveaStoreKey(key: string): boolean {
+  return key.startsWith(MAVEA_PREFIX);
+}
+
 /** How many times one blocked write may shed before it gives up. A rescue, not an eviction
  *  spree: past this the write fails loudly rather than emptying the user's library to fit it. */
 const MAX_SHED_ROUNDS = 8;
@@ -74,7 +80,7 @@ export function measureMavea(): StorageUsage {
     if (typeof localStorage === 'undefined') return { total, stores };
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key || !key.startsWith(MAVEA_PREFIX)) continue;
+      if (!key || !isMaveaStoreKey(key)) continue;
       const units = storedUnits(key);
       if (!units) continue;
       total += units;

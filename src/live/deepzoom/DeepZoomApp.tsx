@@ -27,7 +27,7 @@ import { ProviderGenerationBlockedError } from '../providers/spendPolicy';
 import { DEEPZOOM_DEMO_TREE } from './demoTree';
 import { buildDefaultPath, planZoomIn, scaleColor, scaleStops } from './nav';
 import type { ZoomLevel, ZoomNode, ZoomTree } from './types';
-import { stashCourseTopic } from '../course/courseSeed';
+import { stashCourseTopic, takeZoomTopic } from '../course/courseSeed';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import './deepzoom.css';
 
@@ -39,6 +39,25 @@ const MOVE_MS = 560;
 function hashParam(name: string): string {
   if (typeof window === 'undefined') return '';
   return new URLSearchParams(window.location.hash.split('?')[1] ?? '').get(name)?.trim() ?? '';
+}
+
+/** A topic the start screen opens pre-filled with, and where it came from — the hint under the
+ *  composer says so, because the reader needs to know why nothing ran. */
+interface Seed {
+  topic: string;
+  /** `conversation`: Live's "Deep Zoom" carried the last ask over (`?seed=`). `link`: a `?q=`
+   *  the app did not vouch for — a shared or bookmarked URL, a reload, the back button. */
+  via: 'conversation' | 'link';
+}
+
+/** What the current hash asks the start screen to pre-fill. `?q=` lands here too: the URL alone
+ *  is never enough to run a zoom, since a crafted link would spend the reader's remembered key
+ *  with no click of theirs. */
+function seedFromHash(): Seed | null {
+  const carried = hashParam('seed');
+  if (carried) return { topic: carried, via: 'conversation' };
+  const q = hashParam('q');
+  return q ? { topic: q, via: 'link' } : null;
 }
 
 // ── icons ───────────────────────────────────────────────────────────────
@@ -590,12 +609,12 @@ function StartScreen({
   seed,
 }: {
   onSubmit: (q: string) => void;
-  /** Carried over from a Live conversation: the field opens pre-filled with it (selected, so a
+  /** A topic that arrived with the route: the field opens pre-filled with it (selected, so a
    *  keystroke replaces it) rather than auto-zooming — so the reader chooses THIS topic or another
-   *  instead of Deep Zoom silently telescoping whatever they last asked about. */
-  seed?: string;
+   *  instead of Deep Zoom silently telescoping whatever a conversation or a link handed it. */
+  seed?: Seed | null;
 }): ReactNode {
-  const [val, setVal] = useState(seed ?? '');
+  const [val, setVal] = useState(seed?.topic ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
   // Focus the composer on entry, imperatively — keeps the same "ready to type" landing as the
   // autoFocus prop would, without yanking screen-reader focus via the raw HTML attribute. When a
@@ -628,7 +647,9 @@ function StartScreen({
         <FeatureUseNotice kind="learning" />
         {seed && (
           <p className="dz-start-carry" role="status">
-            Carried over from your conversation — zoom into it, or ask about anything else.
+            {seed.via === 'conversation'
+              ? 'Carried over from your conversation — zoom into it, or ask about anything else.'
+              : 'Opened from a link — zoom into it when you are ready, or ask about anything else.'}
           </p>
         )}
         <form className="dz-start-form" onSubmit={handleSubmit}>
@@ -742,11 +763,11 @@ export function DeepZoomApp(): ReactNode {
   // that cannot help a reader with no model connected, and it used to be the only one offered.
   const [error, setError] = useState<{ message: string; needsModel: boolean } | null>(null);
   const [generatingForId, setGeneratingForId] = useState<number | null>(null);
-  // A topic carried in from Live (?seed=) pre-fills the start screen WITHOUT auto-zooming, so the
-  // reader chooses this topic or another. `?q=` still auto-runs (deep links, the walkthrough). Read
-  // synchronously on first render (not in an effect) so the start screen's input is pre-filled on
-  // its very first mount rather than a beat later.
-  const [seed, setSeed] = useState(hashParam('seed'));
+  // A topic carried in by the route (?seed= from Live, ?q= from a link) pre-fills the start screen
+  // WITHOUT auto-zooming, so the reader chooses this topic or another. Read synchronously on first
+  // render (not in an effect) so the start screen's input is pre-filled on its very first mount
+  // rather than a beat later.
+  const [seed, setSeed] = useState(seedFromHash);
 
   const nextNodeId = useRef(0);
   const cfgRef = useRef<ModelConfig | null>(null);
@@ -858,17 +879,19 @@ export function DeepZoomApp(): ReactNode {
     setLoading(false);
   }, []);
 
-  // Auto-run from URL query param
+  // A ?q= runs on arrival only when the app itself vouched for it — a lesson's "Zoom into this"
+  // stashes the topic before it navigates. Otherwise the URL is a link, and `seed` above has
+  // already pre-filled the start screen with it.
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    // Spent on THIS navigation whatever it turns out to be, so a vouch never waits for a later one.
+    const vouch = takeZoomTopic();
     if (params.get('demo') === '1') {
       showDemo();
       return;
     }
     const q = params.get('q')?.trim() ?? '';
-    // A carried-over topic (?seed=) is read synchronously into `seed` above and only pre-fills the
-    // start screen; only ?q= auto-runs.
-    if (q) void run(q);
+    if (q && vouch === q) void run(q);
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -879,22 +902,26 @@ export function DeepZoomApp(): ReactNode {
       const hash = window.location.hash;
       if (!hash.startsWith('#/deepzoom')) return;
       const params = new URLSearchParams(hash.split('?')[1] ?? '');
+      // Consume the stash whatever it says: a vouch is for one navigation, never a later one.
+      const vouch = takeZoomTopic();
       if (params.get('demo') === '1') {
         if (query !== DEEPZOOM_DEMO_TREE.query) showDemo();
         return;
       }
       const q = params.get('q')?.trim() ?? '';
-      if (q && q !== query) void run(q);
-      // A fresh carried-over topic (Live "Deep Zoom" again) returns to the start screen pre-filled,
-      // rather than silently re-zooming — mirrors the mount-time behaviour for an already-open app.
-      else if (!q) {
-        const s = params.get('seed')?.trim() ?? '';
-        abortRef.current?.abort();
-        setQuery('');
-        setTree(null);
-        setError(null);
-        setSeed(s);
+      const vouched = q !== '' && vouch === q;
+      if (vouched) {
+        if (q !== query) void run(q);
+        return;
       }
+      // A fresh carried-over topic (Live "Deep Zoom" again) or an unvouched ?q= returns to the
+      // start screen pre-filled, rather than silently re-zooming — mirrors the mount-time
+      // behaviour for an already-open app.
+      abortRef.current?.abort();
+      setQuery('');
+      setTree(null);
+      setError(null);
+      setSeed(seedFromHash());
     };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
@@ -906,7 +933,7 @@ export function DeepZoomApp(): ReactNode {
     abortRef.current?.abort();
     if (window.location.hash !== '#/deepzoom') window.location.hash = '#/deepzoom';
     setError(null);
-    setSeed('');
+    setSeed(null);
     setQuery('');
     setTree(null);
   }, []);
@@ -923,7 +950,9 @@ export function DeepZoomApp(): ReactNode {
   return (
     <div className="deepzoom-app mavea-app">
       {!query && !loading && !tree && !error && (
-        <StartScreen onSubmit={(q) => void run(q)} seed={seed} />
+        // Keyed on the topic so a new pre-fill arriving while the start screen is up replaces the
+        // field rather than leaving the reader's earlier text over the URL's.
+        <StartScreen key={seed?.topic ?? ''} onSubmit={(q) => void run(q)} seed={seed} />
       )}
       {loading && <LoadingScreen query={query} />}
       {error && !loading && (

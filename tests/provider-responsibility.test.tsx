@@ -1,11 +1,23 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ProviderResponsibilityNotice } from '../src/live/setup/ProviderResponsibilityNotice';
 import { VISIBLE_PROVIDERS } from '../src/live/providers/info';
 
 describe('provider pricing and responsibility disclosure', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('can be closed, and stays closed on this device', () => {
+    const { unmount } = render(<ProviderResponsibilityNotice />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
+    expect(screen.queryByLabelText(/Provider billing/)).toBeNull();
+    expect(localStorage.getItem('mavea-provider-notice-dismissed-v1')).toBe('1');
+    unmount();
+    render(<ProviderResponsibilityNotice />);
+    expect(screen.queryByLabelText(/Provider billing/)).toBeNull();
+  });
+
   it('shows the essential billing, reliability, professional-advice, and user-responsibility terms', () => {
     render(<ProviderResponsibilityNotice />);
     const notice = screen.getByLabelText(
@@ -28,7 +40,6 @@ describe('provider pricing and responsibility disclosure', () => {
     expect(notice).toHaveTextContent('may be sent to the model, search, or connected provider');
     expect(notice).toHaveTextContent('authorized to share it');
     expect(notice).toHaveTextContent('processing and retention practices');
-    expect(notice).toHaveTextContent('Choosing Remember stores an encrypted copy');
     expect(notice).toHaveTextContent('not a security guarantee');
     expect(notice).toHaveTextContent('compromised device, browser profile, or extension');
     expect(notice).toHaveTextContent(
@@ -39,7 +50,6 @@ describe('provider pricing and responsibility disclosure', () => {
       'restricted, revocable keys with spending caps on trusted devices you control',
     );
     expect(notice).toHaveTextContent('pass through this deployment’s request proxy');
-    expect(notice).toHaveTextContent('settings exports exclude them');
     expect(screen.getByRole('link', { name: /Read all important information/i })).toHaveAttribute(
       'href',
       '#/legal?from=live',

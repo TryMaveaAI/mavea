@@ -21,7 +21,7 @@ import { CourseRail } from '../src/live/course/CourseRail';
 import { CourseLessonReader } from '../src/live/course/CourseLessonReader';
 import { generateCheckpoint } from '../src/live/course/generateCourse';
 import { generateLive } from '../src/live/generateLive';
-import { stashCourseLesson } from '../src/live/course/courseSeed';
+import { stashCourseLesson, takeZoomTopic } from '../src/live/course/courseSeed';
 import {
   cacheCheckpoint,
   getCachedCheckpoint,
@@ -465,6 +465,8 @@ describe('CourseRail — the in-Live lesson chrome', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: /Zoom into this/i }));
       expect(window.location.hash).toBe(`#/deepzoom?q=${encodeURIComponent('Matrices')}`);
+      // The click vouches for the zoom; the same URL reached by link alone only pre-fills.
+      expect(takeZoomTopic()).toBe('Matrices');
     });
   });
 });
@@ -685,8 +687,105 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
       cleanup();
 
+      // Nothing was cached, and the seed was consumed by the first mount — so a remount on the URL
+      // the reader mirrored is an unvouched arrival: the shell with its button, no second call.
       render(<CourseLessonReader />);
+      expect(await screen.findByRole('button', { name: /Build this lesson/i })).toBeInTheDocument();
+      expect(mockGenerateLive).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole('button', { name: /Build this lesson/i }));
       await waitFor(() => expect(mockGenerateLive).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  // A URL may pre-fill, never spend: `#/course?c=&l=` names the lesson, and only the reader's own
+  // press builds it. The courses home's "Start course"/"Continue" vouches through the one-shot seed
+  // (the same handoff Deep Zoom's "Zoom into this" uses); a link, a reload or the back button
+  // carries no seed, so a crafted link cannot run a model call on the reader's remembered key.
+  describe('CourseLessonReader — a URL alone never builds a lesson', () => {
+    it('a bare deep link shows the lesson shell with a build button and never calls generateLive', async () => {
+      saveCourse(course('a'));
+      window.location.hash = '#/course?c=a&l=1';
+      mockGenerateLive.mockResolvedValue(ok(lessonSpec('Lesson 2')));
+
+      render(<CourseLessonReader />);
+
+      // The right lesson, framed by the rail, held rather than built.
+      expect(
+        within(document.querySelector('.course-rail') as HTMLElement).getByText('Lesson 2 of 4'),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/isn’t built yet/)).toBeInTheDocument();
+      expect(screen.getByText(/Opened from a link/)).toBeInTheDocument();
+      expect(document.querySelector('.clr-canvas')).toBeNull();
+      expect(screen.queryByText(/Building lesson/)).toBeNull();
+      expect(mockGenerateLive).not.toHaveBeenCalled();
+
+      // The reader's own press is what builds it — once.
+      fireEvent.click(screen.getByRole('button', { name: /Build this lesson/i }));
+      await waitFor(() => expect(document.querySelector('.clr-canvas')).toBeInTheDocument());
+      expect(mockGenerateLive).toHaveBeenCalledTimes(1);
+      expect(mockGenerateLive.mock.calls[0][0]).toContain('Lesson 2');
+      expect(screen.queryByRole('button', { name: /Build this lesson/i })).toBeNull();
+    });
+
+    it('Prev/Next from an unvouched arrival are presses on the surface, so they build', async () => {
+      saveCourse(course('a'));
+      window.location.hash = '#/course?c=a&l=1';
+      mockGenerateLive.mockResolvedValue(ok(lessonSpec('Lesson 1')));
+
+      render(<CourseLessonReader />);
+      expect(screen.getByRole('button', { name: /Build this lesson/i })).toBeInTheDocument();
+      expect(mockGenerateLive).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /Prev/i }));
+      await waitFor(() => expect(mockGenerateLive).toHaveBeenCalledTimes(1));
+      expect(mockGenerateLive.mock.calls[0][0]).toContain('Lesson 1');
+    });
+
+    it('the vouched handoff builds once, and a second mount on the same URL is held', async () => {
+      saveCourse(course('a'));
+      stashCourseLesson({ courseId: 'a', lessonIdx: 2 });
+      // A failed turn caches nothing, so the remount below cannot be answered from the cache.
+      mockGenerateLive.mockResolvedValue({
+        spec: lessonSpec('stub'),
+        narration: '',
+        tier: 'frontier',
+        error: { kind: 'network', message: 'Couldn’t reach the model.' },
+      });
+
+      render(<CourseLessonReader />);
+      await waitFor(() => expect(mockGenerateLive).toHaveBeenCalledTimes(1));
+      expect(mockGenerateLive.mock.calls[0][0]).toContain('Lesson 3');
+      // The reader mirrored the lesson into the URL, as a reload or the back button would find it.
+      expect(window.location.hash).toBe('#/course?c=a&l=2');
+      cleanup();
+
+      render(<CourseLessonReader />);
+      expect(await screen.findByRole('button', { name: /Build this lesson/i })).toBeInTheDocument();
+      expect(
+        within(document.querySelector('.course-rail') as HTMLElement).getByText('Lesson 3 of 4'),
+      ).toBeInTheDocument();
+      expect(mockGenerateLive).toHaveBeenCalledTimes(1);
+    });
+
+    it('a cached lesson replays from a bare URL — no button, no call', async () => {
+      const c = course('a');
+      saveCourse(c);
+      cacheLessonFrame(c.id, c.lessons[1].id, {
+        question: 'Lesson 2: Lesson 2',
+        narration: 'cached',
+        mode: 'replace',
+        tour: [],
+        spec: lessonSpec('Cached lesson'),
+        at: 1000,
+      });
+      window.location.hash = '#/course?c=a&l=1';
+      mockGenerateLive.mockRejectedValue(new Error('must not generate on a cached lesson'));
+
+      render(<CourseLessonReader />);
+
+      await waitFor(() => expect(document.querySelector('.clr-canvas')).toBeInTheDocument());
+      expect(screen.queryByRole('button', { name: /Build this lesson/i })).toBeNull();
+      expect(mockGenerateLive).not.toHaveBeenCalled();
     });
   });
 

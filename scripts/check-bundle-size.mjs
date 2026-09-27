@@ -280,7 +280,10 @@ const ROUTE_BUDGETS = [
     // ~250 bytes, against asks that returned nothing at all before.
     // 162 (was 161): measured at 161.5. Shared provider-pressure handling now learns retry windows
     // from response headers and distinguishes temporary overloads from exhausted daily quota.
-    gzip: 162,
+    // 163 (was 162): measured at 162.4. A lesson opened from a URL alone now shows its goal and
+    // a Build button instead of spending the key on load, and the shared config module listens
+    // for another tab forgetting the device.
+    gzip: 163,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
