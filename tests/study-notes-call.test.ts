@@ -26,7 +26,7 @@ vi.mock('../src/live/ripple/cache', () => ({
     }
     return (h >>> 0).toString(36);
   },
-  rippleCacheKey: (identity: string, model: string) => `${identity}|${model}`,
+  rippleCacheKey: (identity: string, cfg: { model: string }) => `${identity}|${cfg.model}`,
 }));
 
 vi.mock('../src/live/usage/ledger', () => ({ recordUsage: () => {} }));
@@ -86,6 +86,17 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('the Study notes call', () => {
+  it('never serves notes one model wrote to a reader who switched models', async () => {
+    generate.mockImplementation(streamingReply(REPLY));
+    const spec = specWith('switch');
+    await studyNotesFor(spec, 'why', cfg, 'standard');
+    await studyNotesFor(spec, 'why', { ...cfg, model: 'gemini-3.5-flash' }, 'standard');
+    expect(generate).toHaveBeenCalledTimes(2);
+    // Back on the first model, its own notes are still in hand.
+    await studyNotesFor(spec, 'why', cfg, 'standard');
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
   it('hands over each note as it closes, before the reply finishes', async () => {
     const seen: number[] = [];
     const firstValues: BlockStudy[] = [];

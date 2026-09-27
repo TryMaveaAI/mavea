@@ -288,7 +288,7 @@ export const BUILT_CAP = 16;
  *  plain-space join lets a word shift across the boundary between two different (question, corpus)
  *  pairs produce the identical identity string — NUL can't occur in either field, so it can't. */
 function worldKey(question: string, corpus: EvidenceCorpus, cfg: ModelConfig): string {
-  return rippleCacheKey(`world:${question}\0${corpus.text}`, cfg.provider);
+  return rippleCacheKey(`world:${question}\0${corpus.text}`, cfg);
 }
 
 /**

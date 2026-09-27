@@ -195,10 +195,7 @@ export function studyNotesFor(
   // PREVIOUS answer's notes, figures and all. The digest carries the blocks' actual props, so
   // different content can never share a key. The level rides too: a note written for Simple is
   // not the note for In-depth.
-  const key = rippleCacheKey(
-    `live-study:${level}:${fnv1a(blockDigest(spec.blocks))}`,
-    cfg.provider,
-  );
+  const key = rippleCacheKey(`live-study:${level}:${fnv1a(blockDigest(spec.blocks))}`, cfg);
   if (onPartial) {
     const set = watchers.get(key) ?? new Set();
     set.add(onPartial);

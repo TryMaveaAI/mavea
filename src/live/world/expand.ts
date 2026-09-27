@@ -102,7 +102,7 @@ function expandKey(
 ): string {
   // NUL-separated for the same reason explodeWorld's key is: title and corpus are unbounded text,
   // and a space join lets a word drift across the boundary and collide two different requests.
-  return rippleCacheKey(`world-expand:${prior.title}\0${nodeId}\0${corpus.text}`, cfg.provider);
+  return rippleCacheKey(`world-expand:${prior.title}\0${nodeId}\0${corpus.text}`, cfg);
 }
 
 async function fetchChildren(

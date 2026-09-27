@@ -721,7 +721,7 @@ export function RippleOverlay({
           // reader should choose to spend).
           const okey = rippleCacheKey(
             `courses|${repo}|${refRef.current ?? ''}|${focus ?? ''}`,
-            analysisCfg.model,
+            analysisCfg,
           );
           const cached = force ? null : await cacheGet<CachedOutline>(okey);
           // This run's OWN AbortController is the staleness guard — see ensureOrientation.
@@ -809,7 +809,7 @@ export function RippleOverlay({
       const { codeContext, contentHash } = await gatherLessonCode(lesson, refRef.current, repo);
       const lkey = rippleCacheKey(
         `lesson|${repo}|${course.title}|${lesson.title}|${altitude ?? 'working'}|${contentHash}`,
-        analysisCfg.model,
+        analysisCfg,
       );
       if (!force) {
         const cached = await cacheGet<LessonDetail>(lkey);
@@ -846,7 +846,7 @@ export function RippleOverlay({
       if (!repo) return undefined;
       const ckey = rippleCacheKey(
         `closing|${repo}|${course.title}|${refRef.current ?? ''}`,
-        analysisCfg.model,
+        analysisCfg,
       );
       if (!force) {
         const cached = await cacheGet<{ quiz?: QuizQuestion[]; capstone?: CourseCapstone }>(ckey);

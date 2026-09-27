@@ -36,7 +36,7 @@ vi.mock('../src/live/providers/index', () => ({
 vi.mock('../src/live/ripple/cache', () => ({
   cacheGet: async () => null,
   cachePut: async () => {},
-  rippleCacheKey: (input: string, provider: string) => `${provider}:${input}`,
+  rippleCacheKey: (input: string, cfg: { model: string }) => `${cfg.model}:${input}`,
 }));
 
 import { WorldOverlay } from '../src/live/world/WorldOverlay';

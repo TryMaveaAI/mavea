@@ -260,7 +260,7 @@ function writeAnswer(cache: Map<string, CachedAnswer>, key: string, result: Live
 /** The device-local key for an answer, in the shared (LRU-capped, never-throwing) store that
  *  already holds the world breakdowns — see world/expand.ts, the pattern this follows. */
 function answerDiskKey(answerKey: string, cfg: ModelConfig): string {
-  return rippleCacheKey(`${ANSWER_DISK_NS}:${answerKey}`, cfg.provider);
+  return rippleCacheKey(`${ANSWER_DISK_NS}:${answerKey}`, cfg);
 }
 
 /** This device's persisted answer for a key, or null. Never throws; validates the stored shape

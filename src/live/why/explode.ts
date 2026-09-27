@@ -111,7 +111,7 @@ export async function explodeWhy(
   // NUL-separated (not a space): `question` and `corpus` are each unbounded text, so a plain-space
   // join lets a word shift across the boundary between two different (question, corpus) pairs
   // produce the identical identity string — NUL can't occur in either field, so it can't.
-  const key = rippleCacheKey(`why:${question}\0${corpus}`, cfg.provider);
+  const key = rippleCacheKey(`why:${question}\0${corpus}`, cfg);
   try {
     const cached = await cacheGet<WhyDag>(key);
     if (cached) return cached;

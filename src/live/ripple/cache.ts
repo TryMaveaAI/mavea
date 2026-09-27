@@ -6,6 +6,7 @@
 // far too big and frequent for the synchronous localStorage that `tracked.ts` uses), LRU-capped, with
 // an in-memory fallback when IndexedDB is unavailable (private mode / SSR / tests). Zero deps.
 import { fnv1a } from '../../lib/hash';
+import type { ModelConfig } from '../../types/mavea';
 export { fnv1a } from '../../lib/hash';
 
 /** Bump when a cached shape or a prompt changes materially, so old entries miss cleanly. v3: the
@@ -33,9 +34,17 @@ const MAX_ENTRIES = 60;
  *  agree to give a website. This is the number to quote when asked how much room it takes. */
 const MAX_TOTAL_BYTES = 32 * 1024 * 1024;
 
-/** Build a cache key from the content identity, the model, and the schema version. */
-export function rippleCacheKey(identity: string, model: string): string {
-  return `${fnv1a(identity)}|${model}|v${CACHE_VERSION}`;
+/** Build a cache key from the content identity, who wrote it, and the schema version. "Who" is the
+ *  provider, the model and, when set, the endpoint: the same model id can name different models on
+ *  two providers or two gateways, and a reader who switches must never be served the other one's
+ *  answers, notes and worlds as if the chosen model had written them. Takes the config rather than
+ *  a bare string because five callers once passed only the provider. */
+export function rippleCacheKey(
+  identity: string,
+  cfg: Pick<ModelConfig, 'provider' | 'model' | 'baseUrl'>,
+): string {
+  const endpoint = cfg.baseUrl ? `@${fnv1a(cfg.baseUrl)}` : '';
+  return `${fnv1a(identity)}|${cfg.provider}:${cfg.model}${endpoint}|v${CACHE_VERSION}`;
 }
 
 interface Entry<T> {
