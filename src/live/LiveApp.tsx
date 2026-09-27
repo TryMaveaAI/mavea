@@ -2253,14 +2253,18 @@ export function LiveApp(): ReactElement {
     setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
   }, []);
 
-  /** Glide the canvas to its top, then run `then` — so a scripted mark lands on a page at rest. */
-  const toTopThen = (then: () => void): Promise<void> => {
+  /** Glide the canvas to its top, then run `then` — so a scripted mark lands on a page at rest.
+   *  `signal` is the driver step's: a step left (dismissed, skipped, unmounted) mid-glide draws
+   *  nothing. */
+  const toTopThen = (then: () => void, signal?: AbortSignal): Promise<void> => {
+    if (signal?.aborted) return Promise.resolve();
     const scroller = scrollRef.current;
-    if (!scroller) {
-      then();
-      return Promise.resolve();
-    }
-    return glideScroll(scroller, 0, { instant: prefersReducedMotion() }).then(then);
+    const glide = scroller
+      ? glideScroll(scroller, 0, { instant: prefersReducedMotion(), signal })
+      : Promise.resolve();
+    return glide.then(() => {
+      if (!signal?.aborted) then();
+    });
   };
 
   // Everything a scripted driver needs to drive THIS real surface — the closures behind the
@@ -2416,7 +2420,7 @@ export function LiveApp(): ReactElement {
     },
     setSpot: (id) => turn.setSpot(id),
     scriptedMark: () => scriptedMarkRef.current(),
-    drawPenTourStep: (step) => {
+    drawPenTourStep: (step, signal) => {
       // The tour demonstrates Mavéa's own orange annotation layer. Keep this separate from the
       // user's Highlight tool, which creates a question target instead of explaining the answer.
       enablePenForRun();
@@ -2426,16 +2430,18 @@ export function LiveApp(): ReactElement {
         // look as though it belongs to the neighboring Share control.
         // The pen starts once the answer has come to rest at the top — a mark drawn while the
         // canvas is still sliding under it reads as the hand chasing the page.
-        void toTopThen(() =>
-          ink(
-            'live-1',
-            'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
-            { kind: 'circle', at: '$76,123', color: 'key' },
-            false,
-            undefined,
-            5600,
-            1,
-          ),
+        void toTopThen(
+          () =>
+            ink(
+              'live-1',
+              'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
+              { kind: 'circle', at: '$76,123', color: 'key' },
+              false,
+              undefined,
+              5600,
+              1,
+            ),
+          signal,
         );
       } else {
         ink(
@@ -2449,13 +2455,13 @@ export function LiveApp(): ReactElement {
         );
       }
     },
-    drawPenOnFirstBlock: () => {
+    drawPenOnFirstBlock: (signal) => {
       const block = turn.spec?.blocks.find((b) => !!b.id);
       if (!block?.id) return;
       enablePenForRun();
       // Generous mode resolves the block's own spoken note or its stamped salient value, so this
       // works on any recorded answer without pretending a hard-coded number belongs to it.
-      void toTopThen(() => ink(block.id, block.note, undefined, true, undefined, 3200));
+      void toTopThen(() => ink(block.id, block.note, undefined, true, undefined, 3200), signal);
     },
     openDashboards: () => {
       const id = ensureTourDashboard();

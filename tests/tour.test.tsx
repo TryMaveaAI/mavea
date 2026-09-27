@@ -217,8 +217,8 @@ describe('core walkthrough feature scenes', () => {
   it('draws and holds two real Pen strokes during the explanation scene', () => {
     const driver = readFileSync(join(__dirname, '../src/tour/useTourDriver.ts'), 'utf8');
     const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    expect(driver).toMatch(/drawPenTourStep\('result'\)/);
-    expect(driver).toMatch(/drawPenTourStep\('reason'\)/);
+    expect(driver).toMatch(/drawPenTourStep\('result', step\.signal\)/);
+    expect(driver).toMatch(/drawPenTourStep\('reason', step\.signal\)/);
     expect(driver).toMatch(/after\(7200, \(\) => o\.setSpot\(null\)\)/);
     expect(live).toMatch(/kind: 'circle', at: '\$76,123'/);
     expect(live).toMatch(/kind: 'underline', at: '7\.6x'/);

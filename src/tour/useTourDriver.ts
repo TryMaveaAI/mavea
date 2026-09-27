@@ -43,9 +43,10 @@ export interface TourOps {
   /** Draw a scripted highlighter mark across the first canvas card, then spotlight it. */
   scriptedMark: () => void;
   /** Draw one step of the walkthrough with Mavéa's real answer-annotation Pen. */
-  drawPenTourStep: (step: 'result' | 'reason') => void;
+  /** `signal` is the step's: once it aborts, no mark may be drawn. */
+  drawPenTourStep: (step: 'result' | 'reason', signal?: AbortSignal) => void;
   /** Draw one real, generous Mavéa Pen stroke across the current answer's first card. */
-  drawPenOnFirstBlock: () => void;
+  drawPenOnFirstBlock: (signal?: AbortSignal) => void;
   /** Open the walkthrough's curated living dashboard (a real store entry, full-screen). */
   openDashboards: () => void;
   /** Flip the dashboard takeover from the board itself to its real refresh-cadence controls. */
@@ -418,8 +419,8 @@ export function useTourDriver(opts: {
       // answer so a direct jump is deterministic, then visibly draw two real, persistent strokes.
       const f = tourFrame('money');
       if (f) showSilent(f);
-      after(1200, () => o.drawPenTourStep('result'));
-      after(3900, () => o.drawPenTourStep('reason'));
+      after(1200, () => o.drawPenTourStep('result', step.signal));
+      after(3900, () => o.drawPenTourStep('reason', step.signal));
       // Let the complete marked-up answer breathe before autoplay is allowed to move on.
       after(7200, () => o.setSpot(null));
     } else if (a.kind === 'canvas') {

@@ -28,6 +28,7 @@ export function runBeat(
   o: TourOps,
   frame: TurnFrame | null,
   after: StepTimers['after'],
+  signal?: AbortSignal,
 ): void {
   switch (b.kind) {
     case 'study': {
@@ -56,7 +57,7 @@ export function runBeat(
       after(b.atMs + 500, () => o.scriptedMark());
       break;
     case 'pen':
-      after(b.atMs, () => o.drawPenOnFirstBlock());
+      after(b.atMs, () => o.drawPenOnFirstBlock(signal));
       break;
     case 'lens': {
       const ids = blockIds(frame, 1 + (b.walk ?? 0));

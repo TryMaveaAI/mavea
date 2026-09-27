@@ -187,7 +187,7 @@ export function useDemoDriver(opts: {
     // Fire the step's beats (measured from walk-quiet) and open the advance window.
     const fireBeats = (): void => {
       const beats = step.beats ?? [];
-      for (const b of beats) runBeat(b, o, beatFrame, after);
+      for (const b of beats) runBeat(b, o, beatFrame, after, st.signal);
       if (step.note) {
         const firstAt = beats.length ? Math.min(...beats.map((b) => b.atMs)) : 0;
         after(firstAt, () => setNote(naturalGuidedCopy(step.note ?? '')));

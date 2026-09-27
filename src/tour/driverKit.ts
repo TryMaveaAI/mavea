@@ -21,11 +21,14 @@ export const UNLOCK_WAIT_CAP_MS = 8000;
 export interface StepTimers {
   after: (ms: number, fn: () => void) => void;
   cancel: () => void;
+  /** Aborted by `cancel` — for work a step starts that outlives a timer (a glide, a fetch). */
+  signal: AbortSignal;
 }
 
 export function makeStepTimers(): StepTimers {
   let cancelled = false;
   const timers: ReturnType<typeof setTimeout>[] = [];
+  const controller = new AbortController();
   return {
     after(ms, fn) {
       timers.push(setTimeout(() => !cancelled && fn(), ms));
@@ -33,7 +36,9 @@ export function makeStepTimers(): StepTimers {
     cancel() {
       cancelled = true;
       timers.forEach(clearTimeout);
+      controller.abort();
     },
+    signal: controller.signal,
   };
 }
 
