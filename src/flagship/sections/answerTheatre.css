@@ -45,13 +45,13 @@
   display: grid;
   grid-template-columns: minmax(15rem, 0.7fr) minmax(0, 1.3fr);
   grid-template-rows: 1fr auto auto;
-  /* Every recorded answer shares one stage. A tall visualization used to grow this grid while a
-     compact diagram left it short, making the page lurch as the playback advanced. */
-  height: clamp(36rem, 46vw, 46rem);
+  /* Every recorded answer shares one stage floor so a compact diagram does not make the page lurch.
+     It is a floor, not a ceiling: an answer taller than the stage grows it rather than being cut. */
+  min-height: clamp(36rem, 46vw, 46rem);
   border: 1px solid var(--grid-line);
   border-radius: 1.25rem;
   background: var(--ob-card);
-  overflow: hidden;
+  clip-path: inset(0 round 1.25rem);
 }
 .answer-theatre-player[data-playing='false'] {
   --ambient-play: paused;
@@ -152,8 +152,6 @@
   min-width: 0;
   padding: clamp(1rem, 3vw, 3rem);
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
 }
 .answer-theatre-canvas::before {
   content: '';
@@ -319,16 +317,9 @@
     font-size: var(--fs-sm);
     line-height: 1.5;
   }
-  .answer-theatre-canvas .c2-plot-svg {
-    min-width: 0 !important;
-  }
-  .answer-theatre-canvas .c2-plot-tick,
-  .answer-theatre-canvas .c2-plot-axlbl {
-    font-size: var(--fs-xs);
-  }
   .answer-theatre-player {
     display: block;
-    height: auto;
+    min-height: 0;
   }
   .answer-theatre-prompt {
     flex-direction: row;
@@ -342,11 +333,6 @@
   .answer-theatre-progress button {
     flex: 1;
     font-size: var(--fs-sm);
-  }
-  .answer-theatre-canvas {
-    min-height: 0;
-    height: auto;
-    overflow: visible;
   }
 }
 .answer-theatre-footer {
@@ -396,6 +382,7 @@
   grid-template-columns: minmax(15rem, 0.6fr) minmax(0, 1.4fr);
   border: 1px solid var(--ob-line);
   border-radius: 0.5rem 2.5rem 0.5rem 0.5rem;
+  clip-path: inset(0 round 0.5rem 2.5rem 0.5rem 0.5rem);
   background: var(--ob-card);
   box-shadow: 0 1.5rem 4rem -2rem color-mix(in oklab, var(--ob-green) 25%, transparent);
 }

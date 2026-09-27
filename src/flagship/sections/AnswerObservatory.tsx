@@ -66,7 +66,7 @@ export function AnswerObservatory() {
               ].map(([x, y], i) => (
                 <g className="ob-node" key={i}>
                   <circle cx={x} cy={y} r="20" />
-                  <text x={x} y={y + 5} textAnchor="middle">
+                  <text x={x} y={y + 8} textAnchor="middle">
                     0{i + 1}
                   </text>
                 </g>

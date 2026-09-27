@@ -2264,7 +2264,8 @@
 .fl-demo-card {
   text-align: left;
   width: 100%;
-  font-family: inherit;
+  font: inherit;
+  font-size: var(--fs-sm);
   cursor: pointer;
   border-radius: 16px;
   border: 1px solid var(--line);
