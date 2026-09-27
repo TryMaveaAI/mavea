@@ -590,7 +590,7 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
     expect(body.max_output_tokens).toBe(8000);
   });
 
-  it('Responses: the grounding retry (high effort) gets the largest floor', async () => {
+  it('Responses: a high-effort web-search turn gets the largest floor', async () => {
     const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
@@ -1242,7 +1242,7 @@ describe('openai Responses API — reasoning-model params (gpt-5.x / o-series)',
     expect(body.reasoning).toEqual({ effort: 'medium' });
   });
 
-  it('escalates a web-search turn to high effort when the caller asks (the grounding retry)', async () => {
+  it('escalates a web-search turn to high effort when the caller asks', async () => {
     const body = await bodyFor('gpt-5.4-nano', {
       thinkingLevel: 'high',
       tools: { webSearch: true },

@@ -2,7 +2,7 @@
 // board once a REAL grounded read has come back FOR IT. Creation used to persist first and fire
 // the first fetch blind — a metric the model invented (or one search can't actually answer) sat
 // rendered as if it were fact until a refresh quietly failed. The probe IS the production
-// refresh engine (web search on, "NO SOURCE, NO NUMBER", one grounding retry), so "confirmed"
+// refresh engine (web search on, "NO SOURCE, NO NUMBER", one call), so "confirmed"
 // means exactly what the refresh loop will keep enforcing for the tile's whole life.
 //
 // Two subtleties the first cut of this gate got wrong, both now pinned by tests:

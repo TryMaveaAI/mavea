@@ -40,8 +40,7 @@ export interface LiveRequestTools {
    *  tool_choice to auto BECAUSE forcing a specific tool stops Claude's web_search loop outright
    *  (see anthropic.ts's header), Gemini's google_search is a built-in with no force lever, and
    *  Grok/OpenRouter have documented none. Everywhere the flag can't bind, the existing defenses
-   *  still hold: the prompt demands search, the grounding gate discards uncited values, and the
-   *  in-pass retry re-asks with a sharpened demand. */
+   *  still hold: the prompt demands search, and the grounding gate discards uncited values. */
   requireSearch?: boolean;
 }
 

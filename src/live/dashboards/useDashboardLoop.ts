@@ -441,11 +441,9 @@ export async function runRefreshBatch(
       });
     }
 
-    // ONE ledger entry for the whole batched call — the point of batching. `searches` stays 1 even
-    // when refresh.ts's grounding retry spent a second provider call: the ledger's unit is one
-    // user-facing CHECK, not a raw call count — the same reason a single call covering 4 batched
-    // dashboards is also logged as 1, not 4. The retry is an internal reliability mechanic for this
-    // one check, not a second check.
+    // ONE ledger entry for the whole batched call — the point of batching. The ledger's unit is one
+    // user-facing CHECK, which is why a single call covering 4 batched dashboards is logged as 1,
+    // not 4.
     const domains = [...new Set(batchResult.sources.map((s) => hostOf(s.url)))].filter(Boolean);
     appendLedger({
       kind: 'check',
