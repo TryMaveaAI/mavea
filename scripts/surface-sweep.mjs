@@ -62,17 +62,18 @@ export const SURFACES = [
   },
   {
     key: 'lens',
-    // The Lens is a STATE of the board, not a view of its own — but it is the state with new
-    // layout in it (one card forward, the rest dimmed, notes beside it), so it needs its own row.
-    // The settle is short on purpose: the curated replay moves on after a few seconds and takes
-    // the spotlight back, and a row that measures the board while claiming to measure the Lens is
-    // worse than no row at all.
+    // The Lens is a STATE of the board, not a view of its own: one card opened on a modal sheet
+    // over the blurred board, its notes beside it (under it, folded, on a narrow sheet), and a
+    // toolbar with the way back. The sheet is what the reader reads, so it is the reading
+    // column; the board behind it is inert. The settle is short on purpose: the curated replay
+    // moves on after a few seconds and closes the sheet, and a row that measures the board while
+    // claiming to measure the Lens is worse than no row at all.
     label: 'Answer · the Lens',
     route: '#/live',
     hash: '#/live?demo=dev&view=board',
     ready: '.mavea-app',
     click: ['Start demo', 'Look closer'],
-    reading: '.canvas-scroll',
+    reading: '.zoom-sheet',
     settleMs: 2500,
     owns: LIVE,
   },
