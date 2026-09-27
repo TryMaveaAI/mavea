@@ -307,7 +307,9 @@ const ROUTE_BUDGETS = [
     // useful starting paths instead of an almost-empty summary, including representative sampling.
     // 65, from 64: verified callers outside the diff now become navigable impact nodes with causal
     // paths and role-aware explanations; measured at 64.8 kB.
-    gzip: 65,
+    // 66, from 65: measured at 65.3. The GitHub token field became a SecretInput, which keeps the
+    // pasted token out of the DOM's value attribute.
+    gzip: 66,
     files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus

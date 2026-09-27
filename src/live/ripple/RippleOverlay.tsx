@@ -41,6 +41,7 @@ import { AsyncSurface } from '../../components/AsyncSurface';
 import { cachedImport } from '../../lib/cachedImport';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
+import { SecretInput } from '../../lib/SecretInput';
 
 type RippleGeneration = typeof import('./ingest/generate');
 const loadRippleGeneration = cachedImport(
@@ -1836,7 +1837,7 @@ export function RippleOverlay({
                         <span>
                           GitHub token <em>— only for private repos</em>
                         </span>
-                        <input
+                        <SecretInput
                           type="password"
                           value={ghToken}
                           onChange={(e) => setGhToken(e.target.value)}
