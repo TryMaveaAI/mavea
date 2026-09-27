@@ -248,12 +248,12 @@
   flex-direction: column;
   gap: 14px;
 }
-/* One content column for everything in the main pane. On a 2560px window the notice and the search
-   ran edge to edge over a 360px empty state, reading as three unrelated widths; a card list is a
-   list of lines, and lines past ~1100px stop being read as one row. */
+/* One content column for everything in the main pane, the same column the course grid and the
+   answer canvas use. On a 2560px window the notice and the search ran edge to edge over a 360px
+   empty state, reading as three unrelated widths. */
 .fc-main > * {
   width: 100%;
-  max-width: 1120px;
+  max-width: var(--canvas-col-max);
   margin-inline: auto;
 }
 .fc-toolbar {
