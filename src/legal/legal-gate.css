@@ -17,10 +17,11 @@ html:has(.legal-gate) {
 }
 
 .legal-gate {
+  --gate-edge: clamp(14px, 4vw, 28px);
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: clamp(14px, 4vw, 28px);
+  padding: var(--gate-edge);
   color: var(--text-primary);
   background:
     radial-gradient(
@@ -304,7 +305,7 @@ html:has(.legal-gate) {
 /* A short laptop window (a 13" at 1366×657) spends its height on text, not on air. */
 @media (width >= 1024px) and (height <= 700px) {
   .legal-gate {
-    padding-block: var(--s-md);
+    --gate-edge: var(--s-md);
   }
 
   .legal-gate-card {
@@ -340,4 +341,35 @@ html:has(.legal-gate) {
    one left a block of empty card beside the text. */
 .legal-gate-consents {
   align-items: start;
+}
+
+/* On a laptop or desktop the acknowledgement is a sheet: the whole card — both corners top and
+   bottom — sits inside the window with the same margin all round, its points scroll inside it,
+   and Continue rests on the card's own bottom edge. Pinning a footer to the window instead left
+   the card running off the bottom behind it, reading as cut off. A phone keeps the page scroll
+   and the pinned footer, where the card already spans the screen. */
+@media (width >= 1024px) {
+  .legal-gate {
+    height: 100dvh;
+  }
+
+  .legal-gate-card {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 2 * var(--gate-edge));
+  }
+
+  .legal-gate-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-inline: calc(-1 * var(--gate-pad));
+    padding-inline: var(--gate-pad);
+  }
+
+  .legal-gate-foot {
+    position: static;
+    box-shadow: 0 -18px 28px -22px color-mix(in oklab, #000 30%, transparent);
+  }
 }

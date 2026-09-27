@@ -216,3 +216,17 @@ describe('the gate uses a laptop window’s width instead of making the reader s
     expect(wide).toMatch(/break-inside:\s*avoid/);
   });
 });
+
+describe('on a laptop the acknowledgement is a sheet inside the window', () => {
+  it('fits the card to the window, scrolls its points inside it, and rests Continue on its edge', () => {
+    const blocks = [...gateCss.matchAll(/@media \(width >= 1024px\) \{([\s\S]*?)\n\}/g)].map(
+      (m) => m[1],
+    );
+    const sheet =
+      blocks.find((b) => /max-height:\s*calc\(100dvh - 2 \* var\(--gate-edge\)\)/.test(b)) ?? '';
+    expect(sheet).toMatch(/\.legal-gate-body\s*\{[^}]*overflow-y:\s*auto/);
+    expect(sheet).toMatch(/\.legal-gate-foot\s*\{[^}]*position:\s*static/);
+    // The margin the card keeps is the one the page pads with, so top and bottom always match.
+    expect(gateCss).toMatch(/\.legal-gate \{[^}]*padding:\s*var\(--gate-edge\)/);
+  });
+});
