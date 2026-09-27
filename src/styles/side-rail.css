@@ -132,6 +132,8 @@
     align-items: start;
   }
 
+  /* While an answer streams, its first section narrows from full width to a half the moment the
+     second arrives — accepted: a one-time reflow, not a jump back and forth. */
   .with-rail .card-grid:has(> .depth-section ~ .depth-section) > .depth-section {
     grid-column: span 6;
   }
