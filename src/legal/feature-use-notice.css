@@ -11,7 +11,9 @@
      share a centre line and nothing floats down to the middle of an opened paragraph. */
   align-items: start;
   gap: 8px;
-  padding: 9px 11px;
+  /* The block padding is never less than the actions' pull below, so a 44px target stays whole
+     inside the bar — reaching past it, the next surface down took a press at its edge. */
+  padding: max(9px, calc((var(--tap-min) - 1lh) / 2)) 11px;
   border: 1px solid color-mix(in oklab, var(--warning) 22%, var(--line));
   border-radius: 10px;
   background: color-mix(in oklab, var(--surface-elevated) 94%, var(--warning) 6%);
@@ -56,9 +58,9 @@
   align-items: center;
   gap: 6px;
   /* The row is as tall as its 44px link; the negative block margins centre it on the first line
-     of text (1lh, the notice's own line height) and let the hit boxes overlap the bar's padding
-     rather than stretch the bar. */
-  margin-block: calc((1lh - 44px) / 2);
+     of text (1lh, the notice's own line height) and let the hit boxes use the bar's padding —
+     never more than it — rather than stretch the bar. */
+  margin-block: calc((1lh - var(--tap-min)) / 2);
   margin-inline-end: -4px;
 }
 
@@ -145,7 +147,7 @@
    is room for more. */
 @media (height <= 820px) {
   .feature-use-notice {
-    padding: 7px 10px;
+    padding-inline: 10px;
   }
   .feature-use-notice:not([data-open]) p {
     display: -webkit-box;
@@ -162,8 +164,7 @@
 @media (width <= 768px) {
   .feature-use-notice {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    /* Tall enough that the 36px dismiss sits inside the bar rather than hanging off it. */
-    padding: 9px 8px;
+    padding-inline: 8px;
     line-height: 1.4;
   }
 
@@ -188,7 +189,7 @@
 
   .feature-use-notice[data-open] .feature-use-notice-actions {
     grid-column: 2;
-    margin-block: calc((1lh - 44px) / 2);
+    margin-block: 0 calc((1lh - var(--tap-min)) / 2);
   }
 }
 

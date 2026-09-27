@@ -1097,9 +1097,11 @@ describe('a feature notice reads as one bar in every one-line state', () => {
     const bar = /(?:^|\n)\.feature-use-notice \{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(bar).toMatch(/align-items:\s*start/);
     expect(bar).toMatch(/text-align:\s*start/);
+    // The pull never exceeds the padding, so no target hangs outside the bar.
+    expect(bar).toMatch(/padding:\s*max\(9px, calc\(\(var\(--tap-min\) - 1lh\) \/ 2\)\)/);
     expect(css).toMatch(/\.feature-use-notice-dot \{[^}]*margin-top:\s*calc\(\(1lh - 6px\) \/ 2\)/);
     expect(css).toMatch(
-      /\.feature-use-notice-actions \{[^}]*margin-block:\s*calc\(\(1lh - 44px\) \/ 2\)/,
+      /\.feature-use-notice-actions \{[^}]*margin-block:\s*calc\(\(1lh - var\(--tap-min\)\) \/ 2\)/,
     );
   });
 });
