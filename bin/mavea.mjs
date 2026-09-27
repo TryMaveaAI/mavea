@@ -61,6 +61,33 @@ export const LOCAL_SECURITY_HEADERS = Object.freeze({
   'X-Frame-Options': 'DENY',
 });
 
+const LOCAL_SECURITY_HEADER_NAMES = new Set(
+  Object.keys(LOCAL_SECURITY_HEADERS).map((name) => name.toLowerCase()),
+);
+
+// The page's Content-Security-Policy is written once, in index.html's <meta> tag, so it travels
+// with dist/ to any static host. Reading it back out of the build being served means this header
+// cannot disagree with the page it protects, and it adds the one directive a meta tag is not
+// allowed to carry. A dist/ without the tag still gets the frame protection on its own.
+const META_POLICY = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i;
+
+export function appPolicyFor(distDir) {
+  let html = '';
+  try {
+    html = readFileSync(join(distDir, 'index.html'), 'utf8');
+  } catch {
+    return LOCAL_SECURITY_HEADERS['Content-Security-Policy'];
+  }
+  const meta = META_POLICY.exec(html)?.[1].replace(/\s+/g, ' ').trim();
+  return meta
+    ? `${meta}; ${LOCAL_SECURITY_HEADERS['Content-Security-Policy']}`
+    : LOCAL_SECURITY_HEADERS['Content-Security-Policy'];
+}
+
+// Only the bundled PDFs Pdfreader frames are exempt from DENY — the same path public/_headers
+// scopes its exception to. Any other .pdf a build happens to contain stays unframeable.
+const FRAMEABLE_PDF_PREFIX = '/demo-assets/pdf/';
+
 // The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice
 // mode needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
 // weight even if they never touch voice (most turns are text). Both are ALSO already public,
@@ -556,6 +583,9 @@ function responseHeadersForClient(proxyHeaders) {
     const lower = name.toLowerCase();
     if (
       HOP_BY_HOP_HEADERS.has(lower) ||
+      // A provider's own framing or CSP headers describe ITS pages. Copied after ours under a
+      // lower-cased name, they would silently replace the local policy on this origin.
+      LOCAL_SECURITY_HEADER_NAMES.has(lower) ||
       lower === 'set-cookie' ||
       lower.startsWith('access-control-') ||
       lower === 'content-length'
@@ -757,7 +787,7 @@ export function resetCompressionCacheForTest() {
   compressedCacheBytes = 0;
 }
 
-function serveStatic(req, res, requestTarget, distDir = DIST) {
+function serveStatic(req, res, requestTarget, distDir = DIST, appPolicy = appPolicyFor(distDir)) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     sendProblem(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
     return;
@@ -785,13 +815,16 @@ function serveStatic(req, res, requestTarget, distDir = DIST) {
     return;
   }
   const isHtml = extname(filePath) === '.html';
-  const isPdf = extname(filePath).toLowerCase() === '.pdf';
+  const isFrameablePdf =
+    extname(filePath).toLowerCase() === '.pdf' &&
+    safePath.split(sep).join('/').startsWith(FRAMEABLE_PDF_PREFIX);
   const isHashedAsset = safePath.startsWith('/assets/');
   const encoding = negotiateEncoding(req.headers['accept-encoding'], extname(filePath));
   const cached = encoding ? cachedCompression(filePath, encoding, isHashedAsset) : null;
   res.writeHead(200, {
     ...LOCAL_SECURITY_HEADERS,
-    ...(isPdf
+    'Content-Security-Policy': appPolicy,
+    ...(isFrameablePdf
       ? {
           // The app shell remains DENY/'none'. Only a PDF response may be framed, and then only
           // by this same origin for Pdfreader's sandboxed iframe.
@@ -838,6 +871,7 @@ function serveStatic(req, res, requestTarget, distDir = DIST) {
 export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Date.now } = {}) {
   const limiter = createRateLimiter(now);
   const activeByRoute = new Map();
+  const appPolicy = appPolicyFor(distDir);
   const server = createServer((req, res) => {
     let requestTarget;
     try {
@@ -852,7 +886,7 @@ export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Dat
     );
     if (!route) {
       try {
-        serveStatic(req, res, requestTarget, distDir);
+        serveStatic(req, res, requestTarget, distDir, appPolicy);
       } catch {
         sendProblem(res, 500, 'The local server could not complete the request.');
       }
