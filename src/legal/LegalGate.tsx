@@ -108,7 +108,7 @@ export function LegalGate({
             </li>
             <li>
               <strong>A file you upload is sent, not just read locally.</strong> Prompts, documents,
-              code, images and context pass through this deployment to the providers you select —
+              code, images and context pass through this deployment to the providers you select,
               including a work document, anything confidential or personal, and anything belonging
               to someone else. Those providers handle it under their own terms, which may include
               keeping it or using it to train their models. The people who publish Mavéa do not
@@ -118,10 +118,10 @@ export function LegalGate({
             <li>
               <strong>A connected repository is read the same way.</strong> If you connect a code
               host, the files, docs, diffs, and issues a feature reads can be sent to your model
-              provider — including from a <strong>private</strong> repository, your employer's or a
+              provider, including from a <strong>private</strong> repository, your employer's or a
               client's, if the access you grant can reach one. Grant the narrowest scope that works,
-              and only connect what you have the right to share — under the law and under any
-              agreement with your employer or client.
+              and only connect what you have the right to share, under the law and any agreement
+              that applies to it.
             </li>
             <li>
               <strong>Your key is stored only in this browser and sent with each request.</strong>{' '}
@@ -131,10 +131,10 @@ export function LegalGate({
             </li>
             <li>
               <strong>All provider charges are your sole responsibility.</strong> Mavéa does not
-              charge you or pay providers on your behalf — use of your API keys and accounts is
+              charge you or pay providers on your behalf. Use of your API keys and accounts is
               billed to you under each provider's own pricing and terms. Set a spending cap in your
-              provider's dashboard before you start — it is the one limit that holds even if a key
-              is ever misused.
+              provider's dashboard before you start. It is the one limit that holds even if a key is
+              ever misused.
             </li>
             <li>
               <strong>
