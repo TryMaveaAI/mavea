@@ -109,6 +109,17 @@ describe('the Lens gesture', () => {
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
   });
 
+  it('shows each card in the strip as a real miniature, not an icon', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const thumbs = container.querySelectorAll('.lens-strip .filmstrip-thumb');
+    expect(thumbs).toHaveLength(2);
+    // The thumbnail mounts the genuine card component (.card), scaled down inside its frame.
+    for (const thumb of thumbs) {
+      expect(thumb.querySelector('.filmstrip-thumb-design .card')).not.toBeNull();
+    }
+  });
+
   it('walks the board with the arrow keys, clamped rather than wrapping', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));

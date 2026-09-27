@@ -54,9 +54,7 @@
        height: 500 phone on its side · 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
      1200, not 1280, is where a "compact" treatment must stop: a 1280px window resolves to ~1265
      CSS px once the scrollbar is counted, so `width <= 1280px` would hand the most common laptop
-     the phone layout. Rules meant for tablets end at 1200.
-     Two Live thresholds (920/921 and 1259/1260, voice.css ↔ focus.css) are measured layout
-     pairs pinned by tests and stay off the ladder, each carrying its disable comment. */
+     the phone layout. Rules meant for tablets end at 1200. */
   --content-max: 68ch; /* one reading column — prose measure, not a pixel width */
   --tap-min: 44px; /* the smallest hit box a thumb lands on reliably (audit:surfaces enforces it) */
 
@@ -241,14 +239,6 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
-  /* Focus keeps a filmstrip beside the answer, so its reading column is this much narrower than
-     the measure above. It lives here rather than on `.focus-stage` because the surfaces that must
-     line up with that column — the scrubber, the canvas header, the footer — are its SIBLINGS,
-     and a sibling cannot read a variable declared on the stage. One source, two readers. */
-  --focus-rail-w: 268px;
-  --focus-rail-gap: 28px;
-  /* …and the note trail Focus adds on the LEFT during a live turn, for the same reason. */
-  --focus-notes-w: 216px;
 
   /* --- motion --- */
   --m-instant: 80ms;

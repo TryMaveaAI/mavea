@@ -54,7 +54,7 @@ export function Quiz({
               className={'lr-qz-opt' + state + (i === picked ? ' is-picked' : '')}
               // Once answered, the correct option is the quiz's salient datum, so the gesture layer
               // circles it. Never BEFORE answering, though — a `data-mark="circle"` here would let
-              // Focus/tour spotlighting ring the right answer and give the test away.
+              // tour spotlighting ring the right answer and give the test away.
               data-mark={answered && o.correct ? 'circle' : undefined}
               onClick={() => {
                 if (answered) return;

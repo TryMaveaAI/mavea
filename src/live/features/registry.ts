@@ -368,15 +368,6 @@ export const FEATURES: Feature[] = [
     keywords: ['board', 'spatial', 'canvas', 'spread', 'arrange', 'wander', 'map'],
   },
   {
-    id: 'focus',
-    label: 'Focus mode',
-    blurb: 'One card at a time, with a filmstrip of the rest',
-    group: 'This session',
-    surface: 'live',
-    tourChapter: 'focus',
-    keywords: ['focus', 'one card', 'filmstrip', 'zoom'],
-  },
-  {
     id: 'ink',
     label: 'Highlight to ask',
     blurb: 'Mark any part of an answer to ask Mavéa about it',

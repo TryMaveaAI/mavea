@@ -16,14 +16,8 @@
   --ink-cool: #3566c9;
 }
 
-.live-voice .card-grid > div,
-.live-voice .focus-hero-card.focus-in {
-  /* The ink layer anchors to its card wrapper (grid cell or the ACTIVE focus hero). Scope this to
-     `.focus-in` only: it ties `.focus-hero-card.focus-out { position: absolute }` (same 0,2,0
-     specificity, defined earlier in focus.css) and, winning by cascade order, would force the
-     outgoing swap overlay back in-flow — the flex `.focus-hero` then splits the two cards 50/50,
-     so each new slide flashes at half width for the length of the crossfade. The outgoing card
-     never carries ink, so it has no need to be a positioning context. */
+.live-voice .card-grid > div {
+  /* The ink layer anchors to its card wrapper, the grid cell. */
   position: relative;
 }
 .ink-layer {

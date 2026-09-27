@@ -1,4 +1,4 @@
-// Which block takes the Focus-mode stage when Mavéa isn't actively narrating one.
+// Which block takes the desk's front when Mavéa isn't actively narrating one.
 import type { Block } from '../../data/conversation';
 
 /**

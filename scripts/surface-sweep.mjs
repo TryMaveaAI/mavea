@@ -3,8 +3,8 @@
 // table (src/routeTable.ts): a gate cannot see a surface it does not visit, and the failure mode of a
 // hand-kept list is a new route that nobody remembered to add a row for.
 //
-// Every row names the route prefix it covers. Live's takeovers (the board, the Lens, the Study,
-// Focus) are states of `#/live` reached by clicks and `?view=`, so several rows share one prefix;
+// Every row names the route prefix it covers. Live's takeovers (the board, the Lens, the
+// Study) are states of `#/live` reached by clicks and `?view=`, so several rows share one prefix;
 // the dev-only labs are rows too (`lab: true`) — swept in full mode, never in the per-push or fast
 // subsets, because they are QA harnesses rather than anywhere a reader lands.
 
@@ -81,18 +81,6 @@ export const SURFACES = [
     label: 'Answer · Study',
     route: '#/live',
     hash: '#/live?demo=dev&view=study',
-    ready: '.mavea-app',
-    click: ['Start demo'],
-    reading: '.canvas-scroll',
-    settleMs: 14_000,
-    owns: LIVE,
-  },
-  {
-    key: 'focus',
-    // Focus has no control of its own now — Present drives it, plus ⌘K.
-    label: 'Answer · Focus',
-    route: '#/live',
-    hash: '#/live?demo=dev&view=focus',
     ready: '.mavea-app',
     click: ['Start demo'],
     reading: '.canvas-scroll',

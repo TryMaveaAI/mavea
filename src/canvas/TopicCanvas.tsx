@@ -79,7 +79,6 @@ import { ActionProposal, type ActionProposalProps } from './ActionProposal';
 import { blockLabel } from './blockLabel';
 import { BlankFillContext, type BlankFillState } from './lib';
 import { useCardDrag } from './dnd/useCardDrag';
-import { FocusStage } from './focus/FocusStage';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
 import { StudyStage } from './study/StudyStage';
 import { deskObjects } from './study/scene';
@@ -337,21 +336,20 @@ interface Props {
    *  any other embedder are unaffected. */
   viewMode?: ViewMode;
   onViewMode?: (mode: ViewMode) => void;
-  /** Focus mode: tapping a filmstrip card asks the surface to narrate that block aloud. */
+  /** Study: tapping a card asks the surface to narrate that block aloud. */
   onNarrate?: (b: Block) => void;
-  /** Focus mode: the id of the block Mavéa is currently narrating, so the stage can show a quiet
+  /** Study: the id of the block Mavéa is currently narrating, so the stage can show a quiet
    *  "describing this" indicator on it. */
   narratingId?: string | null;
-  /** Live-only: output is muted. In Focus mode the stage reads calmly (no "Speaking" cue). */
+  /** Live-only: output is muted. The desk then reads calmly (no "Speaking" cue). */
   muted?: boolean;
   onToggleMute?: () => void;
   /** Live-only: reserve the margin-note gutter beside the grid (padding-right on `.card-grid`,
    *  where MarginNoteRail portals its notes). Reserved as padding so the responsive grid's
    *  content-box measurement re-budgets the card tiling on its own. Absent → classic grid. */
   noteGutter?: boolean;
-  /** Live-only: the muted walk's written asides so far, in walk order — the Focus stage shows
-   *  them as its clickable trail column ("Mavéa's notes"); the grid renders them via the
-   *  annotation layer's rail instead. Absent/empty → no column. */
+  /** Live-only: the muted walk's written asides so far, in walk order — the desk shows them
+   *  beside its cards; the grid renders them via the annotation layer's rail instead. */
   walkNotes?: readonly { spot: string; text: string }[];
   /** Study only: the line the voice is on, whether it is audible, the answer's lead, and
    *  whether the per-answer intro plays — see StudyStage's props. */
@@ -376,7 +374,7 @@ interface Props {
    *  they read as a set rather than as one control stranded at the far end of the row. */
   viewSlot?: ReactNode;
   /** Optional node rendered between the canvas header and the card grid. Used by Live to
-   *  place the voice scrubber below the Pen/Focus/Everything controls. */
+   *  place the voice scrubber below the Pen and the view doors. */
   belowHeaderSlot?: ReactNode;
   /** Live-only: enables the Lens — clicking a card opens it on its own stage. Called with the
    *  block when the stage opens and with null when it closes, so the surface can prepare that
@@ -389,8 +387,6 @@ interface Props {
   /** Live-only: this turn declared it corrects an earlier answer. Rendered as an honest
    *  was → now line, because a correction the reader cannot see is a silent rewrite. */
   corrects?: { what: string; was: string; now: string } | null;
-  /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
-  presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
    *  commits). Provided via context so a BlankSlot nested inside any block reaches it. Absent in
    *  the Demo → holes fall back to local state and no card-drag affordance renders. */
@@ -431,7 +427,6 @@ export function TopicCanvas({
   onLens,
   revision,
   corrects,
-  presenting,
   blankFill,
 }: Props) {
   // The "Open my CRM/tracker" action launches the real built app full-screen.
@@ -555,19 +550,14 @@ export function TopicCanvas({
   const previewBlock = data.blocks.find((b) => b.type === 'preview');
   const previewProps = previewBlock ? (previewBlock.props as PreviewProps) : null;
 
-  // Study mode needs one addressable object. Focus is offered only when the surface opts in AND
-  // there are at least two
-  // id-bearing cards to page through — a single card has nothing to focus, so it stays a plain
-  // Study. Neither mode disturbs the remembered preference if a particular answer cannot use it.
-  const addressableCount = displayBlocks.filter((b) => !!b.id).length;
+  // Study mode needs one addressable object, and never disturbs the remembered preference if a
+  // particular answer cannot use it.
   // The desk drops a world preview — it is a doorway to another surface, not an object to examine
   // (StudyStage does the same filter) — so counting one here offered a Study that then rendered
   // nothing at all: no cards, no message, no way back but the toggle.
   const deskCount = deskObjects(displayBlocks).filter((b) => !!b.id).length;
   const studyCapable = viewMode !== undefined && deskCount >= 1;
-  const focusCapable = viewMode !== undefined && addressableCount >= 2;
   const inStudy = studyCapable && viewMode === 'study';
-  const focused = focusCapable && viewMode === 'focus';
   // The spatial "Canvas" board is offered only when the answer is genuinely board-shaped. Gate on
   // data.blocks (not the responsive-trimmed set) so the offer is stable as the container resizes.
   const canvasCapable = viewMode !== undefined && boardCapable(data);
@@ -691,8 +681,8 @@ export function TopicCanvas({
     setZoomedBlock(b);
     setZoomLevel(ZOOM_DEFAULT);
   };
-  // Every card the Lens can step to, in reading order. Switching without leaving the stage is the
-  // half of Focus worth keeping: one object at a time, and the others still within reach.
+  // Every card the Lens can step to, in reading order: one object at a time, and the others still
+  // within reach without leaving the stage.
   const lensSteps = displayBlocks.filter((b) => b.id);
   const lensAt = zoomedBlock ? lensSteps.findIndex((b) => b.id === zoomedBlock.id) : -1;
   // Clamped, never wrapping: wrapping in a reading surface quietly loses your place.
@@ -932,7 +922,7 @@ export function TopicCanvas({
             </button>
           ) : (
             <>
-              {useSections && hasDeeper && !focused && !inStudy && (
+              {useSections && hasDeeper && !inStudy && (
                 <button
                   type="button"
                   className={'depth-reading-toggle' + (readingMode ? ' is-reading' : '')}
@@ -945,10 +935,9 @@ export function TopicCanvas({
                   {readingMode ? 'Collapse sections' : 'Expand sections'}
                 </button>
               )}
-              {/* The desk and the single-card stage are takeovers of THIS answer, so each carries
-                  its own door back. The board itself needs no control: it is where the canvas
+              {/* The desk is a takeover of THIS answer, so it carries its own door back. The board itself needs no control: it is where the canvas
                   rests, and reading one card closer is a gesture on the card. */}
-              {onViewMode && (inStudy || focused) && (
+              {onViewMode && inStudy && (
                 <button
                   type="button"
                   className="study-exit"
@@ -957,7 +946,7 @@ export function TopicCanvas({
                   <span aria-hidden>←</span> Back to the board
                 </button>
               )}
-              {studyCapable && onViewMode && !inStudy && !focused && (
+              {studyCapable && onViewMode && !inStudy && (
                 <button
                   type="button"
                   className="guide-me"
@@ -1041,21 +1030,6 @@ export function TopicCanvas({
           lead={lead}
           intro={studyIntro}
           streaming={studyStreaming}
-          answerEpoch={studyAnswerEpoch}
-        />
-      ) : familiesLoaded && focused ? (
-        <FocusStage
-          data={data}
-          blocks={displayBlocks}
-          spot={spot}
-          renderBlock={renderBlock}
-          onAskBlock={onAskBlock}
-          selectedBlockIds={selectedBlockIds}
-          onNarrate={onNarrate}
-          narratingId={narratingId}
-          muted={muted}
-          walkNotes={walkNotes}
-          presenting={presenting}
           answerEpoch={studyAnswerEpoch}
         />
       ) : (
@@ -1314,7 +1288,7 @@ export function TopicCanvas({
                 // Under the sheet, on the backdrop — not inside it. The stage is one card; the
                 // strip is the rest of the answer, and keeping it outside means it never scrolls
                 // away with the card and never competes with the notes for the sheet's height.
-                // Focus's own rail, reused whole: real miniatures, a roving tab stop and
+                // The filmstrip rail, reused whole: real miniatures, a roving tab stop and
                 // arrow-key walking all come with it.
                 <LensStrip
                   blocks={lensSteps}

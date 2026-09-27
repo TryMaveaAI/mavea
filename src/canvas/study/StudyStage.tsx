@@ -142,7 +142,7 @@ const MARK_ARROWS: Record<PenSlot, { line: string; head: string }> = {
 const GUIDE_GAP_MS = 2600;
 
 /** Whether the intro gate has played this session, surviving remounts. v3's rule: the overlay
- *  is a first-arrival beat — later answers (and Study → Focus → Study flips) skip the gate and
+ *  is a first-arrival beat — later answers (and Study → board → Study flips) skip the gate and
  *  simply reassemble in place. Session-local by design. */
 let introPlayed = false;
 

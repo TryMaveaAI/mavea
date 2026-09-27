@@ -63,7 +63,7 @@ export function blockLabel(b: Block): string {
   return headingOf(b) ?? TYPE_NAMES[b.type] ?? b.type;
 }
 
-// Short, punchy kind nouns for the Focus-mode filmstrip eyebrow (a single uppercase word reads
+// Short, punchy kind nouns for the filmstrip eyebrow (a single uppercase word reads
 // better there than a sentence-case name). Only the few that want a shorter or friendlier word
 // than TYPE_NAMES live here; everything else falls back to TYPE_NAMES, then the raw type.
 const KIND_NAMES: Record<string, string> = {
@@ -100,7 +100,7 @@ function bodyOf(b: Block, exclude: string | null): string | null {
 
 /**
  * A short spoken line about a block — its heading, plus a clause of its own body when it has one.
- * Used when the user taps a card in Focus mode so Mavéa actually talks about what they pointed at,
+ * Used when the user taps a card on the desk so Mavéa actually talks about what they pointed at,
  * the way a friend would. Pure; reads only the block's real props (never invents content).
  */
 export function blockNarration(b: Block): string {
@@ -111,8 +111,8 @@ export function blockNarration(b: Block): string {
 
 /**
  * Like {@link blockNarration}, but returns null when the block has no real heading AND no body — i.e.
- * when the only thing to say would be a bare type-name ("Chart", "Map"). Focus mode uses this so a
- * tapped content-less card takes the stage silently instead of having Mavéa blurt a lone, confusing
+ * when the only thing to say would be a bare type-name ("Chart", "Map"). A tap uses this so a
+ * content-less card takes the stage silently instead of having Mavéa blurt a lone, confusing
  * noun. A card with a real heading and/or body still gets a natural line. Pure; invents nothing.
  */
 export function speakableLine(b: Block): string | null {

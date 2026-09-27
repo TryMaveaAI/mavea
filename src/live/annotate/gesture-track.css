@@ -336,7 +336,7 @@
 }
 
 /* ── Pen toggle pill ─────────────────────────────────────────────────────────
-   Lives in the canvas header (next to Focus / Everything tabs); clicking it
+   Lives in the canvas header (next to Guide me); clicking it
    opens or closes the pen popover panel.
    ─────────────────────────────────────────────────────────────────────────── */
 /* Sized to the canvas header's button family (.canvas-open / .guide-me / .study-exit / .rev-pill),

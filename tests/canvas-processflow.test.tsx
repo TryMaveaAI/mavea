@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { ProcessFlow } from '../src/canvas/blocks/flows/ProcessFlow';
 
 // Regression coverage for the "HOW TO DECIDE" screenshot: every step's detail used to be gated
-// behind hover, so a static render (and every touch device, Focus mode, and Replay capture)
+// behind hover, so a static render (and every touch device, the Lens, and Replay capture)
 // showed bare cards with one lone description. Details must now render for ALL steps with no
 // interaction, and the steps must be a real ordered list.
 describe('ProcessFlow', () => {

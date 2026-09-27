@@ -751,84 +751,12 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     ).toBe(true);
   });
 
-  it('Focus caps its rails against the canvas column, not the window', () => {
-    // `100vh - 140px` measured a box roughly three times the one the sticky rail actually has
-    // (the real container was 253px tall), so neither list ever scrolled.
-    const css = read('src/canvas/focus/focus.css');
-    expect(css).toMatch(/--focus-col-h:\s*calc\(100dvh - 92px - var\(--dock-h, 76px\)\)/);
-    expect(css).not.toMatch(/max-height:\s*calc\(100vh/);
-    expect(/\.filmstrip-rail\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
-      true,
-    );
-    expect(/\.focus-notes-list\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
-      true,
-    );
-  });
-
   it('Deep zoom scrolls a level too tall for the window rather than stranding its last lines', () => {
     const css = read('src/live/deepzoom/deepzoom.css');
     expect(/\.dz-levels\s*\{[^}]*overflow:\s*hidden auto/.test(css)).toBe(true);
     // `align-self: center` would push the opening lines above the scrollport, out of reach.
     expect(css).not.toMatch(/align-self:\s*center;\n\s*transform-origin/);
     expect(/\.dz-level\s*\{[^}]*align-self:\s*safe center/.test(css)).toBe(true);
-  });
-
-  it('Focus keeps the answer page on ONE alignment axis, rail included', () => {
-    // The stage was the only primary answer surface missing from the shared axis, and its reading
-    // column is narrower than the measure because the filmstrip takes the right 268px + 28px gap.
-    // So the scrubber above the hero and the footer below it ran ~296px past the card — read as
-    // the card being misaligned, and with a note trail on the left it was inset on both sides.
-    const voice = read('src/live/voice/voice.css');
-    const tokens = read('src/styles/tokens-base.css');
-    const focus = read('src/canvas/focus/focus.css');
-    const live = read('src/live/LiveApp.tsx');
-
-    // The rail measure is shared, because a SIBLING cannot read a variable set on the stage.
-    expect(tokens).toMatch(/--focus-rail-w:\s*268px/);
-    expect(tokens).toMatch(/--focus-rail-gap:\s*28px/);
-    expect(focus).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) var\(--focus-rail-w, 268px\)/);
-
-    // The stage joins the axis rather than sprawling past the measure on a wide display.
-    expect(voice).toMatch(
-      /\.mavea-app\.live-voice \.focus-stage[\s\S]{0,120}?max-width:\s*var\(--live-content-max\)/,
-    );
-
-    // …and in Focus the siblings step back by exactly the rail column, off the SAME base the
-    // stage resolves against — `min(100%, measure)`, not the measure alone, or they sit 3px wide.
-    expect(voice).toMatch(/\[data-view='focus'\]/);
-    expect(voice).toMatch(
-      /min\(100%, var\(--live-content-max\)\) - var\(--focus-rail-w\) - var\(--focus-rail-gap\)/,
-    );
-    // Aligned to the STAGE's left edge, not the wrapper's. The stage is on the shared axis, so it
-    // centres itself once .topic-wrap is wider than the measure; a sibling pinned flush left then
-    // sits left of the card by half that spare space — a gap down one side and none down the
-    // other. Both rules therefore carry the stage's own centring term, and the notes rule adds the
-    // trail's column on top. Measured at 1920 and 1661, with the trail and without: 0px each side.
-    expect(voice).toMatch(/\(100% - min\(100%, var\(--live-content-max\)\)\) \/ 2/);
-    expect(voice).not.toMatch(/margin-inline:\s*0 auto/);
-    // Below 921px the rail stacks under the hero, so the correction must stop there.
-    expect(voice).toMatch(/@media \(width >= 921px\)/);
-    expect(focus).toMatch(/@media \(width <= 920px\)/);
-
-    // The view has to reach the DOM for any of it to apply — a class set in JS rather than a CSS
-    // `:has()`, the same reason FocusStage sets `has-notes` itself.
-    expect(live).toMatch(/className="topic-wrap" data-view=\{viewMode\}/);
-
-    // A live turn with a muted walk adds a THIRD column on the LEFT, so the reading column is
-    // inset as well as narrowed. walkNotes only reaches TopicCanvas when the reader is on a live
-    // turn, so no demo replay can render this shape — which is exactly how it went unhandled.
-    expect(tokens).toMatch(/--focus-notes-w:\s*216px/);
-    expect(voice).toMatch(/\[data-view='focus'\]:has\(\.focus-notes\)/);
-    expect(voice).toMatch(
-      /var\(--focus-notes-w\) - var\(--focus-rail-w\) - 2 \*\s*var\(--focus-rail-gap\)/,
-    );
-    // The notes rule carries the same centring term, plus the trail's own column on top.
-    expect(voice).toMatch(/var\(--focus-notes-w\) \+\s*var\(--focus-rail-gap\)/);
-    // …and it must stop where the trail itself does: below 1260px the column is display:none but
-    // the aside is still in the DOM, so correcting for it put every sibling 244px right of the
-    // hero. Measured at 1100px before this bound was added.
-    expect(voice).toMatch(/@media \(width >= 1260px\)/);
-    expect(focus).toMatch(/@media \(width <= 1259px\)/);
   });
 
   it('the Study note carries its own fit rather than being cropped by the frame', () => {
@@ -1002,7 +930,6 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
   /** Every host a `Block` is drawn into, and the module that puts it in the DOM. */
   const HOSTS: Record<string, string> = {
     'card-grid': 'src/canvas/TopicCanvas.tsx',
-    'focus-hero-card': 'src/canvas/focus/FocusStage.tsx',
     'cv-node-inner': 'src/canvas/focus/CanvasView.tsx',
     'study-card-face': 'src/canvas/study/StudyStage.tsx',
     'zoom-sheet-body': 'src/canvas/TopicCanvas.tsx',
@@ -1041,7 +968,7 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
   });
 
   it('keeps the chrome beside a card rescued — its action cluster, a section’s controls', () => {
-    // These sit in the grid cell or the Focus hero next to the card, not inside it, and on touch
+    // These sit in the grid cell next to the card, not inside it, and on touch
     // they are shown at rest; excluding the whole host would take the finger floor off every one.
     expect(
       rescued(
@@ -1051,11 +978,6 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
     expect(
       rescued(
         '<div class="card-grid"><section class="depth-section"><button>Go deeper</button></section></div>',
-      ),
-    ).toBe(true);
-    expect(
-      rescued(
-        '<div class="focus-hero-card"><div class="card reveal"></div><div class="block-actions"><button>Ask</button></div></div>',
       ),
     ).toBe(true);
   });

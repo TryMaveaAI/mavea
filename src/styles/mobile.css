@@ -182,7 +182,6 @@
   :where(button, [role='button'], summary, select, label[for]):not(
     :where(
         .card-grid,
-        .focus-hero-card,
         .cv-node-inner,
         .study-card-face,
         .zoom-sheet-body,
@@ -198,7 +197,6 @@
   :where(button, [role='button'], summary, select, label[for]):not(
       :where(
           .card-grid,
-          .focus-hero-card,
           .cv-node-inner,
           .study-card-face,
           .zoom-sheet-body,

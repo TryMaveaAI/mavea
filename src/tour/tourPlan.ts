@@ -288,20 +288,6 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'Click any card to look closer',
   },
   {
-    // Focus has no control on the board: the feature index is its door, so this is the demo behind
-    // that row, and it opens Focus exactly the way the row does.
-    id: 'focus',
-    title: 'One card at a time',
-    mode: 'explain',
-    coach:
-      'Focus mode sets one card at the center, with the rest waiting in a filmstrip. It lives in the feature index.',
-    action: { kind: 'showcase', featureId: 'focus' },
-    durationMs: 9000,
-    needsCanvas: true,
-    glyph: '🎯',
-    hook: 'One card at a time, from the feature index',
-  },
-  {
     id: 'think',
     title: 'Think out loud',
     mode: 'explain',

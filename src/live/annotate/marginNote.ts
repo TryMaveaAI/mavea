@@ -1,6 +1,6 @@
 // marginNote.ts — the pure text + layout math behind Mavéa's margin notes: the persistent
-// asides a muted walk writes beside the cards it visits (the gutter rail on the board,
-// the trail column in Focus). Rendering lives in MarginNoteRail / FocusStage; this module is
+// asides a muted walk writes beside the cards it visits (the gutter rail on the board).
+// Rendering lives in MarginNoteRail; this module is
 // DOM-free and unit-tested.
 //
 // A note is a margin scrawl, not a paragraph: the first sentence, cut on a word boundary. The
@@ -12,7 +12,7 @@
 const NOTE_MAX_CHARS = 140;
 
 /** One written aside, in walk order. `spot` is the card's data-spot-id — the tether target in
- *  the gutter rail, and the jump-to-card handle in the Focus trail. */
+ *  the gutter rail. */
 export interface WalkNote {
   spot: string;
   text: string;

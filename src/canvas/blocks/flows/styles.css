@@ -926,7 +926,7 @@
    connector line, each with an icon, a label, and an always-visible
    detail. Steps flex to fill the card width (no dead space); the row
    scrolls only when too many to fit. Details show without hover, so it
-   reads identically on touch, in Focus mode, and in a Replay capture.
+   reads identically on touch, in the Lens, and in a Replay capture.
    ============================================================ */
 .fl-pf {
   display: flex;

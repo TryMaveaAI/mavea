@@ -689,9 +689,8 @@ function SpotInk({
  *  VIEWPORT space against `.card-grid`'s own rect: `getBoundingClientRect()` already bakes in
  *  each card's own CSS scale (spotlit 1.03 / dimmed 0.984 / none), and `.card-grid` itself
  *  carries no transform, so plain subtraction lands correctly — no per-card scale correction
- *  needed the way the single-host `toLocal()` above requires. `.card-grid` doesn't exist in
- *  Focus mode (only the hero card is a real, measurable host there), so a connect mark simply
- *  draws nothing there — same "no reason, no ink" rule as everywhere else. */
+ *  needed the way the single-host `toLocal()` above requires. Where `.card-grid` doesn't exist
+ *  (the desk, the spatial canvas), a connect mark simply draws nothing — same "no reason, no ink" rule as everywhere else. */
 function measureConnect(
   spot: string,
   toSpot: string,

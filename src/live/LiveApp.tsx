@@ -535,20 +535,16 @@ function isContinuePhrase(text: string): boolean {
 }
 
 /**
- * A takeover asked for in the URL — `#/live?demo=dev&view=focus`. The Study and Focus are entered
- * by a control and left by one; Focus no longer has a control of its own outside Present, so this
- * is how the layout gates reach it (a gate cannot see a surface it does not visit) and how a
- * takeover is deep-linked while debugging. SHOWN, never saved: it must not become a preference.
+ * A takeover asked for in the URL — `#/live?demo=dev&view=study`. Takeovers are entered by a
+ * control and left by one, so this is how the layout gates reach them (a gate cannot see a surface
+ * it does not visit) and how a takeover is deep-linked while debugging. SHOWN, never saved: it
+ * must not become a preference.
  */
 function viewFromHash(): ViewMode | null {
   try {
     if (typeof window === 'undefined') return null;
     const asked = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('view');
-    return asked === 'board' ||
-      asked === 'study' ||
-      asked === 'focus' ||
-      asked === 'canvas' ||
-      asked === 'world'
+    return asked === 'board' || asked === 'study' || asked === 'canvas' || asked === 'world'
       ? asked
       : null;
   } catch {
@@ -803,7 +799,7 @@ export function LiveApp(): ReactElement {
     open: false,
     spec: null,
   });
-  // Present mode: chrome falls away and the Focus stage fills the room; the mic stays as it was.
+  // Present mode: chrome falls away and the deck fills the room; the mic stays as it was.
   // Frames born while presenting are room questions — the rail labels them honestly.
   const [presenting, setPresenting] = useState(false);
   const presentingRef = useRef(false);
@@ -1201,7 +1197,7 @@ export function LiveApp(): ReactElement {
   const ghosts = useGhosts(listening, heard, ghostCfg, turn.busy);
 
   // (The walkthrough driver is built further below, after all the real controls it drives —
-  //  Focus, Present, Share, the palette, the pen, mute — have been declared.)
+  //  the Lens, Present, export, the palette, the pen, mute — have been declared.)
 
   // Hand off from the tour into the REAL surface: reload to a clean #/live (dropping tour mode) so
   // the user's first genuine ask runs for real (or the BYOK setup wizard shows). Replay re-stashes
@@ -1576,10 +1572,6 @@ export function LiveApp(): ReactElement {
     return m;
   }, [turn.tour, turn.spec]);
 
-  // Focus mode: tapping a filmstrip card has Mavéa talk about it. The hook makes the tap respond
-  // instantly (quiet the running tour, move the real spotlight) but debounces the spoken line, so a
-  // rapid scrub speaks once — about the card you land on — instead of stammering. Tapping the card
-  // Mavéa is on hushes it. `speak` respects mute and arms the mic echo gate.
   // Cards Mavéa has gestured at this turn — the annotation layer draws (and keeps) a stroke
   // on each, so an annotated block stays a shareable artifact until the next answer. The
   // spoken line rides along so the stroke can land on the exact words the voice said.
@@ -1633,10 +1625,9 @@ export function LiveApp(): ReactElement {
     if (failed && !hadErrorRef.current) scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     hadErrorRef.current = failed;
   }, [turn.error]);
-  // Whether the Everything grid has room for the margin-note gutter. Below the threshold the
+  // Whether the board's grid has room for the margin-note gutter. Below the threshold the
   // cards would drop to a cramped column budget just to host notes, so the gutter stays off and
-  // the words keep flowing through the reading ribbon + the pen pill's log (and, in Focus, the
-  // trail column). Observes the canvas scroll container — the same box the grid tiles against.
+  // the words keep flowing through the reading ribbon + the pen pill's log. Observes the canvas scroll container — the same box the grid tiles against.
   const [noteRailFits, setNoteRailFits] = useState(false);
   useEffect(() => {
     const el = scrollRef.current;
@@ -1650,7 +1641,7 @@ export function LiveApp(): ReactElement {
     // mount-time run can find nothing to observe yet.
   }, [turn.turn]);
   // The written asides of this turn's muted walk, in walk order — the gutter rail renders them
-  // beside their cards in Everything, the Focus stage as its trail column. Honors the same
+  // beside their cards on the board, the desk beside its cards. Honors the same
   // eye-toggle as the strokes.
   const walkNotes = useMemo(
     () =>
@@ -2138,8 +2129,8 @@ export function LiveApp(): ReactElement {
   const studyAsidesAuthored = studyAsideBundle?.authoredIds;
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
-  // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
-  // Focus is theirs to pick. What mute changes is the FEEL (calm face, a centred reading caption),
+  // whichever view is up — the board keeps the whole living canvas (the point of the app), and the
+  // desk is theirs to open. What mute changes is the FEEL (calm face, a centred reading caption),
   // not the layout. See the muted centred caption + the calm-face mapping below.
   // A monotonically increasing generation for the annotation layer: bumped once per ACTUAL
   // viewMode transition (everything ↔ focus ↔ canvas), so a stale portal host gets re-located
@@ -2491,7 +2482,7 @@ export function LiveApp(): ReactElement {
       setInkArmed(false);
       clearInkRef.current();
       // The pen's drawn marks belong to the chapter that drew them — leaving them in `inked`
-      // past a chapter change (e.g. the 'mark' or 'focus' chapters, which reuse whatever canvas
+      // past a chapter change (e.g. the 'mark' chapter, which reuses whatever canvas
       // is already up rather than requesting a fresh one) lets a stale mark try to re-resolve
       // its host against a since-changed card and redraw in the wrong place.
       setInked([]);
@@ -3191,7 +3182,7 @@ export function LiveApp(): ReactElement {
   // delay lets the .spotlit class + layout settle before we measure (same as the demo).
   // The card can also legitimately not exist yet — its family chunk still mounting on a slow
   // machine — so a miss retries on the same cadence (bounded) instead of silently skipping
-  // the glide and leaving the narrated card off-screen. In Focus/Canvas view the grid isn't
+  // the glide and leaving the narrated card off-screen. In the Study or the spatial canvas the grid isn't
   // the scroller, so the retries just run out quietly — same no-op as before, now time-capped.
   useEffect(() => {
     const spot = turn.spot;
@@ -3859,18 +3850,10 @@ export function LiveApp(): ReactElement {
     };
   }, [onFiles]);
 
-  // Present mode: hold the Focus stage while it lasts (the prior view returns on exit),
-  // go fullscreen best-effort, and let Esc end the show. The mic stays however it was.
-  const viewModeRef = useRef(viewMode);
-  viewModeRef.current = viewMode;
-  // Entering and leaving the show. The view to hand back is captured ONCE here rather than read at
-  // cleanup, because by then the presented view is the current one — and it is captured in this
-  // effect rather than the surface effect below so that switching surfaces mid-show cannot be
-  // mistaken for an exit (which would drop fullscreen and remember the wrong view).
-  const restoreViewRef = useRef<ViewMode>('board');
+  // Present mode: go fullscreen best-effort, and let Esc end the show. The deck covers the canvas,
+  // so the view underneath is left exactly as it was. The mic stays however it was.
   useEffect(() => {
     if (!presenting) return;
-    restoreViewRef.current = viewModeRef.current;
     void document.documentElement.requestFullscreen?.().catch(() => {});
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setPresenting(false);
@@ -3878,16 +3861,9 @@ export function LiveApp(): ReactElement {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      setViewMode(restoreViewRef.current);
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
-  }, [presenting, setViewMode]);
-
-  // The deck covers the canvas, so it parks the answer in Focus underneath while it runs.
-  useEffect(() => {
-    if (!presenting) return;
-    setViewMode('focus');
-  }, [presenting, setViewMode]);
+  }, [presenting]);
 
   // Frames born while presenting are questions from the room — remember which, so the
   // rail can say so.
@@ -4843,7 +4819,7 @@ export function LiveApp(): ReactElement {
   }, [watchThinking, justListen, sttOk, value, voice, turn.spec, turn.busy]);
 
   // ── The living answer, as a VIEW ────────────────────────────────────────────────────────────
-  // 'world' is a view of the current answer, peer to Focus and the spatial Canvas and driven by the
+  // 'world' is a view of the current answer, peer to the Study and the spatial Canvas and driven by the
   // same view-mode store — so the header switcher, the palette and the world card all arrive
   // through one door. The card lives in the block registry, which knows nothing about live/, so its
   // request comes through the openWorld module registry rather than a prop chain.
@@ -5065,12 +5041,6 @@ export function LiveApp(): ReactElement {
       available: !!turn.spec,
       reason: 'Once there is an answer',
       run: () => setViewMode('study'),
-    },
-    focus: {
-      available: !!turn.spec,
-      reason: 'Once there is an answer',
-      // Actually enter focus mode — a palette entry should DO the thing, not narrate where it is.
-      run: () => setViewMode('focus'),
     },
     board: {
       available: !!turn.spec,
@@ -6457,12 +6427,7 @@ export function LiveApp(): ReactElement {
                 : undefined
             }
           >
-            {/* The view is published onto the DOM because the answer page's alignment axis
-                depends on it: Focus keeps a filmstrip beside the reading column, so the surfaces
-                that must line up with that column are narrower there than in any other view. An
-                attribute set here rather than a CSS `:has()` for the same reason FocusStage sets
-                `has-notes` in JS — the layout can then never split from the render condition. */}
-            <div className="topic-wrap" data-view={viewMode}>
+            <div className="topic-wrap">
               {/* Lives INSIDE the scrolled content (not the fixed stage) so strokes and
                   confirm-highlights scroll along with the text they were drawn over instead of
                   staying pinned to the viewport while the answer moves underneath. Pointer events
@@ -6610,11 +6575,10 @@ export function LiveApp(): ReactElement {
                   corrects={
                     (viewingLive ? headFrame : turn.frames[turn.viewIndex ?? -1])?.corrects ?? null
                   }
-                  presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and
                   // they hold for the whole turn. Mute flips after that change sound, never
-                  // layout (mid-walk mute keeps its notes in the pen log + Focus trail instead).
+                  // layout (mid-walk mute keeps its notes in the pen log instead).
                   // Live head only — a scrubbed past frame shows no rail.
                   noteGutter={
                     viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn

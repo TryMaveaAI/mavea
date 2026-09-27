@@ -65,7 +65,7 @@ Reply with ONE JSON object: {"notes":[…]}, one entry per id above.`;
 }
 
 const inFlight = new Map<string, Promise<Map<string, BlockStudy> | null>>();
-/** Who is watching each in-flight call. A second opener (a remount, a Study→Focus→Study flip)
+/** Who is watching each in-flight call. A second opener (a remount, a Study→board→Study flip)
  *  joins the call already running rather than starting a second one, and still sees the notes
  *  arrive as they land — so dedup never costs a subscriber its progress. */
 const watchers = new Map<string, Set<(notes: Map<string, BlockStudy>) => void>>();

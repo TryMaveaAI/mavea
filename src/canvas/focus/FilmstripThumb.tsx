@@ -1,4 +1,4 @@
-// A real, miniature render of a block for the Focus-mode filmstrip — not an icon. We render the
+// A real, miniature render of a block for the Lens's filmstrip — not an icon. We render the
 // actual component at a comfortable design width and let CSS scale the whole thing down into the
 // rail box (a transform, exactly like the Story stage's Camera). Because it's the genuine card,
 // the thumbnail always matches what taking the stage will show.

@@ -145,11 +145,8 @@
      The screen lays cards on a 12-col grid (`.card-grid` with `.col-*` spans). On an A4
      page those spans produce cramped, ragged columns, so collapse the whole thing to a
      single stacked column: each card becomes a full-width section that reads top-to-bottom
-     like a report. The focus-mode variants (`.focus-stage`, hero + filmstrip rail) get the
-     same treatment so an export taken mid-focus still flows as a document. */
-  .card-grid,
-  .focus-stage,
-  .focus-main {
+     like a report. */
+  .card-grid {
     display: block !important;
     height: auto !important;
     min-height: 0 !important;
@@ -206,9 +203,7 @@
 
   /* Grid column wrappers → full-width stacked sections (the grid is `display:block` above, so
      the spans no longer apply; force width to fill the page column and add even rhythm). */
-  .card-grid > [class*='col-'],
-  .focus-main > *,
-  .focus-stage > * {
+  .card-grid > [class*='col-'] {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -259,7 +254,7 @@
     color: #111 !important;
   }
 
-  /* The header's action cluster (Focus/Everything view switch, the Pen toggle, any header
+  /* The header's action cluster (Guide me, the Pen toggle, any header
      buttons) is live-only chrome — a frozen PDF can't use it, so drop it while keeping the
      question title/subtitle. */
   .canvas-header-actions {

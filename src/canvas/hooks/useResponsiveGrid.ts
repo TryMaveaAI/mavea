@@ -103,7 +103,7 @@ export function useResponsiveGrid(
   // budget a frame later — a visible reflow that read as "it loaded wrong, then fixed itself".
   //
   // The observer must follow the ELEMENT, not the ref object: the grid div unmounts while an
-  // alternate surface (Focus, the canvas board) is up and remounts as a NEW node afterwards. A
+  // alternate surface (the Study, the spatial canvas) is up and remounts as a NEW node afterwards. A
   // deps list keyed on the stable ref can't see that swap — it left the observer watching the
   // detached node while the column budget silently froze. So: no deps, re-check the attachment
   // after every commit (a single identity compare when nothing changed), and move the observer

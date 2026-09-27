@@ -608,7 +608,7 @@ describe('cross-card "connect" gesture', () => {
     return { grid, a, b };
   }
 
-  it('resolves nothing without a .card-grid ancestor (e.g. Focus mode)', () => {
+  it('resolves nothing without a .card-grid ancestor (e.g. the desk)', () => {
     const a = document.createElement('div');
     a.setAttribute('data-spot-id', 'a');
     a.textContent = 'Seattle';

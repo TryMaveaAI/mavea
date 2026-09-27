@@ -1,4 +1,4 @@
-// The brain behind a Focus-mode filmstrip tap. Every tap responds INSTANTLY (hush + take the wheel +
+// The brain behind a tap on a card on the desk. Every tap responds INSTANTLY (hush + take the wheel +
 // move the spotlight), but the spoken line is DEBOUNCED — so brushing past five cards speaks ONE
 // line, about the card you land on, instead of a stammer of cut-off half-lines. (The old path fired
 // cancelSpeech()+speak() on every tap; a rapid scrub became a burst of tight cancel→speak.) Tapping
@@ -50,7 +50,7 @@ export interface TapNarration {
 
 export function useTapNarration(ops: TapNarrationOps, resetKey: unknown): TapNarration {
   // Read the latest ops at call time so `narrate` stays referentially stable (no dep thrash on the
-  // FocusStage tap handler) and never closes over stale surface state.
+  // stage's tap handler) and never closes over stale surface state.
   const opsRef = useRef(ops);
   opsRef.current = ops;
 
@@ -79,7 +79,7 @@ export function useTapNarration(ops: TapNarrationOps, resetKey: unknown): TapNar
 
       // Instant on every tap: take the wheel and move the real spotlight. Debouncing these would let
       // the Live auto-tour speak a beat line in the gap (double-speak); the hero/pin already updated
-      // synchronously in FocusStage, so visuals never wait on the settle.
+      // synchronously on the stage, so visuals never wait on the settle.
       o.takeWheel();
       o.moveSpot(block);
 
@@ -98,7 +98,7 @@ export function useTapNarration(ops: TapNarrationOps, resetKey: unknown): TapNar
 
       const line = id ? o.lineFor(block) : null;
       if (!line || !o.canSpeak()) {
-        // Content-less card (or muted): it still took the stage in FocusStage — stay silent rather
+        // Content-less card (or muted): it still took the stage — stay silent rather
         // than blurt a lone noun, and leave no orphan timer behind.
         setNarrating(null);
         return;

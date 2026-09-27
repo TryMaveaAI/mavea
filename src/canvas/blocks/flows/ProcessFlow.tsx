@@ -7,7 +7,7 @@ type Props = ProcessFlowProps & { delay?: number };
 // A horizontal stepper: numbered nodes threaded on a connector line, each with an icon, a
 // label, and its detail. The steps flex to fill the card's width (no dead space) and the row
 // scrolls only when too many to fit. Details render WITHOUT hover, so the flow reads the same
-// on a phone, in Focus mode, and in a Replay capture as it does under a desktop cursor — hover
+// on a phone, in the Lens, and in a Replay capture as it does under a desktop cursor — hover
 // is a lift-and-warm flourish, never the gate for content. Stateless on purpose (the old hover
 // state revealed one card's detail at a time and left the rest looking empty).
 export function ProcessFlow({

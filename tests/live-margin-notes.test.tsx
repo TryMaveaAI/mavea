@@ -10,8 +10,6 @@ import { join } from 'node:path';
 import { render, act } from '@testing-library/react';
 import { condenseForNote, layoutNotes } from '../src/live/annotate/marginNote';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
-import { FocusStage } from '../src/canvas/focus/FocusStage';
-import type { Block, ConversationSpec } from '../src/data/conversation';
 
 function domRect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -250,56 +248,5 @@ describe('margin-note gutter — the belt below the fit threshold releases both 
       )?.[1] ?? '';
     expect(belt).toMatch(/padding-left:\s*0/);
     expect(belt).toMatch(/padding-right:\s*0/);
-  });
-});
-
-describe("FocusStage — Mavéa's notes trail column", () => {
-  const spec = { id: 't1', title: 'T', sub: '', blocks: [] } as unknown as ConversationSpec;
-  const blocks = [
-    { id: 'a', type: 'insight', props: { title: 'A' } },
-    { id: 'b', type: 'insight', props: { title: 'B' } },
-  ] as unknown as Block[];
-  const renderBlock = (b: Block): React.ReactNode => <div>{(b as { id?: string }).id}</div>;
-
-  it('renders the trail newest-first with the staged card lit, and pins on tap', () => {
-    const onNarrate = vi.fn();
-    const { container } = render(
-      <FocusStage
-        data={spec}
-        blocks={blocks}
-        spot="b"
-        renderBlock={renderBlock}
-        onNarrate={onNarrate}
-        walkNotes={[
-          { spot: 'a', text: 'First note.' },
-          { spot: 'b', text: 'Second note.' },
-        ]}
-      />,
-    );
-    const notes = Array.from(container.querySelectorAll<HTMLButtonElement>('.focus-note'));
-    expect(notes.map((n) => n.textContent)).toEqual(['Second note.', 'First note.']);
-    expect(notes[0].classList.contains('active')).toBe(true);
-    act(() => notes[1].click());
-    expect(onNarrate).toHaveBeenCalledTimes(1);
-    expect((onNarrate.mock.calls[0][0] as { id?: string }).id).toBe('a');
-  });
-
-  it('shows no column without notes, and none while presenting', () => {
-    const empty = render(
-      <FocusStage data={spec} blocks={blocks} spot="a" renderBlock={renderBlock} />,
-    );
-    expect(empty.container.querySelector('.focus-notes')).toBeNull();
-
-    const presenting = render(
-      <FocusStage
-        data={spec}
-        blocks={blocks}
-        spot="a"
-        renderBlock={renderBlock}
-        presenting
-        walkNotes={[{ spot: 'a', text: 'hidden while presenting' }]}
-      />,
-    );
-    expect(presenting.container.querySelector('.focus-notes')).toBeNull();
   });
 });

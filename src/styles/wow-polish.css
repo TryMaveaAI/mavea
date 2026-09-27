@@ -393,7 +393,6 @@
 }
 :where(.askable, .addable, .flashcardable, .lensable):hover > .block-actions,
 :where(.askable, .addable, .flashcardable, .lensable):focus-within > .block-actions,
-.focus-hero-card:hover .block-actions,
 .block-actions:has(.is-flashed) {
   opacity: 1;
 }
@@ -481,8 +480,7 @@
 /* Brighten the WHOLE cluster on a card hover/focus, and keep each button keyboard-usable — the
    single rule that makes all the pills light up together. */
 :where(.askable, .addable, .flashcardable, .lensable):hover .block-action-pill,
-:where(.askable, .addable, .flashcardable, .lensable) .block-action-pill:focus-visible,
-.focus-hero-card:hover .block-action-pill {
+:where(.askable, .addable, .flashcardable, .lensable) .block-action-pill:focus-visible {
   border-color: var(--presence);
   color: var(--text-primary);
 }
