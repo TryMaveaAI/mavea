@@ -82,6 +82,29 @@ function warmHand(): void {
   }
 }
 
+/** Two placements a reader could not tell apart: same card and container, the target within a
+ *  pixel, the same gesture and caption, and the step chip (if any) within a pixel too. */
+function sameSpot(a: Placed, b: Placed): boolean {
+  const near = (x: number, y: number): boolean => Math.abs(x - y) <= 1;
+  const rect = (r: Rect, q: Rect): boolean =>
+    near(r.left, q.left) &&
+    near(r.top, q.top) &&
+    near(r.width, q.width) &&
+    near(r.height, q.height);
+  const chip =
+    a.chip && b.chip ? near(a.chip.x, b.chip.x) && near(a.chip.y, b.chip.y) : !a.chip && !b.chip;
+  return (
+    a.host === b.host &&
+    a.container === b.container &&
+    a.stroke.kind === b.stroke.kind &&
+    a.stroke.label?.text === b.stroke.label?.text &&
+    near(a.view.w, b.view.w) &&
+    near(a.view.h, b.view.h) &&
+    rect(a.anchor, b.anchor) &&
+    chip
+  );
+}
+
 /** The step chip's radius — mirrored by `.ink-step-dot`'s r in SpotInk's render below. */
 const CHIP_R = 9;
 
@@ -526,7 +549,10 @@ function SpotInk({
       // read must count as movement, so the dodge gets its own confirming read before settling.
       (p) => p.stroke.d + (p.chip ? `|${Math.round(p.chip.x)},${Math.round(p.chip.y)}` : ''),
       (p) => p.host,
-      setPlaced,
+      // A re-read that lands within a pixel of the drawn mark keeps the drawn one: sub-pixel
+      // reflow (a transition ending, a font's metrics settling) would otherwise redraw a finished
+      // stroke a hair away from itself.
+      (p) => setPlaced((prev) => (prev && sameSpot(prev, p) ? prev : p)),
       () => setPlaced(null),
     );
     // `residue` flips exactly when the walk's live spot arrives on (or leaves) this block —

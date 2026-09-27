@@ -492,6 +492,46 @@ describe('AnnotationLayer', () => {
     }
   });
 
+  it('keeps a drawn mark through a sub-pixel re-read, and follows a real move', () => {
+    let y = 30;
+    const restore = mockRangeRects({ 'Order Book': domRect(20, 30, 60, 16) });
+    const range = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function (this: Range) {
+      const r = range.call(this);
+      return r.width ? domRect(20, y, 60, 16) : r;
+    };
+    try {
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-spot-id', 'hair');
+      const label = document.createElement('span');
+      label.textContent = 'Order Book';
+      wrap.appendChild(label);
+      document.body.appendChild(wrap);
+      wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+      render(
+        <AnnotationLayer
+          spots={[{ spot: 'hair', mark: { kind: 'underline', at: 'Order Book' } }]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(300));
+      const path = (): string | null | undefined =>
+        wrap.querySelector('.ink-stroke')?.getAttribute('d');
+      const drawn = path();
+      expect(drawn).toBeTruthy();
+      y = 30.6; // a transition ending nudges the text by a fraction of a pixel
+      act(() => window.dispatchEvent(new Event('resize')));
+      act(() => vi.advanceTimersByTime(400));
+      expect(path()).toBe(drawn);
+      y = 60; // the row really moved
+      act(() => window.dispatchEvent(new Event('resize')));
+      act(() => vi.advanceTimersByTime(400));
+      expect(path()).not.toBe(drawn);
+    } finally {
+      Range.prototype.getBoundingClientRect = range;
+      restore();
+    }
+  });
+
   it('a gesture needs a reason: without a model mark or generous mode, no ink', () => {
     const wrap = host('quiet', 'circle');
     render(<AnnotationLayer spots={[{ spot: 'quiet' }]} />);
