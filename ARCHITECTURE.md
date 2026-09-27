@@ -67,7 +67,7 @@ flowchart LR
 Live is also the stage for two key-free scripted experiences. Both replay REAL model output on
 the real surface — same chrome, same reveal walks, no provider call at play time:
 
-- **The first-run walkthrough** (`tour/`): 10 core chapters (41 in all, counting the deep-linkable
+- **The first-run walkthrough** (`tour/`): 11 core chapters (41 in all, counting the deep-linkable
   extras), each teaching one feature by driving real controls. `useTourDriver` plays chapters
   through `TourOps` — a bag of closures LiveApp passes in (type into the composer, show a frame, open Export, drag the bend dial, …).
 - **The demo replays** (`demo/`): a cast of recorded persona sessions (`demo/cast.ts`), each a
@@ -225,8 +225,8 @@ for the whole session merely to answer a first turn.
 
 ### Designed PDF export
 
-The **Export** action (Live's Share menu and the demo topbar) opens a modal that renders an answer
-as a print-grade US-Letter PDF in one of **10 templates** (Editorial, Swiss, Terminal, Executive,
+The **Export** action (Live's Share menu and the ⌘K palette) opens a modal that renders an answer
+as a print-grade Letter or A4 PDF in one of **10 templates** (Editorial, Swiss, Terminal, Executive,
 Luxury, Medical, School, Financial, Research, Legal). It lives in `src/export/` (a sibling of
 `clip/`) and is a pipeline of pure-ish stages with one shared renderer:
 
@@ -418,12 +418,12 @@ A few ideas make it feel instant, stay safe, and stay cheap:
   harder asks keep a reasoning pass. The stable system prefix is sent first and routed with one
   cache identity: Anthropic and OpenRouter mark their breakpoints, GPT-5.6+ uses OpenAI's explicit
   breakpoint, and Gemini, Grok, and older OpenAI models retain their compatible prefix-cache paths.
-- **Grounding is the user's choice.** A `SearchMode` (off / free Wikipedia retrieve-then-read /
-  real-time provider grounding) gated by a freshness check decides whether a turn searches at all.
-  When an adapter reports `nativeWebSearch`, `generateLive` lets it ground itself (Gemini's
-  `google_search` + `url_context`, which on Gemini 3 coexist with the constrained schema) and reads
-  the real source URLs back from `groundingMetadata`; otherwise the app does retrieve-then-read. Most
-  turns search nothing, so they cost nothing extra.
+- **Grounding is the user's choice.** A `SearchMode` (off / real-time provider grounding) gated by
+  a freshness check decides whether a turn searches at all. Chat grounding is native-search-only:
+  when an adapter reports `nativeWebSearch` (all four direct providers; on OpenRouter it depends on
+  the model), `generateLive` lets it ground itself — Gemini's `google_search` + `url_context`, for
+  example, which on Gemini 3 coexist with the constrained schema — and reads the real source URLs
+  back; a model without it answers ungrounded. Most turns search nothing, so they cost nothing extra.
 - **Every turn is replayable.** `useLiveTurn` captures a `TurnFrame` per turn (the rendered canvas,
   the spoken line, the tour). `ReplayOverlay` + `live/replay.ts` turn those frames back into a played
   walkthrough — one answer, from the start, or from a point onward — reusing the same `liveTourBeats`
@@ -641,20 +641,21 @@ one product feature.
 **One spec, five representations.** `canvas/spatial/morph/` is a general spatial renderer that
 imports nothing from `live/`. A node is a _position_, not a component: every node renders once and
 paints all three of its faces, and a pure `LayoutFn` decides where each sits and which face is
-opaque — so changing view moves the same DOM element instead of swapping component trees. The four
+opaque — so changing view moves the same DOM element instead of swapping component trees. The five
 each answer a question none of the others does:
 
 | View             | The question it answers                        | Placed when                    |
 | ---------------- | ---------------------------------------------- | ------------------------------ |
 | **Graph**        | what led to what                               | always                         |
 | **Contribution** | how much each cause was measured to explain    | a link carries a real weight   |
+| **Spheres**      | which kinds of force, and where they hand off  | causes belong to a sphere      |
 | **Over time**    | when each cause happened                       | the cause has a date or a span |
 | **As a chart**   | what each cause measured, over its own history | the cause carries a series     |
 
 Two rules keep that honest. A layout never _drops_ a node it cannot place truthfully — it parks it
 in a labelled "held aside" band, so the reader sees what was withheld and why. And a view is only
 **offered** when it can place at least two causes and a third of them: a chip is a promise there is
-something to see, and one dated cause out of nine is a shelf with a heading. Adding a fifth
+something to see, and one dated cause out of nine is a shelf with a heading. Adding a sixth
 representation means naming the question it answers and checking no existing view answers it —
 three were built (rings by causal distance, a top-to-bottom reading order, an adjacency matrix) and
 all three were cut for being the graph's answer rearranged.
@@ -799,7 +800,7 @@ interface LiveConfigV2 {
   keys: Partial<Record<ProviderId, string>>; // in-memory API key per hosted provider
   rememberKey: boolean; // false → keys never touch disk; true → separate encrypted blob
   webSearch: boolean; // legacy flag; searchMode is the live control
-  searchMode: 'off' | 'free' | 'realtime';
+  searchMode: 'off' | 'realtime'; // a stored legacy 'free' reads as 'off'
   quality: 'fast' | 'balanced' | 'thorough';
   searchProvider: 'wikipedia' | 'brave' | 'tavily';
   searchKeys: Partial<Record<'brave' | 'tavily', string>>;
@@ -920,8 +921,9 @@ Mavéa is local-first, but some data does cross the network when the user intera
   provider. The provider's own privacy policy governs retention.
 - **Memory facts** — when memory is enabled, the stored facts are injected into the prompt
   as a compact prepend block before the question is sent to the provider.
-- **Search queries** — when search mode is `'free'` or `'realtime'`, the question (or a
-  derived query) is sent to the selected search provider (Wikipedia, Brave, or Tavily).
+- **Search queries** — when search mode is `'realtime'`, the model provider runs its own web
+  search for a turn that needs one. A dashboard's data refresh and Prism's live-source check send a
+  derived query to the selected search provider (Wikipedia, Brave, or Tavily).
 - **Attachments** — file bytes/text selected for a Live turn are included in that provider request;
   opening remote images, maps, or links also contacts their allow-listed origin.
 - **Voice** — the configured Whisper and Kokoro endpoints receive mic audio or TTS text through the

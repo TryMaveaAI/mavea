@@ -78,17 +78,18 @@ blocks than the same question on the unsuffixed route; the model picker says so 
 
 ## The voice (optional)
 
-Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural local TTS —
-the one service that runs in Docker. You don't normally start it yourself: `pnpm dev` brings the
-container up alongside Vite, and `pnpm preview` — the same server `npx @mavea/mavea` runs — does the
-same when serving the production build. Both proxy `/tts` to `localhost:8880` (override with
-`KOKORO_URL`).
+Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural local TTS, and
+hears through whisper.cpp — the two services in `docker-compose.yml`. You don't normally start them
+yourself: `pnpm dev` brings the containers up alongside Vite, and `pnpm preview` — the same server
+`npx @mavea/mavea` runs — does the same when serving the production build. Both proxy `/tts` to
+`localhost:8880` (override with `KOKORO_URL`) and `/stt` to `localhost:8100` (override with
+`WHISPER_URL`).
 
 Starting it by hand is only needed for hand-rolled hosting of `dist/`, where nothing proxies
 `/tts` for you (your edge has to do that — see the production note below):
 
 ```sh
-docker compose up -d      # Kokoro TTS on :8880
+docker compose up -d      # Kokoro TTS on :8880 + whisper.cpp STT on :8100
 ```
 
 Kokoro downloads its voice model on first start, so the first few lines may be silent until it's
@@ -97,7 +98,7 @@ The in-conversation **Mavéa's voice** toggle turns output speech off without ch
 input; a paced answer then reveals in full immediately with captions, notes, and Pen marks.
 
 **Speech-to-text** uses the bundled whisper.cpp container on `localhost:8100` by default. `pnpm
-dev` starts it with Kokoro; if it is unavailable, microphone transcription stays unavailable and
+dev` and `pnpm preview` start it with Kokoro; if it is unavailable, microphone transcription stays unavailable and
 typing continues to work. Mavéa never falls back to a browser-vendor speech-recognition service.
 If a deployment overrides `WHISPER_URL`, microphone audio is sent through the same-origin proxy to
 that configured endpoint, which must be covered by the operator's security and privacy notice.
@@ -129,7 +130,7 @@ flowchart TD
     end
     subgraph optional ["Optional local services"]
         KO["Kokoro TTS :8880\n(started by dev/preview)"]
-        WH["Whisper STT :8100\n(bring your own)"]
+        WH["Whisper STT :8100\n(started by dev/preview)"]
     end
     subgraph hosted ["Hosted providers (BYOK)"]
         AN["Anthropic · OpenAI\nGemini · Grok · OpenRouter"]
@@ -161,8 +162,9 @@ Check the key in **Live → Settings** (the readiness strip re-probes on every c
 network. A 401 means the key is invalid; a 404 usually means the model id is wrong.
 
 **Mic does nothing**
-Voice input needs a browser with the Web Speech API (Chrome or Edge) and mic permission for
-the site. The composer surfaces the exact cause inline when it can.
+Voice input needs the local whisper.cpp container (`curl http://localhost:8100/` should answer) and
+mic permission for the site. It works in any supported browser — Mavéa never uses the browser's own
+speech recognition. The composer surfaces the exact cause inline when it can.
 
 **Port conflicts**
 
