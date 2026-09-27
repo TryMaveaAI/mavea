@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { subscribeProviderWait, waitReporter, type ProviderWait } from '../src/live/providers/wait';
-import { ProviderWaitStatus } from '../src/ProviderWaitStatus';
+import { ANNOUNCE_DELAY_MS, ProviderWaitStatus } from '../src/ProviderWaitStatus';
 import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig } from '../src/types/mavea';
 
@@ -74,22 +74,24 @@ describe('the shared provider-wait channel', () => {
 });
 
 describe('ProviderWaitStatus', () => {
-  it('counts the wait down politely, clears it, and stops listening on unmount', () => {
+  const pillOf = (root: HTMLElement): HTMLElement => root.querySelector('.provider-wait')!;
+
+  it('counts the wait down on screen, clears it, and stops listening on unmount', () => {
     vi.useFakeTimers();
     const report = waitReporter();
-    const { unmount } = render(<ProviderWaitStatus />);
-    const region = screen.getByRole('status');
-    expect(region.textContent).toBe('');
+    const { container, unmount } = render(<ProviderWaitStatus />);
+    const pill = pillOf(container);
+    expect(pill.textContent).toBe('');
 
     act(() => report(3_000, 'rate-limit'));
-    expect(region.textContent).toContain('retrying in 3s');
+    expect(pill.textContent).toContain('retrying in 3s');
     act(() => {
       vi.advanceTimersByTime(1_000);
     });
-    expect(region.textContent).toContain('retrying in 2s');
+    expect(pill.textContent).toContain('retrying in 2s');
 
     act(() => report(null));
-    expect(region.textContent).toBe('');
+    expect(pill.textContent).toBe('');
 
     unmount();
     // A wait published after unmount reaches no component (no state update on a dead tree).
@@ -100,5 +102,92 @@ describe('ProviderWaitStatus', () => {
     report(null);
     stop();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('says the wait once to a screen reader, rather than reading the countdown aloud', () => {
+    vi.useFakeTimers();
+    const report = waitReporter();
+    const { container, unmount } = render(<ProviderWaitStatus />);
+    // Idle: no live region at all, and the visible pill stays out of the accessibility tree.
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(pillOf(container).getAttribute('aria-hidden')).toBe('true');
+
+    act(() => report(5_000, 'rate-limit'));
+    const region = screen.getByRole('status');
+    // The region exists before it speaks, so the words arrive as a change it can announce.
+    expect(region.textContent).toBe('');
+    act(() => {
+      vi.advanceTimersByTime(ANNOUNCE_DELAY_MS);
+    });
+    expect(region.textContent).toBe('Your provider asked Mavéa to wait. Retrying in 5 seconds.');
+    const said = region.textContent;
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
+    expect(screen.getByRole('status').textContent).toBe(said);
+
+    act(() => report(null));
+    expect(screen.queryByRole('status')).toBeNull();
+    unmount();
+  });
+
+  it('raises the pill into the top layer while it waits, and lowers it after', () => {
+    const shown = vi.fn();
+    const hidden = vi.fn();
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    proto.showPopover = shown;
+    proto.hidePopover = hidden;
+    try {
+      const report = waitReporter();
+      const { container, unmount } = render(<ProviderWaitStatus />);
+      expect(pillOf(container).getAttribute('popover')).toBe('manual');
+      expect(shown).not.toHaveBeenCalled();
+      act(() => report(2_000, 'rate-limit'));
+      expect(shown).toHaveBeenCalledTimes(1);
+      act(() => report(null));
+      expect(hidden).toHaveBeenCalledTimes(1);
+      unmount();
+    } finally {
+      delete proto.showPopover;
+      delete proto.hidePopover;
+    }
+  });
+
+  it('speaks from inside an open modal, which hides everything outside it from a reader', async () => {
+    vi.useFakeTimers();
+    const report = waitReporter();
+    const { unmount } = render(<ProviderWaitStatus />);
+    const modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    // A closed overlay still mounted in the tree is no place to speak from.
+    const closed = document.createElement('div');
+    closed.setAttribute('aria-modal', 'true');
+    closed.hidden = true;
+    document.body.append(modal, closed);
+    try {
+      act(() => report(4_000, 'rate-limit'));
+      act(() => {
+        vi.advanceTimersByTime(ANNOUNCE_DELAY_MS);
+      });
+      expect(modal.querySelector('[role="status"]')?.textContent).toContain('Retrying in 4');
+
+      // The reader closes the overlay mid-wait: the line follows them back to the page and is said
+      // again there, since it was last heard inside a subtree that is gone.
+      modal.remove();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      const region = screen.getByRole('status');
+      expect(modal.contains(region)).toBe(false);
+      act(() => {
+        vi.advanceTimersByTime(ANNOUNCE_DELAY_MS);
+      });
+      expect(region.textContent).toContain('Retrying in');
+      act(() => report(null));
+    } finally {
+      closed.remove();
+      unmount();
+    }
   });
 });
