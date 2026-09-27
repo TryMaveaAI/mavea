@@ -388,7 +388,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
         }),
       });
       // A 429 (rate limit) is transient — a burst of dashboard refreshes, or a bumped-effort search
-      // turn, can briefly exceed the org's tokens-per-minute. Retry a few times (honoring Retry-After)
+      // turn, can briefly exceed the org's tokens-per-minute. Retry twice (honoring Retry-After)
       // so the turn rides out the spike instead of failing; any other non-OK status is a real error.
       let res: Response;
       for (let rlAttempt = 0; ; rlAttempt++) {

@@ -147,7 +147,10 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
     const multiplier = unit === 'ms' ? 1 : unit === 'm' ? 60_000 : 1000;
     return Math.min(Number(bodyHint[1]) * multiplier, 30_000);
   }
-  const base = Math.min(900 * 2 ** attempt, 12_000);
+  // The second re-send waits a little longer than a plain doubling: a refusal that repeats after
+  // ~1s is usually a per-minute window still closing, and the extra second is cheaper than a
+  // third refusal the reader has to retry by hand.
+  const base = attempt === 0 ? 900 : Math.min(2_500 * 2 ** (attempt - 1), 12_000);
   return Math.round(base * (0.85 + Math.random() * 0.3));
 }
 

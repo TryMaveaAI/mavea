@@ -81,6 +81,19 @@ describe('provider pressure parsing', () => {
     expect(retryAfterMs(new Response(null), 0, 'Please retry in 4.25s.')).toBe(4250);
   });
 
+  it('waits a little longer before the second busy re-send than before the first', () => {
+    const range = (attempt: number) => {
+      const waits = Array.from({ length: 200 }, () => retryAfterMs(new Response(null), attempt));
+      return [Math.min(...waits), Math.max(...waits)];
+    };
+    const [firstMin, firstMax] = range(0);
+    const [secondMin, secondMax] = range(1);
+    expect(firstMin).toBeGreaterThanOrEqual(765);
+    expect(firstMax).toBeLessThanOrEqual(1035);
+    expect(secondMin).toBeGreaterThanOrEqual(2125);
+    expect(secondMax).toBeLessThanOrEqual(2875);
+  });
+
   it('retries temporary overloads but never loops on a daily or spend limit', () => {
     expect(isTransientProviderFailure(503, 'UNAVAILABLE')).toBe(true);
     expect(isTransientProviderFailure(529, 'overloaded_error')).toBe(true);
