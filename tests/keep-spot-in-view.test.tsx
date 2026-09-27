@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  SCROLL_GESTURE_GAP_MS,
   SPOT_RESIZE_SETTLE_MS,
   spotScrollDelta,
   useKeepSpotInView,
@@ -24,17 +25,31 @@ class FakeRO {
 
 const box = (top: number, height: number) => ({ top, bottom: top + height, height }) as DOMRect;
 
+/** A scroller 800 tall holding the spotlit card. `at.card` is where the card sits in it and
+ *  `at.height` how tall the scroller is — a test moves either to stand for a reflow, a scroll or
+ *  a dock that grew. */
 function setup(cardTop: number) {
   const cont = document.createElement('div');
   const card = document.createElement('div');
   card.className = 'spotlit';
   cont.appendChild(card);
   document.body.appendChild(cont);
-  Object.defineProperty(cont, 'clientHeight', { value: 800 });
-  cont.getBoundingClientRect = () => box(0, 800);
-  card.getBoundingClientRect = () => box(cardTop, 300);
+  const at = { card: cardTop, height: 800 };
+  Object.defineProperty(cont, 'clientHeight', { get: () => at.height });
+  cont.getBoundingClientRect = () => box(0, at.height);
+  card.getBoundingClientRect = () => box(at.card, 300);
   cont.scrollTo = vi.fn() as unknown as typeof cont.scrollTo;
-  return { cont, ref: { current: cont } };
+  return { cont, card, at, ref: { current: cont } };
+}
+
+/** The reader scrolls the card to `top` over a few frames, the way a wheel or a glide does. */
+function readerScrolls(cont: HTMLElement, at: { card: number }, top: number, input = 'wheel') {
+  document.dispatchEvent(new Event(input));
+  for (const step of [0.25, 0.5, 0.75, 1]) {
+    vi.advanceTimersByTime(16);
+    at.card = at.card + (top - at.card) * step;
+    cont.dispatchEvent(new Event('scroll'));
+  }
 }
 
 describe('useKeepSpotInView', () => {
@@ -50,10 +65,11 @@ describe('useKeepSpotInView', () => {
   });
 
   it('re-centres the spotlit card once a resize settles, not on every report', () => {
-    const { cont, ref } = setup(-400);
+    const { cont, at, ref } = setup(100);
     renderHook(() => useKeepSpotInView(ref, true));
     const ro = observers[0];
     ro.cb(); // the observer's first report is the box it started watching, not a resize
+    at.card = -400; // a reflow above it pushed it up and out of view
     ro.cb();
     ro.cb();
     vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS - 1);
@@ -71,6 +87,63 @@ describe('useKeepSpotInView', () => {
     observers[0].cb();
     vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS);
     expect(cont.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it.each(['wheel', 'touchmove', 'keydown'])(
+    'never undoes a %s scroll when the dock grows a few pixels',
+    (input) => {
+      const { cont, at, ref } = setup(100);
+      renderHook(() => useKeepSpotInView(ref, true));
+      observers[0].cb();
+      readerScrolls(cont, at, -900, input);
+      at.height = 796; // the dock grew 4px mid-gesture
+      observers[0].cb();
+      vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS * 2);
+      expect(cont.scrollTo).not.toHaveBeenCalled();
+    },
+  );
+
+  it('leaves a glide a control started for the reader to finish', () => {
+    // "Adding below": a press, then a smooth scroll the page runs on the reader's behalf.
+    const { cont, at, ref } = setup(100);
+    renderHook(() => useKeepSpotInView(ref, true));
+    observers[0].cb();
+    readerScrolls(cont, at, -600, 'pointerdown');
+    at.height = 796;
+    observers[0].cb();
+    vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS * 2);
+    expect(cont.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('does not re-pin a card the resize only clipped', () => {
+    // The card's bottom edge sits 2px above the scroller's; the dock grows 4px and covers it.
+    const { cont, at, ref } = setup(498);
+    renderHook(() => useKeepSpotInView(ref, true));
+    observers[0].cb();
+    at.height = 796;
+    observers[0].cb();
+    vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS);
+    expect(cont.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('still re-pins after the walk itself moved to a new card', () => {
+    const { cont, card, at, ref } = setup(100);
+    renderHook(() => useKeepSpotInView(ref, true));
+    observers[0].cb();
+    readerScrolls(cont, at, -900);
+    // The reader pressed Next: the spotlight moves on and the walk glides to the new card.
+    card.className = '';
+    const next = document.createElement('div');
+    next.className = 'spotlit';
+    cont.appendChild(next);
+    const nextAt = { card: 1200 };
+    next.getBoundingClientRect = () => box(nextAt.card, 300);
+    readerScrolls(cont, nextAt, 200, 'pointerdown');
+    vi.advanceTimersByTime(SCROLL_GESTURE_GAP_MS);
+    nextAt.card = -300; // then a rotation reflows it out of view
+    observers[0].cb();
+    vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS);
+    expect(cont.scrollTo).toHaveBeenCalledTimes(1);
   });
 
   it('disconnects and drops a pending glide when the spotlight goes', () => {
