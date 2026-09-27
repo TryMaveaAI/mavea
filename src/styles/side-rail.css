@@ -119,7 +119,7 @@
 @media (width >= 2560px) {
   .with-rail {
     --board-col-gap: clamp(32px, 1.6vw, 64px);
-    --board-wide-max: calc(2 * 1640px + var(--board-col-gap));
+    --board-wide-max: calc(2 * var(--canvas-col-max) + var(--board-col-gap));
   }
 
   .with-rail .canvas-scroll:has(.card-grid > .depth-section ~ .depth-section) {
