@@ -113,6 +113,7 @@
     "gen:catalog": "node --import tsx scripts/generate-catalog-index.mts",
     "gen:examples": "node --import tsx scripts/generate-example-shards.mts",
     "audit:reel": "node --import tsx scripts/reel-audit.mts",
+    "audit:ripple": "node --import tsx scripts/ripple-layout-audit.mts",
     "slides:gate": "node --import tsx scripts/slide-gate.mts",
     "export:gate": "node --import tsx scripts/export-gate.mts",
     "audit:ui": "node --import tsx scripts/ui-audit.mts",
