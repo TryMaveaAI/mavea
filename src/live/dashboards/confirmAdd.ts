@@ -112,10 +112,6 @@ function rollBackFold(id: string, before: BoardIds): void {
 // cheaply — refreshDashboardNow answers 'busy' without spending anything while the slot is held.
 const BUSY_POLL_MS = 1_500;
 const BUSY_WAIT_MS = 45_000;
-/** Bounded patience for a probe that FAILED outright — sized for a per-minute rate window that
- *  outlived the adapter's own retry-after retries; such a window drains within seconds. */
-const FAILED_RETRIES = 2;
-const FAILED_RETRY_MS = 10_000;
 const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Did every search metric this addition brought in actually land a value? A blank-key metric is
@@ -202,17 +198,10 @@ export async function confirmRealData(
     return out;
   };
 
-  let outcome = await probe();
-  // A failed probe gets the same bounded patience a busy slot does. The adapter already absorbs a
-  // rate limit that names a short retry-after; the failure that reaches here is the window that
-  // OUTLIVED those retries — a per-minute token cap saturated by a burst — which drains on its own
-  // in seconds. Rolling the board back over that read as "adding never works" when nothing was
-  // wrong with the tracker at all. A hard failure (network down, revoked key) fails each retry
-  // fast and spends nothing, so the extra patience costs a genuine error only seconds.
-  for (let retry = 0; retry < FAILED_RETRIES && outcome === 'failed'; retry++) {
-    await delay(FAILED_RETRY_MS);
-    outcome = await probe();
-  }
+  // One probe. A failed one is never re-run automatically: a pass can fail after the model has
+  // already read, and billed, the whole search, so a second pass is the reader's to ask for. The
+  // failure is logged and the board's own "Check now" is that Retry.
+  const outcome = await probe();
 
   // Pass-level grounding isn't tile-level. 'done' also covers a grounded no-change pass, so an
   // added metric search couldn't answer still shows itself here: its value never filled in.

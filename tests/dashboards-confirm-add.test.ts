@@ -358,36 +358,20 @@ describe('confirmRealData — the log says WHY it was refused', () => {
     expect(entry?.text).not.toContain('no live source');
   });
 
-  it('an unreachable model reads as a reachability problem (after the bounded retries)', async () => {
+  // A pass can fail after the model has already read, and billed, the whole search, so a failed
+  // probe is never re-run behind the reader's back. It is logged, and "Check now" is their Retry.
+  it('an unreachable model reads as a reachability problem, after exactly one probe', async () => {
     vi.useFakeTimers();
     addDashboard(dash({ title: 'Unreachable', metrics: [metric()] }));
     probe.mockResolvedValue('failed');
 
     const result = confirmRealData('d1', null);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(60_000);
     await expect(result).resolves.toBe('failed');
-    expect(probe).toHaveBeenCalledTimes(3); // the first probe + two bounded retries
+    expect(probe).toHaveBeenCalledTimes(1);
     expect(getLedger().find((e) => e.text.includes('Unreachable'))?.text).toContain(
       'could not be reached',
     );
-  });
-
-  // The failure that reaches the gate is usually a rate window that outlived the adapter's own
-  // retry-after retries — a per-minute token cap saturated by a burst, which drains on its own in
-  // seconds. Rolling the board back over that read as "adding never works" when nothing was wrong
-  // with the tracker at all.
-  it('a transient failure (rate window) recovers instead of rolling the board back', async () => {
-    vi.useFakeTimers();
-    addDashboard(dash({ title: 'RateLimited', metrics: [metric()] }));
-    probe.mockResolvedValueOnce('failed');
-    groundingProbe('m1'); // the retry gets through and grounds
-    probe.mockResolvedValueOnce('failed'); // ...but only on the SECOND retry
-    // (mockResolvedValueOnce entries consume before the grounding implementation takes over)
-
-    const result = confirmRealData('d1', null);
-    await vi.advanceTimersByTimeAsync(30_000);
-    await expect(result).resolves.toBe('confirmed');
-    expect(getDashboard('d1')).not.toBeNull();
-    expect(getLedger().some((e) => e.text.includes('RateLimited'))).toBe(false);
+    expect(getDashboard('d1')).not.toBeNull(); // kept, pending its reader-driven check
   });
 });
