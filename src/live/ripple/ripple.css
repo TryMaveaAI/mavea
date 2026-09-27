@@ -635,6 +635,9 @@
 
 /* ── impact map ── */
 .ripple-impact {
+  /* The simulator and the cause→effect story narrow with the COLUMN they sit in, not the window:
+     beside the rail on a zoomed laptop the column is phone-narrow while the window is not. */
+  container: ripple-impact / inline-size;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -970,6 +973,8 @@
   padding: 0;
   border: 0;
   background: transparent;
+  /* A button does not inherit type: unset, it took the browser's 13.33px, a size no token names. */
+  font-size: var(--fs-xs);
   text-align: left;
   cursor: pointer;
 }
@@ -1141,7 +1146,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-@media (width <= 900px) {
+@container ripple-impact (width <= 760px) {
   .ripple-impact-simulator {
     grid-template-columns: 1fr;
   }
@@ -1350,6 +1355,8 @@
   border-radius: var(--r-sm);
   background: var(--surface-elevated);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  /* Its lines set their own sizes; the button itself must not fall back to the browser's 13.33px. */
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition:
     opacity var(--m-fast) var(--ease-out),

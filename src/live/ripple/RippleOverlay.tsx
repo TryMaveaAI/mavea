@@ -1410,6 +1410,8 @@ export function RippleOverlay({
       <section
         className="ripple-panel"
         role="dialog"
+        // Focus is trapped in here and the scrim covers the app, so say so to assistive tech too.
+        aria-modal="true"
         aria-label="Ripple"
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
