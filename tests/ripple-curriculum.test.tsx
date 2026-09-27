@@ -29,6 +29,7 @@ import { RippleQuiz, type QuizScore } from '../src/live/ripple/sections/RippleQu
 import type {
   CourseLesson,
   LessonDetail,
+  LessonOutcome,
   QuizQuestion,
   ShipCourse as ShipCourseModel,
   ShipModel,
@@ -857,7 +858,7 @@ describe('ripple lesson detail', () => {
 // lesson closing (the parent keys LessonBody per lesson, so switching lessons unmounts it) —
 // otherwise the retry fires a second, real generation call for a lesson the reader already left, and
 // tries to setState into a component that's gone.
-describe('LessonBody — the retry timer never outlives the lesson', () => {
+describe('LessonBody — one request per load, and a failure waits for the reader', () => {
   const course: ShipCourseModel = { title: 'Foundations', lessons: [] };
   const lesson: CourseLesson = {
     title: 'Reading the auth guard',
@@ -870,6 +871,20 @@ describe('LessonBody — the retry timer never outlives the lesson', () => {
     return { overview: tag, walkthrough: [], concepts: [], pitfalls: [] };
   }
 
+  function mount(loadLessonDetail: () => Promise<LessonOutcome>) {
+    return render(
+      <LessonBody
+        course={course}
+        lesson={lesson}
+        altitude="working"
+        repo="acme/widget"
+        gitRef="main"
+        fileUrl={() => null}
+        loadLessonDetail={loadLessonDetail}
+      />,
+    );
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -877,77 +892,61 @@ describe('LessonBody — the retry timer never outlives the lesson', () => {
     vi.useRealTimers();
   });
 
-  it('does not call loadLessonDetail again after unmount, once the retry delay elapses', async () => {
-    const loadLessonDetail = vi.fn().mockResolvedValue(null); // every attempt "fails" (no detail yet)
-    const { unmount } = render(
-      <LessonBody
-        course={course}
-        lesson={lesson}
-        altitude="working"
-        repo="acme/widget"
-        gitRef="main"
-        fileUrl={() => null}
-        loadLessonDetail={loadLessonDetail}
-      />,
-    );
+  it.each([
+    ['request', 'Couldn’t reach your model to write this lesson.'],
+    ['empty', 'Your model answered, but nothing in it could be used as this lesson.'],
+  ] as const)(
+    'a %s failure is shown at once and never re-sent on its own',
+    async (failed, line) => {
+      const loadLessonDetail = vi.fn(() => Promise.resolve<LessonOutcome>({ failed }));
+      const { getByText } = mount(loadLessonDetail);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(getByText(line)).toBeTruthy();
+      expect(getByText('Try again')).toBeTruthy();
+      // However long the reader leaves it, nothing asks again.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
+      expect(loadLessonDetail).toHaveBeenCalledTimes(1);
+    },
+  );
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0); // flush the initial load's microtask
-    });
-    expect(loadLessonDetail).toHaveBeenCalledTimes(1);
-    unmount();
-
-    // The 2s retry delay elapses after the component is gone.
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2100);
-    });
-
-    expect(loadLessonDetail).toHaveBeenCalledTimes(1); // no second, orphaned call
-  });
-
-  it('retries exactly once before surfacing an error, then a manual retry starts a clean run', async () => {
+  it('Try again is one more request, from that press', async () => {
     let call = 0;
     const loadLessonDetail = vi.fn(() => {
       call += 1;
-      // Both automatic attempts fail; the manual "Try again" (3rd call) succeeds.
-      return Promise.resolve(call <= 2 ? null : detail('rewritten'));
+      return Promise.resolve<LessonOutcome>(
+        call === 1 ? { failed: 'request' } : { detail: detail('rewritten') },
+      );
     });
-    const { getByText, queryByText } = render(
-      <LessonBody
-        course={course}
-        lesson={lesson}
-        altitude="working"
-        repo="acme/widget"
-        gitRef="main"
-        fileUrl={() => null}
-        loadLessonDetail={loadLessonDetail}
-      />,
-    );
-
+    const { getByText } = mount(loadLessonDetail);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(0); // the first attempt fails, scheduling the one retry
+      await vi.advanceTimersByTimeAsync(0);
     });
-    expect(loadLessonDetail).toHaveBeenCalledTimes(1);
-    expect(queryByText('Try again')).toBeNull(); // still quietly retrying, not an error yet
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2100); // the retry fires and also fails
-    });
-    expect(loadLessonDetail).toHaveBeenCalledTimes(2);
-    expect(queryByText('Try again')).toBeTruthy(); // out of retries — now it's honest about failing
-
     await act(async () => {
       getByText('Try again').click();
       await vi.advanceTimersByTimeAsync(0);
     });
-    expect(loadLessonDetail).toHaveBeenCalledTimes(3);
+    expect(loadLessonDetail).toHaveBeenCalledTimes(2);
     expect(getByText('rewritten')).toBeTruthy();
-
-    // No leftover timer from the earlier failed cycle fires a stray 4th call later.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTimeAsync(60_000);
     });
-    expect(loadLessonDetail).toHaveBeenCalledTimes(3);
+    expect(loadLessonDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('a load that lands after the lesson closed writes nothing and asks nothing', async () => {
+    let settle: (o: LessonOutcome) => void = () => {};
+    const loadLessonDetail = vi.fn(() => new Promise<LessonOutcome>((r) => (settle = r)));
+    const { unmount } = mount(loadLessonDetail);
+    unmount();
+    await act(async () => {
+      settle({ failed: 'request' });
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(loadLessonDetail).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -16,6 +16,7 @@ import type {
   CourseCapstone,
   CourseLesson,
   LessonDetail,
+  LessonOutcome,
   QuizQuestion,
   ShipCourse as CourseModel,
   ShipModel,
@@ -791,16 +792,17 @@ export function RippleOverlay({
   );
 
   // Load ONE lesson's deep, in-depth body on demand (reading its real code), cached so reopening the
-  // same lesson never re-spends tokens. `force` rebuilds it fresh. Returns null if it can't be built.
+  // same lesson never re-spends tokens. `force` rebuilds it fresh. A failure says why, and is never
+  // cached: the next press is a real attempt.
   const loadLessonDetail = useCallback(
     async (
       course: CourseModel,
       lesson: CourseLesson,
       force = false,
       altitude?: Altitude,
-    ): Promise<LessonDetail | null> => {
+    ): Promise<LessonOutcome> => {
       const repo = repoRef.current;
-      if (!repo) return null;
+      if (!repo) return { failed: 'unavailable' };
       // These file reads cost no model call, so always gather fresh rather than trust a possibly-
       // stale `ref` — the content hash addresses the cache key, so a lesson whose real files changed
       // misses cleanly and regenerates ONLY ITSELF, never the branch name standing in for identity.
@@ -815,19 +817,19 @@ export function RippleOverlay({
           // Feeds the ask rail's corpus — a lesson already read (cache hit or fresh) becomes free
           // context the moment a question reaches for it, instead of the rail re-deriving it.
           lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), cached);
-          return cached;
+          return { detail: cached };
         }
       }
-      const detail = await enrichLesson(course, lesson, codeContext, analysisCfg, {
+      const outcome = await enrichLesson(course, lesson, codeContext, analysisCfg, {
         maxTokens: plan.lessonMaxTokens,
         thinkingLevel: plan.thinkingLevel,
         altitude,
-      }).catch(() => null);
-      if (detail) {
-        void cachePut(lkey, detail);
-        lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), detail);
+      }).catch((): LessonOutcome => ({ failed: 'request' }));
+      if ('detail' in outcome) {
+        void cachePut(lkey, outcome.detail);
+        lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), outcome.detail);
       }
-      return detail;
+      return outcome;
     },
     [analysisCfg, plan],
   );

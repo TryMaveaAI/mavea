@@ -283,6 +283,12 @@ export interface LessonDetail {
   exercise?: { task: string; hint?: string; check?: string };
 }
 
+/** Why a lesson could not be written: no connected repo to read, the request itself failed, or the
+ *  model answered and nothing in it parsed as a lesson. The reader is told which, and asking again
+ *  is always their press — a failed lesson is never re-sent on its own. */
+export type LessonFailure = 'unavailable' | 'request' | 'empty';
+export type LessonOutcome = { detail: LessonDetail } | { failed: LessonFailure };
+
 /** Where a course sits in the progression — a college-style ladder everyone climbs in order. */
 export type CourseLevel = 'beginner' | 'intermediate' | 'expert';
 
