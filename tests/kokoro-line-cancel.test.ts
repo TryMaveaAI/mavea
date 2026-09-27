@@ -83,7 +83,12 @@ import { getVoiceSpeed } from '../src/voice/streamTts';
 
 const SAMPLE_RATE = 24000;
 const CLIP_SECONDS = 0.4;
-const PCM = new Uint8Array(CLIP_SECONDS * SAMPLE_RATE * 2).fill(7);
+/** The read-ahead horizon streamTts holds a cached clip to before it may go on the clock. */
+const MAX_AHEAD_SECONDS = 2;
+
+function pcmOf(seconds: number): Uint8Array {
+  return new Uint8Array(seconds * SAMPLE_RATE * 2).fill(7);
+}
 
 const ASIDE = 'That clip is on its way.';
 const NARRATION = 'The harbour empties on the ebb tide.';
@@ -91,11 +96,19 @@ const LATER = 'The moored boats settle into the mud.';
 
 /** Every clause cached, so no line waits on the synthesizer and the timing is the clock's alone. */
 function cache(...lines: string[]): void {
-  for (const line of lines) {
-    for (const clause of splitSynthesisChunks(line)) {
-      pcmCachePut(pcmCacheKey(kokoroVoice('mavea'), getVoiceSpeed(), clause), PCM);
-    }
+  for (const line of lines) cacheFor(CLIP_SECONDS, line);
+}
+
+function cacheFor(seconds: number, line: string): void {
+  for (const clause of splitSynthesisChunks(line)) {
+    pcmCachePut(pcmCacheKey(kokoroVoice('mavea'), getVoiceSpeed(), clause), pcmOf(seconds));
   }
+}
+
+/** Where a clip first goes on the clock, once it has. */
+function firstStartOf(clip: number): number | undefined {
+  const own = starts.filter((s) => s.clip === clip).map((s) => s.at);
+  return own.length ? Math.min(...own) : undefined;
 }
 
 let synthesized = 0;
@@ -141,6 +154,29 @@ describe('stopping one spoken line', () => {
     await expect(narration.finished).resolves.toBe(true);
     expect(stopped.has(narrationClip)).toBe(false);
     expect(synthesized).toBe(0);
+  });
+
+  it('lets a narration parked behind a long aside start as soon as the aside is cancelled', async () => {
+    // Long enough that its tail sits past the read-ahead horizon, so the cached narration behind
+    // it waits on the playhead instead of going onto the clock.
+    const asideSeconds = MAX_AHEAD_SECONDS + 1;
+    cacheFor(asideSeconds, ASIDE);
+    cache(NARRATION);
+    const aside = speakKokoroLine(ASIDE, 'mavea');
+    const narration = speakKokoroLine(NARRATION, 'mavea');
+    await vi.waitFor(() => expect(firstStartOf(1)).toBeDefined());
+    const asideEnds = (firstStartOf(1) as number) + asideSeconds;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(firstStartOf(2)).toBeUndefined(); // still parked
+
+    const cancelledAt = fakeCtx.currentTime;
+    aside.cancel();
+
+    await vi.waitFor(() => expect(firstStartOf(2)).toBeDefined());
+    expect(firstStartOf(2)).toBeLessThan(cancelledAt + 0.5);
+    expect(firstStartOf(2)).toBeLessThan(asideEnds - 1);
+    await expect(aside.finished).resolves.toBe(false);
+    await expect(narration.finished).resolves.toBe(true);
   });
 
   it('drops a line still waiting in the queue without touching the lines around it', async () => {
