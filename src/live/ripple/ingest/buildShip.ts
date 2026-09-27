@@ -429,14 +429,19 @@ function changeDeltas(f: ParsedFile, analysis: Analysis): ChangeDelta[] {
   return deltas.slice(0, 8);
 }
 
-/** Does a file's diff text reference any of `symbols` as a call? (an in-repo dependent). */
-function referencesAny(f: ParsedFile, symbols: Set<string>): boolean {
-  if (symbols.size === 0) return false;
-  for (const kind of ['add', 'del', 'ctx'] as const) {
-    for (const c of linesOf(f, kind)) {
-      for (const s of matchAll(CALL_RE, c)) if (symbols.has(s)) return true;
-    }
-  }
+/** Every name a file's diff text calls, across added, removed and context lines. Computed once per
+ *  file: the caller search asks it of every OTHER file for every file, so re-running the regex per
+ *  pair made a 300-file PR cost seconds on the main thread. */
+function calledNames(f: ParsedFile): Set<string> {
+  const out = new Set<string>();
+  for (const h of f.hunks)
+    for (const l of h.lines) for (const s of matchAll(CALL_RE, l.c)) out.add(s);
+  return out;
+}
+
+/** Does a file that calls `calls` reference any of `symbols`? (an in-repo dependent). */
+function referencesAny(calls: ReadonlySet<string>, symbols: ReadonlySet<string>): boolean {
+  for (const s of symbols) if (calls.has(s)) return true;
   return false;
 }
 
@@ -451,6 +456,7 @@ const nodeStatusFor = (risk: RiskLevel, hasMigration: boolean, allTests: boolean
 export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel {
   const real = parsed.files.filter((f) => !f.binary);
   const analyses = real.map(analyze);
+  const calls = real.map(calledNames);
 
   // Every symbol any change defines/reshapes — so we can find in-repo callers among the OTHER files.
   const changes: ShipChange[] = real.map((f, i) => {
@@ -459,7 +465,7 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
     const links: ChangeLink[] = [];
     real.forEach((other, j) => {
       if (j === i || ownSymbols.size === 0) return;
-      if (referencesAny(other, ownSymbols)) {
+      if (referencesAny(calls[j]!, ownSymbols)) {
         links.push({
           name: basename(other.path),
           ref: other.path,
@@ -490,10 +496,10 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
 
   // Impact map: one node per area, status = the worst change in it. Plus real area→area edges where a
   // change in one area calls a symbol changed in another (the in-repo dependency a diff CAN prove).
-  const areaIdx = new Map<string, number>();
+  const areaCount = new Map<string, number>();
   real.forEach((f) => {
     const ar = areaOf(f.path);
-    if (!areaIdx.has(ar)) areaIdx.set(ar, areaIdx.size);
+    areaCount.set(ar, (areaCount.get(ar) ?? 0) + 1);
   });
   const areaRisk = new Map<string, RiskLevel>();
   const areaMig = new Map<string, boolean>();
@@ -518,8 +524,8 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
   ];
   const edges: ShipEdge[] = [];
   // Cap the map to the busiest 9 areas (the rest live in the change list) so it stays legible.
-  const areas = [...areaIdx.keys()]
-    .map((ar) => ({ ar, count: real.filter((f) => areaOf(f.path) === ar).length }))
+  const areas = [...areaCount]
+    .map(([ar, count]) => ({ ar, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 9);
   const nodeIdByArea = new Map<string, string>();
@@ -554,7 +560,7 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
       const toArea = areaOf(other.path);
       if (toArea === fromArea) return;
       const toId = nodeIdByArea.get(toArea);
-      if (!toId || !referencesAny(other, syms)) return;
+      if (!toId || !referencesAny(calls[j]!, syms)) return;
       const key = `${fromId}->${toId}`;
       if (seenEdge.has(key)) return;
       seenEdge.add(key);
@@ -655,7 +661,7 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
     : undefined;
 
   const fileWord = real.length === 1 ? 'file' : 'files';
-  const areaNames = [...areaIdx.keys()];
+  const areaNames = [...areaCount.keys()];
   // The root sentinel already carries its own brackets, and the summary wraps the list in another
   // pair — "((root))" without this.
   const areaList = areaNames
