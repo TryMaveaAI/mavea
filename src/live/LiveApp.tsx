@@ -2252,6 +2252,16 @@ export function LiveApp(): ReactElement {
     setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
   }, []);
 
+  /** Glide the canvas to its top, then run `then` — so a scripted mark lands on a page at rest. */
+  const toTopThen = (then: () => void): Promise<void> => {
+    const scroller = scrollRef.current;
+    if (!scroller) {
+      then();
+      return Promise.resolve();
+    }
+    return glideScroll(scroller, 0, { instant: prefersReducedMotion() }).then(then);
+  };
+
   // Everything a scripted driver needs to drive THIS real surface — the closures behind the
   // first-run walkthrough AND the demo replay (only one is ever active per boot). Declared
   // here, below every setter it exposes, so a driver can fire the Lens / Present / export / the
@@ -2413,15 +2423,18 @@ export function LiveApp(): ReactElement {
         // Keep the answer header in view while the strokes land below it. Centering the card with
         // turn.setSpot would scroll the sticky Pen underneath the app bar, where its tour ring can
         // look as though it belongs to the neighboring Share control.
-        scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-        ink(
-          'live-1',
-          'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
-          { kind: 'circle', at: '$76,123', color: 'key' },
-          false,
-          undefined,
-          5600,
-          1,
+        // The pen starts once the answer has come to rest at the top — a mark drawn while the
+        // canvas is still sliding under it reads as the hand chasing the page.
+        void toTopThen(() =>
+          ink(
+            'live-1',
+            'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
+            { kind: 'circle', at: '$76,123', color: 'key' },
+            false,
+            undefined,
+            5600,
+            1,
+          ),
         );
       } else {
         ink(
@@ -2439,10 +2452,9 @@ export function LiveApp(): ReactElement {
       const block = turn.spec?.blocks.find((b) => !!b.id);
       if (!block?.id) return;
       enablePenForRun();
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       // Generous mode resolves the block's own spoken note or its stamped salient value, so this
       // works on any recorded answer without pretending a hard-coded number belongs to it.
-      ink(block.id, block.note, undefined, true, undefined, 3200);
+      void toTopThen(() => ink(block.id, block.note, undefined, true, undefined, 3200));
     },
     openDashboards: () => {
       const id = ensureTourDashboard();
