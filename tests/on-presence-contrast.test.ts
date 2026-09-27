@@ -103,7 +103,7 @@ describe('text on a --presence fill', () => {
     for (const { f, css } of sheets) {
       if (f.endsWith('tokens-base.css')) continue;
       expect(css, f).not.toMatch(/-\s*l\)\s*\*\s*1000/);
-      for (const [expr] of css.matchAll(/color:\s*oklch\(\s*from[^;]*;/g)) {
+      for (const [expr] of css.matchAll(/(?<![-\w(])color:\s*oklch\(\s*from[^;{}]*;/g)) {
         expect(expr, f).toMatch(/var\(--ink-on-fill\)\s*\)\s*;$/);
       }
     }
@@ -153,7 +153,8 @@ describe('text on a --presence fill', () => {
       }
     }
     // A rule filled from the accent (solid, mixed or a gradient) reads --on-presence, or keeps
-    // white only as the fallback beneath an @supports rule that derives its ink from its own fill.
+    // white only as the fallback beneath an @supports rule that derives its ink from its own fill
+    // (or bounds that fill so the accent's own ink holds on it).
     const offenders: string[] = [];
     for (const { f, css } of sheets) {
       for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
@@ -173,7 +174,7 @@ describe('text on a --presence fill', () => {
         const sel = selector.split('*/').pop()!.trim();
         const escaped = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const derived = new RegExp(
-          `@supports[^{]*\\{\\s*${escaped}\\s*\\{\\s*color:\\s*oklch\\(\\s*from`,
+          `@supports[^{]*\\{\\s*${escaped}\\s*\\{[^}]*?(?<![-\\w])color:\\s*(oklch\\(\\s*from|var\\(--on-)`,
         );
         if (!derived.test(css)) offenders.push(`${f} ${sel}`);
       }
@@ -184,7 +185,7 @@ describe('text on a --presence fill', () => {
 
 describe('text on a two-stop gradient', () => {
   const [, darkInkL, threshold] = rule!;
-  const shadeL = Number(/--avatar-shade-l:\s*([\d.]+)/.exec(tokens)?.[1]);
+  const shadeL = Number(/--ink-floor-l:\s*([\d.]+)/.exec(tokens)?.[1]);
   /** The ink a rule derives from its gradient's midpoint, and its contrast at every stop. */
   const atStops = (stops: Lab[]) => {
     const mid = stops[0].map((v, i) => (v + stops.at(-1)![i]) / 2) as Lab;
@@ -206,9 +207,7 @@ describe('text on a two-stop gradient', () => {
     expect(personas.length).toBeGreaterThan(2);
     // The replay's avatar gradient, as its stylesheet declares it.
     const demo = read('src/demo/demo.css');
-    expect(demo).toMatch(
-      /var\(--accent\) 55%, #000\)\s+max\(l, var\(--avatar-shade-l\)\) c h\s*\)/,
-    );
+    expect(demo).toMatch(/var\(--accent\) 55%, #000\)\s+max\(l, var\(--ink-floor-l\)\) c h\s*\)/);
     for (const hex of personas) {
       const accent = toOklab(parseHex(hex));
       for (const ratio of atStops([accent, shade(accent, 0.55)])) {

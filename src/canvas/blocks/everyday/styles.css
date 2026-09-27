@@ -4432,8 +4432,19 @@
   justify-content: center;
   font-size: var(--fs-sm, 14px);
   font-weight: 800;
-  color: var(--surface-elevated);
+  color: var(--on-presence);
   background: linear-gradient(160deg, var(--presence), var(--presence-deep));
+}
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
+@supports (color: oklch(from red l c h)) {
+  .up-portrait {
+    background: linear-gradient(
+      160deg,
+      var(--presence),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+  }
 }
 .up-identity {
   display: flex;

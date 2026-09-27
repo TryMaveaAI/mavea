@@ -198,13 +198,16 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
   color: #fff;
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .const-step.is-current .const-disc {
-    color: oklch(
-      from color-mix(in oklab, var(--presence-soft), var(--presence-deep)) var(--ink-on-fill)
+    background: radial-gradient(
+      circle at 50% 32%,
+      oklch(from var(--presence-soft) var(--accent-side)),
+      oklch(from var(--presence-deep) var(--accent-side))
     );
+    color: var(--on-presence);
   }
 }
 /* A bright, softly-breathing core turns "you are here" from a flat blob into a live, ready pulse.
@@ -382,13 +385,16 @@
     opacity var(--m-fast),
     transform var(--m-fast);
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .setup-done {
-    color: oklch(
-      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    background: linear-gradient(
+      135deg,
+      var(--presence),
+      oklch(from var(--presence-deep) var(--accent-side))
     );
+    color: var(--on-presence);
   }
 }
 .setup-done:hover {
@@ -1042,13 +1048,16 @@
     transform var(--m-fast);
   width: 100%;
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .go-start {
-    color: oklch(
-      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    background: linear-gradient(
+      135deg,
+      var(--presence),
+      oklch(from var(--presence-deep) var(--accent-side))
     );
+    color: var(--on-presence);
   }
 }
 .go-start:hover {

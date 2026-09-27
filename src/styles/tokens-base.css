@@ -163,11 +163,15 @@
      place the cut (0.585, between the nearest accents either side of the inks' crossing) and the
      dark ink's lightness live. The tint is capped so the white side stays white. */
   --ink-on-fill: clamp(0.16, (0.585 - l) * 1000, 1) min(c * 0.25, 0.02) h;
-  /* The least lightness of an avatar gradient's shaded stop, which keeps the stop's own hue and
-     chroma. A persona accent is light, so its initial takes the dark ink, and a shade darker than
-     this dropped that ink to 2.3:1 at the gradient's far end; at 0.59 it clears 4.5:1 at both
-     stops for every persona accent. */
-  --avatar-shade-l: 0.59;
+  /* The lightness a fill has to stay within to keep one ink at 4.5:1: at or above the floor it
+     carries the near-black ink, at or below the ceiling it carries white. */
+  --ink-floor-l: 0.61;
+  --ink-ceiling-l: 0.55;
+  /* Moves a gradient's partner stop onto the accent's own side of those bounds, keeping the stop's
+     hue and chroma: oklch(from <stop> var(--accent-side)). Then the accent's ink holds at every
+     stop. The stock accent is light and carries the dark ink; the light templates and the light
+     Study desk, whose accents are deep, restate it. */
+  --accent-side: max(l, var(--ink-floor-l)) c h;
   --insight: #3ed8a6; /* findings / verified */
   --insight-soft: #6fe8c0;
   --warning: #f5b95c; /* risk / inferred / uncertainty */

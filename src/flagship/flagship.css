@@ -2117,16 +2117,28 @@
     color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
   );
 }
-/* The initial sits mid-gradient: its ink is derived from the gradient's midpoint as
-   --on-presence is from the accent (white without relative colour). */
+/* A persona accent is light and carries the dark ink, so the shaded stop keeps its hue and chroma
+   but not a lightness below --ink-floor-l, and one ink reads at both ends (white, on the plain
+   gradient, without relative colour). */
 @supports (color: oklch(from red l c h)) {
   .fl-demo-avatar {
+    background: linear-gradient(
+      135deg,
+      var(--accent, var(--presence)),
+      oklch(
+        from color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
+          max(l, var(--ink-floor-l)) c h
+      )
+    );
     color: oklch(
       from
         color-mix(
           in oklab,
           var(--accent, var(--presence)),
-          color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
+          oklch(
+            from color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
+              max(l, var(--ink-floor-l)) c h
+          )
         )
         var(--ink-on-fill)
     );
@@ -2317,6 +2329,18 @@
     transform var(--m-normal),
     box-shadow var(--m-normal);
 }
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
+@supports (color: oklch(from red l c h)) {
+  .fl-cta-btn {
+    background: linear-gradient(
+      180deg,
+      oklch(from var(--presence-soft) var(--accent-side)),
+      var(--presence) 52%,
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+  }
+}
 .fl-cta-btn svg {
   width: 19px;
   height: 19px;
@@ -2392,6 +2416,18 @@
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition: transform var(--m-fast);
+}
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
+@supports (color: oklch(from red l c h)) {
+  .fl-nav-cta {
+    background: linear-gradient(
+      180deg,
+      oklch(from var(--presence-soft) var(--accent-side)),
+      var(--presence) 52%,
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+  }
 }
 [data-theme='light'] .fl-nav-cta {
   box-shadow:

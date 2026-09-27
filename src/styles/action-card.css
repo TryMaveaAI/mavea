@@ -54,13 +54,16 @@
     transform var(--m-fast),
     filter var(--m-fast);
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .btn-primary {
-    color: oklch(
-      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    background: linear-gradient(
+      180deg,
+      var(--presence),
+      oklch(from var(--presence-deep) var(--accent-side))
     );
+    color: var(--on-presence);
   }
 }
 .btn-primary:hover {

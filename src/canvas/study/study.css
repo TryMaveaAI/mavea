@@ -121,6 +121,8 @@
 
 /* The approved design, verbatim: the lamplit parchment desk. */
 :root[data-theme='light'] .study-stage {
+  /* The light desk's amber is deep and carries white (see --accent-side in the tokens). */
+  --accent-side: min(l, var(--ink-ceiling-l)) c h;
   --study-bg: #efe7d6;
   --study-glow-1: #faf3e3;
   --study-glow-2: #efe1c4;

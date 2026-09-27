@@ -45,7 +45,7 @@
   background: linear-gradient(
     135deg,
     var(--accent),
-    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
   );
   flex: none;
 }
@@ -58,7 +58,7 @@
         color-mix(
           in oklab,
           var(--accent),
-          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
         )
         var(--ink-on-fill)
     );
@@ -506,7 +506,7 @@
   background: linear-gradient(
     135deg,
     var(--accent),
-    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
   );
 }
 /* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
@@ -518,7 +518,7 @@
         color-mix(
           in oklab,
           var(--accent),
-          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--ink-floor-l)) c h)
         )
         var(--ink-on-fill)
     );

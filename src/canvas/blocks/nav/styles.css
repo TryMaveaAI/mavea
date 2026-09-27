@@ -65,11 +65,16 @@
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
   box-shadow: 0 4px 14px -4px color-mix(in oklab, var(--nav-c) 70%, transparent);
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .nv-brand-glyph {
-    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+    background: linear-gradient(
+      150deg,
+      var(--nav-c),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+    color: oklch(from var(--nav-c) var(--ink-on-fill));
   }
 }
 .nv-brand-glyph .ic {
@@ -327,11 +332,16 @@
   color: #fff;
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .sn-brand-glyph {
-    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+    background: linear-gradient(
+      150deg,
+      var(--nav-c),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+    color: oklch(from var(--nav-c) var(--ink-on-fill));
   }
 }
 .sn-brand-glyph .ic {
@@ -743,11 +753,16 @@
   background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
   box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--nav-c) 65%, transparent);
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .pg-num.on {
-    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+    background: linear-gradient(
+      160deg,
+      var(--nav-c),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+    color: oklch(from var(--nav-c) var(--ink-on-fill));
   }
 }
 .pg-ellipsis {
@@ -1102,11 +1117,16 @@
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
   margin-bottom: 2px;
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .mm-promo-glyph {
-    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+    background: linear-gradient(
+      150deg,
+      var(--nav-c),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+    color: oklch(from var(--nav-c) var(--ink-on-fill));
   }
 }
 .mm-promo-glyph .ic {
@@ -1357,11 +1377,16 @@
   color: #fff;
   background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
 }
-/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
-   text sits on, the way --on-presence is from the accent. */
+/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
+   ink reads at every stop. Without relative colour the plain gradient keeps white. */
 @supports (color: oklch(from red l c h)) {
   .cb-count-num {
-    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+    background: linear-gradient(
+      160deg,
+      var(--nav-c),
+      oklch(from var(--presence-deep) var(--accent-side))
+    );
+    color: oklch(from var(--nav-c) var(--ink-on-fill));
   }
 }
 .cb-count-noun {
