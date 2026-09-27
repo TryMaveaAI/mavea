@@ -251,18 +251,20 @@ export function MapRoute({
         <div className="mr-summary">
           {distanceKm !== undefined && Number.isFinite(distanceKm) && (
             <div className="mr-stat">
-              <span className="mr-stat-v">{formatValue(distanceKm, { unit: 'km' })}</span>
+              <span className="mr-stat-v tab-num">{formatValue(distanceKm, { unit: 'km' })}</span>
               <span className="mr-stat-k">distance</span>
             </div>
           )}
           {elevationGainM !== undefined && Number.isFinite(elevationGainM) && (
             <div className="mr-stat">
-              <span className="mr-stat-v">{formatValue(elevationGainM, { unit: 'm' })}</span>
+              <span className="mr-stat-v tab-num">
+                {formatValue(elevationGainM, { unit: 'm' })}
+              </span>
               <span className="mr-stat-k">elevation gain</span>
             </div>
           )}
           <div className="mr-stat">
-            <span className="mr-stat-v">{stops.length}</span>
+            <span className="mr-stat-v tab-num">{stops.length}</span>
             <span className="mr-stat-k">stop{stops.length === 1 ? '' : 's'}</span>
           </div>
         </div>

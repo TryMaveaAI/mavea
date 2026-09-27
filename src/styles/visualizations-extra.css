@@ -85,6 +85,8 @@
 }
 .bar-col {
   flex: 1;
+  /* The column is what a bar's value is fitted to (see .bar-val). */
+  container-type: inline-size;
   height: 100%;
   display: flex;
   align-items: flex-end;
@@ -100,21 +102,23 @@
   justify-content: center;
   transition: height var(--m-cinematic) var(--ease-out);
 }
-/* Rides just above each bar's top. Centred on the bar and width-bounded to the column with
-   wrapping (never `nowrap`), so a long per-bar label wraps within its own column instead of
-   bleeding sideways over the neighbouring bars. */
+/* Rides just above each bar's top, centred on the bar and bounded by its COLUMN, not by the bar.
+   Positioned inside the bar, the label's box was the bar's 46px, so "3,000" had to break to fit
+   a box its column had room for. It sizes to its text up to the column (and 12ch), a label with
+   words wraps between them within that, and a figure too long for a crowded column shrinks until
+   its longest run fits — to the 10px floor, rather than spill over the next bar's value. */
 .bar-val {
   position: absolute;
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 4px;
-  max-width: 12ch;
+  width: max-content;
+  max-width: min(12ch, 100cqi);
   text-align: center;
   line-height: 1.2;
-  font-size: var(--fs-xs);
+  font-size: clamp(var(--fs-2xs), calc(100cqi / (var(--bar-val-chars, 4) * 0.62)), var(--fs-xs));
   color: var(--text-secondary);
-  overflow-wrap: break-word;
 }
 /* Labels live in their own row below the plot so they never eat into the bar/goal scale. */
 .bars-axis {
@@ -990,6 +994,16 @@
   /* Long unbreakable strings (URLs, code) wrap rather than punch through the edge. */
   word-break: break-word;
 }
+/* …but never inside a figure. `.tab-num` marks a formatted number across the whole library, and
+   the backstop above let a figure break at any character once its box ran short — a bar's value
+   read "3,0" over "00", a stat "112,0" over "00". A figure wraps only where its own text allows
+   (between words); a box too narrow for it shrinks the type to fit (fitText's `longestRun`) or
+   gives it more room, never cuts it. Two classes of specificity, so it outranks a block's own
+   single-class wrap rule — a figure opting back in to mid-number breaks is the bug. */
+.card .tab-num {
+  overflow-wrap: normal;
+  word-break: normal;
+}
 /* `:where()` keeps this guard at ZERO specificity, so it's only ever a fallback: a
    component that intentionally caps its own media (e.g. a chart's `max-width`) always
    wins. Without :where(), `.card svg` (0,1,1) silently overrode every single-class
@@ -1347,10 +1361,9 @@
   font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
-  /* A short stat ("$5,000", "+18%") stays on one line; a long value the model put
-     here wraps inside the card instead of spilling past its edge. */
+  /* A short stat ("$5,000", "+18%") stays on one line; a long value the model put here wraps
+     between its words inside the card (`.card .tab-num` keeps a figure itself whole). */
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 .insight-stat .delta {
   font-size: var(--fs-md);

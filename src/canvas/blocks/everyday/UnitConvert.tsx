@@ -48,7 +48,7 @@ export function UnitConvert({
       {caption && <div className="uc-caption">{caption}</div>}
 
       <div className="uc-from">
-        <span className="uc-from-qty">{formatValue(quantity)}</span>
+        <span className="uc-from-qty tab-num">{formatValue(quantity)}</span>
         <span className="uc-from-unit">{from}</span>
         {category && <span className="uc-category">{category}</span>}
       </div>

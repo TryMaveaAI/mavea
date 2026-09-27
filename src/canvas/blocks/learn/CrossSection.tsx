@@ -327,7 +327,9 @@ function LayerLegend({
           <span className="lr-xs-leg-dot" style={{ background: tint(l, i) }} aria-hidden="true" />
           <span className="lr-xs-leg-name">{l.name}</span>
           {depthUnit && (
-            <span className="lr-xs-leg-thick">{formatValue(l.thickness, { unit: depthUnit })}</span>
+            <span className="lr-xs-leg-thick tab-num">
+              {formatValue(l.thickness, { unit: depthUnit })}
+            </span>
           )}
           {l.note && <span className="lr-xs-leg-note">{l.note}</span>}
         </li>
@@ -336,7 +338,7 @@ function LayerLegend({
         <li className="lr-xs-leg-row lr-xs-leg-row--total">
           <span className="lr-xs-leg-dot lr-xs-leg-dot--ghost" aria-hidden="true" />
           <span className="lr-xs-leg-name">Total</span>
-          <span className="lr-xs-leg-thick">{formatValue(total, { unit: depthUnit })}</span>
+          <span className="lr-xs-leg-thick tab-num">{formatValue(total, { unit: depthUnit })}</span>
         </li>
       )}
     </ul>

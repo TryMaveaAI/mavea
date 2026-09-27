@@ -2,6 +2,7 @@
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { formatValue, withUnit } from './lib/format';
+import { longestRun } from './lib/fitText';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import type { BarChartProps } from '../data/conversation';
 
@@ -52,22 +53,28 @@ export function BarChart({
               <span className="bars-goal-label">{goalLabel || 'Goal'}</span>
             </div>
           )}
-          {bars.map((b, i) => (
-            <div className="bar-col" key={i}>
-              <div
-                className="bar-fill"
-                data-mark={i === salient ? 'circle' : undefined}
-                style={{
-                  height: `${(b.value / max) * 100}%`,
-                  background: b.hot ? 'var(--warning)' : b.color || 'var(--presence)',
-                }}
-              >
-                <span className="bar-val tab-num">
-                  {b.label2 || (tightUnit ? withUnit(b.value, unit) : formatValue(b.value))}
-                </span>
+          {bars.map((b, i) => {
+            const val = b.label2 || (tightUnit ? withUnit(b.value, unit) : formatValue(b.value));
+            return (
+              <div className="bar-col" key={i}>
+                <div
+                  className="bar-fill"
+                  data-mark={i === salient ? 'circle' : undefined}
+                  style={{
+                    height: `${(b.value / max) * 100}%`,
+                    background: b.hot ? 'var(--warning)' : b.color || 'var(--presence)',
+                  }}
+                >
+                  <span
+                    className="bar-val tab-num"
+                    style={{ '--bar-val-chars': longestRun(val) } as CSSProperties}
+                  >
+                    {val}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="bars-axis">
           {bars.map((b, i) => (

@@ -4,6 +4,7 @@
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
+import { longestRun } from './lib/fitText';
 import type { KpiGridProps } from '../data/conversation';
 
 type Props = KpiGridProps & { delay?: number };
@@ -14,12 +15,6 @@ type Props = KpiGridProps & { delay?: number };
 function balancedCols(count: number): number {
   if (count === 4) return 2;
   return Math.min(Math.max(count, 1), 3);
-}
-
-/** Characters in the longest run a line cannot break inside — a whole figure, or a label's
- *  longest word. At least 1, so the CSS never divides by zero. */
-function longestRun(text: string): number {
-  return Math.max(1, ...text.split(/\s+/).map((w) => [...w].length));
 }
 
 export function KpiGrid({
