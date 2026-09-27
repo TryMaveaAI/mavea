@@ -130,11 +130,12 @@ export function LegalGate({
               restricted, spend-capped key you can revoke.
             </li>
             <li>
-              <strong>All provider charges are your sole responsibility.</strong> Mavéa does not
-              charge you or pay providers on your behalf. Use of your API keys and accounts is
-              billed to you under each provider's own pricing and terms. Set a spending cap in your
-              provider's dashboard before you start. It is the one limit that holds even if a key is
-              ever misused.
+              <strong>You pay for your own usage.</strong> Each answer, search, or voice request you
+              make uses your own provider account and may incur charges, which that provider bills
+              to you under its own pricing and terms. Those charges are your sole responsibility.
+              The people who publish Mavéa do not charge you, pay providers for you, or reimburse
+              any charge. Set a spending cap in your provider's dashboard before you start. It is
+              the one limit that holds even if a key is ever misused.
             </li>
             <li>
               <strong>
