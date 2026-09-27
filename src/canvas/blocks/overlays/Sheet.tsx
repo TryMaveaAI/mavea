@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { useFocusTrap } from '../../../live/useFocusTrap';
 import { OverlayPortal } from './portal';
 import type { SheetProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -35,6 +36,9 @@ export function Sheet({
     options.findIndex((o) => o.selected),
   );
   const [sel, setSel] = useState(initial === -1 ? 0 : initial);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(sheetRef, { active: open });
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +81,13 @@ export function Sheet({
                 }
               }}
             />
-            <div className="ov-sheet" role="dialog" aria-modal="true" aria-label={heading}>
+            <div
+              ref={sheetRef}
+              className="ov-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label={heading}
+            >
               <div className="ov-sheet-grab" />
               <div className="ov-sheet-head">
                 <div className="ov-sheet-title">{heading}</div>

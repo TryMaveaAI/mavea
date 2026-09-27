@@ -12,6 +12,7 @@ import {
   hasLegalAcceptance,
   subscribeLegalAcceptance,
 } from './acceptance';
+import { useFocusTrap } from '../live/useFocusTrap';
 import { legalDocumentHref } from './links';
 import { VOICE_DATA_NOTICE } from './voiceNotice';
 import './legal-gate.css';
@@ -53,6 +54,9 @@ export function LegalGate({
   const [error, setError] = useState('');
   const generalRef = useRef<HTMLInputElement>(null);
   const speechRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  // Start a screen reader at the top of the notice, not on the first link inside it.
+  useFocusTrap(cardRef, { active: !bypass && !accepted, initialFocus: cardRef });
 
   if (bypass || accepted) return <>{children}</>;
 
@@ -82,6 +86,8 @@ export function LegalGate({
   return (
     <main className="legal-gate">
       <section
+        ref={cardRef}
+        tabIndex={-1}
         className="legal-gate-card"
         role="dialog"
         aria-modal="true"

@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { TopicCanvas } from '../canvas';
 import { Icon } from '../icons/icons';
 import { buildLiveSeed } from './liveSeed';
+import { useFocusTrap } from './useFocusTrap';
 import { liveTourBeats } from './generateBeats';
 
 const OPENER = "Here's how it works — ask anything, and a living canvas builds while I talk.";
@@ -69,14 +70,9 @@ export function HowItWorks({
     return () => window.clearTimeout(id);
   }, [spot]);
 
-  // Escape closes, like any modal.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Escape closes, like any modal, and focus stays inside until it does.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, { onEscape: onClose });
 
   return (
     // The dialog itself doubles as its own backdrop (no separate scrim element), so a click only
@@ -86,6 +82,8 @@ export function HowItWorks({
     // narrowly suppressed for this element rather than mislabelled with an inaccurate role.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"

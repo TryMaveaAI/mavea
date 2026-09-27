@@ -38,6 +38,8 @@ html:has(.legal-gate) {
    No overflow here — an overflow on the card would make IT the sticky footer's scroller, and the
    card never scrolls, so the footer would stop sticking. */
 .legal-gate-card {
+  /* Focused only programmatically, to start assistive tech at the top; it is not a control. */
+  outline: none;
   --gate-pad: clamp(20px, 5vw, 44px);
   width: min(42rem, 100%);
   padding: var(--gate-pad) var(--gate-pad) 0;

@@ -21,6 +21,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 import { flushSync } from 'react-dom';
 import { loadFamilies, familiesFor } from '../canvas/blocks/loader';
 import type { WorldSpec } from './world/types';
@@ -679,6 +680,8 @@ export function LiveApp(): ReactElement {
   const [dashOpen, setDashOpen] = useState(false);
   // The walkthrough's curated dashboard (a transient store entry) shown in a full-screen takeover.
   const [tourDashId, setTourDashId] = useState<string | null>(null);
+  const tourDashRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(tourDashRef, { active: tourDashId !== null });
   useEffect(() => {
     if (!tourDashId) return;
     return () => releaseTourDashboard(tourDashId);
@@ -7021,7 +7024,13 @@ export function LiveApp(): ReactElement {
       {tourDashId && (
         // The walkthrough's finished dashboard — the real DashboardDetail over the real store,
         // in the same full-screen chrome the Canvas takeover uses.
-        <div className="cv-takeover" role="dialog" aria-modal="true" aria-label="Living dashboard">
+        <div
+          ref={tourDashRef}
+          className="cv-takeover"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Living dashboard"
+        >
           <header className="cv-takeover-head">
             <div className="cv-takeover-id">
               <span className="cv-takeover-glyph" aria-hidden="true">
