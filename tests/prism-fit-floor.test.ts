@@ -1,6 +1,6 @@
 // Fitting a whole map into a short laptop's stage painted its cards at 3.6px. The camera now stops
-// fitting at the scale that still sets a card's claim (--fs-md, 12.5px at its floor) at the 9px
-// legibility floor, and a map it cannot fit opens at its top for the reader to pan down.
+// fitting at the scale that still sets a card's claim (the base title rule's token, at its floor)
+// at the 9px legibility floor, and a map it cannot fit opens at its top for the reader to pan down.
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, expect, it } from 'vitest';
@@ -10,11 +10,16 @@ const tokens = readFileSync(join(__dirname, '..', 'src/styles/tokens-base.css'),
 const prismCss = readFileSync(join(__dirname, '..', 'src/live/prism/prism.css'), 'utf8');
 
 describe('map fit floor', () => {
-  it('is 9px over the claim title token’s floor', () => {
-    const floor = Number(/--fs-md:\s*clamp\(\s*calc\(([\d.]+)px/.exec(tokens)?.[1]);
+  it('is 9px over the floor of the token the base claim-title rule is set in', () => {
+    // The BASE rule, anchored at the start of a line — not a role variant that restyles it.
+    const base = /^\.prism-claim-title\s*\{([^}]*)\}/m.exec(prismCss)?.[1] ?? '';
+    const token = /font-size:\s*var\((--fs-[\w-]+)\)/.exec(base)?.[1];
+    expect(token).toBeDefined();
+    const floor = Number(
+      new RegExp(`${token}:\\s*clamp\\(\\s*calc\\(([\\d.]+)px`).exec(tokens)?.[1],
+    );
     expect(floor).toBeGreaterThan(0);
     expect(FIT_FLOOR).toBeCloseTo(9 / floor, 6);
-    expect(/\.prism-claim-title\s*\{[^}]*font-size:\s*var\(--fs-md\)/.test(prismCss)).toBe(true);
   });
 
   it('frames a map that fits, centred, below the zoom-in cap', () => {

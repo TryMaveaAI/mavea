@@ -15,12 +15,12 @@ export interface Camera {
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
 
-/** The least a FIT may shrink the map, derived rather than chosen: a card's claim is set in --fs-md,
- *  whose floor is 12.5px, and 9px is the rendered legibility floor the UI audit holds everything
- *  to. Fitting a nine-claim map into a short laptop's stage painted its cards at 3.6px — a picture
+/** The least a FIT may shrink the map, derived rather than chosen: a card's claim is set in --fs-sm
+ *  (the base `.prism-claim-title` rule), whose floor is 11.5px, and 9px is the rendered legibility
+ *  floor the UI audit holds everything to. Fitting a nine-claim map into a short laptop's stage painted its cards at 3.6px — a picture
  *  of a map nobody could read. Below this the camera stops fitting and the reader pans; their own
  *  zoom (the wheel, the − button) still goes as far out as MIN_SCALE. */
-export const FIT_FLOOR = 9 / 12.5;
+export const FIT_FLOOR = 9 / 11.5;
 
 /** The camera that frames a world box in a viewport with `pad` px to spare: never zoomed in past
  *  `cap` (a tiny box must not balloon) and never out past FIT_FLOOR. When the floor holds, the box
