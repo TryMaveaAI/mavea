@@ -4388,7 +4388,6 @@ export function LiveApp(): ReactElement {
   // rest and on a strict cadence. `interjecting` re-centres the face the same way the cold-open does.
   const interject = useInterjections({
     speak,
-    cancelSpeak: cancelSpeech,
     isSpeaking,
     muted,
     turnCount: turn.frames.length,

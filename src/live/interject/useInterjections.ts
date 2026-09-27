@@ -26,9 +26,13 @@ export interface InterjectGates {
   modalOpen: boolean; // any overlay is up (would fly the face behind it)
 }
 
+/** What the hook needs back from `speak`: a way to stop that one line and nothing else. */
+export interface AsideLine {
+  cancel: () => void;
+}
+
 export interface UseInterjectionsOptions {
-  speak: (text: string) => void;
-  cancelSpeak: () => void;
+  speak: (text: string) => AsideLine;
   isSpeaking: () => boolean;
   muted: boolean;
   gates: InterjectGates;
@@ -55,10 +59,8 @@ export function useInterjections(opts: UseInterjectionsOptions): InterjectionsAp
 
   // Keep callbacks in refs so the playback effect doesn't churn when their identity changes.
   const speakRef = useRef(opts.speak);
-  const cancelRef = useRef(opts.cancelSpeak);
   const speakingRef = useRef(opts.isSpeaking);
   speakRef.current = opts.speak;
-  cancelRef.current = opts.cancelSpeak;
   speakingRef.current = opts.isSpeaking;
 
   const [queue, setQueue] = useState<MomentType[]>([]);
@@ -68,6 +70,7 @@ export function useInterjections(opts: UseInterjectionsOptions): InterjectionsAp
 
   const limiterRef = useRef<LimiterState>(freshLimiter());
   const lastLineRef = useRef<string | undefined>(undefined);
+  const asideLineRef = useRef<AsideLine | null>(null);
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const returnRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -139,7 +142,7 @@ export function useInterjections(opts: UseInterjectionsOptions): InterjectionsAp
     setQueue((q) => q.slice(1));
     setLine(chosen);
     setInterjecting(true);
-    if (!muted && chosen) speakRef.current(chosen);
+    asideLineRef.current = !muted && chosen ? speakRef.current(chosen) : null;
     startHold(now);
   }, [interjecting, line, gatesOpen, queue, turnCount, muted, startHold, kick]);
 
@@ -154,8 +157,10 @@ export function useInterjections(opts: UseInterjectionsOptions): InterjectionsAp
     setLine(null);
     setQueue([]);
     lastLineRef.current = undefined;
-    // The turn owns its own audio (it cancels + speaks its narration); only we cancel our own.
-    if (otherInterrupt && !turnTook) cancelRef.current();
+    // Stop the aside's OWN line and nothing else: the hold outlasts it whenever other speech is
+    // playing, so a stop-everything here cut off whatever narration had started since.
+    asideLineRef.current?.cancel();
+    asideLineRef.current = null;
   }, [interjecting, gates.busy, gates.atRest, gates.listening, gates.modalOpen, clearTimers]);
 
   const reset = useCallback(() => {

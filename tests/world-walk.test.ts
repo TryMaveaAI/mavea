@@ -19,7 +19,7 @@ function deferredLine(): { line: SpokenLine; start: () => void; finish: () => vo
   const finished = new Promise<boolean>((res) => {
     finish = () => res(true);
   });
-  const line: SpokenLine = { started, finished };
+  const line: SpokenLine = { started, finished, cancel: () => {} };
   return { line, start: () => start(), finish: () => finish() };
 }
 
@@ -147,6 +147,7 @@ describe('runWorldWalk', () => {
     const unheard: SpokenLine = {
       started: Promise.resolve(false),
       finished: Promise.resolve(true),
+      cancel: () => {},
     };
     runWorldWalk(
       BEATS,

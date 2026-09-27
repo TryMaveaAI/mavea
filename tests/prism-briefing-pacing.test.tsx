@@ -41,7 +41,7 @@ function pendingLine(): { line: SpokenLine; end: () => void } {
   const finished = new Promise<boolean>((r) => {
     end = () => r(true);
   });
-  return { line: { started: Promise.resolve(true), finished }, end };
+  return { line: { started: Promise.resolve(true), finished, cancel: () => {} }, end };
 }
 
 function mount(

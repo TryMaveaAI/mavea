@@ -491,6 +491,14 @@ function teardown(state: ActiveStream, preserveAcceptedTransport = false): void 
   settled.delete(state);
 }
 
+/** Stop one clip the way a hard stop would — keeping an accepted synthesis running to its first
+ *  chunk, for the same reason — while every other clip, and the queue, play on. */
+function stopClip(state: ActiveStream): void {
+  state.cancelled = true;
+  state.finishEarly?.();
+  teardown(state, true);
+}
+
 /** Stop the in-flight streaming clip (if any) and every settled tail still playing, and rest
  *  their graphs. Idempotent. Also supersedes any line still mid-fetch (before it publishes to
  *  `active`) so it can't start playing after a cancel. */
@@ -498,17 +506,9 @@ export function cancelActiveStream(): void {
   streamEpoch++;
   pendingAbort?.abort();
   pendingAbort = null;
-  for (const tail of [...settled]) {
-    tail.cancelled = true;
-    tail.finishEarly?.();
-    teardown(tail, true);
-  }
+  for (const tail of [...settled]) stopClip(tail);
   releasePlayhead();
-  const state = active;
-  if (!state) return;
-  state.cancelled = true;
-  state.finishEarly?.();
-  teardown(state, true);
+  if (active) stopClip(active);
 }
 
 /**
@@ -529,6 +529,8 @@ export function cancelActiveStream(): void {
  * is exactly when a caller can start the next line's synthesis without ever running two at
  * once. It receives the complete raw PCM (for the replay cache), or null when the clip was too
  * large to keep. Not called for a cancelled, failed, or never-started line.
+ *
+ * `signal` cancels THIS clip alone, resolving true like a hard stop; see KokoroLine.cancel.
  */
 export async function streamSpeak(
   text: string,
@@ -538,13 +540,24 @@ export async function streamSpeak(
   speed?: number,
   onAccepted?: () => void,
   onScheduled?: () => void,
+  signal?: AbortSignal,
 ): Promise<boolean> {
+  if (signal?.aborted) return true;
   const lease = leaseAudioContext();
   if (!lease) return false; // no WebAudio → caller uses the blob path
   const ctx = lease.ctx;
+  const abort = new AbortController();
+  // Until the clip is published there is only the fetch to abort; after, the clip itself.
+  let clip: ActiveStream | null = null;
+  const stopLine = (): void => {
+    if (clip) stopClip(clip);
+    else abort.abort();
+  };
+  signal?.addEventListener('abort', stopLine, { once: true });
   // Every exit from here to the moment this clip is published to `active` has to hand the lease
   // back; past that point teardown owns it (and a cancel can reach teardown from outside).
   const bail = (played: boolean): boolean => {
+    signal?.removeEventListener('abort', stopLine);
     lease.release();
     return played;
   };
@@ -559,8 +572,8 @@ export async function streamSpeak(
     }
   }
   if (ctx.state !== 'running') return bail(false);
+  if (signal?.aborted) return bail(true);
 
-  const abort = new AbortController();
   // Capture the cancel epoch and publish our aborter BEFORE the fetch, so a cancel during the
   // round-trip to Kokoro reaches this line (aborts the fetch + bumps the epoch) instead of letting
   // it play over the user after they interrupted.
@@ -586,11 +599,11 @@ export async function streamSpeak(
     if (pendingAbort === abort) pendingAbort = null;
     // Aborted by a cancel → treat as "played" so the caller never re-speaks it; a real network
     // failure (epoch unchanged) → false, so the caller falls back to the blob path.
-    return bail(myEpoch !== streamEpoch);
+    return bail(myEpoch !== streamEpoch || !!signal?.aborted);
   }
   if (pendingAbort === abort) pendingAbort = null;
   // Superseded by a cancel while we were fetching → don't start playing after the interrupt.
-  if (myEpoch !== streamEpoch) {
+  if (myEpoch !== streamEpoch || signal?.aborted) {
     try {
       abort.abort();
     } catch {
@@ -630,6 +643,7 @@ export async function streamSpeak(
     teardown(active);
   }
   active = state;
+  clip = state;
 
   let nextTime = anchorStart(ctx);
   // Where this clip begins sounding — back-pressure is measured from here, not from the clock.
@@ -792,6 +806,7 @@ export async function streamSpeak(
     await awaitClipEnd(state, nextTime);
   }
 
+  signal?.removeEventListener('abort', stopLine);
   const cancelled = state.cancelled;
   teardown(state);
   try {
@@ -813,6 +828,7 @@ const CACHED_BUFFER_SECONDS = 1;
  * synthesis except for starting instantly. Every buffer exists up front, so this path can never
  * underrun (and never counts one). Resolves like streamSpeak: true when audio played or the
  * clip was hard-stopped, false only when playback could not start (caller re-synthesizes).
+ * `signal` cancels this clip alone, as it does for streamSpeak.
  */
 export async function playPcmBytes(
   bytes: Uint8Array,
@@ -820,7 +836,9 @@ export async function playPcmBytes(
   onStart?: () => void,
   onScheduled?: () => void,
   onAudioInHand?: () => void,
+  signal?: AbortSignal,
 ): Promise<boolean> {
+  if (signal?.aborted) return true;
   const lease = leaseAudioContext();
   if (!lease || bytes.length < 2) {
     lease?.release();
@@ -843,7 +861,7 @@ export async function playPcmBytes(
     }
   }
   if (ctx.state !== 'running') return bail(false);
-  if (myEpoch !== streamEpoch) return bail(true); // superseded by a cancel — never re-speak it
+  if (myEpoch !== streamEpoch || signal?.aborted) return bail(true); // superseded — never re-speak it
 
   // The whole clip goes onto the clock below in one pass, and the queue takes up the next clause
   // the moment it has: unheld, a run of cache hits schedules a whole line at once — every buffer,
@@ -859,8 +877,8 @@ export async function playPcmBytes(
   } catch {
     /* a listener must never break playback */
   }
-  await awaitPlayheadWithin(MAX_AHEAD_SECONDS * 1000);
-  if (myEpoch !== streamEpoch) return bail(true);
+  await awaitPlayheadWithin(MAX_AHEAD_SECONDS * 1000, signal);
+  if (myEpoch !== streamEpoch || signal?.aborted) return bail(true);
 
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
@@ -878,6 +896,8 @@ export async function playPcmBytes(
     teardown(active);
   }
   active = state;
+  const stopLine = (): void => stopClip(state);
+  signal?.addEventListener('abort', stopLine, { once: true });
 
   const tap = streamTap;
   try {
@@ -925,6 +945,7 @@ export async function playPcmBytes(
     await awaitClipEnd(state, nextTime);
   }
 
+  signal?.removeEventListener('abort', stopLine);
   const cancelled = state.cancelled;
   teardown(state);
   try {
