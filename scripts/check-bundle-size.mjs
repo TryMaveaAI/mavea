@@ -283,7 +283,10 @@ const ROUTE_BUDGETS = [
     // 163 (was 162): measured at 162.4. A lesson opened from a URL alone now shows its goal and
     // a Build button instead of spending the key on load, and the shared config module listens
     // for another tab forgetting the device.
-    gzip: 163,
+    // 164 (was 163): measured at 163.3. The Lens sizes its sheet for a large monitor, an unbuilt
+    // lesson leads with Build, feature notices open in place, and the stage card ignores the
+    // board's spotlight — all code the lesson reader loads.
+    gzip: 164,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
