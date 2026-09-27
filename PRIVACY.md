@@ -10,9 +10,11 @@ The Mavéa Maintainers publish software. They do not receive your prompts or bro
 
 Where data-protection law such as the GDPR or UK GDPR applies to a deployment, the deployment operator normally acts as the controller of personal data processed through it — that is you, when you self-host for yourself. The Maintainers are neither a controller nor a processor of that data, because it never reaches them.
 
+When you email the Maintainers or open an issue, discussion or security report, they receive what you send and your contact details, and use them only to reply and to keep a record of the report. Email is held by Google (Gmail) and GitHub content by GitHub, which may process it in the United States. To ask about or remove your correspondence, write to trymavea@gmail.com.
+
 The unmodified project has no Mavéa user-account system, first-party cloud database, advertising network, product-analytics service, telemetry, or conversation-retention service. Normal network requests can still be visible to the deployment host, infrastructure providers, and the third-party services described below. A modified or separately hosted deployment may behave differently, and its operator is responsible for disclosing any additional collection, logging, accounts, analytics, retention, or sharing it adds.
 
-The current repository does not set analytics or advertising cookies and does not include first-party usage tracking. A modified deployment that adds cookies, analytics, advertising, or other tracking must disclose and manage those technologies separately.
+The current repository does not set analytics or advertising cookies and does not include first-party usage tracking. Mavéa uses browser storage only for features you use and to remember your choices, including your acceptance of these terms. That storage is necessary for the app to work, so there is no consent banner. A modified deployment that adds cookies, analytics, advertising, or other tracking must disclose and manage those technologies separately.
 
 ## 2. Information kept in your browser or deployment
 
@@ -65,7 +67,7 @@ Connecting a code host is the same boundary, and it is worth stating plainly bec
 
 If you enable listening, the browser captures microphone input. Audio is processed by the deployment's configured speech-to-text endpoint — by default a local one on the same machine, though an operator can configure a different endpoint — which converts speech to text. Recognized transcripts may then be sent to your selected model provider, including while listening continues.
 
-The browser sends captured audio to the speech-to-text endpoint configured by the deployment. The unmodified Mavéa client does not intentionally persist microphone audio itself and does not include it in later conversation-model requests; it sends the resulting transcript instead. A remote or modified speech endpoint, deployment proxy, infrastructure provider, browser extension, or operator can receive, log, or retain the audio under its own configuration and terms. Captured audio is discarded by the client as it is transcribed, and the microphone is released when you stop listening or the tab becomes hidden. The client does not intentionally create a voiceprint or identify speakers. In a listening mode, whatever is said near you can be transcribed too — see the Terms for your responsibilities toward other people.
+The browser sends captured audio to the speech-to-text endpoint configured by the deployment. The unmodified Mavéa client does not intentionally persist microphone audio itself and does not include it in later conversation-model requests; it sends the resulting transcript instead. A remote or modified speech endpoint, deployment proxy, infrastructure provider, browser extension, or operator can receive, log, or retain the audio under its own configuration and terms. Captured audio is discarded by the client as it is transcribed, and the microphone is released when you stop listening or the tab becomes hidden. Mavéa does not create a voiceprint or any other biometric identifier from your voice, and the client does not identify speakers. In a listening mode, whatever is said near you can be transcribed too — see the Terms for your responsibilities toward other people.
 
 Spoken answers send narration text to the configured text-to-speech service. Reel and conversation-video cuts are directed, rendered, and encoded in your browser; no model provider is called. Reel narration text is sent to the configured text-to-speech service. During a video export, encoded chunks and the finished clip may be held in origin-private browser storage so a large video does not have to remain in JavaScript memory. Normal cancellation, replacement, sharing, and download cleanup remove those temporary files; a download can retain its temporary file for up to 60 seconds while the browser takes ownership. A crash, forced close, or storage failure can interrupt cleanup and leave a temporary file behind. A later video export makes a bounded, best-effort pass that removes only Mavéa temporary video files more than 24 hours old; clearing the site's browser data also removes them. A finished export leaves Mavéa only when you save, publish, or send it to a destination you choose.
 
@@ -118,7 +120,7 @@ You can reduce or remove data by:
 - not uploading information you do not want sent to a selected provider; and
 - contacting the deployment operator or relevant provider about data they control.
 
-Depending on where you live, you may have legal rights to access, correct, delete, restrict, object to, or obtain a copy of personal information held by a deployment operator. The Maintainers cannot retrieve browser-local or provider-held data they do not possess.
+Depending on where you live, you may have legal rights to access, correct, delete, restrict, object to, or obtain a copy of personal information held by a deployment operator. The Maintainers cannot retrieve browser-local or provider-held data they do not possess. Everything else Mavéa stores is on your own device, so access and deletion are in your hands: use Forget everything on this device in Settings, or clear this site's data in your browser. You may also complain to your local data-protection authority.
 
 ## 10. Sensitive, confidential, and regulated information
 
@@ -134,7 +136,7 @@ You are responsible for device security, access controls, backups, proxy configu
 
 ## 12. Children
 
-Mavéa is intended for adults and is not directed to children. Do not allow anyone under 18 to use connected model, upload, microphone, or action features or submit personal information through Mavéa. If you believe a child's information reached a deployment or provider, contact that operator and the relevant provider promptly and revoke any affected connection.
+Mavéa is intended for adults and is not directed to children. Do not let anyone under 18 use Mavéa. If you believe a child's information reached a deployment or provider, contact that operator and the relevant provider promptly and revoke any affected connection.
 
 ## 13. Changes, business transfers, and contact
 

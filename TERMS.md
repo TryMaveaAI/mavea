@@ -10,7 +10,7 @@ The [PolyForm Noncommercial License 1.0.0](./LICENSE) separately governs copyrig
 
 By downloading, installing, accessing, or using the Service, by selecting the in-product acceptance checkbox, or by submitting an issue, a discussion post, a message to a published Mavéa contact address, or any other feedback through a Mavéa project channel, you agree to these Terms and the PolyForm license and acknowledge the [Privacy Notice](./PRIVACY.md) and [Disclaimer](./DISCLAIMER.md). Submitting feedback is enough on its own: Section 9 is written to bind whoever sends it, including someone who has never installed or run Mavéa. If you use Mavéa for an organization, you represent that you have authority to accept these Terms for it. If you do not agree, do not use the Service.
 
-You must be at least 18 years old, legally capable of entering this agreement, and permitted to use the Service under applicable law. The Service is not directed to children. A parent or guardian should not provide a child access to connected model, upload, microphone, or action features.
+You must be at least 18 years old, legally capable of entering this agreement, and permitted to use the Service under applicable law. The Service is not directed to children. Do not let anyone under 18 use Mavéa.
 
 ## 2. Noncommercial software permission
 
@@ -60,7 +60,7 @@ Mavéa's recording paths are configured to request only the project's reviewed o
 
 You retain any rights you have in prompts, files, audio, credentials, account data, and other material you provide (**User Content**). You give the deployment operator and selected providers only the permission reasonably needed to receive, transmit, process, display, and return User Content for features you request. You are responsible for User Content and must have all rights, notices, consents, workplace approvals, permissions, and lawful bases needed to process it with the Service and your selected third parties.
 
-Do not provide secrets or sensitive, regulated, confidential, privileged, export-controlled, or personal information unless you have assessed the deployment and every recipient and have a lawful basis to do so. Do not submit information about children or third parties without appropriate authority. Mavéa is not a confidential or privileged channel. Whatever you upload or connect — including work documents, an employer's or client's private code, and other people's information — is sent to the providers you select and handled under their terms, which may include retention and use for training; the Responsible Parties do not control that and accept no liability for it. The Responsible Parties do not acquire ownership of User Content merely because you use the software.
+Do not provide secrets or sensitive, regulated, confidential, privileged, export-controlled, or personal information unless you have assessed the deployment and every recipient and have a lawful basis to do so. Do not submit information about children or third parties without appropriate authority. Mavéa is not a confidential or privileged channel. Whatever you upload or connect — including work documents, an employer's or client's private code, and other people's information — is sent to the providers you select and handled under their terms, which may include retention and use for training; the Responsible Parties do not control that and, as far as the law allows, accept no liability for it. The Responsible Parties do not acquire ownership of User Content merely because you use the software.
 
 Listening features turn nearby speech into text. Recording and eavesdropping laws differ by place — some require every participant's consent, not just yours — so when you use a listening mode where other people can be heard, you are responsible for telling them and obtaining whatever consent your jurisdiction requires.
 
@@ -105,7 +105,7 @@ This does not transfer ownership of inventions or copyrighted materials that are
 
 The Service may contain bugs, security defects, incomplete features, generated examples, or breaking changes and may be modified, interrupted, or discontinued without notice. We have no obligation to maintain, update, support, secure, or continue any feature or version. There is no promise of uptime, compatibility, preservation of data, or continued availability. Keep independent copies of anything important. Any support is provided at the Maintainers' discretion under the [Support Policy](./SUPPORT.md).
 
-We may update these Terms by changing the effective date and the acceptance version shipped with the Service. Continued use after an updated version is presented and accepted is governed by the updated Terms.
+We may update these Terms by changing the effective date and the acceptance version shipped with the Service. Continued use after an updated version is presented and accepted is governed by the updated Terms. Every version of these documents that has shipped is kept in the project's public history.
 
 ## 11. Disclaimers
 
@@ -121,13 +121,11 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE AND OUR AFFILIATES, SUCCESSORS, LICEN
 
 TO THE MAXIMUM EXTENT PERMITTED BY LAW, OUR TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TERMS WILL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID US DIRECTLY FOR THE SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM OR (B) US$100.
 
-These limitations do not exclude liability that cannot legally be excluded or limited.
+These limitations do not exclude liability that cannot legally be excluded or limited. Nothing in these Terms limits liability for death or personal injury caused by negligence, for fraud, for gross negligence or wilful misconduct, or any right you have as a consumer that cannot be waived by contract. If a limit is unenforceable for you, the rest of this section still applies.
 
 ## 13. Indemnity
 
-To the maximum extent permitted by law, you will defend, indemnify, and hold us and our affiliates, successors, representatives, and service providers harmless from claims, demands, losses, liabilities, damages, judgments, costs, and reasonable legal fees arising from your User Content, deployment, credentials, connected accounts, confirmed actions, violation of these Terms or law, infringement of another person's rights, or commercial or otherwise unlicensed use of Mavéa.
-
-This section does not apply where prohibited by law.
+If you use Mavéa for a business, or knowingly break these Terms or the law, you will cover the Responsible Parties' reasonable losses from third-party claims caused by that. This does not apply to consumers where local law does not allow it.
 
 ## 14. Suspension and termination
 

@@ -60,7 +60,7 @@ export function LegalApp(): ReactElement {
         <p>
           <b>Where.</b> In this page's memory while the tab is open. With Remember on, also on this
           device, encrypted with a key the browser will not export, when this browser supports that.
-          Never in plain text on disk, never in a settings export or backup.
+          Mavéa never writes it to disk unencrypted, or into a settings export or backup.
         </p>
         <p>
           <b>Who can see it.</b> The provider you chose, and whoever runs this deployment — the key
@@ -94,9 +94,9 @@ export function LegalApp(): ReactElement {
       <aside className="legal-warranty" aria-label="Warranty and responsibility notice">
         <strong>Service and responsibility</strong>
         <p>
-          Features, providers, sources, and results can change, fail, or become unavailable. To the
-          fullest extent permitted by law, Mavéa and its outputs are provided “as is” and “as
-          available,” without warranties, and Mavéa is not responsible for decisions, actions,
+          Features, providers, sources, and results can change, fail, or become unavailable. As far
+          as the law allows, Mavéa and its outputs are provided “as is” and “as available,” without
+          warranties, and the people who publish Mavéa are not responsible for decisions, actions,
           losses, harm, unauthorized submissions, credential misuse, provider charges, or
           third-party processing or retention arising from their use. You use the service and its
           outputs at your own risk. Nothing here limits rights or liability that cannot legally be

@@ -25,8 +25,8 @@ const digest = (file: string): string =>
 /** The documents the gate asks a reader to accept or acknowledge, and the digest each was last
  *  reviewed at. Update a line only together with the review that earned it. */
 const REVIEWED: Record<string, string> = {
-  'TERMS.md': 'a86bd65b46a7ebcb',
-  'PRIVACY.md': '9dea93fc3404955e',
+  'TERMS.md': '0eebe5556c05c644',
+  'PRIVACY.md': '037dbfd85309832a',
   'DISCLAIMER.md': '1331da4b98ee7d90',
 };
 

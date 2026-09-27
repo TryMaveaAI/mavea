@@ -10,5 +10,5 @@
 // cannot drift into telling a reader two different things about their microphone.
 export const VOICE_DATA_NOTICE = {
   title: 'Speech can become provider data',
-  body: 'Microphone audio is sent to the speech-transcription endpoint configured by this deployment, and the resulting transcript may be sent to your selected model provider. Endpoint operators may log or retain data under their own terms. Avoid sensitive conversations and get any consent required from nearby people before listening starts.',
+  body: 'Microphone audio goes to the speech-to-text endpoint this deployment uses (on this computer by default, but possibly a remote one), and the resulting transcript may be sent to your selected model provider. Remote operators may log or retain data under their own terms. Avoid sensitive conversations and get any consent required from nearby people before listening starts.',
 } as const;

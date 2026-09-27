@@ -63,8 +63,9 @@ export function LegalGate({
             code, images and context pass through this deployment to the providers you select —
             including a work document, anything confidential or personal, and anything belonging to
             someone else. Those providers handle it under their own terms, which may include keeping
-            it or using it to train their models; Mavéa does not control that and is not liable for
-            it. Only upload what you are allowed to share with them.
+            it or using it to train their models. The people who publish Mavéa do not control that
+            and, as far as the law allows, are not liable for it. Only upload what you are allowed
+            to share with them.
           </li>
           <li>
             <strong>A connected repository is read the same way.</strong> If you connect a code
@@ -74,16 +75,16 @@ export function LegalGate({
             and only connect what you may disclose.
           </li>
           <li>
-            <strong>Your key stays in this browser.</strong> It is held in this page while you use
-            it and, with Remember on, saved encrypted on this device. Any extension or software with
-            access to this browser can read it; Mavéa cannot prevent that. Use a restricted,
-            spend-capped key you can revoke.
+            <strong>Your key is stored only in this browser and sent with each request.</strong> It
+            passes through this deployment's proxy to the provider you chose. Any extension or
+            software with access to this browser can read it; Mavéa cannot prevent that. Use a
+            restricted, spend-capped key you can revoke.
           </li>
           <li>
             All provider charges are your sole responsibility. Mavéa does not charge you or pay
             providers on your behalf — use of your API keys and accounts is billed to you under each
-            provider's own pricing and terms. Most provider dashboards let you track usage and set a
-            spending cap.
+            provider's own pricing and terms. Set a spending cap in your provider's dashboard before
+            you start — it is the one limit that holds even if a key is ever misused.
           </li>
           <li>
             You are responsible for credentials, permission to submit content, connected actions,
@@ -129,11 +130,12 @@ export function LegalGate({
             onChange={(event) => setSpeechChecked(event.target.checked)}
           />
           <span>
-            I understand that if I use listening features, microphone audio and the resulting
-            transcripts leave this device to the speech endpoint and model provider I select, that
-            those operators may log or retain them under their own terms, and that I alone am
-            responsible for avoiding sensitive conversations and for obtaining any consent required
-            from other people before listening starts.
+            I understand that if I use listening features, microphone audio goes to the
+            speech-to-text endpoint this deployment uses (on this computer by default, but possibly
+            a remote one), that transcripts may go to the model provider I select, that remote
+            operators may log or retain them under their own terms, and that I alone am responsible
+            for avoiding sensitive conversations and for obtaining any consent required from other
+            people before listening starts.
           </span>
         </label>
 

@@ -84,7 +84,7 @@ describe('LegalGate', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(screen.getByText(/Mavéa uses AI and third-party services/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Microphone audio is sent to the speech-transcription endpoint/i),
+      screen.getByText(/possibly a remote one\), and the resulting transcript may be sent/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/I have read and agree to the Terms of Use/i)).toBeInTheDocument();
     expect(
