@@ -2472,7 +2472,8 @@ export function LiveApp(): ReactElement {
           () =>
             ink(
               'live-1',
-              'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
+              'After thirty years, the investment reaches ' +
+                'seventy-six thousand one hundred twenty-three dollars.',
               { kind: 'circle', at: '$76,123', color: 'key' },
               false,
               undefined,

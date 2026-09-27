@@ -98,9 +98,9 @@ export function finishOnceInked(
 /**
  * Resolves when a stop's pen has lifted: no mark on its card is still waiting to be placed, and
  * every stroke drawing there has finished. Both are real signals — a card whose entrance holds a
- * mark back for a second is waited out, and a stop whose strokes are done ends at once. The walk
- * chains the NEXT stop's glide onto this — never the next line, which speaks on time — so a stroke
- * is never scrolled or replaced mid-draw and the voice never waits on the pen.
+ * mark back for a second is waited out, and a stop whose strokes are done ends at once. The
+ * walk chains the NEXT stop's glide onto this — never the next line, which speaks on time — so
+ * a stroke is never scrolled or replaced mid-draw and the voice never waits on the pen.
  *
  * `ceilingAt` (performance.now() time) is the only time bound. With reduced motion the strokes do
  * not animate, so it resolves at once.

@@ -99,9 +99,10 @@ export function liesFlat(el: Element, root: Element): boolean {
 }
 
 /** An element's border-box size in LAYOUT px, unrounded. `offsetWidth`/`offsetHeight` round to
- *  whole pixels, so a scale derived from them is off by up to half a pixel over the card's width —
- *  enough that the same mark re-measured on a card a fraction wider or narrower (a lift easing
- *  out, a neighbour dimming) landed a pixel from where it had been drawn: visible jitter. */
+ *  whole pixels, so a scale derived from them is off by up to half a pixel over the card's
+ *  width. That was enough for the same mark, re-measured on a card a fraction wider or narrower
+ *  (a lift easing out, a neighbour dimming), to land a pixel from where it had been drawn:
+ *  visible jitter. */
 export function layoutSize(el: HTMLElement): { w: number; h: number } {
   const cs = getComputedStyle(el);
   let w = parseFloat(cs.width);

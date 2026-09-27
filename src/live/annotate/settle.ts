@@ -156,7 +156,8 @@ export function pollUntilSettled<T>(
   let attempts = 0;
   let lastKey: string | null = null;
   let streak = 0;
-  /** The fingerprint last handed to `onResult` — a confirming read that reproduces it is silent. */
+  /** The fingerprint last handed to `onResult`: a confirming read that reproduces it is
+   *  silent. */
   let reportedKey: string | null = null;
   let missingStreak = 0;
   let missingReported = false;

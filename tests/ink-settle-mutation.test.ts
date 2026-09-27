@@ -108,7 +108,7 @@ describe('pollUntilSettled — a mark is drawn once, where it comes to rest', ()
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('reports nothing while the geometry is still changing, then the resting read once', async () => {
+  it('reports nothing while the geometry changes, then the resting read once', async () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     let y = 0;

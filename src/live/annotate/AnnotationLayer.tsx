@@ -369,11 +369,11 @@ function measure(
   // A plain card is plotted in its LAYOUT space too: the visual deltas are divided back by the
   // card's own transform scale, and the SVG (which fills the card at layout size) carries a viewBox
   // of that same layout size. Plotting in visual space drew the same mark correctly, but every
-  // stroke parameter measured in px — the loop's padding, the hand's wobble, a note's type size —
-  // then depended on the scale the card happened to be at when it was read. The spotlight lifts a
-  // card to 1.03 and dims its neighbours to 0.984, so each spotlight move rewrote every mark on the
-  // cards it touched, frame by frame through the 520ms lift: the pen visibly re-drawing marks it
-  // had already finished. In layout space a transform cannot change the path at all.
+  // stroke parameter measured in px — the loop's padding, the hand's wobble, a note's type size
+  // — then depended on the scale the card happened to be at when it was read. The spotlight lifts
+  // a card to 1.03 and dims its neighbours to 0.984, so each spotlight move rewrote every mark on
+  // the cards it touched, frame by frame through the 520ms lift: the pen visibly re-drawing marks
+  // it had already finished. In layout space a transform cannot change the path at all.
   const layout = layoutSize(host);
   const hostScaleX = layout.w > 0 ? hostRect.width / layout.w : 1;
   const hostScaleY = layout.h > 0 ? hostRect.height / layout.h : 1;
