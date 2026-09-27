@@ -50,10 +50,11 @@ export function WrappedSlide({ slots }: SlideProps<'stat'>) {
         textAlign: 'center',
         overflow: 'hidden',
         // The saturated full-bleed wash that makes the beat read as Wrapped.
-        background: 'linear-gradient(150deg, var(--reel-accent) 0%, var(--reel-accent-2) 100%)',
+        background:
+          'linear-gradient(150deg, var(--reel-accent) 0%, var(--reel-accent-2-fill) 100%)',
         boxShadow:
           '0 calc(var(--ru) * 8) calc(var(--ru) * 18) calc(var(--ru) * -6) var(--reel-glow)',
-        color: '#fff',
+        color: 'var(--reel-on-accent)',
       }}
     >
       {/* Confetti rains the full height behind the type, each dot on its own cadence and tint. */}
@@ -94,7 +95,7 @@ export function WrappedSlide({ slots }: SlideProps<'stat'>) {
           fontWeight: 800,
           fontFamily: 'var(--reel-sans)',
           letterSpacing: '-0.03em',
-          color: '#fff',
+          color: 'var(--reel-on-accent)',
           textShadow: '0 calc(var(--ru) * 1.2) calc(var(--ru) * 3) rgba(0,0,0,0.22)',
           // forwards, not both: zero delay, so this costs nothing visible and avoids the hero number
           // staying blank if the tab was backgrounded when it mounted (a stalled `backwards` fill

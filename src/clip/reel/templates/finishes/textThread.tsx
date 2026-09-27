@@ -34,7 +34,7 @@ export function TextThreadSlide({ slots }: SlideProps<'chat'>) {
               background: mine
                 ? 'var(--reel-accent)'
                 : 'color-mix(in oklab, var(--reel-ink) 10%, #fff)',
-              color: mine ? '#fff' : 'var(--reel-ink)',
+              color: mine ? 'var(--reel-on-accent)' : 'var(--reel-ink)',
               fontWeight: 500,
               fontFamily: 'var(--reel-sans)',
               boxShadow:

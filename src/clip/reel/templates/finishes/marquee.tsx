@@ -10,10 +10,10 @@ import { fitLine, HERO_TIERS } from '../fitText';
 
 // The fills a band cycles through. `cream` is a scoped intrinsic tone; the rest recolor with the reel.
 const BANDS = [
-  { fill: 'var(--reel-accent)', ink: '#fff' },
+  { fill: 'var(--reel-accent)', ink: 'var(--reel-on-accent)' },
   { fill: 'var(--marq-cream)', ink: 'var(--reel-ink)' },
-  { fill: 'var(--reel-orb-1)', ink: '#fff' },
-  { fill: 'var(--reel-accent-2)', ink: '#fff' },
+  { fill: 'var(--reel-orb-1)', ink: 'var(--reel-on-orb-1)' },
+  { fill: 'var(--reel-accent-2)', ink: 'var(--reel-on-accent-2)' },
 ] as const;
 
 export function MarqueeSlide({ slots }: SlideProps<'list'>) {

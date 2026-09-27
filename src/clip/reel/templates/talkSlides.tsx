@@ -117,7 +117,7 @@ export function ChatTranscriptSlide({ slots }: SlideProps<'chat'>) {
                 background: mine
                   ? 'var(--reel-accent)'
                   : 'color-mix(in oklab, var(--reel-ink) 9%, transparent)',
-                color: mine ? '#fff' : 'var(--reel-ink)',
+                color: mine ? 'var(--reel-on-accent)' : 'var(--reel-ink)',
                 fontWeight: 500,
                 fontFamily: 'var(--reel-sans)',
                 animation: `reel-rise 0.5s cubic-bezier(0.2,0.7,0.3,1) ${i * 0.18}s both`,

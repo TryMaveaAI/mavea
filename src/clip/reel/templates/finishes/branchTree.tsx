@@ -22,7 +22,7 @@ export function BranchTreeSlide({ slots }: SlideProps<'conceptmap'>) {
           padding: 'calc(var(--ru) * 2.6) calc(var(--rw) * 3.4)',
           borderRadius: 'calc(var(--ru) * 3)',
           background: 'var(--reel-accent)',
-          color: '#fff',
+          color: 'var(--reel-on-accent)',
           font: '700 calc(var(--ru) * 4)/1.1 var(--reel-sans)',
           letterSpacing: '-0.01em',
           // The pill is width-capped so the branches keep their room — a long unbroken center

@@ -37,8 +37,8 @@ export function SessionPassSlide({ slots }: SlideProps<'recap'>) {
       <div
         style={{
           padding: 'calc(var(--ru) * 4.4) calc(var(--rw) * 5) calc(var(--ru) * 4)',
-          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2))',
-          color: '#fff',
+          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2-fill))',
+          color: 'var(--reel-on-accent)',
         }}
       >
         <div

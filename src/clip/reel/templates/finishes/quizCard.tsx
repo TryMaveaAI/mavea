@@ -6,11 +6,14 @@ import { fitText, TITLE_TIERS, BODY_TIERS, type Ladder } from '../fitText';
 function Row({
   tag,
   tone,
+  ink,
   text,
   ladder,
 }: {
   tag: string;
   tone: string;
+  /** The ink derived for `tone` in reel.css. */
+  ink: string;
   text: string;
   ladder: Ladder;
 }) {
@@ -28,7 +31,7 @@ function Row({
           display: 'grid',
           placeItems: 'center',
           background: tone,
-          color: '#fff',
+          color: ink,
           font: '700 calc(var(--ru) * 2.4)/1 var(--reel-mono)',
         }}
       >
@@ -68,11 +71,23 @@ export function QuizCardSlide({ slots }: SlideProps<'qa'>) {
           '0 calc(var(--ru) * 6) calc(var(--ru) * 14) calc(var(--ru) * -6) rgba(20,16,44,0.4)',
       }}
     >
-      <Row tag="Q" tone="var(--reel-accent)" text={slots.question} ladder={TITLE_TIERS} />
+      <Row
+        tag="Q"
+        tone="var(--reel-accent)"
+        ink="var(--reel-on-accent)"
+        text={slots.question}
+        ladder={TITLE_TIERS}
+      />
       <span
         style={{ height: 1, background: 'color-mix(in oklab, var(--reel-ink) 14%, transparent)' }}
       />
-      <Row tag="A" tone="var(--reel-accent-2)" text={slots.answer} ladder={BODY_TIERS} />
+      <Row
+        tag="A"
+        tone="var(--reel-accent-2)"
+        ink="var(--reel-on-accent-2)"
+        text={slots.answer}
+        ladder={BODY_TIERS}
+      />
     </div>
   );
 }

@@ -136,7 +136,10 @@ export function KnowledgeGraphSlide({ slots }: SlideProps<'conceptmap'>) {
           <text
             x={cx}
             textAnchor="middle"
-            style={{ font: `700 ${centerFit.size}px var(--reel-sans)`, fill: '#fff' }}
+            style={{
+              font: `700 ${centerFit.size}px var(--reel-sans)`,
+              fill: 'var(--reel-on-accent)',
+            }}
           >
             {centerFit.lines.map((line, li) => (
               <tspan

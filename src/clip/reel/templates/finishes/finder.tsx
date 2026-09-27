@@ -161,7 +161,7 @@ export function FinderSlide({ slots }: SlideProps<'recap'>) {
                     flex: 1,
                     minWidth: 0,
                     font: '600 calc(var(--ru) * 2.6)/1.2 var(--reel-sans)',
-                    color: selected ? '#fff' : 'var(--finder-text)',
+                    color: selected ? 'var(--reel-on-accent)' : 'var(--finder-text)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',

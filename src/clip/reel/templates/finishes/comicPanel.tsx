@@ -143,7 +143,7 @@ export function ComicPanelSlide({ slots }: SlideProps<'quote'>) {
             font: '800 calc(var(--ru) * 2.8)/1.1 var(--reel-sans)',
             letterSpacing: '0.02em',
             textTransform: 'uppercase',
-            color: '#fff',
+            color: 'var(--reel-on-accent)',
             maxWidth: '88%',
             animation: 'comic-bubble-pop 0.5s cubic-bezier(0.2,0.7,0.3,1) 0.34s both',
           }}

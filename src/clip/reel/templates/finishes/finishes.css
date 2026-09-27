@@ -819,7 +819,7 @@
   font: 600 calc(var(--ru) * 2.2)/1 var(--reel-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--reel-on-accent);
   background: var(--reel-accent);
   box-shadow: 0 calc(var(--ru) * 2) calc(var(--ru) * 5) calc(var(--ru) * -2) var(--reel-glow);
   overflow: hidden;
