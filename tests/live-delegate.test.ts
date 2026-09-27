@@ -135,6 +135,7 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     const r = await negotiate(BRIEF, fn, (e) => events.push(e));
     expect(events.filter((e) => e.kind === 'boundary')).toHaveLength(2);
     expect(events.at(-1)).toMatchObject({ kind: 'pass' });
+    expect(events.at(-1)?.say).toContain('No offer inside your boundaries');
     expect(r.deal).toBeNull();
   });
 
@@ -170,7 +171,20 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     const events: NegotiationEvent[] = [];
     await negotiate(BRIEF, fn, (e) => events.push(e));
     expect(calls).toHaveLength(2);
-    expect(events.at(-1)?.say).toContain('No reply arrived');
+    expect(events.at(-1)?.say).toContain('could not be read');
+  });
+
+  it('names the last attempt when a withheld offer is followed by an unreadable reply', async () => {
+    const { fn, calls } = scripted([
+      move('Weekends it is, then.', 'Working weekends for the raise', 'offer'),
+      'prose, not JSON',
+    ]);
+    const events: NegotiationEvent[] = [];
+    await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(calls).toHaveLength(2);
+    // A reply did arrive: it could not be read. "No reply arrived" would blame the transport.
+    expect(events.at(-1)).toMatchObject({ kind: 'pass' });
+    expect(events.at(-1)?.say).toContain('could not be read');
   });
 
   it('never re-sends a call that failed outright', async () => {

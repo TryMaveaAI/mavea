@@ -161,6 +161,15 @@ function transcript(events: NegotiationEvent[], b: NegotiationBrief): string {
     .join('\n');
 }
 
+/** Why a move produced nothing usable, judged on its last attempt. */
+type MoveEnding = 'no-reply' | 'unreadable' | 'withheld';
+
+const ENDING_LINE: Record<MoveEnding, string> = {
+  'no-reply': 'No reply arrived — the run ended early.',
+  unreadable: 'The reply could not be read — the run ended early.',
+  withheld: 'No offer inside your boundaries — the run ended early.',
+};
+
 /**
  * Run the negotiation: sides alternate (yours opens) until one accepts, one passes, or
  * the round cap lands. Events surface through `onEvent` as they happen so the log reads
@@ -194,27 +203,25 @@ export async function negotiate(
     // boundary and was withheld. A pass is a real decision and stands, even on a side's first
     // move. A call that fails outright is not re-sent: the provider may already have billed it.
     let move: AgentMove | null = null;
-    let unparsed = false;
+    let ending: MoveEnding = 'no-reply';
     for (let attempt = 0; attempt < 2; attempt++) {
-      let failed = false;
-      const raw = await call(system, user).catch(() => {
-        failed = true;
-        return '';
-      });
+      const reply = await call(system, user).then(
+        (raw) => ({ raw }),
+        () => null,
+      );
       if (signal?.aborted) break;
-      if (failed) {
-        unparsed = true;
+      if (!reply) {
+        ending = 'no-reply';
         move = null;
         break;
       }
-      move = parseMove(raw);
+      move = parseMove(reply.raw);
       if (!move) {
-        unparsed = true;
+        ending = reply.raw.trim() ? 'unreadable' : 'no-reply';
         user +=
           '\nYour last reply was not the required JSON object. Reply with ONLY {"say":…, "offer":…, "decision":…} — no prose, no fences.';
         continue;
       }
-      unparsed = false;
       const tripped =
         side === 'yours' && move.offer ? violatedBoundary(move.offer, brief.boundaries) : null;
       if (!tripped) break;
@@ -225,17 +232,15 @@ export async function negotiate(
       });
       user += `\nYour previous offer was WITHHELD: it included "${tripped}", which is never offered. Make a different move.`;
       move = null;
+      ending = 'withheld';
     }
     if (signal?.aborted) break;
 
     if (!move) {
-      // An honest ending line: a side that never produced a readable reply did not "decide"
-      // anything, and saying so is what makes a transport problem visible instead of eerie.
-      emit({
-        side,
-        kind: 'pass',
-        say: unparsed ? 'No reply arrived — the run ended early.' : 'No further moves.',
-      });
+      // An honest ending line, named for what the LAST attempt did: a side that never produced a
+      // usable reply did not "decide" anything, and saying why is what makes a transport problem
+      // visible instead of eerie.
+      emit({ side, kind: 'pass', say: ENDING_LINE[ending] });
       break;
     }
     if (move.decision === 'accept' && standing && standing.by !== side) {
