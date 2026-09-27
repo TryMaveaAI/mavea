@@ -4,6 +4,7 @@ import type { ReactNode, CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { SourceChip, ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import type { InsightProps } from '../data/conversation';
+import { longestRun } from './lib/fitText';
 
 type Props = InsightProps & {
   num: string;
@@ -40,7 +41,7 @@ export function InsightCard({
       </div>
       <div className="insight-title">{title}</div>
       {stat && (
-        <div className="insight-stat">
+        <div className="insight-stat" style={{ '--stat-run': longestRun(stat) } as CSSProperties}>
           {/* the headline figure — Mavéa's drawn gesture underlines it while talking */}
           <span className="big tab-num" data-mark="underline">
             {stat}

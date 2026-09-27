@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { render, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { KpiGrid } from '../src/canvas/KpiGrid';
+import { InsightCard } from '../src/canvas/InsightCard';
 
 afterEach(cleanup);
 
@@ -27,5 +29,43 @@ describe('KpiGrid states what its type has to hold', () => {
     const [a, b] = Array.from(container.querySelectorAll('.kpi-val'));
     expect(a.classList.contains('kpi-val--whole')).toBe(true);
     expect(b.classList.contains('kpi-val--whole')).toBe(false);
+  });
+});
+
+// Type only shrinks to a floor, so a figure longer than a narrow tile can hold at that floor ran
+// under the card's clipped edge. The grid is told the longest runs it holds and gives up a column
+// rather than make a tile narrower than them; the insight's headline figure shrinks to its card.
+describe('a figure never runs past its tile', () => {
+  it('states the grid-wide longest figure and label word on the grid', () => {
+    const { container } = render(
+      <KpiGrid
+        title="Three up"
+        cols={3}
+        kpis={[
+          { val: '1,234,567,890.5', label: 'Internationalization' },
+          { val: '36%', label: 'Share' },
+        ]}
+      />,
+    );
+    const grid = container.querySelector<HTMLElement>('.kpi-grid')!;
+    expect(grid.style.getPropertyValue('--kpi-val-run')).toBe('15');
+    expect(grid.style.getPropertyValue('--kpi-label-run')).toBe('20');
+  });
+
+  it('drops a column before a tile goes under those runs', () => {
+    const css = readFileSync('src/styles/visualizations-harvested.css', 'utf8');
+    const rule = /\n\.kpi-grid \{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(rule).toMatch(/repeat\(\s*auto-fit/);
+    expect(rule).toMatch(/--kpi-need:[^;]*--kpi-val-run[^;]*--kpi-label-run/);
+  });
+
+  it('sizes the insight headline figure to the run it has to hold', () => {
+    const { container } = render(
+      <InsightCard num="1" title="Run-rate" stat="$12,345,678,901.23" summary="" />,
+    );
+    const stat = container.querySelector<HTMLElement>('.insight-stat')!;
+    expect(stat.style.getPropertyValue('--stat-run')).toBe('18');
+    const css = readFileSync('src/styles/visualizations-extra.css', 'utf8');
+    expect(css).toMatch(/\.insight-stat \.big \{[^}]*font-size: clamp\([^;]*--stat-run/);
   });
 });

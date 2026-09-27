@@ -1373,7 +1373,10 @@
   flex-wrap: wrap;
 }
 .insight-stat .big {
-  font-size: var(--fs-2xl);
+  /* Sized to hold its longest run on the card's line (the card is the query container), as the
+     KPI and bar figures are: a figure is never broken, so a long one shrinks instead of running
+     under the card's clipped edge. */
+  font-size: clamp(var(--fs-sm), calc(100cqi / (var(--stat-run, 6) * 0.62)), var(--fs-2xl));
   font-weight: 600;
   letter-spacing: -0.02em;
   /* A short stat ("$5,000", "+18%") stays on one line; a long value the model put here wraps

@@ -321,12 +321,30 @@
 .kpi-card .kpi-grid {
   margin-block: auto;
 }
-/* Equal tiles whatever they hold: `minmax(0, 1fr)`, so one long word cannot widen its column and
-   push the grid out of the card. Holding the words whole is the TYPE's job, below. */
+/* Equal tiles whatever they hold, up to `--kpi-cols` of them. Holding the words whole is the
+   TYPE's job, below, but type only shrinks to a floor: a fourteen-character figure at that floor
+   is wider than a phone's three-up tile, and the card clips what the tile cannot hold. So a tile
+   is never narrower than the grid's longest figure at the value's floor, or its longest label
+   word at the label's (--kpi-need, from the runs KpiGrid states), and the grid drops a column
+   rather than go under it. The half pixel keeps float rounding from dropping one at exactly N. */
 .kpi-grid {
+  --kpi-gap: 15px;
+  --kpi-need: max(
+    calc(var(--kpi-val-run, 4) * 0.62 * var(--fs-sm)),
+    calc(var(--kpi-label-run, 8) * 0.8 * var(--fs-2xs))
+  );
   display: grid;
-  grid-template-columns: repeat(var(--kpi-cols, 2), minmax(0, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      max(
+        min(100%, var(--kpi-need)),
+        calc((100% - (var(--kpi-cols, 2) - 1) * var(--kpi-gap)) / var(--kpi-cols, 2) - 0.5px)
+      ),
+      1fr
+    )
+  );
+  gap: var(--kpi-gap);
 }
 /* Each tile is the container its type is fitted to. The card's last-resort `word-break` split a
    figure or a word wherever the tile ran out ("112,0" over "00", "ACTIVATI" over "ON" in a
@@ -342,6 +360,12 @@
 .kpi-label {
   overflow-wrap: normal;
   word-break: normal;
+}
+/* A label word too long for even a one-column tile at the floor is the one case left: it breaks
+   there rather than run under the card's edge. `break-word` (not `anywhere`) leaves the word's
+   min-content whole, so this never fires while the tile could still hold it. */
+.kpi-label {
+  overflow-wrap: break-word;
 }
 /* A single-run figure ("112,000", "36%") is one line; a named value ("Pocket Wi-Fi") may wrap
    between its words. */

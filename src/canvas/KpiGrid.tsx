@@ -28,6 +28,10 @@ export function KpiGrid({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark;
+  // The longest runs in the whole grid: a tile narrower than these can only clip them, so the
+  // grid gives up a column before it gets there (see `.kpi-grid`).
+  const valRun = Math.max(1, ...kpis.map((k) => longestRun(String(k.val))));
+  const labelRun = Math.max(1, ...kpis.map((k) => longestRun(k.label)));
   return (
     <div
       className="card reveal kpi-card"
@@ -38,7 +42,13 @@ export function KpiGrid({
       </div>
       <div
         className="kpi-grid"
-        style={{ '--kpi-cols': cols ?? balancedCols(kpis.length) } as CSSProperties}
+        style={
+          {
+            '--kpi-cols': cols ?? balancedCols(kpis.length),
+            '--kpi-val-run': valRun,
+            '--kpi-label-run': labelRun,
+          } as CSSProperties
+        }
       >
         {kpis.map((k, i) => {
           const val = String(k.val);
