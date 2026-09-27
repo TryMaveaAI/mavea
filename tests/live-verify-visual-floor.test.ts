@@ -64,9 +64,9 @@ describe('verify — visual-presence floor', () => {
     expect(codes(r, 'lean')).toContain('no-visual');
   });
 
-  it('defaults to flagging (complexity defaults to rich) so the after-repair recheck agrees', () => {
+  it('defaults to flagging (complexity defaults to rich) ', () => {
     const r = build([insight('Headline'), list('Options'), list('More')]);
-    // No complexity arg — matches generateLive's post-repair checkConsistency(fixed2) call.
+    // No complexity arg — dropUndrawable calls it this way.
     expect(codes(r)).toContain('no-visual');
   });
 });

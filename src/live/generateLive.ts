@@ -163,7 +163,7 @@ export interface GenerateLiveOpts {
   onActivity?: (activity: LiveActivity) => void;
   /** Progressive reveal: called with a renderable spec each time another block finishes
    *  streaming, so the canvas fills in WITH the voice instead of popping in after. Streaming
-   *  only — the post-stream tail (validate → recovery → repair → re-tile) emits nothing until
+   *  only — the post-stream tail (validate → recovery → autoFix → re-tile) emits nothing until
    *  the final result returns. */
   onPartial?: (partial: { spec: ConversationSpec; narration: string }) => void;
   /** Real search sources, the moment they're known (app-side search resolves before the
@@ -1753,14 +1753,13 @@ export async function generateLive(
       const recoverCap = Math.max(maxBlocks, RECOVERY_MIN_BLOCKS);
       const floor = complexity === 'rich' ? 5 : 3;
       // No streamDelta on the retry: the stream buffer already holds the failed first pass, so
-      // re-streaming would corrupt block parsing — mirror the repair pass (line ~1322) and take the
-      // result whole. Tools off so we don't re-bill a search just to restructure.
+      // re-streaming would corrupt block parsing — take the result whole. Tools off so we don't
+      // re-bill a search just to restructure.
       const out2 = await adapter.generate(
         {
           ...baseReq,
           usageLabel: 'collapse-recovery',
-          // The retry keeps the FULL per-turn system, unlike the repair pass below: a repair
-          // restructures JSON it is handed verbatim, but a recovery RE-COMPOSES the answer, and
+          // The retry keeps the FULL per-turn system: a recovery RE-COMPOSES the answer, and
           // the per-turn directives (today's date, the topic lock, a lesson's spine, the search
           // rules) are part of what composing correctly means. Trimming them was tried and read
           // as a saving; it was a quality cut on exactly the fragile turns.

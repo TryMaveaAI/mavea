@@ -3,10 +3,9 @@
 // with one point, a breakdown whose shares don't add up, a chart whose data and
 // labels disagree, or an answer that never varies its visualization.
 //
-// These run on EVERY turn (free, no model call). When they fire, generateLive does
-// ONE fast self-correction pass — so clean answers stay instant and only suspect
-// ones pay for a repair. This is the speed/accuracy balance: verify cheaply, repair
-// only when needed.
+// These run on EVERY turn (free, no model call). They never buy a second model call:
+// autoFix repairs what is mechanical, dropUndrawable removes what cannot be drawn
+// honestly, and every other issue is flagged, not re-asked.
 // The value import comes from the dependency-free leaf so verify.ts doesn't transitively pin the
 // catalog through liveSchema; the type stays a type-only import (erased at build).
 import { FRONTIER_BLOCK_TYPES } from '../engine/blockTypes';
@@ -164,7 +163,7 @@ export function opensWithPreamble(narration: string): boolean {
  * we extract every LABELED ABSOLUTE AMOUNT (never pct shares — those are
  * relative to each block's own whole and legitimately differ) and flag
  * any label whose values disagree across blocks. We never guess which
- * number is right, so this is a HARD issue: the model reconciles it.
+ * number is right, so it is flagged and never mutated.
  * ------------------------------------------------------------------ */
 
 /** Currency amount embedded in a label, e.g. donut row "Future $1,100" or
@@ -280,8 +279,8 @@ function checkValueConflicts(blocks: Block[]): Issue[] {
 /** Detect data-shape ↔ block-type mismatches and degenerate visuals. Pure.
  *
  *  `complexity` sizes the sparsity floor: a brief ask may be one block, a lean answer may be
- *  two, and a rich answer needs three. Otherwise this HARD issue turns intentionally tight
- *  answers into paid repair round-trips whose only effect is padding. */
+ *  two, and a rich answer needs three, so an intentionally tight answer is never reported as
+ *  too sparse. */
 export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'rich'): Issue[] {
   const issues: Issue[] = [];
 
@@ -333,7 +332,7 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
     }
 
     // A stack states its own total — the segments must actually sum to it. We can't
-    // know whether the total or a segment is wrong, so this is a HARD issue.
+    // know whether the total or a segment is wrong, so it is flagged, never mutated.
     if (b.type === 'stack' && b.props.total) {
       const total = parseAmount(b.props.total);
       const segs = b.props.segments;
@@ -370,9 +369,8 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // Sparsity: a one-card canvas is a degenerate answer — it renders as a lone block
   // floating in a grid built for a spread (the "one element, looks odd" failure). autoFix
   // has already framed a lone NON-insight with an opener by here, so a surviving single
-  // block is a bare insight (or a truncation that salvaged one block). Flag it HARD so the
-  // repair pass asks the model for a fuller, complete answer — autoFix can't invent the
-  // missing content under the real-data rule, so only a re-ask fixes it.
+  // block is a bare insight (or a truncation that salvaged one block). autoFix can't invent
+  // the missing content under the real-data rule, so it is flagged rather than fixed.
   const sparseFloor = complexity === 'brief' ? 1 : complexity === 'lean' ? 2 : 3;
   if (r.blocks.length < sparseFloor) {
     issues.push({
@@ -394,7 +392,7 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // Fabricated action claim: narration says a real-world deed is DONE ("I've sent the
   // email") but this turn never actually proposed the matching "action" block — the model
   // narrated a completion that never happened. autoFix rewrites this deterministically
-  // (see below), so it's not a HARD issue; it's reported here so the fix is observable and
+  // (see below); it's reported here so the fix is observable and
   // covered whenever checkConsistency runs on a response autoFix hasn't touched yet.
   if (
     claimsActionDone(r.narration) &&
@@ -423,10 +421,9 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // Specialization floor: a full canvas built ENTIRELY from the common staples is the
   // "same ten components every time" collapse — the library has 200+ specialized visuals and a
   // rich answer should reach them, the way a hand-built demo does. We count DISTINCT specialized
-  // types and flag a rich canvas that uses too few, so the repair pass rebuilds it around the
-  // hero components the turn actually offered. Only fires on a genuinely large canvas, so a short,
-  // complete answer is never padded with exotic blocks it doesn't need. Code can't add a fitting
-  // specialized component under the real-data rule — only the model can.
+  // types and flag a rich canvas that uses too few. Only fires on a genuinely large canvas, so a
+  // short, complete answer is never flagged for lacking exotic blocks it doesn't need. Code can't
+  // add a fitting specialized component under the real-data rule, so it is flagged, not fixed.
   if (r.blocks.length >= RICH_CANVAS_MIN) {
     const specialized = specializedTypes(r.blocks);
     if (specialized.size < MIN_SPECIALIZED_TYPES) {
@@ -441,10 +438,9 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // "see what it means", not another wall of text — yet a valid answer can still land as nothing but
   // prose cards (insight/list/blanks) with no chart, comparison, timeline, or diagram to SEE. That
   // reads as a broken/generic reply even when the words are right, and it's the common shape of a
-  // small or slow-model turn (capped below the 8-block floor, so low-variety never catches it). Flag
-  // it HARD so the repair pass rebuilds around a fitting visual hero. Brief asks are exempt: a couple
-  // of text cards is a complete answer to a quick factual question. autoFix can't invent a real-data
-  // visual, so — like low-variety — only the model can fix this.
+  // small or slow-model turn (capped below the 8-block floor, so low-variety never catches it).
+  // Brief asks are exempt: a couple of text cards is a complete answer to a quick factual question.
+  // autoFix can't invent a real-data visual, so — like low-variety — it is flagged, not fixed.
   if (complexity !== 'brief' && r.blocks.length >= 2 && !hasVisualBlock(r.blocks)) {
     issues.push({
       code: 'no-visual',
@@ -558,9 +554,8 @@ export function autoFix(r: LiveResponse): LiveResponse {
 }
 
 /**
- * The recovery re-ask: fired when the first pass produced nothing usable (or far too few blocks)
- * for an ask that deserves a full canvas — the failure that collapses a substantive question to a
- * single "Here's what I can say" text card. It
+ * The recovery re-ask: fired only when the first pass produced zero renderable blocks — the
+ * failure that collapses a substantive question to a single "Here's what I can say" text card. It
  * re-asks for the WHOLE answer with a firm block floor, so a weak model that under-delivered or
  * emitted unparseable/truncated JSON gets ONE concrete second chance before we degrade to text.
  * `floor` is the minimum block count the ask warrants.

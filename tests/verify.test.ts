@@ -1,9 +1,8 @@
 import { autoFix, checkConsistency, dropUndrawable } from '../src/live/verify';
 import type { LiveResponse } from '../src/engine/liveSchema';
 
-// Locks the accuracy guardrail — the cheap checks that decide whether a turn needs
-// a self-correction pass. If these mis-fire, we either repair good answers (slow)
-// or pass bad ones (inaccurate).
+// Locks the accuracy guardrail — the cheap, local checks every turn runs. If these
+// mis-fire, autoFix and dropUndrawable either rewrite good answers or pass bad ones.
 function resp(blocks: LiveResponse['blocks']): LiveResponse {
   return { title: 't', sub: '', narration: '', blocks };
 }

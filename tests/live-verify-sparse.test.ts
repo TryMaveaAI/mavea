@@ -52,7 +52,7 @@ describe('verify — sparse canvas', () => {
     expect(issues.some((i) => i.code === 'too-sparse')).toBe(false);
   });
 
-  it('does NOT pad a complete two-block lean answer through a repair round-trip', () => {
+  it('does NOT flag a complete two-block lean answer as too sparse', () => {
     const r = build([
       { type: 'insight', props: { title: 'Direct answer' } },
       { type: 'kpi', props: { title: 'Result', items: [{ label: 'Value', value: '42' }] } },
