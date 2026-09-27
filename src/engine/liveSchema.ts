@@ -2916,6 +2916,32 @@ export function coerceStudyNotes(raw: Json, blocks: Block[]): Map<string, BlockS
   return out;
 }
 
+// The answer's own top-level fields, normalised exactly as the validator does — shared so the
+// streamed framing (generateLive's onFraming) names what the finished answer will carry.
+
+/** forDisplay first: the model may annotate a tricky name anywhere it writes prose, and the
+ *  pronunciation is for the VOICE — a reader must never be shown a literal
+ *  "[[Titanic|tie-tan-ick]]". */
+export function answerTitle(raw: Json): string {
+  return capContentText(
+    forDisplay(asStr(raw).trim()),
+    fieldContentBudget('response', 'title', 'text'),
+  );
+}
+
+/** Length is a prompt target, not a playback cut: the complete thought is kept. collapseRepeatedValues
+ *  drops an accidental back-to-back restatement ("$200, $200" → "$200"); proseForDisplay strips any
+ *  inline citation/URL, which renders as literal "[fifa.com](https://…)" — the real sources sit in
+ *  the footer. */
+export function answerNarration(raw: Json): string {
+  return collapseRepeatedValues(proseForDisplay(asStr(raw).trim()));
+}
+
+export function answerContinuity(raw: Json): LiveResponse['continuity'] {
+  const hint = asStr(raw).toLowerCase().trim();
+  return hint === 'replace' || hint === 'augment' || hint === 'refine' ? hint : undefined;
+}
+
 export function validateLiveResponse(
   raw: unknown,
   allowed: ReadonlySet<string> = ALLOWED_BLOCK_TYPES,
@@ -2962,26 +2988,16 @@ export function validateLiveResponse(
     }
   }
   const obj = asObj(parsed);
-  // forDisplay first: the model may annotate a tricky name anywhere it writes prose, and the
-  // pronunciation is for the VOICE — a reader must never be shown a literal
-  // "[[Titanic|tie-tan-ick]]". The block props below have always resolved theirs; the answer's own
-  // title and subtitle were the two that did not, so a single annotated name reached the screen.
-  const title = capContentText(
-    forDisplay(asStr(obj.title).trim()),
-    fieldContentBudget('response', 'title', 'text'),
-  );
+  // The block props below have always resolved their annotations; the answer's own title and
+  // subtitle were the two that did not, so a single annotated name reached the screen.
+  const title = answerTitle(obj.title);
   const sub = capContentText(forDisplay(asStr(obj.sub).trim()), {
     maxGraphemes: 180,
     maxLines: 4,
   });
-  // Length is a prompt target, not a playback cut. Keep the complete thought on both sides
-  // of pronunciation annotations; a character cap can silently remove its conclusion.
+  const narration = answerNarration(obj.narration);
+  // The said side gets the same treatment as the shown side (answerNarration).
   const narrationRaw = asStr(obj.narration).trim();
-  // collapseRepeatedValues drops an accidental back-to-back restatement ("$200, $200" → "$200")
-  // a completion turn can produce, on both the shown and said sides.
-  // proseFor* also strips any inline citation/URL the model dropped into the spoken line — it renders
-  // as literal "[fifa.com](https://…)" and reads as gibberish aloud; the real sources sit in the footer.
-  const narration = collapseRepeatedValues(proseForDisplay(narrationRaw));
   const spokenRaw = collapseRepeatedValues(proseForSpeech(narrationRaw));
   const spoken = spokenRaw && spokenRaw !== narration ? spokenRaw : '';
 
@@ -3076,9 +3092,7 @@ export function validateLiveResponse(
   // Unsalvageable: no title to show AND no block to render.
   if (!title && !blocks.length) return null;
 
-  const hint = asStr(obj.continuity).toLowerCase().trim();
-  const continuity =
-    hint === 'replace' || hint === 'augment' || hint === 'refine' ? hint : undefined;
+  const continuity = answerContinuity(obj.continuity);
 
   // A judgement the model actually made must survive as itself — including "no". Dropping a false
   // here is indistinguishable from silence, and silence sends the caller to its word-shape

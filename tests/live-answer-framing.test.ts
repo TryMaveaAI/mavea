@@ -87,4 +87,26 @@ describe('onFraming', () => {
     const { result } = await follow(CUT, 'die');
     expect(result.error).toBeDefined();
   });
+
+  it('names a hint the model wrote after the blocks, not the silence before it', async () => {
+    // No tail is left to validate once the blocks close, so a framing read off the last validated
+    // tail named no hint here — the cue said "adding" and the settle then replaced the board.
+    const late = `${HEAD.replace('"continuity":"augment",', '')}],"chips":["a follow-up chip long enough to span several forty-character deltas"],"continuity":"replace"}`;
+    const { result, framings } = await follow(late);
+    expect(result.continuity).toBe('replace');
+    expect(framings.map((f) => f.continuity)).toEqual(['replace']);
+  });
+
+  it('names the title and narration as the finished answer shows them', async () => {
+    // The narration arrives after the blocks, and both fields carry markup the screen must
+    // never show.
+    const late = `{"title":"[[CUDA|kooda]] Cores","continuity":"augment","sub":"","blocks":[
+      {"type":"list","props":{"title":"Inputs","items":["light","water","carbon dioxide"]}}],
+      "narration":"It runs on [[CUDA|kooda]], see [docs](https://example.com)."}`;
+    const { result, framings } = await follow(late);
+    expect(framings[0]?.title).toBe('CUDA Cores');
+    expect(framings[0]?.title).toBe(result.spec.title);
+    expect(framings[0]?.narration).toBe(result.narration);
+    expect(framings[0]?.narration).not.toMatch(/\[|https/);
+  });
 });

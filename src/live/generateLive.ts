@@ -17,6 +17,9 @@ import type {
 } from '../data/conversation';
 import {
   validateLiveResponse,
+  answerContinuity,
+  answerNarration,
+  answerTitle,
   LIVE_SYSTEM_PROMPT,
   liveSystemPromptInvariant,
   liveSystemPromptKeyed,
@@ -1574,19 +1577,24 @@ export async function generateLive(
    *  closes and the card count is final. Both are ceilings the settle cannot exceed: the one-shot
    *  validation of the same reply yields these same blocks (so the collapse recovery, which needs
    *  zero, cannot run), and only the world card can join after. A small model's hint is never
-   *  read (resolveMode), so only a hint that may still be coming holds the framing back. */
+   *  read (resolveMode), so only a hint that may still be coming holds the framing back.
+   *  The fields are read off the scanners as they stand, never off the last validated tail: the
+   *  model may write its hint AFTER the blocks, when no tail is left to carry it. */
   const frame = (): void => {
-    if (!opts.onFraming || streamedTop === null || streamedBlocks.length === 0) return;
-    if (narrationField.value() === null || titleField.value() === null) return;
-    if (tier !== 'small' && continuityField.value() === null) return;
+    if (!opts.onFraming || streamedBlocks.length === 0) return;
+    const narration = narrationField.value();
+    const title = titleField.value();
+    const hint = continuityField.value();
+    if (narration === null || title === null) return;
+    if (tier !== 'small' && hint === null) return;
     const ceiling = (blockStream.closed ? streamedBlocks.length : maxBlocks) + 1;
     if (ceiling === framedCeiling) return;
     framedCeiling = ceiling;
-    const top: LiveResponse = streamedTop;
+    const continuity = answerContinuity(hint ?? '');
     opts.onFraming({
-      narration: top.narration,
-      title: top.title,
-      ...(top.continuity ? { continuity: top.continuity } : {}),
+      narration: answerNarration(narration),
+      title: answerTitle(title),
+      ...(continuity ? { continuity } : {}),
       tier,
       ceiling,
     });
