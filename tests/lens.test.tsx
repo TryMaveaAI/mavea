@@ -243,14 +243,17 @@ describe('reaching the rest of the answer', () => {
 });
 
 describe('magnifying the card leaves the controls alone', () => {
-  it('scrolls and scales only the card; the toolbar and the notes sit outside that box', () => {
+  it('scales only the card, and scrolls it with its notes in one box the toolbar sits outside', () => {
     const notes = [{ text: 'a note', kind: 'insight' as const }];
     const { container } = mount({ studyAsides: { a: notes } });
     cleanClick(cell0(container, 'a'));
     const scroll = container.querySelector('.zoom-sheet-scroll')!;
     expect(scroll.contains(container.querySelector('.zoom-sheet-body'))).toBe(true);
     expect(scroll.contains(container.querySelector('.zoom-sheet-toolbar'))).toBe(false);
-    expect(scroll.contains(container.querySelector('.lens-notes'))).toBe(false);
+    // One scroll for the card and the notes: a second box of their own was a nested scroller.
+    const aside = container.querySelector('.lens-notes')!;
+    expect(scroll.contains(aside)).toBe(true);
+    expect(container.querySelector('.zoom-sheet-body')!.contains(aside)).toBe(false);
     // And the zoom is applied to the body alone.
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     const body = container.querySelector('.zoom-sheet-body') as HTMLElement;
@@ -293,6 +296,46 @@ describe('Mavéa\u2019s notes follow the Lens', () => {
   it('writes nothing while the board is at rest', () => {
     const { container } = mount({ studyAsides: { a: notes } });
     expect(container.querySelector('.lens-notes')).toBeNull();
+  });
+});
+
+describe('on a narrow sheet the notes fold under the card', () => {
+  const notes = [
+    { text: 'assumes April fares hold', kind: 'caution' as const },
+    { text: 'lodging moves the total', kind: 'insight' as const },
+  ];
+  // jsdom lays nothing out, so the sheet reports a phone's width.
+  const sheetWidth = (w: number) =>
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.classList.contains('zoom-sheet') ? w : 0;
+    });
+
+  it('turns the eyebrow into a fold the reader can close and open again', () => {
+    const spy = sheetWidth(358);
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    const fold = screen.getByRole('button', { name: /Mavéa’s notes/ });
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    fireEvent.click(fold);
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(0);
+    // Folded, it still says how much is there.
+    expect(fold.textContent).toContain('2');
+    fireEvent.click(fold);
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    spy.mockRestore();
+  });
+
+  it('leaves a wide sheet’s notes open, with no fold to press', () => {
+    const spy = sheetWidth(1120);
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    expect(screen.queryByRole('button', { name: /Mavéa’s notes/ })).toBeNull();
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    spy.mockRestore();
   });
 });
 
@@ -439,11 +482,11 @@ describe('fit and actual size', () => {
     expect(bodyZoom(container)).toBe('');
   });
 
-  it('puts the notes straight under the card, not at the foot of the window', () => {
+  it('puts the notes straight after the card, not at the foot of the window', () => {
     const notes = [{ text: 'a note', kind: 'insight' as const }];
     const { container } = mount({ studyAsides: { a: notes } });
     cleanClick(cell0(container, 'a'));
-    const scroll = container.querySelector('.zoom-sheet-scroll');
-    expect(scroll?.nextElementSibling?.classList.contains('lens-notes')).toBe(true);
+    const body = container.querySelector('.zoom-sheet-body');
+    expect(body?.nextElementSibling?.classList.contains('lens-notes')).toBe(true);
   });
 });

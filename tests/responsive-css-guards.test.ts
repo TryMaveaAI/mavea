@@ -686,7 +686,21 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
 
   it('states the body width in the body’s own box, so `zoom` has a length to multiply', () => {
     const body = /\.zoom-sheet-body\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(body).toMatch(/width:\s*calc\(\(var\(--zoom-sheet-w\)/);
+    expect(body).toMatch(/width:\s*calc\(\s*\(var\(--zoom-sheet-w\)/);
+  });
+
+  it('sets the notes beside the card at the width the canvas folds them from', async () => {
+    // The CSS lays them out, the canvas decides whether a narrow sheet folds them: one number.
+    const { LENS_BESIDE_PX } = await import('../src/canvas/TopicCanvas');
+    const beside = /@container lens \(width >= (\d+)px\)/.exec(css)?.[1];
+    expect(Number(beside)).toBe(LENS_BESIDE_PX);
+  });
+
+  it('keeps the way out on the first row of a narrow sheet, and the controls on the next', () => {
+    const narrow = /@container lens \(width < 600px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(narrow).toMatch(/\.zoom-sheet-tools\s*\{[^}]*order:\s*3[^}]*flex-basis:\s*100%/);
+    const x = /\.zoom-sheet-x\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(x).toMatch(/margin-left:\s*auto/);
   });
 
   it('drives every width on the stage from one custom property, so they cannot drift', () => {
@@ -700,7 +714,7 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     const strip = /\.lens-strip\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(strip).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
     // The pan the magnified block needs lives in its own box, not on the sheet: the sheet is a
-    // clipped column so the toolbar above and the notes below never scroll with the card.
+    // clipped column so the toolbar above never scrolls with the card.
     const scroll = /\.zoom-sheet-scroll\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(scroll).toMatch(/overflow:\s*auto/);
     expect(sheet).toMatch(/overflow:\s*hidden/);

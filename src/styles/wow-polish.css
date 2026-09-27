@@ -661,23 +661,16 @@
 }
 
 /* ── The Lens: Mavéa's notes, on the stage beside the card ────────────────────
-   The stage is the zoom sheet: one card, centred, over a blurred board. These sit under it, in
-   flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding
-   with and nothing to reserve space against. */
+   The stage is the zoom sheet: one card, centred, over a blurred board. The notes share the
+   card's one scroll — beside it on a wide sheet, under it on a narrow one — so they never carry
+   a scrollbar of their own: a capped notes box was a second scroller under the card's, and on a
+   phone its last note sat cut off below both. */
 .lens-notes {
-  /* The notes keep their lines; the card box above gives way first (it can scale its card, the
-     notes can only cut a line). Shrinking these in step with the card put a scrollbar under four
-     short notes on a 620px window that had the room for them whole. */
   flex: none;
-  /* A slice of the WINDOW, not of the sheet, and generous: four notes run ~160–200px, so a
-     smaller cap cut the last one on a laptop while the sheet had room. Long notes scroll here
-     rather than pushing the card box under its floor. */
-  max-height: 30dvh;
-  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 16px 32px 24px;
+  margin: 12px 0 0;
   padding: 14px 18px 16px;
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -699,6 +692,35 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+/* On a narrow sheet the eyebrow is the fold: one line when the card already runs long. */
+.lens-notes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.lens-notes-toggle:hover {
+  color: var(--text-primary);
+}
+.lens-notes-chev {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  transition: rotate var(--m-fast) var(--ease-out);
+}
+.lens-notes-toggle[aria-expanded='true'] .lens-notes-chev {
+  rotate: 90deg;
+}
+@media (pointer: coarse) {
+  .lens-notes-toggle {
+    min-height: var(--tap-min);
+  }
 }
 /* Her voice, so it reads as a different speaker from the card's own words. The serif alone
    cannot carry that — several templates set a serif --font — so the rule, the eyebrow and the
@@ -915,8 +937,9 @@
   /* Two stacked things now — the sheet, and the strip of the rest of the answer beneath it. The
      width lives here rather than on the sheet so both can measure against the same number. */
   /* Grows with the viewport's type scale, so on a large monitor the sheet keeps its proportion
-     to the page rather than shrinking to a laptop-sized island. */
-  --zoom-sheet-w: min(calc(1120px * var(--vp-type-scale, 1)), 92vw);
+     to the page rather than shrinking to a laptop-sized island — and never under half the window,
+     since the type scale stops at 1.25 and left a 4K stage a third of the screen wide. */
+  --zoom-sheet-w: min(max(calc(1120px * var(--vp-type-scale, 1)), 50vw), 92vw);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -938,6 +961,15 @@
 .zoom-sheet {
   position: relative;
   width: var(--zoom-sheet-w);
+  /* The toolbar and the notes lay themselves out against the SHEET, not the window: its width
+     is min(…, 92vw) and grows with the type scale, so no viewport breakpoint says when it is
+     narrow. Its width is stated, so containing it costs nothing. */
+  container: lens / inline-size;
+  /* The stage's side inset, and the room the notes take beside the card. The body's width is
+     stated in both (it must be, for `zoom` to reach the block), so both live here as tokens. */
+  --lens-pad: 32px;
+  --lens-aside: 0px;
+  --lens-notes-w: calc(300px * var(--vp-type-scale, 1));
   /* A column: toolbar, the scroll box, the notes. Only the middle scrolls — the sheet itself is
      clipped, never scrolled, so the toolbar and the notes are fixed whatever the card does. */
   display: flex;
@@ -964,9 +996,8 @@
    shrinks the picture a hair, where a pixel taken from the notes cuts a line in half. */
 .zoom-sheet-scroll {
   flex: 1 1 auto;
-  /* Still floored: on a very short window (a laptop at 150% zoom is 413px tall) the toolbar and
-     the notes alone once squeezed this box to 0px — a Lens with no card in it. Below the floor
-     the notes are what shrinks. */
+  /* Still floored: on a very short window (a laptop at 150% zoom is 413px tall) the toolbar
+     once squeezed this box to 0px — a Lens with no card in it. */
   min-height: 96px;
   overflow: auto;
   /* A column so the body can centre itself in the room with auto margins: a card smaller than
@@ -976,7 +1007,7 @@
   /* The bottom breath is PADDING on the scroller, not a margin on the body: the fit reads the
      scroller's padding and sizes the card inside it, while a margin was invisible to the fit and
      put a scrollbar on a card that had already been sized to fit. */
-  padding: 0 32px 24px;
+  padding: 0 var(--lens-pad) 16px;
 }
 /* The close + zoom controls sit in their own sticky row so they stay reachable while a scaled-up
    block is scrolled/panned, instead of being absolutely positioned over content that can scroll
@@ -987,19 +1018,76 @@
 .zoom-sheet-toolbar {
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 16px;
-  padding: 14px 12px 14px 32px;
+  gap: 8px 16px;
+  margin: 0 0 8px;
+  padding: 10px 12px 10px var(--lens-pad);
   background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
   border-bottom: 1px solid var(--line);
 }
-.zoom-sheet-tools {
+.zoom-sheet-tools,
+.zoom-sheet-zoom {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: none;
+}
+/* Title, tools, close — and the close is last on the FIRST row at every width. */
+.zoom-sheet-title {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.zoom-sheet-x {
+  flex: none;
+  margin-left: auto;
+}
+/* A narrow sheet: the title and the close keep the first row, and the stepper and zoom take a
+   row of their own under it rather than squeezing the way out off the edge. */
+@container lens (width < 600px) {
+  .zoom-sheet-toolbar,
+  .zoom-sheet-scroll {
+    --lens-pad: 16px;
+  }
+  .zoom-sheet-tools {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+}
+/* …and under a thumb there, pinch is the zoom and the card says what it is, so the stepper
+   shares the close's row alone and the card gets the height back. */
+@media (pointer: coarse) {
+  @container lens (width < 600px) {
+    .zoom-sheet-title,
+    .zoom-sheet-zoom {
+      display: none;
+    }
+    .zoom-sheet-tools {
+      order: 0;
+      flex-basis: auto;
+    }
+  }
+}
+/* A wide sheet sets the notes BESIDE the card, in the same scroll, held at the top while a tall
+   card scrolls past them. The card's width gives up the notes' column; a magnified card takes
+   the whole width back and the notes drop under it, since a card panned sideways would slide
+   under a column beside it. The 880 is LENS_BESIDE_PX in TopicCanvas. */
+@container lens (width >= 880px) {
+  .zoom-sheet[data-notes] :is(.zoom-sheet-toolbar, .zoom-sheet-scroll) {
+    --lens-aside: calc(var(--lens-notes-w) + 24px);
+  }
+  .zoom-sheet[data-notes]:not([data-magnified]) .zoom-sheet-scroll {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--lens-notes-w);
+    column-gap: 24px;
+    align-items: start;
+  }
+  .zoom-sheet[data-notes]:not([data-magnified]) .lens-notes {
+    position: sticky;
+    top: 0;
+    margin: 0;
+  }
 }
 /* One quiet label, so the band reads as the top of the stage rather than as controls floating
    in space. 11px, not 10: --fs-reader bottoms out at 0.9, which would put 10px at the audit's
@@ -1113,7 +1201,9 @@
      multiplies it like any other, and the sheet's `overflow: auto` pans what no longer fits.
      Divided by the fit's scale (--lens-fit, set only while magnified) so a magnification lays the
      card out at the width the fit did: at z = fit the picture is the fitted one exactly. */
-  width: calc((var(--zoom-sheet-w) - 64px - 2px) / var(--lens-fit, 1));
+  width: calc(
+    (var(--zoom-sheet-w) - 2 * var(--lens-pad) - 2px - var(--lens-aside)) / var(--lens-fit, 1)
+  );
   /* Centred both ways: below 1 the zoomed box is narrower than the sheet, and at 1 a short card
      is shorter than the room. Auto margins fall to zero once the box overflows, so a magnified
      card still starts at the top-left and pans. The 2px is the sheet's own border, which the
@@ -1307,7 +1397,8 @@
   .block-action-pill,
   .zoom-sheet-zoom-btn,
   .zoom-sheet-step-btn,
-  .zoom-sheet-zoom-level {
+  .zoom-sheet-zoom-level,
+  .zoom-sheet-x {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }

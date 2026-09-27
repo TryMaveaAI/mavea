@@ -15,6 +15,7 @@ import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
 import { FitBox, type FitFacts } from './layout/FitBox';
+import { observeResize } from './layout/sharedResize';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { FIT_TYPES } from './layout/fitPolicy';
 import { CanvasTakeover } from './focus/CanvasView';
@@ -57,7 +58,17 @@ import { ScreenMap } from './ScreenMap';
 import { BuildProgress } from './BuildProgress';
 import { PreviewFrame } from './PreviewFrame';
 import { Icon, type IconKey } from '../icons/icons';
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useResponsiveGrid } from './hooks/useResponsiveGrid';
 import { useAccessibleScrollRegions } from './hooks/useAccessibleScrollRegions';
 import { useTruncatedTextDisclosures } from './hooks/useTruncatedTextDisclosures';
@@ -127,6 +138,10 @@ const LENS_READING_PX = 20;
 /** …and past a 1920px window, where the sheet grows with the type scale and the board's body step
  *  is ~16px. */
 const LENS_WIDE_READING_PX = 24;
+/** The sheet width from which Mavéa's notes sit BESIDE the card rather than under it. Mirrors
+ *  the `@container lens` query in wow-polish.css (a test holds the two together): under it a
+ *  column of notes would leave the card too narrow to be worth the look. */
+export const LENS_BESIDE_PX = 880;
 
 // The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
 // gesture rides the cell, not the card, because the cell is what carries `.spotlit`/`.dimmed`.
@@ -464,6 +479,20 @@ export function TopicCanvas({
   // The size the board already shows this card at. The Lens is for looking closer, so a fit
   // never takes the card below it; a card taller than the stage at that size scrolls instead.
   const [boardScale, setBoardScale] = useState(1);
+  // A narrow sheet stacks the notes under the card in the one scroll. When the card already runs
+  // past the stage, four notes under it are a long way down, so they start folded to one line;
+  // the reader's own choice (null until they make one) outranks that, until the next card.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [lensNarrow, setLensNarrow] = useState(false);
+  const [notesOpen, setNotesOpen] = useState<boolean | null>(null);
+  const lensOpen = zoomedBlock !== null;
+  useLayoutEffect(() => {
+    const sheet = sheetRef.current;
+    if (!lensOpen || !sheet) return;
+    const read = () => setLensNarrow(sheet.clientWidth > 0 && sheet.clientWidth < LENS_BESIDE_PX);
+    read();
+    return observeResize(sheet, read);
+  }, [lensOpen]);
   const fitted = zoomLevel === 'fit';
   // Honest in both modes: fitted, the stage's one FitBox is the whole scale (any FitBox inside
   // the block stands down under it); magnified, the fit holds at 1 and `zoom` is the whole scale.
@@ -722,6 +751,7 @@ export function TopicCanvas({
   /** Open the Lens on a block: its own stage, over a board faded back behind it. */
   const openLens = (b: Block): void => {
     setBoardScale(boardScaleOf(b.id));
+    setNotesOpen(null);
     setZoomedBlock(b);
     setZoomLevel('fit');
   };
@@ -1235,6 +1265,7 @@ export function TopicCanvas({
       {zoomedBlock &&
         (() => {
           const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
+          const notesShown = !lensNarrow || (notesOpen ?? !lensFit.spills);
           return (
             // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
             <div
@@ -1243,10 +1274,13 @@ export function TopicCanvas({
               onClick={zoomScrim.onClick}
             >
               <div
+                ref={sheetRef}
                 className="zoom-sheet"
                 role="dialog"
                 aria-modal="true"
                 aria-label={blockLabel(zoomedBlock)}
+                data-notes={lensNotes.length > 0 ? '' : undefined}
+                data-magnified={fitted ? undefined : ''}
               >
                 <div className="zoom-sheet-toolbar">
                   {/* What you are looking at. The row was controls-only and right-aligned, which
@@ -1287,56 +1321,63 @@ export function TopicCanvas({
                         </button>
                       </div>
                     )}
-                    <button
-                      type="button"
-                      className="zoom-sheet-zoom-btn"
-                      aria-label="Zoom out"
-                      disabled={shownZoom <= zoomFloor + 0.005}
-                      onClick={() => zoomBy(-ZOOM_STEP)}
-                    >
-                      <Icon.zoomOut />
-                    </button>
-                    {/* The readout is also the toggle between the fit and actual size. At rest
+                    {/* One group, so a narrow sheet under a thumb can set it aside whole: pinch
+                        is the zoom there. */}
+                    <div className="zoom-sheet-zoom" role="group" aria-label="Zoom">
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-btn"
+                        aria-label="Zoom out"
+                        disabled={shownZoom <= zoomFloor + 0.005}
+                        onClick={() => zoomBy(-ZOOM_STEP)}
+                      >
+                        <Icon.zoomOut />
+                      </button>
+                      {/* The readout is also the toggle between the fit and actual size. At rest
                         it reads as the number it always was; hovered or focused it names what a
                         press will do. */}
-                    <button
-                      type="button"
-                      className="zoom-sheet-zoom-level"
-                      aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
-                        fitted ? 'Actual size' : 'Fit to the stage'
-                      }`}
-                      aria-keyshortcuts={fitted ? 'Shift+0' : 'Shift+1'}
-                      title={fitted ? 'Actual size (Shift+0)' : 'Fit to the stage (Shift+1)'}
-                      onClick={fitted ? actualSize : () => setZoomLevel('fit')}
-                    >
-                      <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
-                      <span className="zoom-sheet-zoom-offer" aria-hidden="true">
-                        {fitted ? '100%' : 'Fit'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="zoom-sheet-zoom-btn"
-                      aria-label="Zoom in"
-                      disabled={shownZoom >= ZOOM_MAX}
-                      onClick={() => zoomBy(ZOOM_STEP)}
-                    >
-                      <Icon.zoomIn />
-                    </button>
-                    <button
-                      type="button"
-                      className="zoom-sheet-x"
-                      aria-label="Back to the board"
-                      onClick={() => setZoomedBlock(null)}
-                    >
-                      <Icon.x />
-                    </button>
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-level"
+                        aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
+                          fitted ? 'Actual size' : 'Fit to the stage'
+                        }`}
+                        aria-keyshortcuts={fitted ? 'Shift+0' : 'Shift+1'}
+                        title={fitted ? 'Actual size (Shift+0)' : 'Fit to the stage (Shift+1)'}
+                        onClick={fitted ? actualSize : () => setZoomLevel('fit')}
+                      >
+                        <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
+                        <span className="zoom-sheet-zoom-offer" aria-hidden="true">
+                          {fitted ? '100%' : 'Fit'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-btn"
+                        aria-label="Zoom in"
+                        disabled={shownZoom >= ZOOM_MAX}
+                        onClick={() => zoomBy(ZOOM_STEP)}
+                      >
+                        <Icon.zoomIn />
+                      </button>
+                    </div>
                   </div>
+                  {/* Its own slot at the end of the first row, whatever wraps: the way out is
+                      never pushed onto a second line or off the edge of a phone. */}
+                  <button
+                    type="button"
+                    className="zoom-sheet-x"
+                    aria-label="Back to the board"
+                    onClick={() => setZoomedBlock(null)}
+                  >
+                    <Icon.x />
+                  </button>
                 </div>
-                {/* The ONE thing that scrolls and scales. The toolbar above and the notes below sit
-                    outside it, so magnifying the card can never move, shrink or scroll the
-                    controls — a sticky toolbar inside the scroller was sized to the sheet and, once
-                    the zoomed card overflowed, its right end (and the close button) went with it. */}
+                {/* The ONE thing that scrolls: the card, and Mavéa's notes beside it on a wide
+                    sheet or under it on a narrow one. Only the card scales. The toolbar sits
+                    outside, so magnifying can never move, shrink or scroll the controls — a sticky
+                    toolbar inside the scroller was sized to the sheet and, once the zoomed card
+                    overflowed, its right end (and the close button) went with it. */}
                 <div className="zoom-sheet-scroll">
                   <div
                     className="zoom-sheet-body"
@@ -1364,20 +1405,36 @@ export function TopicCanvas({
                       {renderOnStage(zoomedBlock)}
                     </FitBox>
                   </div>
+                  {lensNotes.length > 0 && (
+                    <aside
+                      className="lens-notes"
+                      aria-label={`Mavéa's notes on ${blockLabel(zoomedBlock)}`}
+                    >
+                      {lensNarrow ? (
+                        <button
+                          type="button"
+                          className="lens-notes-eyebrow lens-notes-toggle"
+                          aria-expanded={notesShown}
+                          onClick={() => setNotesOpen(!notesShown)}
+                        >
+                          Mavéa&rsquo;s notes
+                          {!notesShown && (
+                            <span className="lens-notes-count"> · {lensNotes.length}</span>
+                          )}
+                          <Icon.chevR className="lens-notes-chev" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
+                      )}
+                      {notesShown &&
+                        lensNotes.map((n, ni) => (
+                          <p key={ni} className={'lens-note is-' + n.kind}>
+                            {n.text}
+                          </p>
+                        ))}
+                    </aside>
+                  )}
                 </div>
-                {lensNotes.length > 0 && (
-                  <aside
-                    className="lens-notes"
-                    aria-label={`Mavéa's notes on ${blockLabel(zoomedBlock)}`}
-                  >
-                    <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
-                    {lensNotes.map((n, ni) => (
-                      <p key={ni} className={'lens-note is-' + n.kind}>
-                        {n.text}
-                      </p>
-                    ))}
-                  </aside>
-                )}
               </div>
               {lensSteps.length > 1 && (
                 // Under the sheet, on the backdrop — not inside it. The stage is one card; the
