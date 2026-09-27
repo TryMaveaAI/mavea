@@ -10,6 +10,7 @@ import {
 } from '../src/legal/acceptance';
 import { LegalGate } from '../src/legal/LegalGate';
 import { isLegalGateBypassed } from '../src/legal/routePolicy';
+import { PUBLIC_ROUTES } from '../src/routeTable';
 
 beforeEach(() => {
   localStorage.clear();
@@ -210,25 +211,39 @@ describe('LegalGate', () => {
 });
 
 describe('legal-gate route policy', () => {
-  it('keeps documents and prerecorded examples public while protecting connected surfaces', () => {
+  const OPEN = new Set(['#/terms', '#/privacy', '#/legal']);
+
+  it('leaves only the landing and the documents open', () => {
     expect(isLegalGateBypassed('')).toBe(true);
-    expect(isLegalGateBypassed('#/legal')).toBe(true);
-    expect(isLegalGateBypassed('#/terms')).toBe(true);
-    expect(isLegalGateBypassed('#/privacy')).toBe(true);
-    expect(isLegalGateBypassed('#/gallery')).toBe(true);
+    expect(isLegalGateBypassed('#/')).toBe(true);
+    for (const doc of OPEN) expect(isLegalGateBypassed(doc)).toBe(true);
+  });
 
-    window.location.hash = '#/live?tour=1';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(true);
-    window.location.hash = '#/live?demo=pm';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(true);
-    window.location.hash = '#/live?demo=not-a-real-persona';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(false);
+  it('gates every other public route, so a new one is gated by default', () => {
+    for (const { prefix } of PUBLIC_ROUTES) {
+      if (OPEN.has(prefix)) continue;
+      expect(isLegalGateBypassed(prefix), prefix).toBe(false);
+    }
+  });
 
-    expect(isLegalGateBypassed('#/deepzoom?demo=1')).toBe(true);
-    expect(isLegalGateBypassed('#/synthesis?demo=1')).toBe(true);
+  it('gates prerecorded examples and the tour, however they are reached', () => {
+    for (const hash of [
+      '#/live?demo=pm',
+      '#/live?tour=1',
+      '#/live?demo=pm&settings=model',
+      '#/live?ripple=1',
+      '#/deepzoom?demo=1',
+      '#/synthesis?demo=1',
+      '#/gallery',
+    ]) {
+      window.location.hash = hash;
+      expect(isLegalGateBypassed(hash), hash).toBe(false);
+    }
+    // A handoff left in session storage by an in-app link is not a way past it either.
+    sessionStorage.setItem('mavea-demo-persona', 'pm');
+    sessionStorage.setItem('mavea-tour-mode', '1');
     expect(isLegalGateBypassed('#/live')).toBe(false);
-    expect(isLegalGateBypassed('#/courses')).toBe(false);
-    expect(isLegalGateBypassed('#/ripple')).toBe(false);
+    sessionStorage.clear();
   });
 });
 

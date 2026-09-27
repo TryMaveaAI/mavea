@@ -17,22 +17,17 @@ const DEV_ONLY_PREFIXES = [
   '#/mindlab',
 ];
 
-/** Public reading surfaces and prerecorded examples do not send the visitor's data to a model. */
+/** Only the landing and the documents themselves are open: a reader has to be able to read what
+ *  they are agreeing to before they agree. Everything else, prerecorded examples included, sits
+ *  behind the acknowledgement. A replay is reached by URL and runs inside the real surface, where
+ *  Settings, a key field, the microphone and connections are one click away; exempting it by route
+ *  would exempt all of those, and a new feature on that surface would silently join them. */
 export function isLegalGateBypassed(hash: string): boolean {
   if (!hash || hash === '#' || hash === '#/') return true;
-  if (
-    hash.startsWith('#/legal') ||
-    hash.startsWith('#/terms') ||
-    hash.startsWith('#/privacy') ||
-    hash.startsWith('#/gallery')
-  ) {
+  if (hash.startsWith('#/legal') || hash.startsWith('#/terms') || hash.startsWith('#/privacy')) {
     return true;
   }
-  if (import.meta.env.DEV && DEV_ONLY_PREFIXES.some((prefix) => hash.startsWith(prefix))) {
-    return true;
-  }
-  if (isNoSpendRoute(hash)) return true;
-  return false;
+  return import.meta.env.DEV && DEV_ONLY_PREFIXES.some((prefix) => hash.startsWith(prefix));
 }
 
 /** Baked examples are read-only: no model path may spend, even when a key is configured. */
