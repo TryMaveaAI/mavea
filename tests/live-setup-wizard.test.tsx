@@ -300,6 +300,24 @@ describe('SetupWizard — the pinned step footer', () => {
     expect(screen.queryByRole('button', { name: /^Done$/i })).toBeNull();
   });
 
+  it('gives the footer the same measure as the card above it, step by step', async () => {
+    // The card and the footer are siblings of different scroll boxes, so the width is chosen
+    // once on the root they share. A wide Connect card over a 560px footer left the way forward
+    // indented 150px from the card it belongs to.
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    const root = document.querySelector('.setup.stage') as HTMLElement;
+    expect(screen.getByText('Step 1 of 4 · Connect')).toBeInTheDocument();
+    expect(root).toHaveAttribute('data-wide');
+    expect(document.querySelector('.setup-card')?.closest('[data-wide]')).toBe(root);
+    expect(document.querySelector('.setup-foot-inner')?.closest('[data-wide]')).toBe(root);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    });
+    expect(screen.getByText('Step 2 of 4 · Think')).toBeInTheDocument();
+    expect(root).not.toHaveAttribute('data-wide');
+  });
+
   it('says Done only where the press truly finishes — a step reopened from the hub', async () => {
     localStorage.setItem(SETUP_KEY, '1');
     render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);

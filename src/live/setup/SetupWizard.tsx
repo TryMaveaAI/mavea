@@ -216,12 +216,16 @@ export function SetupWizard({
 
   const meta = stepMeta(step);
   const onGo = step === 'go';
+  // Connect is two fields side by side under five tiles; at 560px each field's helper wrapped to
+  // seven lines. It takes the hub's width — and so does the footer pinned under it, which is set
+  // from the same measure so the way forward lines up with the card it belongs to.
+  const wide = onGo || step === 'connect';
   const title = onGo && firstRun.current ? GO_FIRST_RUN_TITLE : meta.title;
   const sub =
     onGo && firstRun.current ? (configured ? GO_FIRST_RUN_SUB : GO_FIRST_RUN_SUB_UNSET) : meta.sub;
 
   return (
-    <div className="setup stage" data-active="1">
+    <div className="setup stage" data-active="1" data-wide={wide || undefined}>
       <header className="setup-nav">
         <button type="button" className="setup-back" onClick={goHome}>
           <span aria-hidden>←</span> Back to home
@@ -243,15 +247,7 @@ export function SetupWizard({
           <p className="setup-sub">{sub}</p>
         </div>
 
-        <section
-          key={step}
-          // Connect is two fields side by side under five tiles; at 560px each field's helper
-          // wrapped to seven lines. It takes the hub's width.
-          className={
-            'card reveal setup-card' + (onGo || step === 'connect' ? ' setup-card--wide' : '')
-          }
-          aria-label={meta.label}
-        >
+        <section key={step} className="card reveal setup-card" aria-label={meta.label}>
           {step === 'connect' && <ConnectStep />}
           {step === 'think' && <ThinkStep />}
           {step === 'remember' && <RememberStep />}

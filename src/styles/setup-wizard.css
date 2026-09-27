@@ -36,6 +36,12 @@
   align-items: center;
   height: 100%;
   overflow: hidden;
+  /* One measure for a step's card AND the footer pinned under it: they are siblings of
+     different scroll boxes, so they share it through the root rather than the card. */
+  --setup-measure: 560px;
+}
+.setup.stage[data-wide] {
+  --setup-measure: 860px;
 }
 
 /* top navigation bar */
@@ -281,6 +287,8 @@
 
 .setup-q {
   color: var(--text-primary);
+  /* A wide window otherwise leaves the question's last word alone on the second line. */
+  text-wrap: balance;
   font-size: var(--fs-2xl);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -301,12 +309,9 @@
      .setup-stage comment). The stage's own overflow-y:auto handles a tall step, so the card
      just needs its natural full height here, no flex-shrink games. */
   margin: var(--s-lg) auto 0;
-  max-width: 560px;
+  max-width: var(--setup-measure);
   padding: var(--s-xl);
   width: 100%;
-}
-.setup-card--wide {
-  max-width: 860px;
 }
 
 /* step body */
@@ -331,7 +336,7 @@
   gap: var(--s-md);
   justify-content: space-between;
   margin: 0 auto;
-  max-width: 560px;
+  max-width: var(--setup-measure);
 }
 .setup-foot-note {
   display: flex;
@@ -1225,6 +1230,9 @@
   .setup-stage {
     padding: var(--s-md) var(--s-md) var(--s-xl);
   }
+  .setup-foot {
+    padding-inline: var(--s-md);
+  }
   .setup-card {
     padding: var(--s-lg);
   }
@@ -1275,9 +1283,6 @@
     overflow: hidden;
     position: absolute;
     width: 1px;
-  }
-  .setup-foot {
-    padding-inline: var(--s-md);
   }
 }
 
