@@ -115,28 +115,44 @@ function probeUsage(body: string): { usage?: TokenUsage } {
 
 /** The paid half of the readiness probe: a one-token messages call on the configured model. */
 async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProbe> {
-  const gen = await fetchWithTimeout(
-    `${base}${MESSAGES}`,
-    {
-      method: 'POST',
-      headers: headers(cfg),
-      body: JSON.stringify({
-        model: cfg.model,
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'ping' }],
-      }),
-    },
-    PROBE_TIMEOUT_MS,
-  );
+  let gen: Response;
+  try {
+    gen = await fetchWithTimeout(
+      `${base}${MESSAGES}`,
+      {
+        method: 'POST',
+        headers: headers(cfg),
+        body: JSON.stringify({
+          model: cfg.model,
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      },
+      PROBE_TIMEOUT_MS,
+    );
+  } catch {
+    // Sent, and never answered: still an attempt the ledger has to show.
+    return { ok: false, model: false, paid: true };
+  }
   if (!gen.ok) {
     return {
       ok: false,
       model: false,
+      paid: true,
       statusCode: gen.status,
       detail: await providerErrorDetail(gen),
     };
   }
-  return { ok: true, model: true, statusCode: gen.status, ...probeUsage(await gen.text()) };
+  // The model answered; a body that breaks off mid-read only costs the token count, never the
+  // verdict or the ledger row for a call that was billed.
+  const body = await gen.text().catch(() => '');
+  return {
+    ok: true,
+    model: true,
+    paid: true,
+    statusCode: gen.status,
+    ...probeUsage(body),
+  };
 }
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */

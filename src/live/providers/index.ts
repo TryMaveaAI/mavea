@@ -18,8 +18,15 @@ function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
     ...adapter,
     async probe(cfg, opts) {
       if (!providerGenerationAllowed(cfg)) return { ok: false, model: false };
+      const started = Date.now();
       const verdict = await ADAPTERS[id].probe(cfg, opts);
-      if (verdict.usage) recordUsage('readiness-check', verdict.usage);
+      // Only a verdict this call paid for is recorded: most probes are free, and a remembered
+      // verdict made no request at all.
+      if (verdict.usage || verdict.paid) {
+        const at = Date.now();
+        const outcome = verdict.ok ? 'ok' : 'failed';
+        recordUsage('readiness-check', verdict.usage, at, at - started, outcome);
+      }
       return verdict;
     },
     async generate(req, cfg, onDelta) {
@@ -27,11 +34,22 @@ function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
       // Timed here rather than in each adapter: this facade already wraps every one of them, so
       // one clock covers them all and none can forget. It measures the whole call — the request,
       // the model's thinking, and the stream — which is what the reader actually waits through.
+      // A call that fails or is cancelled is recorded too: it reached the provider (the spend
+      // policy above is the only refusal that sends nothing) and may have been billed.
+      const label = req.usageLabel ?? 'model-call';
       const started = Date.now();
-      const result = await ADAPTERS[id].generate(req, cfg, onDelta);
-      const at = Date.now();
-      recordUsage(req.usageLabel ?? 'model-call', result.usage, at, at - started);
-      return result;
+      try {
+        const result = await ADAPTERS[id].generate(req, cfg, onDelta);
+        const at = Date.now();
+        recordUsage(label, result.usage, at, at - started);
+        return result;
+      } catch (err) {
+        const at = Date.now();
+        // Judged by the caller's own signal: adapters wrap an abort in their own errors.
+        const outcome = req.signal?.aborted ? 'cancelled' : 'failed';
+        recordUsage(label, undefined, at, at - started, outcome);
+        throw err;
+      }
     },
   };
   if (adapter.warm) {

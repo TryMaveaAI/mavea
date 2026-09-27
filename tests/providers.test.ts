@@ -959,6 +959,69 @@ describe('a stream that goes quiet is never re-sent', () => {
       }),
     ]);
   });
+
+  it('records a call that failed, and one that was cancelled, as attempts', async () => {
+    const cfg: ModelConfig = { provider: 'openrouter', model: 'openai/gpt-4o-mini', apiKey: 'k' };
+    const fetchMock = vi.fn(
+      async () => new Response('{"error":{"message":"invalid key"}}', { status: 401 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      getAdapter('openrouter').generate({ ...req, usageLabel: 'canvas' }, cfg),
+    ).rejects.toThrow();
+    const stop = new AbortController();
+    stop.abort();
+    await expect(
+      getAdapter('openrouter').generate(
+        { ...req, usageLabel: 'study-notes', signal: stop.signal },
+        cfg,
+      ),
+    ).rejects.toThrow();
+
+    expect(getUsageLedger()).toEqual([
+      expect.objectContaining({ label: 'canvas', outcome: 'failed', reported: false }),
+      expect.objectContaining({ label: 'study-notes', outcome: 'cancelled', reported: false }),
+    ]);
+  });
+
+  it('records a failed paid readiness check once, never a remembered verdict', async () => {
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-ledger', apiKey: 'k' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) =>
+        String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response('{"error":{"message":"credit balance is too low"}}', { status: 400 }),
+      ),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toEqual([
+      expect.objectContaining({ outcome: 'failed', reported: false }),
+    ]);
+  });
+
+  it('records a readiness check whose answer broke off mid-read', async () => {
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-cutoff', apiKey: 'k' };
+    const brokenBody = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new TypeError('network connection was lost'));
+        },
+      });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) =>
+        String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response(brokenBody(), { status: 200 }),
+      ),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toEqual([
+      expect.objectContaining({ outcome: 'ok', reported: false }),
+    ]);
+  });
 });
 
 describe('openrouter adapter — OpenAI-compatible, attribution + correct URL', () => {

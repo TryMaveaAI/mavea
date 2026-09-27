@@ -131,6 +131,9 @@ export interface LiveProbe {
   /** What the check itself was billed, when it had to generate to reach a verdict (Anthropic's
    *  one-token messages call). The registry records it in the usage ledger like any other call. */
   usage?: TokenUsage;
+  /** This verdict came from a paid request made for this very call, whatever it returned. The
+   *  registry records it even when it failed and reported no usage. */
+  paid?: boolean;
 }
 
 export interface ProbeOptions {

@@ -7,6 +7,11 @@
 // a listener Set + a stable snapshot for useSyncExternalStore, framework-free.
 import type { TokenUsage } from '../providers/types';
 
+/** How a call ended. A failed or cancelled call still went to the provider and may have been
+ *  billed for what it got through, so it is recorded like any other: a ledger that only lists the
+ *  calls that succeeded hides exactly the ones a reader is most likely to ask about. */
+export type UsageOutcome = 'ok' | 'failed' | 'cancelled';
+
 /** One billed provider call. `label` names the call site ('canvas', 'collapse-recovery', …) so
  *  a second call on a turn is attributable to the pass that spent it, not just "the turn". */
 export interface UsageEntry {
@@ -20,6 +25,10 @@ export interface UsageEntry {
   thinking: number;
   /** Wall time for the call, first byte of the request to last of the stream. 0 = not timed. */
   ms: number;
+  outcome: UsageOutcome;
+  /** False when the provider reported no token counts (a failed call, or a provider that does
+   *  not report them): the zeros above are then unknown, not free. */
+  reported: boolean;
 }
 
 /** Mirrors ANSWER_CACHE_MAX — plenty for a long session, bounded so the ledger can't grow forever. */
@@ -31,6 +40,8 @@ export const USAGE_LEDGER_MAX = 50;
  *  quietly wrong on an ordinary long session. */
 export interface UsageSummary {
   calls: number;
+  /** Of `calls`, the ones that failed or were cancelled. */
+  unfinished: number;
   input: number;
   cachedInput: number;
   output: number;
@@ -42,6 +53,7 @@ export interface UsageSummary {
 
 const EMPTY_SUMMARY: UsageSummary = {
   calls: 0,
+  unfinished: 0,
   input: 0,
   cachedInput: 0,
   output: 0,
@@ -64,23 +76,26 @@ function count(v: number | undefined): number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-/** Record one billed call. Takes the adapter's `usage` as-is — undefined (a provider that
- *  doesn't report accounting) is a silent no-op, so call sites need no guard. */
+/** Record one provider call, however it ended. Takes the adapter's `usage` as-is — undefined (a
+ *  failed call, or a provider that doesn't report accounting) still records the attempt, with its
+ *  token counts marked unreported. */
 export function recordUsage(
   label: string,
   usage: TokenUsage | undefined,
   at = Date.now(),
   ms = 0,
+  outcome: UsageOutcome = 'ok',
 ): void {
-  if (!usage) return;
   const entry: UsageEntry = {
     at,
     label,
-    input: count(usage.input),
-    cachedInput: count(usage.cachedInput),
-    output: count(usage.output),
-    thinking: count(usage.thinking),
+    input: count(usage?.input),
+    cachedInput: count(usage?.cachedInput),
+    output: count(usage?.output),
+    thinking: count(usage?.thinking),
     ms: count(ms),
+    outcome,
+    reported: !!usage,
   };
   const next = [...entries, entry];
   entries = next.length > USAGE_LEDGER_MAX ? next.slice(-USAGE_LEDGER_MAX) : next;
@@ -90,6 +105,7 @@ export function recordUsage(
   else sites.push([label, entry.input + entry.output]);
   summary = {
     calls: summary.calls + 1,
+    unfinished: summary.unfinished + (outcome === 'ok' ? 0 : 1),
     input: summary.input + entry.input,
     cachedInput: summary.cachedInput + entry.cachedInput,
     output: summary.output + entry.output,

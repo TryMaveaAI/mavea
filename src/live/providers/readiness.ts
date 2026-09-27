@@ -40,10 +40,10 @@ export function isVerified(fingerprint: string): boolean {
 }
 
 /** The verdict of this session's failed paid check for the combination, if it had one. Returned
- *  without its usage: that call was ledgered when it ran. */
+ *  as a copy that was not paid for: that call was ledgered when it ran. */
 export function failedVerdict(fingerprint: string): LiveProbe | undefined {
   const verdict = failed.get(fingerprint);
-  return verdict && withoutUsage(verdict);
+  return verdict && unpaid(verdict);
 }
 
 /** One paid check per combination at a time. The Connect step and Settings can overlap, and a
@@ -56,7 +56,7 @@ export function sharedPaidCheck(
   run: () => Promise<LiveProbe>,
 ): Promise<LiveProbe> {
   const pending = inFlight.get(fingerprint);
-  if (pending) return pending.then(withoutUsage);
+  if (pending) return pending.then(unpaid);
   const started = epoch;
   const startedFor = fingerprintEpochs.get(fingerprint) ?? 0;
   const current = (): boolean =>
@@ -89,9 +89,11 @@ export function sharedPaidCheck(
   return check;
 }
 
-function withoutUsage(verdict: LiveProbe): LiveProbe {
+/** A verdict as seen by a caller that did not pay for it, so the ledger counts the call once. */
+function unpaid(verdict: LiveProbe): LiveProbe {
   const shared = { ...verdict };
   delete shared.usage;
+  delete shared.paid;
   return shared;
 }
 
