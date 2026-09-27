@@ -59,7 +59,7 @@ import { BuildProgress } from './BuildProgress';
 import { PreviewFrame } from './PreviewFrame';
 import { Icon, type IconKey } from '../icons/icons';
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useResponsiveGrid, retileSection } from './hooks/useResponsiveGrid';
+import { useResponsiveGrid } from './hooks/useResponsiveGrid';
 import { useAccessibleScrollRegions } from './hooks/useAccessibleScrollRegions';
 import { useTruncatedTextDisclosures } from './hooks/useTruncatedTextDisclosures';
 import './layout/hscroll.css';
@@ -634,19 +634,8 @@ export function TopicCanvas({
 
   // Partition display blocks into concept sections when the model tagged them.
   // Falls back to a single anonymous section — the zero-regression path for untagged answers.
-  // Each section is RE-TILED on its own: the flat pass fills rows across the whole answer, packing
-  // blocks over section boundaries, so a section split back out can be left partial (col-4 + col-4
-  // filling only 8/12 — a narrow, left-aligned block with an empty right edge). Re-tiling per
-  // section restores full, even rows so every section spans the same width. Memoised on the inputs.
-  const sections = useMemo(
-    () =>
-      depthLens(displayBlocks).map((s) => ({
-        ...s,
-        standard: retileSection(s.standard, budget),
-        deeper: retileSection(s.deeper, budget),
-      })),
-    [displayBlocks, budget],
-  );
+  // Each section is RE-TILED by SectionGroup for the width it actually has (see there).
+  const sections = useMemo(() => depthLens(displayBlocks), [displayBlocks]);
   // Whether this answer renders as concept sections. The raw hasSections() answer can change
   // mid-stream — the first section-tagged block may land several blocks in, and a tagged block
   // can drop out later (unrenderable) — and every flip re-parents each mounted card between
