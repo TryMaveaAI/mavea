@@ -465,7 +465,9 @@
   font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
   font-size: var(--fs-xs, 12px);
   line-height: 1.6;
-  max-height: 22rem;
+  /* A cap in LINES, not rem: the body's type grows with the window while a rem cap does not, so
+     at 2560px the same session held fewer lines and its exit badge ended up behind a scrollbar. */
+  max-height: calc(1.6em * 19 + 22px);
   overflow: auto;
 }
 .term-line {
