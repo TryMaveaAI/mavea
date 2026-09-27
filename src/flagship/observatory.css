@@ -1047,6 +1047,7 @@
   translate: -50% -50%;
   display: grid;
   place-items: center;
+  align-content: center;
   width: clamp(9.5rem, 34%, 14rem);
   aspect-ratio: 1;
   text-align: center;
