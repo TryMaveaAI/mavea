@@ -117,22 +117,34 @@ describe('forgetDevice', () => {
     // older build wrote, and it outlives "Forget everything" unless it is named here.
     const call = new RegExp(
       String.raw`\b(?:safeLocal(?:Get|Set)|safeSession(?:Get|Set)|` +
-        String.raw`(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*'([^']+)'`,
+        String.raw`(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*` +
+        String.raw`(?:'([^']+)'|([A-Za-z_$][\w$]*)\s*[,)])`,
       'g',
     );
-    const files = execFileSync(
-      'git',
-      ['grep', '-lE', 'safeLocal|safeSession|Storage\\.', '--', 'src'],
-      {
-        encoding: 'utf8',
-      },
-    )
+    const constant = /\bconst\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*'([^']+)'/g;
+    const sources = execFileSync('git', ['ls-files', '--', 'src/*.ts', 'src/*.tsx'], {
+      encoding: 'utf8',
+    })
       .trim()
-      .split('\n');
+      .split('\n')
+      .map((file) => readFileSync(file, 'utf8'));
+    // Most stores name their key once as a constant, often in another module, so a call site
+    // that passes an identifier is resolved against its own file first, then every constant of
+    // that name. An identifier no constant defines is a helper's parameter; its callers are the
+    // call sites that name the key, and those are read here too.
+    const constants = new Map<string, Set<string>>();
+    for (const text of sources) {
+      for (const [, name, value] of text.matchAll(constant)) {
+        constants.set(name, (constants.get(name) ?? new Set()).add(value));
+      }
+    }
     const unprefixed = new Set<string>();
-    for (const file of files) {
-      for (const [, key] of readFileSync(file, 'utf8').matchAll(call)) {
-        if (!key.startsWith('mavea')) unprefixed.add(key);
+    for (const text of sources) {
+      const own = new Map([...text.matchAll(constant)].map(([, name, value]) => [name, value]));
+      for (const [, literal, name = ''] of text.matchAll(call)) {
+        const local = own.get(name);
+        const keys = literal ? [literal] : local ? [local] : [...(constants.get(name) ?? [])];
+        for (const key of keys) if (!key.startsWith('mavea')) unprefixed.add(key);
       }
     }
     expect([...unprefixed].sort()).toEqual([...LEGACY_UNPREFIXED_KEYS].sort());
