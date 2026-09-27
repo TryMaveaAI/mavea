@@ -18,7 +18,7 @@ import type { LiveActivity, LiveCaps, LiveError, LiveResult } from './generateLi
 const turnEngine = () => import('./generateLive');
 import type { TourMark } from '../engine/liveSchema';
 import { likelyFollowUp, type Mode, type TurnSnapshot } from './lifecycle';
-import { settleTurn } from './settleTurn';
+import { boardCueFor, settleTurn, type BoardCue } from './settleTurn';
 import { mergeNodes } from './memory/store';
 import { extractUserFacts } from './memory/extract';
 import { memoryRelevant } from './memory/relevance';
@@ -125,6 +125,10 @@ export interface LiveTurnState {
    *  the engine, which holds the catalog) — labels the in-progress skeleton with the real kind
    *  without this state ever reaching the catalog. Null between blocks and outside a streamed turn. */
   pendingShape: string | null;
+  /** What this follow-up will do to the board already on screen, once that is CERTAIN (see
+   *  `boardCueFor`): 'extend' appends below it, 'revise' edits it in place. Null while the turn
+   *  could still replace — the surface shows its neutral working state until then. */
+  boardCue: BoardCue | null;
   /** The model is emitting reasoning/"thinking" tokens before any answer content (some
    *  reasoning/OpenRouter models). Drives a live "Thinking…" cue so a long pre-answer reasoning
    *  phase never reads as a frozen "Composing…". Cleared the moment content starts or the turn settles. */
@@ -365,6 +369,7 @@ export const INITIAL: LiveTurnState = {
   error: null,
   collapsed: false,
   pendingShape: null,
+  boardCue: null,
   reasoning: false,
   liveSources: [],
   restored: false,
@@ -424,6 +429,7 @@ type Action =
   | { type: 'spot'; spot: string | null }
   // The streaming block's type (skeleton label) and the mid-turn search sources.
   | { type: 'pending'; pending: string | null }
+  | { type: 'cue'; cue: BoardCue }
   // The model is (or is no longer) emitting reasoning tokens before any answer content.
   | { type: 'thinking'; on: boolean }
   | { type: 'sources'; sources: WebSource[] }
@@ -457,6 +463,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         viewOverride: null,
         error: null,
         pendingShape: null,
+        boardCue: null,
         reasoning: false,
         liveSources: [],
         restored: false,
@@ -532,6 +539,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         viewOverride: null,
         // The turn settled: nothing is streaming, and citations now live on the spec.
         pendingShape: null,
+        boardCue: null,
         reasoning: false,
         liveSources: [],
         // The Blank Space: an answer that arrives with holes enters the gather phase, armed on
@@ -543,7 +551,14 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
       };
     }
     case 'idle':
-      return { ...s, status: 'idle', busy: false, activity: null, reasoning: false };
+      return {
+        ...s,
+        status: 'idle',
+        busy: false,
+        activity: null,
+        boardCue: null,
+        reasoning: false,
+      };
     case 'error':
       // A failed turn settles to idle with the error surfaced. The prior canvas, history,
       // frames, and library are all left exactly as they were — a failure is not content.
@@ -554,6 +569,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         activity: null,
         error: a.error,
         pendingShape: null,
+        boardCue: null,
         reasoning: false,
         liveSources: [],
       };
@@ -561,6 +577,8 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
       return { ...s, spot: a.spot };
     case 'pending':
       return { ...s, pendingShape: a.pending };
+    case 'cue':
+      return s.busy ? { ...s, boardCue: a.cue } : s;
     case 'thinking':
       return { ...s, reasoning: a.on };
     case 'sources':
@@ -1279,6 +1297,20 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
                   if (!ctrl.signal.aborted) dispatch({ type: 'pending', pending: t });
                 }
               : undefined,
+            // A follow-up keeps the board on screen until it settles, so the reader cannot see
+            // whether it will grow or be replaced. Once the answer's framing and first card are
+            // in, say so — but only when the settle below is certain to agree (boardCueFor).
+            onFraming: willStream
+              ? undefined
+              : (framing) => {
+                  if (ctrl.signal.aborted) return;
+                  const priorCount =
+                    opts?.freshStart || replacingCollapsed
+                      ? 0
+                      : (specRef.current?.blocks.length ?? 0);
+                  const cue = boardCueFor(prior, priorCount, displayText, framing);
+                  if (cue) dispatch({ type: 'cue', cue });
+                },
             // Reasoning models stream "thinking" tokens before the answer — reflect that as a
             // live cue so a long pre-answer phase never reads as a frozen "Composing…".
             onThinking: (on) => {

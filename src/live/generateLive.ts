@@ -166,6 +166,12 @@ export interface GenerateLiveOpts {
    *  only — the post-stream tail (validate → recovery → autoFix → re-tile) emits nothing until
    *  the final result returns. */
   onPartial?: (partial: { spec: ConversationSpec; narration: string }) => void;
+  /** The answer's framing: fired when its narration, title and continuity hint have all closed
+   *  and its first block has validated — the earliest moment the surface can know what the turn
+   *  will do to the canvas without waiting for the cards — and once more, with a tighter
+   *  `ceiling`, when the blocks array closes. Runs the same block parse onPartial does, but emits
+   *  no canvas: a follow-up must not re-render mid-stream. */
+  onFraming?: (framing: AnswerFraming) => void;
   /** Real search sources, the moment they're known (app-side search resolves before the
    *  model call; native grounding reports after it) — so the surface can name what is
    *  being read while the answer still generates. */
@@ -350,6 +356,18 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
     kind: 'network',
     message: `Couldn't reach ${label} — check your connection and try again.`,
   };
+}
+
+/** What an answer has said about itself before its cards land (see `onFraming`). */
+export interface AnswerFraming {
+  narration: string;
+  title: string;
+  continuity?: LiveResult['continuity'];
+  tier: LiveResult['tier'];
+  /** The most blocks this call can hand back — the block cap until the blocks array closes, its
+   *  final count after, plus the one world card that may join — so a caller can rule out an
+   *  outcome by count. */
+  ceiling: number;
 }
 
 /** What generateLive returns: a renderable spec + the one spoken sentence. */
@@ -1522,6 +1540,9 @@ export async function generateLive(
   const blockStream = new ArrayStreamScanner('blocks');
   const narrationField = new StringFieldScanner('narration');
   const titleField = new StringFieldScanner('title');
+  const continuityField = new StringFieldScanner('continuity');
+  /** The last ceiling onFraming named (0 = not yet), so it fires only when it has news. */
+  let framedCeiling = 0;
   let lastCount = 0;
   let lastPending: string | null = null;
   // The blocks validated so far (same objects across partials), whether the single allowed
@@ -1549,6 +1570,27 @@ export async function generateLive(
   /** What the parse had already validated when a dead stream ended the turn — see the catch. */
   let streamSalvage: LiveResponse | null = null;
   let thinking = false;
+  /** Name the answer's framing once its first card has validated, and again when the blocks array
+   *  closes and the card count is final. Both are ceilings the settle cannot exceed: the one-shot
+   *  validation of the same reply yields these same blocks (so the collapse recovery, which needs
+   *  zero, cannot run), and only the world card can join after. A small model's hint is never
+   *  read (resolveMode), so only a hint that may still be coming holds the framing back. */
+  const frame = (): void => {
+    if (!opts.onFraming || streamedTop === null || streamedBlocks.length === 0) return;
+    if (narrationField.value() === null || titleField.value() === null) return;
+    if (tier !== 'small' && continuityField.value() === null) return;
+    const ceiling = (blockStream.closed ? streamedBlocks.length : maxBlocks) + 1;
+    if (ceiling === framedCeiling) return;
+    framedCeiling = ceiling;
+    const top: LiveResponse = streamedTop;
+    opts.onFraming({
+      narration: top.narration,
+      title: top.title,
+      ...(top.continuity ? { continuity: top.continuity } : {}),
+      tier,
+      ceiling,
+    });
+  };
   // Wraps the raw delta stream: reasoning tokens drive the "Thinking…" cue and are NEVER buffered
   // (they'd corrupt the answer JSON); content tokens end the thinking phase and feed the
   // progressive-reveal parse. Always a wrapper so reasoning is filtered even on non-streamed turns.
@@ -1566,7 +1608,7 @@ export async function generateLive(
       opts.onThinking?.(false);
     }
     onDelta?.(chunk);
-    if (!opts.onPartial) return;
+    if (!opts.onPartial && !opts.onFraming) return;
     buf += chunk;
     // The scanner walks each delta exactly once (it keeps its cursor and brace/string state
     // between calls, reading only buf's unseen tail), so parsing a whole turn costs one pass
@@ -1589,8 +1631,12 @@ export async function generateLive(
     }
     narrationField.scan(buf);
     titleField.scan(buf);
+    continuityField.scan(buf);
     const rawBlocks = blockStream.items;
-    if (rawBlocks.length <= lastCount) return;
+    if (rawBlocks.length <= lastCount) {
+      frame();
+      return;
+    }
     let tail = rawBlocks.slice(lastCount);
     lastCount = rawBlocks.length;
     // The one-insight rule spans the whole canvas: once the opener has landed, a later raw
@@ -1608,6 +1654,7 @@ export async function generateLive(
       {
         narration: narrationField.value() ?? '',
         title: titleField.value() ?? '',
+        continuity: continuityField.value() ?? '',
         sub: '',
         blocks: remaining > 0 ? tail : [],
       },
@@ -1635,6 +1682,7 @@ export async function generateLive(
     }
     const running = streamedSoFar();
     if (running) emitSpec(running);
+    frame();
   };
 
   // The request the adapter sends. History is the compacted send-history; thinkingLevel and
@@ -1714,7 +1762,7 @@ export async function generateLive(
     // blocks — the reader watched them arrive — and replacing them with an error card discards an
     // answer that exists. Keep what streamed, marked honestly as cut short. A turn the USER
     // cancelled is not salvaged: it was superseded, and rendering it would fight the turn after it.
-    const kept = opts.signal?.aborted ? null : streamedSoFar();
+    const kept = opts.signal?.aborted || !opts.onPartial ? null : streamedSoFar();
     if (kept) streamSalvage = { ...kept, sub: CUT_SHORT_SUB };
     // The provider call failed. Mavéa never re-asks on its own — a turn is the one ask the
     // reader made, and a second attempt (grounded or not) is theirs to start. With nothing

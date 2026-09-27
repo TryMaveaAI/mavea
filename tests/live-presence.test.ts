@@ -50,6 +50,24 @@ describe('livePresence — turn status → face', () => {
     // Non-talking states are unchanged by mute.
     expect(livePresence('thinking', false, false, 'neutral', true).state).toBe('loading');
   });
+
+  it('looks down toward the board while a follow-up is adding to it, and only then', () => {
+    const extending = (status: 'thinking' | 'speaking', muted = false) =>
+      livePresence(status, false, false, 'neutral', muted, false, true);
+    expect(extending('thinking')).toEqual({ state: 'loading', emotion: 'neutral', gaze: 'down' });
+    expect(extending('speaking').gaze).toBe('down');
+    expect(extending('speaking', true)).toEqual({
+      state: 'showing',
+      emotion: 'neutral',
+      gaze: 'down',
+    });
+    // An open mic is the reader talking: it still wins, eyes forward.
+    expect(livePresence('thinking', true, false, 'neutral', false, false, true).gaze).toBe(
+      'center',
+    );
+    // Without the cue the working face keeps looking forward.
+    expect(livePresence('speaking', false).gaze).toBe('center');
+  });
 });
 
 const block = (type: string, props: Record<string, unknown> = {}): Block =>

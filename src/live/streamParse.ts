@@ -295,6 +295,11 @@ export class ArrayStreamScanner {
     return this.parsed;
   }
 
+  /** The array's closing bracket has streamed: `items` will not grow again. */
+  get closed(): boolean {
+    return this.phase === 'done';
+  }
+
   /** Advance over `buf`'s unseen tail. `buf` must extend the previously scanned buffer. */
   scan(buf: string): void {
     if (this.phase === 'done') return;

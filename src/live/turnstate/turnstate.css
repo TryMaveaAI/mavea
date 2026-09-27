@@ -210,6 +210,56 @@
   }
 }
 
+/* ===== adding below — a follow-up building past the fold ===== */
+/* Laid out like the listening stage: a fixed band over the canvas column, just above the dock
+   (and on a phone the session band above it), that passes clicks through everywhere except the
+   pill itself. BoardCuePill reads this edge as where the readable canvas ends. */
+.live-voice .board-cue-stage {
+  position: fixed;
+  left: var(--rail-w, 0px);
+  right: 0;
+  bottom: calc(var(--dock-h, 0px) + var(--mobile-rail-h, 0px) + 14px);
+  z-index: 45;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.live-voice .board-cue-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line));
+  box-shadow: var(--shadow-raised);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.live-voice .board-cue-pill:hover {
+  color: var(--text-primary);
+}
+.live-voice .board-cue-pill:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+/* One fade on arrival, and none under reduced motion: the words carry the meaning. */
+@media (prefers-reduced-motion: no-preference) {
+  .live-voice .board-cue-pill {
+    animation: board-cue-in var(--m-normal) ease-out;
+  }
+}
+@keyframes board-cue-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* ===== working chips — what's being read, named ===== */
 .live-voice .turn-chips {
   position: fixed;

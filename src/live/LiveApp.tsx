@@ -304,6 +304,7 @@ import {
 // it stays out of the './turnstate' barrel anyway — the barrel is imported by the eager demo, and
 // this keeps its surface minimal. See index.ts.
 import { pendingCard } from './turnstate/pendingCard';
+import { BoardCuePill } from './turnstate/BoardCuePill';
 import { anyOverlayOpen } from './hooks/overlayGuard';
 import { spotScrollDelta, useKeepSpotInView } from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
@@ -4437,8 +4438,19 @@ export function LiveApp(): ReactElement {
       celebratedRef.current = turn.spec;
       emotion = 'celebrate';
     }
-    return livePresence(turn.status, listening, interjecting, emotion, muted, transcribing);
-  }, [turn.status, listening, interjecting, turn.spec, muted, transcribing]);
+    // Glancing toward the cards a follow-up is adding is a movement, so it goes under reduced
+    // motion; the composing line still says it.
+    const extending = turn.boardCue === 'extend' && !prefersReducedMotion();
+    return livePresence(
+      turn.status,
+      listening,
+      interjecting,
+      emotion,
+      muted,
+      transcribing,
+      extending,
+    );
+  }, [turn.status, listening, interjecting, turn.spec, muted, transcribing, turn.boardCue]);
   const presenceStyle = useMemo(
     () =>
       automaticPresenceStyle({
@@ -4705,6 +4717,9 @@ export function LiveApp(): ReactElement {
     if (turn.status === 'showing') return [pendingCard(turn.pendingShape)];
     return skeletonPlan(lastAsk ?? '', turn.history);
   }, [turn.busy, turn.status, turn.pendingShape, lastAsk, turn.history]);
+  // Where a follow-up's added cards land: the working column sits after the board, which is
+  // exactly where an augment appends them — the "Adding below" pill scrolls here.
+  const workingColRef = useRef<HTMLDivElement>(null);
   // The speaking state: the voice is audibly playing, and the line it's reading. Tour stops
   // update spokenNow as they fire; the opener falls back to the turn's narration.
   const speakingNow = useSpeaking();
@@ -5844,6 +5859,10 @@ export function LiveApp(): ReactElement {
           surface chips, since those need explicit transparency — and once the search resolves,
           the chips name the actual sources being read. */}
       <TurnActivityChips activity={turn.activity} sources={turn.busy ? turn.liveSources : []} />
+      <BoardCuePill
+        target={workingColRef}
+        active={turn.busy && viewingLive && turn.boardCue === 'extend'}
+      />
 
       {/* topbar */}
       <div className="topbar">
@@ -6695,12 +6714,16 @@ export function LiveApp(): ReactElement {
               {turn.busy && viewingLive && (
                 // Same centered column as the answer canvas, so the working state lines up with the
                 // cards above instead of orphaning a skeleton/cue against the far edge.
-                <div className="working-col">
+                <div className="working-col" ref={workingColRef}>
                   <WorkingSkeletons cards={skeletonCards} />
                   {/* The unmistakable "still streaming" cue: keyed straight to busy (no mount
                       delay), so a partial canvas never reads as finished. Says "Thinking…" while a
                       reasoning model is still reasoning, so a long pre-answer phase never looks stuck. */}
-                  <ComposingStatus thinking={turn.reasoning} activity={turn.activity} />
+                  <ComposingStatus
+                    thinking={turn.reasoning}
+                    activity={turn.activity}
+                    cue={turn.boardCue}
+                  />
                 </div>
               )}
               {viewingLive && !turn.busy && (
