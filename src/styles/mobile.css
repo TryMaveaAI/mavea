@@ -34,6 +34,17 @@
     --canvas-dock-gap: 4px;
   }
 
+  /* A locked run (a replay, the walkthrough) makes the whole surface inert but its transport, so
+     the "This session" sheet cannot be opened while it plays: its band would be 45px of a dead
+     control, packed against whatever the run is showing above it. The band goes with it, unless
+     the run itself has the sheet open to read from. */
+  .mavea-app.with-rail[data-scripted-run='locked']:not(:has(.side-rail.chat-open)) {
+    --mobile-rail-h: 0px;
+  }
+  .mavea-app.with-rail[data-scripted-run='locked'] .side-rail:not(.chat-open) {
+    display: none;
+  }
+
   /* The desktop "This session" topbar toggle collapses the left rail — meaningless
      once the rail is a bottom sheet (which carries its own .rail-mobile-toggle). */
   .topbar-session-toggle {
