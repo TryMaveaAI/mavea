@@ -125,7 +125,7 @@ async function measureTopbar(page: Page, base: string): Promise<Result[]> {
   });
 
   await freshLanding(page, base);
-  const explore = page.getByRole('button', { name: 'Explore' });
+  const explore = page.getByRole('button', { name: 'Explore', exact: true });
   started = Date.now();
   await explore.click();
   await page.getByRole('menu', { name: 'Explore features' }).waitFor({ state: 'visible' });

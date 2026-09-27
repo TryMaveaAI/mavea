@@ -596,17 +596,21 @@ export function TopicCanvas({
   onProveRef.current = onProve;
   const stableProve = useCallback(() => onProveRef.current(), []);
 
-  const renderBlock = (b: Block): ReactNode => (
+  const drawBlock = (b: Block, onStage: boolean): ReactNode => (
     <BlockView
       block={bend && bendValue !== null ? bendBlock(b, bend, bendValue) : b}
       nest={0}
-      spotlight={!!b.id && spot === b.id}
-      dimmed={!!b.id && !!spot && spot !== b.id}
+      spotlight={!onStage && !!b.id && spot === b.id}
+      dimmed={!onStage && !!b.id && !!spot && spot !== b.id}
       spot={b.type === 'composite' ? spot : null}
       onProve={stableProve}
       onUnrenderable={markUnrenderable}
     />
   );
+  const renderBlock = (b: Block): ReactNode => drawBlock(b, false);
+  // The Lens shows one card at a time, so the board's spotlight has no meaning there: a card the
+  // narration is not on would otherwise sit on the stage dimmed to 42%.
+  const renderOnStage = (b: Block): ReactNode => drawBlock(b, true);
 
   const renderExtra = (ex: Extra): ReactNode => {
     if (ex.kind === 'slide') return <SlidePreview {...ex.props} />;
@@ -1275,7 +1279,7 @@ export function TopicCanvas({
                   <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
                     {/* At the card's own size the sheet fits the card to its height before it
                         scrolls; once the reader magnifies, scrolling is the point. */}
-                    <FitBox fitHeight={zoomLevel === 1}>{renderBlock(zoomedBlock)}</FitBox>
+                    <FitBox fitHeight={zoomLevel === 1}>{renderOnStage(zoomedBlock)}</FitBox>
                   </div>
                 </div>
                 {lensNotes.length > 0 && (
@@ -1305,7 +1309,7 @@ export function TopicCanvas({
                     const b = lensSteps.find((x) => x.id === id);
                     if (b) openLens(b);
                   }}
-                  renderBlock={renderBlock}
+                  renderBlock={renderOnStage}
                 />
               )}
             </div>

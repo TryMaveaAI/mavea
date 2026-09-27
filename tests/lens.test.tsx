@@ -306,3 +306,15 @@ describe('surfaces that are not Live', () => {
     expect(container.querySelector('.zoom-sheet')).toBeNull();
   });
 });
+
+describe('the stage while a narration spotlights another card', () => {
+  it('shows the staged card at full strength, not dimmed by the board', () => {
+    const { container, cell } = mount({ spot: 'b' });
+    cleanClick(cell('a'));
+    const staged = container.querySelector('.zoom-sheet .card');
+    expect(staged).not.toBeNull();
+    expect(staged?.classList.contains('dimmed')).toBe(false);
+    // The board behind it still reads the narration's spotlight.
+    expect(cell('a').querySelector('.card')?.classList.contains('dimmed')).toBe(true);
+  });
+});
