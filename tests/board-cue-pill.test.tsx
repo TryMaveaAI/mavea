@@ -4,6 +4,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, act, fireEvent } from '@testing-library/react';
 import { createRef } from 'react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { BoardCuePill } from '../src/live/turnstate/BoardCuePill';
 
 type Report = (entry: Partial<IntersectionObserverEntry>) => void;
@@ -99,5 +101,20 @@ describe('BoardCuePill', () => {
     observers = 0;
     setup(false);
     expect(observers).toBe(0);
+  });
+});
+
+describe('the pill sizes itself from the design tokens', () => {
+  it('its spacing and height scale with the viewport, never a fixed px', () => {
+    const css = readFileSync(join(__dirname, '../src/live/turnstate/turnstate.css'), 'utf8');
+    const rules = css.match(/\.board-cue-(?:stage|pill) \{[^}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThanOrEqual(2);
+    // A hairline border and a var() fallback of 0px are not sizes.
+    const sizes = rules
+      .join('\n')
+      .replace(/\b1px solid\b/g, '')
+      .replace(/, 0px\)/g, ')')
+      .match(/\b\d+(?:\.\d+)?px\b/g);
+    expect(sizes).toBeNull();
   });
 });

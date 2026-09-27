@@ -218,7 +218,7 @@
   position: fixed;
   left: var(--rail-w, 0px);
   right: 0;
-  bottom: calc(var(--dock-h, 0px) + var(--mobile-rail-h, 0px) + 14px);
+  bottom: calc(var(--dock-h, 0px) + var(--mobile-rail-h, 0px) + var(--s-2));
   z-index: 45;
   display: flex;
   justify-content: center;
@@ -228,9 +228,9 @@
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 32px;
-  padding: 6px 14px;
+  gap: var(--s-sm);
+  min-height: var(--s-xl);
+  padding: var(--chip-pad);
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line));
