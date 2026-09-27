@@ -1057,7 +1057,7 @@
   color: var(--text-secondary);
   cursor: pointer;
 }
-.zoom-sheet-zoom-level:hover:not(:disabled) {
+.zoom-sheet-zoom-level:hover {
   border-color: var(--line);
   background: var(--surface-glass-strong);
   color: var(--text-primary);
@@ -1066,8 +1066,20 @@
   outline: 2px solid var(--presence);
   outline-offset: 2px;
 }
-.zoom-sheet-zoom-level:disabled {
-  cursor: default;
+/* Both labels share one grid cell, so the button never changes width as they swap. */
+.zoom-sheet-zoom-level {
+  display: inline-grid;
+  place-items: center;
+}
+.zoom-sheet-zoom-level > span {
+  grid-area: 1 / 1;
+}
+.zoom-sheet-zoom-offer,
+.zoom-sheet-zoom-level:is(:hover, :focus-visible) .zoom-sheet-zoom-now {
+  visibility: hidden;
+}
+.zoom-sheet-zoom-level:is(:hover, :focus-visible) .zoom-sheet-zoom-offer {
+  visibility: visible;
 }
 .zoom-sheet-stepper {
   display: flex;

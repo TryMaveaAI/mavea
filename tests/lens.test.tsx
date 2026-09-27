@@ -148,7 +148,7 @@ describe('the Lens gesture', () => {
     const out = screen.getByRole('button', { name: 'Zoom out' }) as HTMLButtonElement;
     expect(out.disabled).toBe(false);
     fireEvent.click(out);
-    expect(container.querySelector('.zoom-sheet-zoom-level')?.textContent).toBe('85%');
+    expect(container.querySelector('.zoom-sheet-zoom-now')?.textContent).toBe('85%');
   });
 });
 
@@ -355,39 +355,54 @@ describe('stepping through the answer from the stage', () => {
   });
 });
 
-describe('getting back to the fit', () => {
-  const reset = () =>
-    screen.getByRole('button', { name: /Reset zoom to fit/ }) as HTMLButtonElement;
+describe('fit and actual size', () => {
+  const readout = () => screen.getByRole('button', { name: /^Zoom \d+%\./ }) as HTMLButtonElement;
+  const now = (root: HTMLElement) => root.querySelector('.zoom-sheet-zoom-now')?.textContent;
+  const bodyZoom = (root: HTMLElement) =>
+    (root.querySelector('.zoom-sheet-body') as HTMLElement).style.zoom;
 
-  it('makes the readout the reset, idle while the card is already fitted', () => {
+  it('opens fitted, and the readout toggles between the fit and actual size', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
-    expect(reset().disabled).toBe(true);
+    // Fitted: the body carries no magnification of its own, and the readout offers 100%.
+    expect(bodyZoom(container)).toBe('');
+    expect(readout().getAttribute('aria-label')).toMatch(/Actual size \((⌘|Ctrl\+)0\)$/);
+    expect(readout().title).toMatch(/^Actual size/);
+    fireEvent.click(readout());
+    expect(bodyZoom(container)).toBe('1');
+    expect(now(container)).toBe('100%');
+    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage \((⌘|Ctrl\+)9\)$/);
+    // Any manual zoom offers the fit too.
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(reset().textContent).toBe('115%');
-    expect(reset().disabled).toBe(false);
-    fireEvent.click(reset());
-    expect(reset().disabled).toBe(true);
-    expect(reset().textContent).toBe('100%');
-    // Fitted, the body carries no magnification of its own.
-    expect((container.querySelector('.zoom-sheet-body') as HTMLElement).style.zoom).toBe('');
+    expect(now(container)).toBe('115%');
+    expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage/);
+    fireEvent.click(readout());
+    expect(bodyZoom(container)).toBe('');
   });
 
-  it('resets on ⌘0 and Ctrl+0, but not while the reader is typing', () => {
+  it('takes ⌘0 as actual size and ⌘9 as the fit, with Ctrl as well', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    fireEvent.keyDown(window, { key: '0', metaKey: true });
-    expect(reset().disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    expect(fireEvent.keyDown(window, { key: '0', metaKey: true })).toBe(false);
+    expect(bodyZoom(container)).toBe('1');
+    fireEvent.keyDown(window, { key: '9', metaKey: true });
+    expect(bodyZoom(container)).toBe('');
     fireEvent.keyDown(window, { key: '0', ctrlKey: true });
-    expect(reset().disabled).toBe(true);
+    expect(bodyZoom(container)).toBe('1');
+    fireEvent.keyDown(window, { key: '9', ctrlKey: true });
+    expect(bodyZoom(container)).toBe('');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+  it('leaves ⌘0 to the browser while the Lens is closed, and to a field being typed in', () => {
+    const { container } = mount();
+    // Closed: not prevented, so the browser's own zoom reset still works.
+    expect(fireEvent.keyDown(window, { key: '0', metaKey: true })).toBe(true);
+    cleanClick(cell0(container, 'a'));
     const input = document.createElement('input');
     container.appendChild(input);
-    fireEvent.keyDown(input, { key: '0', metaKey: true });
-    expect(reset().disabled).toBe(false);
+    expect(fireEvent.keyDown(input, { key: '0', metaKey: true })).toBe(true);
+    expect(bodyZoom(container)).toBe('');
   });
 
   it('puts the notes straight under the card, not at the foot of the window', () => {

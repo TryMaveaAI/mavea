@@ -115,8 +115,12 @@ const ZOOM_STEP = 0.15;
  *  card is grown toward a reading size, a tall one is fitted down to the room, and neither ever
  *  runs wider than the sheet. At its board size a one-row stat card floated in a sheet five
  *  times its height, which is not looking closer. A number is the reader's own magnification,
- *  stepped from wherever the fit left the card; the readout (or ⌘0) returns to the fit. */
+ *  stepped from wherever the fit left the card. The readout toggles between the fit and actual
+ *  size, the way Preview does: ⌘0 is actual size, ⌘9 is the fit. */
 type LensZoom = 'fit' | number;
+/** How the zoom shortcuts are written where the reader will press them. */
+const MOD_KEY =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl+';
 /** The body size the fit grows a card toward, in rendered px. The board's body type is ~14–16px
  *  on a laptop, so this is a visible step closer without a paragraph ballooning; FitBox caps the
  *  growth at 1.5x and never past the room. */
@@ -453,11 +457,18 @@ export function TopicCanvas({
   const [fitScale, setFitScale] = useState(1);
   const fitted = zoomLevel === 'fit';
   const shownZoom = fitted ? fitScale : zoomLevel;
-  const zoomBy = (d: number): void =>
-    setZoomLevel((z) => {
-      const from = z === 'fit' ? fitScale : z;
-      return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(from + d).toFixed(2)));
-    });
+  // The fit scale a magnification lays the card out against: the fit's own when a step leaves
+  // the fit (so the picture carries on from it), 1 at actual size (the card's own layout).
+  const [layoutFit, setLayoutFit] = useState(1);
+  const zoomBy = (d: number): void => {
+    if (fitted) setLayoutFit(fitScale);
+    const from = fitted ? fitScale : zoomLevel;
+    setZoomLevel(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(from + d).toFixed(2))));
+  };
+  const actualSize = (): void => {
+    setLayoutFit(1);
+    setZoomLevel(1);
+  };
   // Past a 1920px window the Lens sheet grows with the type scale, so the reading size the fit
   // grows a card toward grows with it.
   const lensGrows = useMediaQuery('(width > 1920px)');
@@ -479,10 +490,12 @@ export function TopicCanvas({
       ) {
         return;
       }
-      // ⌘0 / Ctrl+0 is "actual size" everywhere else; here the size the Lens opens at is the fit.
-      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+      // Preview's shortcuts: ⌘0 actual size, ⌘9 the fit. Only while the stage is up — this
+      // listener exists only then, so the browser's own ⌘0 is untouched everywhere else.
+      if ((e.metaKey || e.ctrlKey) && (e.key === '0' || e.key === '9')) {
         e.preventDefault();
-        setZoomLevel('fit');
+        if (e.key === '0') actualSize();
+        else setZoomLevel('fit');
         return;
       }
       if (e.key === 'ArrowRight') stepLens(1);
@@ -1253,17 +1266,24 @@ export function TopicCanvas({
                     >
                       <Icon.zoomOut />
                     </button>
-                    {/* The readout is the way back: it reads as a number until it is hovered
-                        or focused, and it has nothing to do while the card is already fitted. */}
+                    {/* The readout is also the toggle between the fit and actual size. At rest
+                        it reads as the number it always was; hovered or focused it names what a
+                        press will do. */}
                     <button
                       type="button"
                       className="zoom-sheet-zoom-level"
-                      aria-label={`Zoom ${Math.round(shownZoom * 100)}%. Reset zoom to fit`}
-                      title={fitted ? 'Fitted to the stage' : 'Reset zoom to fit (⌘0)'}
-                      disabled={fitted}
-                      onClick={() => setZoomLevel('fit')}
+                      aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
+                        fitted ? `Actual size (${MOD_KEY}0)` : `Fit to the stage (${MOD_KEY}9)`
+                      }`}
+                      title={
+                        fitted ? `Actual size (${MOD_KEY}0)` : `Fit to the stage (${MOD_KEY}9)`
+                      }
+                      onClick={fitted ? actualSize : () => setZoomLevel('fit')}
                     >
-                      {Math.round(shownZoom * 100)}%
+                      <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
+                      <span className="zoom-sheet-zoom-offer" aria-hidden="true">
+                        {fitted ? '100%' : 'Fit'}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -1297,7 +1317,7 @@ export function TopicCanvas({
                     style={
                       fitted
                         ? undefined
-                        : ({ zoom: zoomLevel, '--lens-fit': fitScale } as CSSProperties)
+                        : ({ zoom: zoomLevel, '--lens-fit': layoutFit } as CSSProperties)
                     }
                   >
                     {/* Fitted, the card is grown toward a reading size or shrunk to the room
