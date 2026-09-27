@@ -15,6 +15,7 @@ import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
 import { FitBox, type FitFacts } from './layout/FitBox';
+import { diagramLabelPx } from './layout/diagramFloor';
 import { observeResize } from './layout/sharedResize';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useFocusTrap } from '../live/useFocusTrap';
@@ -480,6 +481,10 @@ export function TopicCanvas({
   // The size the board already shows this card at. The Lens is for looking closer, so a fit
   // never takes the card below it; a card taller than the stage at that size scrolls instead.
   const [boardScale, setBoardScale] = useState(1);
+  // What the card's diagrams' smallest labels painted at on the board. A diagram draws its labels
+  // at whatever width its box gives it, and the stage is often narrower than the board's card
+  // (the notes sit beside it), so a scale alone cannot keep the promise above for them.
+  const [boardDiagramPx, setBoardDiagramPx] = useState<readonly number[]>([]);
   // A narrow sheet stacks the notes under the card in the one scroll. When the card already runs
   // past the stage, four notes under it are a long way down, so they start folded to one line;
   // the reader's own choice (null until they make one) outranks that, until the next card.
@@ -808,6 +813,8 @@ export function TopicCanvas({
     if (!zoomedBlock) lensOpener.current = document.activeElement as HTMLElement | null;
     lensLastId.current = b.id;
     setBoardScale(boardScaleOf(b.id));
+    const cell = boardCellOf(b.id);
+    setBoardDiagramPx(cell ? diagramLabelPx(cell) : []);
     setNotesOpen(null);
     setZoomedBlock(b);
     setZoomLevel('fit');
@@ -1459,6 +1466,7 @@ export function TopicCanvas({
                       hold={!fitted}
                       governs
                       minScale={boardScale}
+                      diagramFloorPx={boardDiagramPx}
                       readingPx={
                         fitted ? (lensGrows ? LENS_WIDE_READING_PX : LENS_READING_PX) : undefined
                       }

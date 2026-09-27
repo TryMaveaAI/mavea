@@ -24,6 +24,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { holdDiagrams, releaseDiagrams } from './diagramFloor';
 import { observeResize } from './sharedResize';
 
 const CLIP = new Set(['hidden', 'clip', 'auto', 'scroll']);
@@ -175,6 +176,12 @@ export interface FitBoxProps {
   /** Told the scale the fit settled on, whenever it changes — for a host that states it (the
    *  Lens's zoom readout) or carries it on (a magnification that starts where the fit left off). */
   onScale?: (k: number, fit: FitFacts) => void;
+  /** Hold the block's labelled diagrams at the size a reader already saw them: the i-th one's
+   *  smallest label paints at no less than the i-th value here, and never under the 9px floor.
+   *  A diagram draws its labels at whatever its box gives it, so no uniform scale can promise
+   *  this; a diagram short of it keeps a legible width and its box pans. Omit to leave diagrams
+   *  to the block's own layout. */
+  diagramFloorPx?: readonly number[];
   className?: string;
 }
 
@@ -221,6 +228,7 @@ export function FitBox({
   hold = false,
   governs = false,
   onScale,
+  diagramFloorPx,
   className,
 }: FitBoxProps) {
   const governed = useContext(Governed);
@@ -267,9 +275,22 @@ export function FitBox({
       return true;
     };
 
+    // A held diagram is measured at its OWN layout, like the block's transform and stretch below,
+    // and held again once the fit is read: a fit that counted the held width would shrink the
+    // block to make room for a diagram that was only held wide to be read.
     const measure = (): void => {
+      if (!h.clientWidth || inFlight()) return;
+      if (!diagramFloorPx) return readFit();
+      releaseDiagrams(i);
+      try {
+        readFit();
+      } finally {
+        holdDiagrams(i, diagramFloorPx);
+      }
+    };
+
+    const readFit = (): void => {
       const availW = h.clientWidth;
-      if (!availW || inFlight()) return;
 
       // Read the content's TRUE width: neutralize our own transform and momentarily reveal
       // any internal clipping, so a child that clips itself still reports its real extent.
@@ -444,7 +465,15 @@ export function FitBox({
       stopBox?.();
       stopRoom?.();
     };
-  }, [children, fitHeight, readingPx, minScale, still]);
+  }, [children, fitHeight, readingPx, minScale, still, diagramFloorPx]);
+
+  // The hold measures what the diagrams PAINT at, so it is taken again once a new scale is on
+  // the page. Holding still keeps it: a host magnifying the block scales the held width with the
+  // rest, exactly as it scales everything else.
+  useLayoutEffect(() => {
+    const i = inner.current;
+    if (i && diagramFloorPx && !still) holdDiagrams(i, diagramFloorPx);
+  }, [k, diagramFloorPx, still]);
 
   const scaled = k !== 1;
   return (

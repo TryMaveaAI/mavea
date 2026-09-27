@@ -26,7 +26,7 @@ function hasScaledAncestor(el: Element): boolean {
   return false;
 }
 
-function regionLabel(el: HTMLElement): string {
+export function regionLabel(el: HTMLElement): string {
   const card = el.closest('.card');
   const heading = card?.querySelector<HTMLElement>(
     '.card-eyebrow, h1, h2, h3, [role="heading"]',
