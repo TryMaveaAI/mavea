@@ -4,7 +4,7 @@ import { Sheet } from '../src/canvas/blocks/overlays/Sheet';
 
 describe('overlay blocks hold focus while open and hand it back', () => {
   it('opens a destructive confirm on Cancel, so a reflexive Enter deletes nothing', () => {
-    render(<Confirmdialog trigger="Delete project" cancel="Cancel" />);
+    render(<Confirmdialog title="Danger zone" trigger="Delete project" cancel="Cancel" />);
     const trigger = screen.getByRole('button', { name: /Delete project/ });
     trigger.focus();
     fireEvent.click(trigger);
@@ -15,7 +15,7 @@ describe('overlay blocks hold focus while open and hand it back', () => {
   });
 
   it('moves focus into the sheet and cycles Tab inside it', () => {
-    render(<Sheet trigger="Share" />);
+    render(<Sheet title="Share" trigger="Share" />);
     const trigger = screen.getByRole('button', { name: /Share/ });
     trigger.focus();
     fireEvent.click(trigger);
