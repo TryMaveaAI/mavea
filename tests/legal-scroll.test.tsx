@@ -207,3 +207,12 @@ describe('the acknowledgement gate keeps its way forward on screen', () => {
     expect(screen.getByRole('button', { name: /continue to mavéa/i })).toBeEnabled();
   });
 });
+
+describe('the gate uses a laptop window’s width instead of making the reader scroll', () => {
+  it('sets the points in two columns and the acknowledgements side by side from 1024px', () => {
+    const wide = /@media \(width >= 1024px\) \{([\s\S]*?)\n\}/.exec(gateCss)?.[1] ?? '';
+    expect(wide).toMatch(/\.legal-gate-points\s*\{[^}]*columns:\s*2/);
+    expect(wide).toMatch(/\.legal-gate-consents\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
+    expect(wide).toMatch(/break-inside:\s*avoid/);
+  });
+});

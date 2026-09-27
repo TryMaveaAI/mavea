@@ -149,36 +149,38 @@ export function LegalGate({
             </a>
           </nav>
 
-          <label className="legal-gate-consent">
-            <input
-              ref={generalRef}
-              type="checkbox"
-              checked={checked}
-              onChange={(event) => setChecked(event.target.checked)}
-            />
-            <span>
-              I am at least 18 years old. I have read and agree to the Terms of Use and PolyForm
-              Noncommercial License 1.0.0, and I have read and acknowledge the Privacy Notice,
-              Disclaimer, and Important Information notice.
-            </span>
-          </label>
+          <div className="legal-gate-consents">
+            <label className="legal-gate-consent">
+              <input
+                ref={generalRef}
+                type="checkbox"
+                checked={checked}
+                onChange={(event) => setChecked(event.target.checked)}
+              />
+              <span>
+                I am at least 18 years old. I have read and agree to the Terms of Use and PolyForm
+                Noncommercial License 1.0.0, and I have read and acknowledge the Privacy Notice,
+                Disclaimer, and Important Information notice.
+              </span>
+            </label>
 
-          <label className="legal-gate-consent">
-            <input
-              ref={speechRef}
-              type="checkbox"
-              checked={speechChecked}
-              onChange={(event) => setSpeechChecked(event.target.checked)}
-            />
-            <span>
-              I understand that if I use listening features, microphone audio goes to the
-              speech-to-text endpoint this deployment uses (on this computer by default, but
-              possibly a remote one), that transcripts may go to the model provider I select, that
-              remote operators may log or retain them under their own terms, and that I alone am
-              responsible for avoiding sensitive conversations and for obtaining any consent
-              required from other people before listening starts.
-            </span>
-          </label>
+            <label className="legal-gate-consent">
+              <input
+                ref={speechRef}
+                type="checkbox"
+                checked={speechChecked}
+                onChange={(event) => setSpeechChecked(event.target.checked)}
+              />
+              <span>
+                I understand that if I use listening features, microphone audio goes to the
+                speech-to-text endpoint this deployment uses (on this computer by default, but
+                possibly a remote one), that transcripts may go to the model provider I select, that
+                remote operators may log or retain them under their own terms, and that I alone am
+                responsible for avoiding sensitive conversations and for obtaining any consent
+                required from other people before listening starts.
+              </span>
+            </label>
+          </div>
 
           {error && (
             <p className="legal-gate-error" role="alert">

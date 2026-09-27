@@ -114,11 +114,8 @@ html:has(.legal-gate) {
   border-color: color-mix(in oklab, var(--presence) 60%, var(--line-strong));
 }
 
-/* Speech consent is a second, separate act — it sits in its own box under the general one, so the
-   two never read as a single block of small print with one tick. */
-.legal-gate-consent + .legal-gate-consent {
-  margin-top: 10px;
-}
+/* Speech consent is a second, separate act — it sits in its own box beside or under the general
+   one (`.legal-gate-consents` spaces them), so the two never read as one block with one tick. */
 
 .legal-gate-consent input {
   width: 20px;
@@ -250,5 +247,75 @@ html:has(.legal-gate) {
 
   .legal-gate-continue {
     flex: 1;
+  }
+}
+
+/* A laptop or desktop window has the width to spare, so the card uses it: the points read in two
+   columns and the two acknowledgements sit side by side, which roughly halves how far the reader
+   scrolls before Continue. Every word stays; only the measure changes. */
+@media (width >= 1024px) {
+  .legal-gate-card {
+    width: min(68rem, 100%);
+  }
+
+  .legal-gate h1 {
+    font-size: clamp(26px, 2.6vw, 34px);
+  }
+
+  .legal-gate-points {
+    columns: 2;
+    column-gap: var(--s-xl);
+  }
+
+  .legal-gate-points li {
+    break-inside: avoid;
+  }
+
+  .legal-gate-points li + li {
+    margin-top: 0;
+  }
+
+  .legal-gate-points li:not(:last-child) {
+    margin-bottom: 10px;
+  }
+
+  .legal-gate-consents {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-md);
+    align-items: stretch;
+  }
+}
+
+@media (width < 1024px) {
+  .legal-gate-consents {
+    display: grid;
+    gap: var(--s-sm);
+  }
+}
+
+/* A large monitor has room for the whole acknowledgement on one screen. */
+@media (width >= 1600px) {
+  .legal-gate-card {
+    width: min(80rem, 100%);
+  }
+}
+
+/* A short laptop window (a 13" at 1366×657) spends its height on text, not on air. */
+@media (width >= 1024px) and (height <= 700px) {
+  .legal-gate {
+    padding-block: var(--s-md);
+  }
+
+  .legal-gate-card {
+    --gate-pad: var(--s-lg);
+  }
+
+  .legal-gate h1 {
+    margin: 4px 0 8px;
+  }
+
+  .legal-gate-points {
+    margin: 14px 0;
   }
 }
