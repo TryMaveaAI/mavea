@@ -965,7 +965,7 @@ export function markDataRefreshed(
       lastRefreshedAt: now,
       lastDataOutcome: outcome,
       // A completed check is a success even when it found nothing new: the tracker demonstrably
-      // works. 'unverified' does NOT come through here (it routes to markDataUnverified).
+      // works. 'unverified' does NOT come through here (applyRefreshResult records it).
       state: stateAfterSuccess(now),
     };
   });
@@ -1101,11 +1101,6 @@ export interface RefreshResultPatch {
   grade?: { result: PredictionGrade['result']; note?: string };
 }
 
-/** How soon an 'unverified' pass (a call that ran but never grounded in real search, even after
- *  refresh.ts's in-pass retry) gets another shot, instead of waiting out the dashboard's full
- *  cadence over what might just be one bad turn. */
-const UNVERIFIED_RETRY_MS = 5 * 60_000;
-
 /** Apply one whole batched-refresh pass — metric values (+ their history), rich-widget blocks,
  *  tripwire states, the honest clock, and (optionally) a prediction write/grade — in a SINGLE
  *  persist. A pass touching N metrics + M widgets used to cost up to N+M+2 separate
@@ -1135,33 +1130,10 @@ export function applyRefreshResult(id: string, patch: RefreshResultPatch, now = 
         prediction = { text: patch.expects.trim(), at: now };
       }
       const cadence = cleanCadenceWindow(d.cadence, now);
-      const dueBase = nextDataDue(cadence, now);
-      // 'unverified' still winds the honest clock (an attempt genuinely happened, after
-      // refresh.ts's own in-pass retry already tried once more) — but for the FIRST unverified
-      // pass in a streak, on a cadence that would auto-check again anyway, pull that recheck in
-      // to UNVERIFIED_RETRY_MS rather than making a user wait out a full hourly/daily cadence over
-      // what might just be a bad turn. A SECOND consecutive unverified winds the full cadence like
-      // any other outcome — bounded, not a hot loop. A not-yet-open live window is never pulled
-      // earlier than its own start.
-      //
-      // Manual stays parked (Check Now IS the retry) — with ONE exception: the pass that consumed
-      // a one-shot. The durable first check every new board carries (ensureFirstCheck) is spent
-      // here, and an ungrounded first pass used to leave a manual board with no pending clock at
-      // all: never due again under any model, values never filled in, and nothing on screen to say
-      // so beyond a pending badge. That is the "created it under one model, switched, and it never
-      // updated" report. One automatic retry after a spent one-shot, bounded by the same
-      // first-in-streak rule, is the difference between a board that recovers and one that is dead.
-      const firstUnverified =
-        patch.outcome === 'unverified' &&
-        d.lastDataOutcome !== 'unverified' &&
-        (!cadence.window || now >= cadence.window.startAt);
-      const nextDataAt = !firstUnverified
-        ? dueBase
-        : dueBase !== Number.MAX_SAFE_INTEGER
-          ? Math.min(dueBase, now + UNVERIFIED_RETRY_MS)
-          : patch.consumedOneShot
-            ? now + UNVERIFIED_RETRY_MS
-            : dueBase;
+      // 'unverified' winds the honest clock like any other outcome: an attempt genuinely
+      // happened. The next one is the board's own scheduled pass or the reader's Check now; a
+      // manual board stays parked, and a spent first check is not re-armed.
+      const nextDataAt = nextDataDue(cadence, now);
       return {
         ...d,
         cadence,

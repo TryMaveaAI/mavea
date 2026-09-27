@@ -667,31 +667,13 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
   });
 
   describe('unverified outcome — the honest "checked, could not verify" clock policy', () => {
-    it('pulls the FIRST unverified pass on an auto cadence in sooner (5min), not the full cadence', () => {
+    it('winds the full cadence — an ungrounded pass is never re-asked sooner than the schedule', () => {
       addDashboard(makeDash({ cadence: { data: 'hourly', ai: 'on-change' } }));
       applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000);
       const d = getDashboard('d1')!;
       expect(d.lastDataOutcome).toBe('unverified');
-      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000);
-    });
-
-    it('a SECOND consecutive unverified pass winds the full cadence — bounded, not a hot loop', () => {
-      addDashboard(makeDash({ cadence: { data: 'hourly', ai: 'on-change' } }));
-      applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000);
-      applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000 + 5 * 60_000);
-      const d = getDashboard('d1')!;
-      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000 + 60 * 60_000);
-    });
-
-    it('an unverified pass right after a real update resets the streak — the next one is pulled in again', () => {
-      addDashboard(makeDash({ cadence: { data: 'hourly', ai: 'on-change' } }));
-      applyRefreshResult(
-        'd1',
-        { values: [{ metricId: 'm1', value: 1, raw: '1', origin: 'search' }], outcome: 'updated' },
-        1_000_000,
-      );
-      applyRefreshResult('d1', { outcome: 'unverified' }, 2_000_000);
-      expect(getDashboard('d1')!.nextDataAt).toBe(2_000_000 + 5 * 60_000);
+      expect(d.lastRefreshedAt).toBe(1_000_000);
+      expect(d.nextDataAt).toBe(1_000_000 + 60 * 60_000);
     });
 
     it('a manual dashboard stays parked at the sentinel — Check now is the only retry', () => {
@@ -700,9 +682,7 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
       expect(getDashboard('d1')!.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
     });
 
-    it('a manual board whose FIRST check grounded nothing gets one bounded automatic retry', () => {
-      // The pass that consumed the one-shot is the board's only chance under a manual cadence: an
-      // ungrounded first check used to park it for good, whatever model came later.
+    it('a manual board whose FIRST check grounded nothing is not re-armed on its own', () => {
       addDashboard(
         makeDash({
           cadence: { data: 'manual', ai: 'manual' },
@@ -713,23 +693,9 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
       );
       applyRefreshResult('d1', { outcome: 'unverified', consumedOneShot: true }, 1_000_000);
       const d = getDashboard('d1')!;
-      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000);
+      expect(d.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
       expect(d.oneShotAt).toBeUndefined();
       expect(d.oneShotLabel).toBeUndefined();
-
-      // The retry itself grounding nothing parks the board again — one retry, never a loop.
-      applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000 + 5 * 60_000);
-      expect(getDashboard('d1')!.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
-    });
-
-    it('an auto cadence consuming its one-shot on an unverified pass still pulls the retry in', () => {
-      addDashboard(
-        makeDash({ cadence: { data: 'hourly', ai: 'on-change' }, oneShotAt: 1_000_000 }),
-      );
-      applyRefreshResult('d1', { outcome: 'unverified', consumedOneShot: true }, 1_000_000);
-      const d = getDashboard('d1')!;
-      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000);
-      expect(d.oneShotAt).toBeUndefined();
     });
 
     it('never pulls an unverified retry in before a not-yet-open live window starts', () => {

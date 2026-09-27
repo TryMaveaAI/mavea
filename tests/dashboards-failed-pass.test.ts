@@ -101,6 +101,23 @@ const died = (failure: object) => ({
   failure,
 });
 
+describe('an ungrounded dashboard pass', () => {
+  it('spends one call and waits out the schedule — no early re-check', async () => {
+    // The call ran and parsed, but nothing in it was cited: the pass is 'unverified'.
+    refreshDashboards.mockResolvedValue({
+      ok: true,
+      grounded: false,
+      perDashboard: { d1: { values: {}, widgets: {} } },
+      sources: [],
+      attempts: 1,
+    });
+    await tickAt(ticks(T0, T0 + HOUR));
+    expect(refreshDashboards).toHaveBeenCalledTimes(1);
+    await tickAt([T0 + HOUR]);
+    expect(refreshDashboards).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('a failed dashboard pass', () => {
   it.each([
     ['network', { kind: 'network' }],
