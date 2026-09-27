@@ -659,7 +659,7 @@
 }
 .ob-page .fl-head {
   text-align: left;
-  margin-bottom: 2.5rem;
+  margin: 0 0 2.5rem;
   max-width: 48rem;
 }
 .ob-page .fl-eyebrow {
@@ -1023,14 +1023,23 @@
 }
 .ob-world-label {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 39%;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  width: clamp(9.5rem, 34%, 14rem);
+  aspect-ratio: 1;
   text-align: center;
-  font: 500 clamp(1.25rem, 2.8vw, 3rem)/1.1 var(--font);
-  letter-spacing: -0.06em;
-  background: var(--ob-paper);
-  padding: 0.5rem;
+  color: var(--ob-ink);
+  font: 500 clamp(1rem, 2vw, 1.65rem)/1.12 var(--font);
+  letter-spacing: -0.045em;
+  background: color-mix(in oklab, var(--ob-paper) 94%, var(--ob-green));
+  border: 1px solid var(--ob-line);
+  border-radius: 50%;
+  box-shadow: 0 1rem 3rem color-mix(in oklab, var(--ob-green) 12%, transparent);
+  padding: 1rem;
 }
 .ob-after-links {
   margin-top: 1.5rem;

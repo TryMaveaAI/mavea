@@ -17,6 +17,28 @@ import { join } from 'path';
 
 const read = (rel: string): string => readFileSync(join(__dirname, '..', rel), 'utf8');
 
+describe('Flagship — section compositions keep a shared alignment and focal point', () => {
+  const css = read('src/flagship/observatory.css');
+
+  it('left-aligns the demo heading container with its full-width gallery', () => {
+    const head = /\.ob-page \.fl-head\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(head).toBeTruthy();
+    expect(head).toMatch(/margin:\s*0 0 2\.5rem/);
+    expect(head).not.toMatch(/margin-(?:inline|left|right):\s*auto/);
+  });
+
+  it('gives the orbit illustration a visible, bounded center instead of a blank band', () => {
+    const label = /\.ob-world-label\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(label).toBeTruthy();
+    expect(label).toMatch(/left:\s*50%/);
+    expect(label).toMatch(/top:\s*50%/);
+    expect(label).toMatch(/translate:\s*-50% -50%/);
+    expect(label).toMatch(/color:\s*var\(--ob-ink\)/);
+    expect(label).toMatch(/width:\s*clamp\(/);
+    expect(label).not.toMatch(/right:\s*0/);
+  });
+});
+
 describe('The Study — a compact lesson stays inside the viewport', () => {
   const css = read('src/canvas/study/study.css');
   const scene = read('src/canvas/study/slots.ts');
