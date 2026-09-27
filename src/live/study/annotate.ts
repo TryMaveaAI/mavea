@@ -69,6 +69,21 @@ const inFlight = new Map<string, Promise<Map<string, BlockStudy> | null>>();
  *  joins the call already running rather than starting a second one, and still sees the notes
  *  arrive as they land — so dedup never costs a subscriber its progress. */
 const watchers = new Map<string, Set<(notes: Map<string, BlockStudy>) => void>>();
+/** Content keys whose last call failed or came back with nothing usable. The desk's effect re-runs
+ *  on every config, view and busy change, so without this each re-run was a fresh billed call for
+ *  the same answer. Held for the session; only the reader opening the desk (`retryFailed`) or new
+ *  content asks again. */
+const failedKeys = new Set<string>();
+
+function rememberFailure(key: string): void {
+  failedKeys.delete(key);
+  failedKeys.add(key);
+  while (failedKeys.size > ANNOTATE_CAP) {
+    const oldest = failedKeys.values().next().value;
+    if (oldest === undefined) break;
+    failedKeys.delete(oldest);
+  }
+}
 
 async function fetchNotes(
   key: string,
@@ -162,7 +177,8 @@ async function fetchNotes(
  * resolve immediately and the promise carries the whole set.
  *
  * Content-addressed on the answer, so re-opening the Study, remounting, or returning in a later
- * session all ride the first call.
+ * session all ride the first call. A failure is remembered for the same content: it resolves null
+ * without a request until the caller passes `retryFailed`, which only a reader's own gesture may.
  */
 export function studyNotesFor(
   spec: ConversationSpec,
@@ -171,6 +187,7 @@ export function studyNotesFor(
   level: ExplainLevel = 'standard',
   onPartial?: (notes: Map<string, BlockStudy>) => void,
   subscriberSignal?: AbortSignal,
+  { retryFailed = false }: { retryFailed?: boolean } = {},
 ): Promise<Map<string, BlockStudy> | null> {
   // Content-addressed on the DIGEST the notes are written about, never on ids: a live spec's
   // id is the constant 'live', and block ids restart at live-1 on every replace — keyed on
@@ -202,6 +219,13 @@ export function studyNotesFor(
   else subscriberSignal?.addEventListener('abort', release, { once: true });
   const already = inFlight.get(key);
   if (already) return already.finally(cleanup);
+  if (failedKeys.has(key)) {
+    if (!retryFailed) {
+      cleanup();
+      return Promise.resolve(null);
+    }
+    failedKeys.delete(key);
+  }
   const started = fetchNotes(key, spec, ask, cfg, level);
   inFlight.set(key, started);
   while (inFlight.size > ANNOTATE_CAP) {
@@ -209,12 +233,14 @@ export function studyNotesFor(
     if (oldest === undefined || oldest === key) break;
     inFlight.delete(oldest);
   }
-  // A failure is never memoised: the next open has to get a real attempt.
-  void started.then(
-    (notes) => {
-      if (!notes) inFlight.delete(key);
-    },
-    () => inFlight.delete(key),
-  );
+  // A failure leaves the in-flight map (so a retry is a real attempt) and is remembered, so nothing
+  // but the reader asks for the same notes again.
+  const failed = (): void => {
+    inFlight.delete(key);
+    rememberFailure(key);
+  };
+  void started.then((notes) => {
+    if (!notes) failed();
+  }, failed);
   return started.finally(cleanup);
 }

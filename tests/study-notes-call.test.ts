@@ -4,7 +4,7 @@ import type { Block, BlockStudy, ConversationSpec } from '../src/data/conversati
 // The on-demand Study call had no tests at all — only its coercer did (study-annotate.test.ts).
 // Everything that makes it affordable lives HERE, in the call: the content-addressed cache that
 // makes a re-open free, the in-flight dedup that stops a remount paying twice, the rule that a
-// failure is never memoised, and the streaming that puts the first note in the margin seconds
+// failed call is remembered until the reader asks again, and the streaming that puts the first note in the margin seconds
 // before the last one is written. Each of those is a billing or latency promise on a BYOK key,
 // so each gets a test.
 
@@ -140,20 +140,57 @@ describe('the Study notes call', () => {
     expect(b?.size).toBe(2);
   });
 
-  it('never memoises a failure — the next open gets a real attempt', async () => {
+  it('remembers a failure, so re-runs never re-send it — only a reader retry asks again', async () => {
     generate.mockRejectedValueOnce(new Error('gemini 503 — UNAVAILABLE'));
     expect(await studyNotesFor(specWith('fail'), 'why', cfg)).toBeNull();
+    // Every re-run the desk's effect makes for the same answer (a config, view or busy change).
+    for (let i = 0; i < 5; i++) {
+      expect(await studyNotesFor(specWith('fail'), 'why', cfg)).toBeNull();
+    }
+    expect(generate).toHaveBeenCalledTimes(1);
+    // The reader opening the desk is one real attempt.
     generate.mockImplementation(streamingReply(REPLY));
-    const notes = await studyNotesFor(specWith('fail'), 'why', cfg);
+    const notes = await studyNotesFor(
+      specWith('fail'),
+      'why',
+      cfg,
+      'standard',
+      undefined,
+      undefined,
+      {
+        retryFailed: true,
+      },
+    );
     expect(generate).toHaveBeenCalledTimes(2);
     expect(notes?.size).toBe(2);
   });
 
-  it('never memoises a reply where nothing survived coercion', async () => {
+  it('remembers a reply where nothing survived coercion the same way', async () => {
     generate.mockImplementation(streamingReply([`{"notes":[{"id":"not-in-this-answer"}]}`]));
     expect(await studyNotesFor(specWith('empty'), 'why', cfg)).toBeNull();
     generate.mockImplementation(streamingReply(REPLY));
-    expect((await studyNotesFor(specWith('empty'), 'why', cfg))?.size).toBe(2);
+    expect(await studyNotesFor(specWith('empty'), 'why', cfg)).toBeNull();
+    expect(generate).toHaveBeenCalledTimes(1);
+    const retried = await studyNotesFor(
+      specWith('empty'),
+      'why',
+      cfg,
+      'standard',
+      undefined,
+      undefined,
+      {
+        retryFailed: true,
+      },
+    );
+    expect(retried?.size).toBe(2);
+  });
+
+  it('new content is a real attempt even after another answer failed', async () => {
+    generate.mockRejectedValueOnce(new Error('network'));
+    expect(await studyNotesFor(specWith('first'), 'why', cfg)).toBeNull();
+    generate.mockImplementation(streamingReply(REPLY));
+    expect((await studyNotesFor(specWith('second'), 'why', cfg))?.size).toBe(2);
+    expect(generate).toHaveBeenCalledTimes(2);
   });
 
   it('keys on the CONTENT, so a later answer of the same shape is not served these notes', async () => {

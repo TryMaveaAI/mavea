@@ -1955,9 +1955,13 @@ export function LiveApp(): ReactElement {
   // the answer turn in the first place.
   const studyOpenedRef = useRef<boolean | null>(null);
   if (studyOpenedRef.current === null) studyOpenedRef.current = deskFirst();
+  // Opening the desk is the reader's own gesture, and the one thing that may ask again for notes
+  // whose last call failed. Consumed by the next call the notes effect makes.
+  const studyRetryRef = useRef(false);
   useEffect(() => {
     if (viewMode === 'study') {
       studyOpenedRef.current = true;
+      studyRetryRef.current = true;
       // Persist the habit: the desk is a takeover now, so nothing else remembers it was opened.
       markDeskFirst();
     }
@@ -1982,6 +1986,8 @@ export function LiveApp(): ReactElement {
     const unannotatedBlocks = deskObjects(studySpec.blocks).filter((block) => !block.study);
     if (!unannotatedBlocks.length) return;
     const annotationSpec = { ...studySpec, blocks: unannotatedBlocks };
+    const retryFailed = studyRetryRef.current;
+    studyRetryRef.current = false;
     let alive = true;
     const watcher = new AbortController();
     let pendingNotes: Map<string, BlockStudy> | null = null;
@@ -2011,6 +2017,7 @@ export function LiveApp(): ReactElement {
           cfg.explainLevel,
           take,
           watcher.signal,
+          { retryFailed },
         ),
       )
       .then((notes) => {
