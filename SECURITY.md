@@ -56,12 +56,13 @@ decrypted JSON to a file the user explicitly downloads; it deliberately **exclud
 search keys**, and import forces `rememberKey:false`, so no export or import path can persist a
 credential. The resulting file is unencrypted and under the user's control.
 
-### The development server's own key
+### The local servers add no key of their own
 
-`pnpm dev` reads one Gemini key from a gitignored `.env` and lets the local `/llm/gemini` proxy use
-it when the page sends none. The proxy answers only this app's own pages (a matching Origin or
-Referer, or `Sec-Fetch-Site: same-origin`), but anyone using that browser profile can still spend
-it. Use a spend-capped key there and never expose the dev server beyond your machine.
+Neither the `pnpm dev` proxy nor the `npx mavea` server supplies a provider key. A request reaches
+the provider with exactly the key the page sent, and one that carries no key is refused by the
+provider rather than billed to whoever started the server. Both answer only this app's own pages (a
+matching Origin or Referer, or `Sec-Fetch-Site: same-origin`); keep them on your machine all the
+same.
 
 ## Accepted risks (defense-in-depth tradeoffs)
 
