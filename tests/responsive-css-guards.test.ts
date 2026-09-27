@@ -59,6 +59,37 @@ describe('Flagship — section compositions keep a shared alignment and focal po
   });
 });
 
+describe('landing illustration — its numerals leave rather than paint under 9px', () => {
+  const css = read('src/flagship/observatory.css');
+  const tsx = read('src/flagship/sections/AnswerObservatory.tsx');
+
+  // The numerals are viewBox user units: they paint at (size × the box's scale), and the box is
+  // wider than the view, so its HEIGHT sets the scale. Under the query's width even the largest of
+  // them would be squinted at, so the rule hides them — and the threshold has to be where the
+  // smallest one crosses the floor, or the rule hides them too late.
+  it('hides the node and stop numerals below the width where the smallest crosses 9px', () => {
+    const rule = /@container \(width < (\d+)px\)\s*\{([^{}]*\{[^}]*\}[^{}]*)\}/.exec(css);
+    expect(rule, 'no width container query on the illustration').not.toBeNull();
+    const [, width, body] = rule!;
+    expect(body).toMatch(/\.ob-node text,\s*\.ob-map-stop text\s*\{\s*display:\s*none;/);
+
+    const [vw, vh] = /viewBox="0 0 (\d+) (\d+)"/.exec(tsx)!.slice(1).map(Number);
+    const [aw, ah] = /\.ob-universe\s*\{[^}]*aspect-ratio:\s*(\d+)\s*\/\s*(\d+)/
+      .exec(css)!
+      .slice(1)
+      .map(Number);
+    const sizeOf = (sel: string) =>
+      Number(new RegExp(`\\${sel} text\\s*\\{[^}]*font-size:\\s*(\\d+)px`).exec(css)?.[1]);
+    const smallest = Math.min(sizeOf('.ob-node'), sizeOf('.ob-map-stop'));
+    expect(smallest).toBeGreaterThan(0);
+    // The box is wider than the view (aw/ah > vw/vh), so its height is what the view fills.
+    expect(aw / ah).toBeGreaterThan(vw / vh);
+    const paintedAt = (w: number) => (smallest * (w * (ah / aw))) / vh;
+    expect(paintedAt(Number(width))).toBeGreaterThanOrEqual(9);
+    expect(paintedAt(Number(width) - 10)).toBeLessThan(9);
+  });
+});
+
 describe('The Study — a compact lesson stays inside the viewport', () => {
   const css = read('src/canvas/study/study.css');
   const scene = read('src/canvas/study/slots.ts');
