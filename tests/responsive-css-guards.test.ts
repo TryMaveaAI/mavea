@@ -24,7 +24,12 @@ describe('Flagship — section compositions keep a shared alignment and focal po
     const head = /\.ob-page \.fl-head\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(head).toBeTruthy();
     expect(head).toMatch(/margin:\s*0 0 2\.5rem/);
+    expect(head).toMatch(/max-width:\s*none/);
     expect(head).not.toMatch(/margin-(?:inline|left|right):\s*auto/);
+    expect(css).toMatch(
+      /@media \(width >= 900px\)[\s\S]*?\.ob-page \.fl-head\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:/,
+    );
+    expect(css).toMatch(/\.ob-page \.fl-head \.fl-sub\s*\{[^}]*grid-column:\s*2/);
   });
 
   it('gives the orbit illustration a visible, bounded center instead of a blank band', () => {
