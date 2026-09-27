@@ -41,6 +41,7 @@ export function LegalPageShell({
   title,
   intro,
   effectiveDate,
+  contents,
   children,
 }: {
   page: LegalPageKind;
@@ -48,6 +49,8 @@ export function LegalPageShell({
   title: string;
   intro: ReactNode;
   effectiveDate?: string;
+  /** An "On this page" list, set between the title block and the intro. */
+  contents?: ReactNode;
   children: ReactNode;
 }): ReactElement {
   // Before paint, so the incoming document is never shown for a frame at the offset the previous
@@ -87,11 +90,17 @@ export function LegalPageShell({
         <p className="legal-kicker">{kicker}</p>
         <h1>{title}</h1>
         {effectiveDate && <p className="legal-effective">Effective {effectiveDate}</p>}
+        {contents}
         <div className="legal-intro">{intro}</div>
         {children}
       </article>
     </main>
   );
+}
+
+/** The in-page anchor for a numbered section, shared by the section and the contents list. */
+export function legalSectionId(number: number): string {
+  return `legal-section-${number}`;
 }
 
 export function LegalSection({
@@ -104,12 +113,15 @@ export function LegalSection({
   children: ReactNode;
 }): ReactElement {
   return (
-    <section className="legal-prose-section">
+    <section className="legal-prose-section" aria-labelledby={legalSectionId(number)}>
       <span className="legal-number" aria-hidden>
         {String(number).padStart(2, '0')}
       </span>
       <div>
-        <h2>{title}</h2>
+        {/* tabIndex -1 so a contents jump can hand focus to the heading it scrolled to. */}
+        <h2 id={legalSectionId(number)} tabIndex={-1}>
+          {title}
+        </h2>
         {children}
       </div>
     </section>

@@ -1,5 +1,5 @@
-import { Fragment, type ReactElement, type ReactNode } from 'react';
-import { LegalPageShell, LegalSection, type LegalPageKind } from './LegalPageShell';
+import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react';
+import { LegalPageShell, LegalSection, legalSectionId, type LegalPageKind } from './LegalPageShell';
 import { parseLegalMarkdown, type MarkdownBlock } from './legalMarkdown';
 import { legalDocumentHref, type PackagedLegalDocument } from './links';
 
@@ -96,6 +96,42 @@ function MarkdownBlocks({ value }: { value: MarkdownBlock[] }): ReactElement {
   );
 }
 
+/** Jump to a section without touching the hash: the hash is the ROUTE here (`#/terms`), so a plain
+ *  `#legal-section-3` link would navigate away from the document it points into. */
+function jumpTo(event: MouseEvent<HTMLAnchorElement>, id: string): void {
+  const heading = document.getElementById(id);
+  if (!heading) return;
+  event.preventDefault();
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? true;
+  heading.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+  heading.focus({ preventScroll: true });
+}
+
+function Contents({ sections }: { sections: { number: number; title: string }[] }): ReactElement {
+  return (
+    <nav className="legal-toc" aria-labelledby="legal-toc-title">
+      <p className="legal-toc-title" id="legal-toc-title">
+        On this page
+      </p>
+      <ol>
+        {sections.map(({ number, title }) => (
+          <li key={number}>
+            <a
+              href={`#${legalSectionId(number)}`}
+              onClick={(event) => jumpTo(event, legalSectionId(number))}
+            >
+              <span className="legal-toc-number" aria-hidden>
+                {String(number).padStart(2, '0')}
+              </span>
+              {title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 export function LegalMarkdownDocument({
   markdown,
   page,
@@ -113,6 +149,7 @@ export function LegalMarkdownDocument({
       title={document.title}
       effectiveDate={document.effectiveDate}
       intro={<MarkdownBlocks value={document.intro} />}
+      contents={document.sections.length > 1 ? <Contents sections={document.sections} /> : null}
     >
       <div className="legal-prose">
         {document.sections.map((section) => (

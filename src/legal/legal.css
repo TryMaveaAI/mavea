@@ -117,12 +117,77 @@ html:has(.legal-app) body {
   line-height: 0.98;
 }
 
+/* The intro is the document's first clauses, not a standfirst: it is set in the same size and
+   measure as the numbered sections, or the text visibly shrinks the moment section 1 begins. */
 .legal-intro {
-  max-width: 720px;
+  max-width: 68ch;
   margin: 26px 0 54px;
   color: var(--text-secondary);
-  font-size: var(--fs-lg);
-  line-height: 1.65;
+  font-size: var(--fs-md);
+  line-height: 1.72;
+}
+
+/* "On this page": a compact contents list between the title block and the intro. Two columns once
+   the sheet has the room, so sixteen sections cost eight rows, not sixteen. */
+.legal-toc {
+  container-type: inline-size;
+  margin: 30px 0 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+
+.legal-toc-title {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font: 600 var(--fs-2xs)/1.4 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.legal-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container (width >= 560px) {
+  .legal-toc ol {
+    column-count: 2;
+    column-gap: 28px;
+  }
+}
+
+.legal-toc li {
+  break-inside: avoid;
+}
+
+.legal-toc a {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.legal-toc a:hover,
+.legal-toc a:focus-visible {
+  color: var(--presence);
+}
+
+.legal-toc-number {
+  flex: 0 0 auto;
+  padding-top: 0.2em;
+  color: var(--text-muted);
+  font: 600 var(--fs-2xs)/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.legal-prose-section h2 {
+  scroll-margin-top: 24px;
 }
 
 .legal-intro p {
@@ -173,12 +238,12 @@ html:has(.legal-app) body {
 .legal-warranty p,
 .legal-fineprint {
   margin: 0;
-  /* A readable measure, like the summary above already has. Unbounded, the 13px body filled the
+  /* A readable measure, like the summary above already has. Unbounded, the body filled the
      sheet's whole 860px column at ~134 characters a line — the page's most important type set
      twice as wide as its least. */
-  max-width: 62ch;
+  max-width: 68ch;
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   line-height: 1.72;
 }
 
@@ -302,7 +367,6 @@ html:has(.legal-app) body {
 
   .legal-intro {
     margin-bottom: 38px;
-    font-size: var(--fs-md);
   }
 
   .legal-document-nav {

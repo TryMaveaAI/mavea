@@ -1,5 +1,5 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { LegalMarkdownDocument } from '../src/legal/LegalMarkdownDocument';
 import { parseLegalMarkdown } from '../src/legal/legalMarkdown';
 
@@ -53,8 +53,35 @@ describe('safe canonical legal Markdown renderer', () => {
       '#/privacy?from=live',
     );
     expect(screen.getByText('local storage').tagName).toBe('CODE');
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
+    const section = screen.getByRole('region', { name: 'First section' });
+    expect(within(within(section).getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText(/THIS WARRANTY PARAGRAPH/)).toHaveClass('legal-caps');
+  });
+
+  it('opens with an "On this page" list that jumps to each section without leaving the route', () => {
+    window.location.hash = '#/terms?from=home';
+    // jsdom has no scrollIntoView; the call on the right heading is the observable jump.
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    onTestFinished(() => {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    });
+    render(<LegalMarkdownDocument markdown={markdown} page="terms" kicker="Project terms" />);
+
+    const contents = screen.getByRole('navigation', { name: 'On this page' });
+    const links = within(contents).getAllByRole('link');
+    expect(links.map((a) => a.textContent)).toEqual(['01First section', '02Safety']);
+
+    fireEvent.click(links[1]!);
+    const target = screen.getByRole('heading', { name: 'Safety' });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(target);
+    expect(target).toHaveFocus();
+    // The hash is the route: a jump that rewrote it would navigate off the document.
+    expect(window.location.hash).toBe('#/terms?from=home');
   });
 
   it('allows mapped documents and HTTPS while refusing HTML and unsafe link schemes', () => {
