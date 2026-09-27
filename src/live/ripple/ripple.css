@@ -1289,7 +1289,10 @@
   accent-color: var(--presence);
 }
 .ripple-zoombtns {
-  margin-left: auto;
+  position: absolute;
+  top: var(--s-sm);
+  right: var(--s-sm);
+  z-index: 3;
 }
 .ripple-zoombtns button {
   width: 48px;

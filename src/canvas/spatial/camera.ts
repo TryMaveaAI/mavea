@@ -62,13 +62,18 @@ export function fitToContent(
   viewport: Viewport,
   margin = 0,
   clamp: ScaleClamp = DEFAULT_CLAMP,
+  /** 'top': when the clamp's floor leaves the content taller than the viewport, pin its top edge
+   *  (at `margin`) instead of centring it. Centred, an unfittable map opens on a slice of its middle
+   *  with the first row of cards cut at the top edge; pinned, the reader starts where it starts. */
+  tall: 'center' | 'top' = 'center',
 ): Camera {
   const scale = clampScale(fitScale(content, viewport, margin), clamp);
   const cx = content.x + content.w / 2;
   const cy = content.y + content.h / 2;
+  const overflows = content.h * scale > viewport.h - margin * 2;
   return {
     x: viewport.w / 2 - cx * scale,
-    y: viewport.h / 2 - cy * scale,
+    y: tall === 'top' && overflows ? margin - content.y * scale : viewport.h / 2 - cy * scale,
     scale,
   };
 }

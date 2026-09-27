@@ -27,10 +27,92 @@ export const NODE_H = 76;
 const GAP = 36; // minimum clear space between card edges
 const RY = 0.82; // squeeze the vertical axis so the field reads wide, not a tall circle
 
-export function layoutImpact(
-  nodes: readonly ShipNode[],
-  _edges: readonly ShipEdge[],
-): ImpactLayout {
+/** A verb label's footprint in world units: `.ripple-edge-verb` is 10.5px mono at its ceiling with
+ *  0.05em tracking (~6.8px a character) and 6px of padding each side, and a line box ~18px tall. */
+const VERB_CHAR_W = 6.8;
+const VERB_PAD_X = 12;
+export const VERB_H = 18;
+/** Clear space kept either side of a verb label so it reads as sitting ON its edge, not on a card. */
+const VERB_CLEAR = 8;
+
+export function verbWidth(verb: string | undefined): number {
+  return verb ? verb.length * VERB_CHAR_W + VERB_PAD_X : 0;
+}
+
+/** Where an edge's verb sits: the middle of the stretch of the line that is NOT under either card.
+ *  The midpoint between the two card centres lands on a card whenever the cards are close and
+ *  unequal in how far the line runs inside each. Returns the free stretch's length along with it,
+ *  measured the same way, so a caller can tell whether a label that long fits. */
+export function verbPoint(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): { x: number; y: number; free: number; horizontal: boolean } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  // How far along the line (as a fraction) a centred card of NODE_W x NODE_H stops covering it.
+  const exitT =
+    Math.abs(dx) * NODE_H >= Math.abs(dy) * NODE_W
+      ? NODE_W / 2 / Math.max(Math.abs(dx), 1e-6)
+      : NODE_H / 2 / Math.max(Math.abs(dy), 1e-6);
+  const t0 = Math.min(0.5, exitT);
+  const t1 = Math.max(0.5, 1 - exitT);
+  const tm = (t0 + t1) / 2;
+  return {
+    x: from.x + dx * tm,
+    y: from.y + dy * tm,
+    free: Math.max(0, (t1 - t0) * len),
+    horizontal: Math.abs(dx) * NODE_H >= Math.abs(dy) * NODE_W,
+  };
+}
+
+/** Where each edge's verb label goes, or null when no spot on its own stretch of line is clear.
+ *  The middle of the free stretch is tried first, then points either side of it, and a spot is
+ *  taken only if the label clears EVERY card — an edge can run past a third card on its way — and
+ *  every label already placed. A label with nowhere to go is left off rather than drawn across a
+ *  card — an unreadable pile of words says less than a clean line. */
+export function placeVerbs(
+  placed: readonly PlacedNode[],
+  edges: readonly ShipEdge[],
+): ({ x: number; y: number } | null)[] {
+  const at = new Map(placed.map((p) => [p.node.id, p]));
+  const boxes = placed.map((p) => ({
+    l: p.x - NODE_W / 2,
+    t: p.y - NODE_H / 2,
+    r: p.x + NODE_W / 2,
+    b: p.y + NODE_H / 2,
+  }));
+  const taken: { l: number; t: number; r: number; b: number }[] = [];
+  const hits = (a: { l: number; t: number; r: number; b: number }): boolean =>
+    [...boxes, ...taken].some(
+      (c) =>
+        Math.min(a.r, c.r) - Math.max(a.l, c.l) > 0 && Math.min(a.b, c.b) - Math.max(a.t, c.t) > 0,
+    );
+  return edges.map((e) => {
+    const from = at.get(e.from);
+    const to = at.get(e.to);
+    const w = verbWidth(e.verb);
+    if (!from || !to || !w) return null;
+    const mid = verbPoint(from, to);
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const ux = (to.x - from.x) / len;
+    const uy = (to.y - from.y) / len;
+    const step = 12;
+    for (let k = 0; k * step <= mid.free / 2; k++) {
+      for (const sign of k === 0 ? [0] : [-1, 1]) {
+        const x = mid.x + ux * step * k * sign;
+        const y = mid.y + uy * step * k * sign;
+        const box = { l: x - w / 2, t: y - VERB_H / 2, r: x + w / 2, b: y + VERB_H / 2 };
+        if (hits(box)) continue;
+        taken.push(box);
+        return { x, y };
+      }
+    }
+    return null;
+  });
+}
+
+export function layoutImpact(nodes: readonly ShipNode[], edges: readonly ShipEdge[]): ImpactLayout {
   const center = nodes.find((n) => n.type === 'pr') ?? nodes[0];
   const centerId = center?.id ?? '';
   const others = nodes.filter((n) => n.id !== centerId);
@@ -64,14 +146,29 @@ export function layoutImpact(
 
   // Deterministic separation pass: nudge any pair whose cards overlap apart along the lighter axis.
   // Bounded iterations; the centre is pinned. Converges because the world has room for every card.
-  const minDX = NODE_W + GAP;
-  const minDY = NODE_H + GAP;
+  // Two cards joined by a labelled edge need room for the label between them, not just the bare
+  // gap: "is imported by" is ~110 world units, three times GAP, and sat across both cards.
+  const labelRoom = new Map<string, { x: number; y: number }>();
+  const pairKey = (a: string, b: string): string => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+  for (const e of edges) {
+    const wv = verbWidth(e.verb);
+    if (!wv) continue;
+    const key = pairKey(e.from, e.to);
+    const prev = labelRoom.get(key) ?? { x: GAP, y: GAP };
+    labelRoom.set(key, {
+      x: Math.max(prev.x, wv + VERB_CLEAR * 2),
+      y: Math.max(prev.y, VERB_H + VERB_CLEAR * 2),
+    });
+  }
   for (let iter = 0; iter < 240; iter++) {
     let moved = false;
     for (let i = 0; i < placed.length; i++) {
       for (let j = i + 1; j < placed.length; j++) {
         const A = placed[i]!;
         const B = placed[j]!;
+        const room = labelRoom.get(pairKey(A.node.id, B.node.id));
+        const minDX = NODE_W + (room?.x ?? GAP);
+        const minDY = NODE_H + (room?.y ?? GAP);
         const dx = B.x - A.x;
         const dy = B.y - A.y;
         const ox = minDX - Math.abs(dx);
