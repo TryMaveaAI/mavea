@@ -52,7 +52,10 @@ describe('Flagship — section compositions keep a shared alignment and focal po
       /\.ob-page \.ob-world-section,\s*\.ob-page \.ob-after\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(spacing).toMatch(/padding-block:\s*clamp\([^;]*min\(7vw, \d+svh\)/);
     expect(css).toMatch(/\.ob-world-art svg\s*\{[^}]*max-height:\s*\d+svh/);
-    expect(css).toMatch(/\.ob-after \.feature-film-art svg\s*\{[^}]*max-height:\s*\d+svh/);
+    // …but never so short the film's text drops under the 9px floor (1366x620 painted 8.6px).
+    expect(css).toMatch(
+      /\.ob-after \.feature-film-art svg\s*\{[^}]*max-height:\s*max\(\d+svh, 25rem\)/,
+    );
   });
 });
 

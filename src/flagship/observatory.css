@@ -1093,7 +1093,10 @@
   max-height: 58svh;
 }
 .ob-after .feature-film-art svg {
-  max-height: 50svh;
+  /* Floored so the film's words stay legible: its smallest type is --fs-md (12.5px at the ramp's
+     floor, x0.9 under the reader's smaller-text knob) in a 500-unit-tall viewBox, and the 9px
+     floor needs 9 / (12.5 x 0.9) x 500 = 400px of height. A shorter window scrolls instead. */
+  max-height: max(50svh, 25rem);
 }
 .ob-after-links a {
   display: grid;
