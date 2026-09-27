@@ -299,6 +299,66 @@ describe('Mavéa\u2019s notes follow the Lens', () => {
   });
 });
 
+describe('the Lens is a modal a keyboard can use', () => {
+  const pill = (name: string) => screen.getByRole('button', { name: `Look closer at ${name}` });
+  const openFromPill = (name: string) => {
+    pill(name).focus();
+    fireEvent.click(pill(name));
+  };
+  const closeButton = () => screen.getByRole('button', { name: 'Back to the board' });
+
+  it('moves focus to the way out, and wraps Tab inside the stage', () => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    expect(document.activeElement).toBe(closeButton());
+    const scrim = container.querySelector('.zoom-scrim')!;
+    // Tab stops only: the strip is a roving group, one stop with the rest parked at -1.
+    const stops = Array.from(
+      scrim.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]'),
+    ).filter((el) => el.tabIndex >= 0);
+    stops.at(-1)!.focus();
+    fireEvent.keyDown(stops.at(-1)!, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+  });
+
+  it('puts the board out of reach while it is open, and hands it back on close', () => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    expect(cell0(container, 'a').closest('[inert]')).not.toBeNull();
+    expect(container.querySelector('.zoom-scrim')!.closest('[inert]')).toBeNull();
+    fireEvent.click(closeButton());
+    expect(container.querySelector('[inert]')).toBeNull();
+  });
+
+  it.each([
+    ['the close button', () => fireEvent.click(closeButton())],
+    ['Escape', () => fireEvent.keyDown(document.activeElement!, { key: 'Escape' })],
+    ['the backdrop', () => cleanClick(document.querySelector('.zoom-scrim') as HTMLElement)],
+  ])('returns focus to the card it opened from when closed by %s', (_, close) => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    close();
+    expect(container.querySelector('.zoom-sheet')).toBeNull();
+    expect(document.activeElement).toBe(pill('Alpha'));
+  });
+
+  it('returns focus to the card it stepped to, not the one it started on', () => {
+    mount();
+    openFromPill('Alpha');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.click(closeButton());
+    expect(document.activeElement).toBe(pill('Beta'));
+  });
+
+  it('leaves focus where it was when the Lens was opened by a click on the card', () => {
+    const { container } = mount();
+    (document.activeElement as HTMLElement | null)?.blur();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(closeButton());
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe('on a narrow sheet the notes fold under the card', () => {
   const notes = [
     { text: 'assumes April fares hold', kind: 'caution' as const },

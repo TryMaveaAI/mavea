@@ -17,6 +17,7 @@ import './controls/controls.css';
 import { FitBox, type FitFacts } from './layout/FitBox';
 import { observeResize } from './layout/sharedResize';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { useFocusTrap } from '../live/useFocusTrap';
 import { FIT_TYPES } from './layout/fitPolicy';
 import { CanvasTakeover } from './focus/CanvasView';
 import { boardCapable } from './focus/canvasGate';
@@ -493,6 +494,40 @@ export function TopicCanvas({
     read();
     return observeResize(sheet, read);
   }, [lensOpen]);
+  // The Lens is modal. While it is open the board behind it takes no focus, clicks or reading
+  // cursor. Declared before the trap on purpose: effects clean up in order, so on close the board
+  // is live again before the trap hands focus back to a card on it.
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const scrim = scrimRef.current;
+    if (!lensOpen || !scrim?.parentElement) return;
+    // Only what this effect set is undone: a sibling already inert stays that way.
+    const quieted = Array.from(scrim.parentElement.children).filter(
+      (el) => el !== scrim && !el.hasAttribute('inert'),
+    );
+    for (const el of quieted) el.setAttribute('inert', '');
+    return () => {
+      for (const el of quieted) el.removeAttribute('inert');
+    };
+  }, [lensOpen]);
+  // Where the reader was when the Lens opened, and the card it last showed. A reader who opened it
+  // from the board with the keyboard goes back to the card they stepped to, not the one they
+  // started on; one who opened it any other way goes back to whatever held focus before.
+  const lensOpener = useRef<HTMLElement | null>(null);
+  const lensLastId = useRef<string | undefined>(undefined);
+  useFocusTrap(scrimRef, {
+    active: lensOpen,
+    initialFocus: closeRef,
+    onEscape: () => setZoomedBlock(null),
+    returnTo: () => {
+      const opener = lensOpener.current;
+      if (!opener?.isConnected || !opener.closest('[data-spot-id]')) return null;
+      const cell = boardCellOf(lensLastId.current);
+      if (!cell) return null;
+      return cell.contains(opener) ? opener : cell.querySelector<HTMLElement>('.block-lens');
+    },
+  });
   const fitted = zoomLevel === 'fit';
   // Honest in both modes: fitted, the stage's one FitBox is the whole scale (any FitBox inside
   // the block stands down under it); magnified, the fit holds at 1 and `zoom` is the whole scale.
@@ -739,17 +774,23 @@ export function TopicCanvas({
     lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
   };
 
-  /** The scale the board's own fit draws a card at (1 unless it had to shrink it). */
-  const boardScaleOf = (id: string | undefined): number => {
-    const cell = Array.from(
+  /** The card's cell on the board (the Lens stage renders its own copy, which this skips). */
+  function boardCellOf(id: string | undefined): HTMLElement | undefined {
+    return Array.from(
       gridRef.current?.parentElement?.querySelectorAll<HTMLElement>('[data-spot-id]') ?? [],
     ).find((el) => el.dataset.spotId === id && !el.closest('.zoom-scrim'));
+  }
+  /** The scale the board's own fit draws a card at (1 unless it had to shrink it). */
+  const boardScaleOf = (id: string | undefined): number => {
+    const cell = boardCellOf(id);
     const fit = cell?.querySelector<HTMLElement>(':scope > .fit-box > div');
     const k = Number(/scale\(([\d.]+)\)/.exec(fit?.style.transform ?? '')?.[1]);
     return k > 0 ? k : 1;
   };
   /** Open the Lens on a block: its own stage, over a board faded back behind it. */
   const openLens = (b: Block): void => {
+    if (!zoomedBlock) lensOpener.current = document.activeElement as HTMLElement | null;
+    lensLastId.current = b.id;
     setBoardScale(boardScaleOf(b.id));
     setNotesOpen(null);
     setZoomedBlock(b);
@@ -1267,18 +1308,20 @@ export function TopicCanvas({
           const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
           const notesShown = !lensNarrow || (notesOpen ?? !lensFit.spills);
           return (
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
             <div
+              ref={scrimRef}
               className="zoom-scrim"
+              // The dialog is the whole stage: the sheet and the strip of cards under it.
+              role="dialog"
+              aria-modal="true"
+              aria-label={blockLabel(zoomedBlock)}
               onPointerDown={zoomScrim.onPointerDown}
               onClick={zoomScrim.onClick}
             >
               <div
                 ref={sheetRef}
                 className="zoom-sheet"
-                role="dialog"
-                aria-modal="true"
-                aria-label={blockLabel(zoomedBlock)}
                 data-notes={lensNotes.length > 0 ? '' : undefined}
                 data-magnified={fitted ? undefined : ''}
               >
@@ -1365,6 +1408,7 @@ export function TopicCanvas({
                   {/* Its own slot at the end of the first row, whatever wraps: the way out is
                       never pushed onto a second line or off the edge of a phone. */}
                   <button
+                    ref={closeRef}
                     type="button"
                     className="zoom-sheet-x"
                     aria-label="Back to the board"
