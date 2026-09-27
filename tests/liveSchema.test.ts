@@ -166,6 +166,13 @@ describe('validateLiveResponse — coercion & repair', () => {
     expect(r!.blocks).toHaveLength(2);
     expect(r!.blocks.map((b) => b.type)).toEqual(['insight', 'kpi']);
   });
+  it('a truncated follow-up keeps the continuity hint it wrote ahead of its blocks', () => {
+    const truncated =
+      '{"narration":"More on it.","title":"NJ, Deeper","sub":"","continuity":"augment","blocks":[' +
+      '{"type":"insight","props":{"title":"NJ Median Income","stat":"$96,346"}},' +
+      '{"type":"bars","props":{"title":"Counties","bars":[{"label":"Hunterdon","value":135';
+    expect(validateLiveResponse(truncated)?.continuity).toBe('augment');
+  });
   it('accepts blocks with INLINED props (fields on the block, not nested under props)', () => {
     // Models frequently emit {type:"donut", title, rows} instead of {type:"donut", props:{…}},
     // and often MIX both shapes in one reply. Without inline tolerance every inlined block

@@ -2952,6 +2952,9 @@ export function validateLiveResponse(
           title: recoverStringField(raw, 'title'),
           sub: recoverStringField(raw, 'sub'),
           narration: recoverStringField(raw, 'narration'),
+          // The canvas hint streams ahead of the blocks, so a cut-short follow-up still said
+          // whether it adds to the board; dropping it here re-decided the mode from wording alone.
+          continuity: recoverStringField(raw, 'continuity'),
           blocks,
         };
       }
