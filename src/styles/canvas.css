@@ -175,9 +175,10 @@
   color: var(--text-primary);
   min-width: 0;
 }
-/* The ellipsis has to live on the name, not on the flex row holding it: `text-overflow` does nothing
-   to a flex container, so a long category name kept its full width and shouldered the tag beside it
-   out through the card. Give the name its own box to be truncated in and pin the tag against it. */
+/* The ellipsis has to live on the name, not on the flex row holding it: `text-overflow` does
+   nothing to a flex container, so a long category name kept its full width and shouldered the tag
+   beside it out through the card. Give the name its own box to be truncated in and pin the tag
+   against it. */
 .cat-name {
   min-width: 0;
   overflow: hidden;

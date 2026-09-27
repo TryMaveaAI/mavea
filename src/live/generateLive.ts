@@ -691,17 +691,18 @@ function fallbackSpec(summary: string): ConversationSpec {
 }
 
 /** A message that is ENTIRELY a "keep going / go deeper" filler — it names NO topic of its own, so
- *  on such a turn "this"/"more"/"deeper" can only mean the thread the user is already reading. We use
- *  this to BOTH lift the depth budget AND lock the topic, so a weak model can't drift to an older,
- *  meatier thread surfaced in the recap (the "more in depth → answers about Kafka" bug). Anchored to
- *  the whole string so a follow-up that NAMES a topic ("go deeper on graphs") is NOT treated as
- *  topic-less and is left free. */
+ *  on such a turn "this"/"more"/"deeper" can only mean the thread the user is already reading. We
+ *  use this to BOTH lift the depth budget AND lock the topic, so a weak model can't drift to an
+ *  older, meatier thread surfaced in the recap (the "more in depth → answers about Kafka" bug).
+ *  Anchored to the whole string so a follow-up that NAMES a topic ("go deeper on graphs") is NOT
+ *  treated as topic-less and is left free. */
 const CONTINUATION_ONLY =
   /^\s*(?:(?:can you |could you |please |now |ok(?:ay)? |and |so )*)(more(?: please)?|more in[- ]?depth|in[- ]?(?:more )?depth|in (?:more )?detail|details?|go (?:on|deeper|ahead|further)|dig(?:ging)? deeper|deeper|expand(?: on (?:that|it|this))?|elaborate|continue|carry on|keep going|keep it going|tell me more|what(?:'s| is)? next|next|and then|why exactly|proceed|further)\s*[.!?]*$/i;
 
 /** The user's most recent SUBSTANTIVE ask — walk history backwards, skipping pure continuation
- *  fillers and any injected recap/lock line, so a topic-less follow-up ("more in depth") still has a
- *  real subject to pin. Reliable even when the prior answer collapsed to the generic fallback title. */
+ *  fillers and any injected recap/lock line, so a topic-less follow-up ("more in depth") still has
+ *  a real subject to pin. Reliable even when the prior answer collapsed to the generic fallback
+ *  title. */
 function lastSubstantiveAsk(history: ChatMessage[]): string {
   for (let i = history.length - 1; i >= 0; i--) {
     const m = history[i];

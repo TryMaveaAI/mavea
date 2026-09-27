@@ -88,15 +88,15 @@ export function appPolicyFor(distDir) {
 // scopes its exception to. Any other .pdf a build happens to contain stays unframeable.
 const FRAMEABLE_PDF_PREFIX = '/demo-assets/pdf/';
 
-// The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice
-// mode needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
+// The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice mode
+// needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
 // weight even if they never touch voice (most turns are text). Both are ALSO already public,
 // permanently-versioned npm package assets, so instead of shipping them in dist/ (see the `files`
 // exclusion in package.json), they're fetched ONCE from jsDelivr's npm CDN the first time voice
 // actually starts, cached to a persistent per-OS cache dir, and served from there on every request
 // after — a normal user who never uses voice never downloads either file. Pinned to the exact
-// version this package was built against (see devDependencies) so a version bump here and a
-// version bump there can never silently drift apart.
+// version this package was built against (see devDependencies) so a version bump here and a version
+// bump there can never silently drift apart.
 const LAZY_ASSETS = {
   'ort-wasm-simd-threaded.wasm': {
     url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort-wasm-simd-threaded.wasm',
@@ -113,8 +113,8 @@ const LAZY_ASSETS = {
 };
 
 // Standard per-OS cache location (the same convention env-paths/XDG use) — persists across
-// `npx @mavea/mavea` invocations (npx's own package cache does NOT persist these, since they're fetched
-// at runtime, not installed), so a user only pays the download once, ever, per machine.
+// `npx @mavea/mavea` invocations (npx's own package cache does NOT persist these, since they're
+// fetched at runtime, not installed), so a user only pays the download once, ever, per machine.
 function lazyCacheDir() {
   const plat = platform();
   if (plat === 'darwin') return join(homedir(), 'Library', 'Caches', 'mavea');
@@ -1104,7 +1104,8 @@ export function voiceThreadEnv(threads, env = process.env) {
   return next;
 }
 
-/** Synthesize one clause and return how many seconds of audio came back per second of wall clock. */
+/** Synthesize one clause and return how many seconds of audio came back per second of wall
+ *  clock. */
 async function measureVoiceRealtime(kokoroUrl) {
   try {
     const started = performance.now();
@@ -1151,7 +1152,8 @@ async function settleVoiceThreads(kokoroUrl, ranAt) {
   rememberVoiceThreads(want, Number(perThread.toFixed(3)));
   if (want === ranAt) return;
   console.log(
-    `  Voice: this machine only needs ${want} core${want === 1 ? '' : 's'} — applied from the next run.`,
+    `  Voice: this machine only needs ${want} core${want === 1 ? '' : 's'}` +
+      ' — applied from the next run.',
   );
 }
 
@@ -1205,7 +1207,8 @@ function askYesNo(question, defaultYes = true) {
 
 const VOICE_INTRO =
   '\n◌ Configured speech — Kokoro reads replies and whisper.cpp transcribes your mic.\n' +
-  '  The defaults are loopback-only. A custom WHISPER_URL receives microphone audio at that endpoint.\n';
+  '  The defaults are loopback-only. ' +
+  'A custom WHISPER_URL receives microphone audio at that endpoint.\n';
 
 /** A speech service's health endpoint. Probed instead of the root because the roots differ —
  *  Kokoro's answers 404 (FastAPI routes /health, not /) — so a root probe reported a running
@@ -1261,7 +1264,9 @@ async function maybeOfferVoice() {
   }
   if (runtime.label === 'Docker') {
     const licensed = await askYesNo(
-      '  Docker Desktop has separate terms and may require a paid subscription. Have you read them and confirmed your Docker installation is licensed for this use? [y/N] ',
+      '  Docker Desktop has separate terms and may require a paid subscription. ' +
+        'Have you read them and confirmed your Docker installation is licensed for this use? ' +
+        '[y/N] ',
       false,
     );
     if (!licensed) {
@@ -1361,9 +1366,9 @@ Podman is the recommended free/open-source container runtime. Docker Desktop has
 }
 
 // npm/npx installs `bin` entries as a symlink (node_modules/.bin/mavea -> ../@mavea/mavea/bin/
-// mavea.mjs). Node's ESM loader resolves that symlink when setting import.meta.url to this
-// module's REAL path, but path.resolve(process.argv[1]) does not dereference symlinks — it stays
-// the symlink's own path, so the two never matched and `npx @mavea/mavea` silently ran main() 0 times.
+// mavea.mjs). Node's ESM loader resolves that symlink when setting import.meta.url to this module's
+// REAL path, but path.resolve(process.argv[1]) does not dereference symlinks — it stays the
+// symlink's own path, so the two never matched and `npx @mavea/mavea` silently ran main() 0 times.
 // realpathSync resolves both sides to the same real filesystem path before comparing.
 function isMainModule() {
   if (!process.argv[1]) return false;

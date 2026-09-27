@@ -14,13 +14,13 @@
 // session-invariant head, then the depth-keyed remainder, then the session-stable menu, and a
 // fourth breakpoint on the last history message caches the replayed conversation — Anthropic's
 // four-breakpoint ceiling, all four spent. The per-turn section (hero picks, count, freshness —
-// changes every turn) rides at the head of the USER turn so it never sits inside a marked
-// prefix. All on a 1h TTL, since a voice session pauses longer than the 5-min default all the
-// time. A caller that passes no split keeps the single-block shape it always had. Extended thinking fires for medium/high-effort
-// turns (hard questions with balanced/thorough quality): adaptive mode lets Claude
-// decide whether to think, display:summarized keeps thinking output lean — thinking only
-// composes with 'auto' tool_choice, which this adapter always uses now, so thinking +
-// web_search + structured output all coexist in one call.
+// changes every turn) rides at the head of the USER turn so it never sits inside a marked prefix.
+// All on a 1h TTL, since a voice session pauses longer than the 5-min default all the time. A
+// caller that passes no split keeps the single-block shape it always had. Extended thinking fires
+// for medium/high-effort turns (hard questions with balanced/thorough quality): adaptive mode lets
+// Claude decide whether to think, display:summarized keeps thinking output lean — thinking only
+// composes with 'auto' tool_choice, which this adapter always uses now, so thinking + web_search +
+// structured output all coexist in one call.
 // Goes through the same-origin /llm/anthropic proxy (key in header, no CORS).
 import type { ModelConfig } from '../../types/mavea';
 import type {
