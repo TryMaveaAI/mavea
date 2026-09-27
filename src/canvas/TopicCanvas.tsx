@@ -1394,7 +1394,8 @@ export function TopicCanvas({
                       </button>
                       {/* The readout is also the toggle between the fit and actual size. At rest
                         it reads as the number it always was; hovered or focused it names what a
-                        press will do. */}
+                        press will do. The offer is painted from `data-offer`, never written as
+                        text, so the button holds one value: its text is the zoom, nothing else. */}
                       <button
                         type="button"
                         className="zoom-sheet-zoom-level"
@@ -1407,13 +1408,9 @@ export function TopicCanvas({
                           readoutOffer ? `${readoutOffer.label} (${readoutOffer.keys})` : undefined
                         }
                         onClick={readoutOffer?.run}
+                        data-offer={readoutOffer?.short}
                       >
                         <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
-                        {readoutOffer && (
-                          <span className="zoom-sheet-zoom-offer" aria-hidden="true">
-                            {readoutOffer.short}
-                          </span>
-                        )}
                       </button>
                       <button
                         type="button"

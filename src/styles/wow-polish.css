@@ -1160,7 +1160,7 @@
   .zoom-sheet-zoom-level:not([aria-disabled='true']):hover .zoom-sheet-zoom-now {
     visibility: hidden;
   }
-  .zoom-sheet-zoom-level:not([aria-disabled='true']):hover .zoom-sheet-zoom-offer {
+  .zoom-sheet-zoom-level:not([aria-disabled='true']):hover::after {
     visibility: visible;
   }
 }
@@ -1172,19 +1172,24 @@
   outline: 2px solid var(--presence);
   outline-offset: 2px;
 }
-/* Both labels share one grid cell, so the button never changes width as they swap. */
+/* Both labels share one grid cell, so the button never changes width as they swap. The offer is
+   generated content, so the button's text is only ever the zoom it is at. */
 .zoom-sheet-zoom-level {
   display: inline-grid;
   place-items: center;
 }
-.zoom-sheet-zoom-level > span {
+.zoom-sheet-zoom-level > span,
+.zoom-sheet-zoom-level::after {
   grid-area: 1 / 1;
 }
-.zoom-sheet-zoom-offer,
+.zoom-sheet-zoom-level[data-offer]::after {
+  content: attr(data-offer);
+  visibility: hidden;
+}
 .zoom-sheet-zoom-level:focus-visible .zoom-sheet-zoom-now {
   visibility: hidden;
 }
-.zoom-sheet-zoom-level:focus-visible .zoom-sheet-zoom-offer {
+.zoom-sheet-zoom-level:focus-visible::after {
   visibility: visible;
 }
 .zoom-sheet-stepper {

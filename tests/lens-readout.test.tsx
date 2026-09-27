@@ -93,6 +93,18 @@ describe('fit and actual size', () => {
     expect(bodyZoom(container)).toBe('');
   });
 
+  it('holds one value as its text, whatever it offers', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    // Fitted at 80%, offering actual size: the offer rides an attribute, not a second text run
+    // (which read as "80%100%" to anything that takes the button's text).
+    expect(readout().textContent).toBe('80%');
+    expect(readout().dataset.offer).toBe('100%');
+    fireEvent.click(readout());
+    expect(readout().textContent).toBe('100%');
+    expect(readout().dataset.offer).toBe('Fit');
+  });
+
   it('takes Shift+0 as actual size and Shift+1 as the fit, by the physical key', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
@@ -117,7 +129,7 @@ describe('fit and actual size', () => {
     expect(readout().getAttribute('aria-disabled')).toBe('true');
     expect(readout().getAttribute('aria-label')).toBe('Zoom 100%. Already actual size');
     expect(readout().hasAttribute('aria-keyshortcuts')).toBe(false);
-    expect(container.querySelector('.zoom-sheet-zoom-offer')).toBeNull();
+    expect(readout().hasAttribute('data-offer')).toBe(false);
     fireEvent.click(readout());
     fireEvent.keyDown(window, { key: ')', code: 'Digit0', shiftKey: true });
     // Still the fit: the notes keep the layout the fit gave them.
@@ -149,6 +161,6 @@ describe('fit and actual size', () => {
       i = j + 1;
     }
     expect(rest).not.toMatch(/\.zoom-sheet-zoom-level[^{]*:hover/);
-    expect(css).toMatch(/\.zoom-sheet-zoom-level:focus-visible \.zoom-sheet-zoom-offer/);
+    expect(css).toMatch(/\.zoom-sheet-zoom-level:focus-visible::after/);
   });
 });
