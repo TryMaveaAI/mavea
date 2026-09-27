@@ -23,6 +23,7 @@ import {
   type MarkExtra,
   type Rect,
 } from './gesture';
+import { pathsNear } from './geometry';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
 import { measuredLabel, liesFlat, layoutSize } from './measure';
 import {
@@ -82,25 +83,33 @@ function warmHand(): void {
   }
 }
 
-/** Two placements a reader could not tell apart: same card and container, the target within a
- *  pixel, the same gesture and caption, and the step chip (if any) within a pixel too. */
+/** Two placements a reader could not tell apart: same card and container, the stroke (and its
+ *  arrowhead) within a pixel along its whole path, the same caption written within a pixel of the
+ *  same spot, the same view box, and the step chip (if any) within a pixel too. */
 function sameSpot(a: Placed, b: Placed): boolean {
   const near = (x: number, y: number): boolean => Math.abs(x - y) <= 1;
-  const rect = (r: Rect, q: Rect): boolean =>
-    near(r.left, q.left) &&
-    near(r.top, q.top) &&
-    near(r.width, q.width) &&
-    near(r.height, q.height);
   const chip =
     a.chip && b.chip ? near(a.chip.x, b.chip.x) && near(a.chip.y, b.chip.y) : !a.chip && !b.chip;
+  const la = a.stroke.label;
+  const lb = b.stroke.label;
+  const label =
+    la && lb
+      ? la.text === lb.text &&
+        la.anchor === lb.anchor &&
+        la.size === lb.size &&
+        near(la.x, lb.x) &&
+        near(la.y, lb.y)
+      : !la && !lb;
   return (
     a.host === b.host &&
     a.container === b.container &&
     a.stroke.kind === b.stroke.kind &&
-    a.stroke.label?.text === b.stroke.label?.text &&
+    !!a.stroke.fill === !!b.stroke.fill &&
+    pathsNear(a.stroke.d, b.stroke.d) &&
+    pathsNear(a.stroke.head ?? '', b.stroke.head ?? '') &&
+    label &&
     near(a.view.w, b.view.w) &&
     near(a.view.h, b.view.h) &&
-    rect(a.anchor, b.anchor) &&
     chip
   );
 }

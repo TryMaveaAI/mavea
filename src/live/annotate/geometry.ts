@@ -155,3 +155,14 @@ export function samplePolygonInterior(
   }
   return out;
 }
+
+/** Two paths a reader could not tell apart: the same commands, every coordinate within a pixel. */
+export function pathsNear(a: string, b: string): boolean {
+  if (a === b) return true;
+  const commands = (d: string): string => d.replace(/[^A-Za-z]/g, '');
+  if (commands(a) !== commands(b)) return false;
+  const nums = (d: string): number[] => (d.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) ?? []).map(Number);
+  const na = nums(a);
+  const nb = nums(b);
+  return na.length === nb.length && na.every((v, i) => Math.abs(v - nb[i]) <= 1);
+}
