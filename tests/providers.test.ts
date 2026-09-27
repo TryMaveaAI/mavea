@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { anthropicAdapter } from '../src/live/providers/anthropic';
-import { forgetReadiness, isVerified, sharedPaidCheck } from '../src/live/providers/readiness';
+import {
+  failedVerdict,
+  forgetReadiness,
+  isVerified,
+  sharedPaidCheck,
+} from '../src/live/providers/readiness';
 import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
@@ -379,7 +384,7 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toHaveLength(1);
   });
 
-  it('shares a check in flight, and keeps nothing from a failed one', async () => {
+  it('shares a check in flight, and keeps a failed verdict once it settles', async () => {
     let settle!: (verdict: LiveProbe) => void;
     const run = vi.fn(
       () =>
@@ -394,10 +399,43 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     expect((await first).ok).toBe(false);
     expect((await second).ok).toBe(false);
 
-    // Settled and failed: nothing is remembered and nothing is left in flight.
+    // Settled and failed: not verified, the verdict is kept, and nothing is left in flight.
     expect(isVerified('fp')).toBe(false);
+    expect(failedVerdict('fp')).toEqual({ ok: false, model: false, statusCode: 401 });
     void sharedPaidCheck('fp', run);
     expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('pays for a failed combination once — only Recheck asks again', async () => {
+    const calls = mockProbeFetch(200, 401);
+    const messages = (): number => calls.filter((c) => c.url.includes('/v1/messages')).length;
+    // Settings and the Connect step re-check every time they open: one billed call in all.
+    for (let i = 0; i < 5; i++) {
+      const verdict = await getAdapter('anthropic').probe(cfg);
+      expect(verdict).toMatchObject({ ok: false, model: false, statusCode: 401 });
+    }
+    expect(messages()).toBe(1);
+    // The reader's Recheck is the one thing that spends again.
+    await getAdapter('anthropic').probe(cfg, { fresh: true });
+    expect(messages()).toBe(2);
+    // A different key has no verdict yet, so it earns its own check.
+    await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
+    expect(messages()).toBe(3);
+  });
+
+  it('keeps a paid pass that never answered as a failure, not a reason to ask again', async () => {
+    let messages = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        messages++;
+        throw new TypeError('network down');
+      }),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect(messages).toBe(1);
   });
 
   it('re-runs the paid pass when the reader asks for a fresh check', async () => {

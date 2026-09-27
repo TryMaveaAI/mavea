@@ -31,7 +31,13 @@ import type {
   ProbeOptions,
   RawResult,
 } from './types';
-import { forgetVerified, isVerified, readinessFingerprint, sharedPaidCheck } from './readiness';
+import {
+  failedVerdict,
+  forgetVerified,
+  isVerified,
+  readinessFingerprint,
+  sharedPaidCheck,
+} from './readiness';
 import {
   fetchWithTimeout,
   providerErrorDetail,
@@ -206,10 +212,13 @@ export const anthropicAdapter: ProviderAdapter = {
       // the REAL generation endpoint 401s (Anthropic's browser detection blocks /v1/messages
       // only) — so "Ready" must come from the endpoint a turn actually uses. It runs once per
       // endpoint + model + key per session unless the reader asks for a fresh check (see
-      // ./readiness); its tokens are reported so they reach the ledger.
+      // ./readiness), and a failed verdict is kept just as a pass is; its tokens are reported so
+      // they reach the ledger.
       const fingerprint = await readinessFingerprint(base, cfg);
-      if (fingerprint && !opts.fresh && isVerified(fingerprint)) {
-        return { ok: true, model: true, statusCode: res.status };
+      if (fingerprint && !opts.fresh) {
+        if (isVerified(fingerprint)) return { ok: true, model: true, statusCode: res.status };
+        const refused = failedVerdict(fingerprint);
+        if (refused) return refused;
       }
       const check = (): Promise<LiveProbe> => generationCheck(base, cfg);
       return await (fingerprint ? sharedPaidCheck(fingerprint, check) : check());
