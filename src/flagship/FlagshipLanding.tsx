@@ -298,9 +298,6 @@ export function FlagshipLanding({
           <a href={REPO} target="_blank" rel="noreferrer">
             GitHub ↗
           </a>
-          <a href={`${REPO}/discussions`} target="_blank" rel="noreferrer">
-            Discussions ↗
-          </a>
           <a href="#/terms?from=home">Terms</a>
           <a href="#/privacy?from=home">Privacy</a>
           <a href="#/legal?from=home">Important information</a>
