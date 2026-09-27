@@ -8,6 +8,76 @@ export function spotScrollDelta(card: DOMRect, scroller: DOMRect, clientHeight: 
   return card.height <= clientHeight ? offset - (clientHeight - card.height) / 2 : offset;
 }
 
+/** The house ease-out (`--ease-out`: cubic-bezier(0.16, 1, 0.3, 1)) as a function of progress.
+ *  Solved by Newton's method on x(t), which converges in a handful of steps for this curve. */
+function easeOut(p: number): number {
+  const [x1, y1, x2, y2] = [0.16, 1, 0.3, 1];
+  const bez = (t: number, a: number, b: number): number =>
+    3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
+  const slope = (t: number, a: number, b: number): number =>
+    3 * a * (1 - t) ** 2 + 6 * (b - a) * t * (1 - t) + 3 * (1 - b) * t ** 2;
+  let t = p;
+  for (let i = 0; i < 8; i++) {
+    const d = slope(t, x1, x2);
+    if (Math.abs(d) < 1e-6) break;
+    t -= (bez(t, x1, x2) - p) / d;
+    t = Math.min(1, Math.max(0, t));
+  }
+  return bez(t, y1, y2);
+}
+
+/** The glide's length: the `--m-normal` motion token, so it moves with the rest of the system. */
+function glideMs(el: Element): number {
+  const raw = getComputedStyle(el).getPropertyValue('--m-normal').trim();
+  const ms = raw.endsWith('ms')
+    ? parseFloat(raw)
+    : raw.endsWith('s')
+      ? parseFloat(raw) * 1000
+      : NaN;
+  return Number.isFinite(ms) ? ms : 280;
+}
+
+/**
+ * Move `scroller` to `top` in one eased motion, resolving when it is at rest. A native smooth
+ * scroll picks its own duration from the distance (often past half a second) and cannot be
+ * awaited, so a walk could not know when to start drawing on the card it brought into view.
+ * `instant` (reduced motion, or a distance too small to read as motion) jumps and resolves now;
+ * an abort stops the glide where it is.
+ */
+export function glideScroll(
+  scroller: HTMLElement,
+  top: number,
+  { instant = false, signal }: { instant?: boolean; signal?: AbortSignal } = {},
+): Promise<void> {
+  const from = scroller.scrollTop;
+  const to = Math.max(0, Math.min(top, scroller.scrollHeight - scroller.clientHeight));
+  const distance = to - from;
+  if (instant || Math.abs(distance) < 2 || typeof requestAnimationFrame === 'undefined') {
+    scroller.scrollTo({ top: to, behavior: 'instant' });
+    return Promise.resolve();
+  }
+  const duration = glideMs(scroller);
+  return new Promise((resolve) => {
+    let raf = 0;
+    let start: number | null = null;
+    const stop = (): void => {
+      cancelAnimationFrame(raf);
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    };
+    const frame = (now: number): void => {
+      start ??= now;
+      const p = Math.min(1, (now - start) / duration);
+      scroller.scrollTo({ top: from + distance * easeOut(p), behavior: 'instant' });
+      if (p < 1) raf = requestAnimationFrame(frame);
+      else stop();
+    };
+    if (signal?.aborted) return resolve();
+    signal?.addEventListener('abort', stop, { once: true });
+    raf = requestAnimationFrame(frame);
+  });
+}
+
 /** How long the scroller's size must hold still before the spotlit card is brought back. A drag
  *  or a rotation fires a burst of resizes; one glide at the end is what the reader wants. */
 export const SPOT_RESIZE_SETTLE_MS = 180;

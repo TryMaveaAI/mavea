@@ -11,6 +11,10 @@ const MAX_FAST_POLLS = 18; // ~1.8s at the fast cadence — generous for a revea
 const MAX_SLOW_POLLS = 12; // then ~6s of slow follow-up before a moving region is left where it is
 const STABLE_STREAK = 2; // this many identical reads in a row reads as "stopped moving"
 const MISSING_STREAK = 2; // two empty reads hide stale ink without blinking on a one-frame swap
+/** Roughly how long after a mark is requested it lands on a card at rest: the spotlight's lift
+ *  (520ms, visualizations-extra.css) plus the confirming reads. A walk budgets its strokes and
+ *  holds a stop open by this much, so the pen is never cut off mid-stroke. */
+export const INK_SETTLE_MS = 520 + POLL_MS * STABLE_STREAK;
 
 /** Chrome the pen itself renders (or the badge state it stamps on the host) — mutations there
  *  are our own echo, never a reason to re-measure. Without this filter every placement would

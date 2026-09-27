@@ -183,6 +183,7 @@ import {
 import { useTurnLatency, formatLatency } from './voice/useTurnLatency';
 import type { HeroContent } from './voice/heroSource';
 import { AnnotationLayer, BADGE_MS, MARK_DRAW_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
+import { INK_SETTLE_MS } from './annotate/settle';
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
@@ -307,7 +308,7 @@ import {
 import { pendingCard } from './turnstate/pendingCard';
 import { BoardCuePill } from './turnstate/BoardCuePill';
 import { anyOverlayOpen } from './hooks/overlayGuard';
-import { spotScrollDelta, useKeepSpotInView } from './hooks/useKeepSpotInView';
+import { glideScroll, spotScrollDelta, useKeepSpotInView } from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
 import {
   MIC_AUDIO_MSG,
@@ -2796,11 +2797,14 @@ export function LiveApp(): ReactElement {
     // Light one stop — spotlight, caption, and its pen marks. The visual half of a beat, kept
     // separate from the pacing so a spoken stop can apply it at the exact moment its own audio
     // starts (never before — lighting on enqueue is how the spotlight used to outrun the voice).
+    /** Lights a stop and starts its pen. Returns when (performance.now() time) its last stroke will
+     *  have finished drawing, so the walk can hold the stop open until the pen lifts. */
     const applyStop = (
       spot: string | null | undefined,
       line: string | undefined,
       idx?: number,
-    ): void => {
+    ): number => {
+      let penLiftsAt = 0;
       if (spot !== undefined) turn.setSpot(spot ?? null);
       // The speak strip follows the walk — always the SHOWN caption; the voice twin
       // ("five thousand dollars") is for the TTS engine only, never the screen.
@@ -2836,6 +2840,8 @@ export function LiveApp(): ReactElement {
           // A lone mark just draws — the numbered chip only earns its keep once there's an
           // actual order to show (2+ marks reading as a step-by-step walk).
           const sequence = stopMarks.length > 1;
+          penLiftsAt =
+            performance.now() + (stopMarks.length - 1) * step + MARK_DRAW_MS + INK_SETTLE_MS;
           for (let mi = 0; mi < stopMarks.length; mi++) {
             const delayMs = mi * step;
             // Only the last mark in a sequence carries the extended badge duration, since
@@ -2853,8 +2859,10 @@ export function LiveApp(): ReactElement {
           }
         } else if (teachSurface) {
           ink(spot, line, undefined, teachSurface);
+          penLiftsAt = performance.now() + MARK_DRAW_MS + INK_SETTLE_MS;
         }
       }
+      return penLiftsAt;
     };
     // Once this stop's own line finishes, hand off to a claimed diagram's build (if this
     // stop's block registered one — see stepDriver.ts) before moving to the next stop, then
@@ -2876,7 +2884,10 @@ export function LiveApp(): ReactElement {
     // never tighter than the hand's own MARK_STEP_MS floor.
     const markStepFor = (lineText: string | undefined, count: number): number =>
       count > 1
-        ? Math.max(MARK_STEP_MS, (spokenMs(lineText ?? '') - MARK_DRAW_MS) / (count - 1))
+        ? Math.max(
+            MARK_STEP_MS,
+            (spokenMs(lineText ?? '') - MARK_DRAW_MS - INK_SETTLE_MS) / (count - 1),
+          )
         : 0;
     const advance = (spot: string | null | undefined): void => {
       const claimed =
@@ -2948,16 +2959,26 @@ export function LiveApp(): ReactElement {
       spokenLine: string | undefined,
     ): Promise<void> => {
       const estimateMs = beat.ms ?? 1700;
+      // Resolves once this stop's card has glided to rest; nothing is drawn on it before then.
+      let landed: Promise<void> = Promise.resolve();
+      // When this stop's last stroke finishes drawing — the stop stays open until then, so the
+      // next stop's glide (or the next answer) never scrolls or replaces a card mid-stroke.
+      let penLiftsAt = 0;
+      const penLifted = (): Promise<void> =>
+        delay(Math.max(0, penLiftsAt - performance.now()), walkController.signal);
       // The line is primed first so its synthesis runs while the card settles.
       const prepareStop = async (text: string): Promise<void> => {
         primeLine(text, 'mavea');
         await settleStop();
       };
-      // Bring the stop's card to rest in view before anything is said or drawn on it. Every stop
-      // centres here — the spotlight's own glide effect stands down for a spoken walk, so a stop
-      // that skipped this (one with a caption but no voice line) was lit wherever it happened to
-      // sit, sometimes half under the bar.
+      // Bring the stop's card into view before anything is drawn on it. Every stop does this —
+      // the spotlight's own glide effect stands down for a spoken walk, so a stop that skipped it
+      // (one with a caption but no voice line) was lit wherever it happened to sit, sometimes
+      // half under the bar. Awaiting this waits only for the card to paint; the glide itself runs
+      // under the line's first syllables (see `landed`), so moving the camera adds no silence
+      // between two lines — it used to be a jump cut for exactly that reason.
       const settleStop = async (): Promise<void> => {
+        landed = Promise.resolve();
         if (spot) turn.setSpot(spot);
         await awaitFirstPaint(
           () => scrollRef.current,
@@ -2972,17 +2993,10 @@ export function LiveApp(): ReactElement {
         if (host && target && !target.closest('.study-stage')) {
           const bounds = target.getBoundingClientRect();
           const delta = spotScrollDelta(bounds, host.getBoundingClientRect(), host.clientHeight);
-          host.scrollTo({
-            top: Math.max(0, host.scrollTop + delta),
-            behavior: 'instant',
+          landed = glideScroll(host, host.scrollTop + delta, {
+            instant: prefersReducedMotion(),
+            signal: walkController.signal,
           });
-          await awaitFirstPaint(
-            () => host,
-            `[data-spot-id="${CSS.escape(spot!)}"] .card`,
-            undefined,
-            walkController.signal,
-            true,
-          );
         }
       };
       // Stop 0 carries the opener, already queued sentence-by-sentence while the answer
@@ -3024,8 +3038,9 @@ export function LiveApp(): ReactElement {
           if (bail()) return;
           const handle = speak(ownLine);
           const heard = await waitLineStart(handle, undefined, walkController.signal);
+          await landed;
           if (bail()) return;
-          applyStop(spot, shown ?? ownLine, idx);
+          penLiftsAt = applyStop(spot, shown ?? ownLine, idx);
           primeNextSpoken(idx);
           if (heard) {
             await waitLineEnd(handle, spokenMsUncapped(ownLine), undefined, walkController.signal);
@@ -3033,6 +3048,7 @@ export function LiveApp(): ReactElement {
             cancelSpeech();
             await delay(spokenMs(ownLine), walkController.signal);
           }
+          await penLifted();
           const verdict = await pauseVerdict();
           if (verdict === 'abort') return;
           if (verdict === 'replay') {
@@ -3047,14 +3063,16 @@ export function LiveApp(): ReactElement {
       }
       if (!spokenLine) {
         await settleStop();
+        await landed;
         if (bail()) return;
-        applyStop(spot, line, idx);
+        penLiftsAt = applyStop(spot, line, idx);
         primeNextSpoken(idx);
         await waitQueueQuiet({
           floorMs: MIN_STOP_MS,
           capMs: finishCapMs(estimateMs),
           signal: walkController.signal,
         });
+        await penLifted();
         if (bail()) return;
         {
           const verdict = await pauseVerdict();
@@ -3069,9 +3087,10 @@ export function LiveApp(): ReactElement {
         if (bail()) return;
         const handle = speak(spokenLine);
         const heard = await waitLineStart(handle, undefined, walkController.signal);
+        await landed;
         if (bail()) return;
         // Re-applying on a replay is safe by design: ink() dedupes per (block, gesture).
-        applyStop(spot, line, idx);
+        penLiftsAt = applyStop(spot, line, idx);
         // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
         // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
         // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
@@ -3084,6 +3103,7 @@ export function LiveApp(): ReactElement {
           // caption's own reading length instead of sprinting through the remaining stops.
           await delay(estimateMs, walkController.signal);
         }
+        await penLifted();
         // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
         // stop — until the transcript decides. Filler re-speaks this stop's line (its PCM is
         // cached, so the replay is instant and free); a real question ends the walk.
