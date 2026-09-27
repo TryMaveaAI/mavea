@@ -1135,3 +1135,12 @@ describe('Onboarding on a phone — the primary action and its targets stay reac
     expect(touch).toMatch(/min-height:\s*var\(--tap-min\)/);
   });
 });
+
+describe('a collapsed feature notice reads as one bar', () => {
+  const css = readFileSync('src/legal/feature-use-notice.css', 'utf8');
+  it('puts the actions at the end and lets the single line run up to them', () => {
+    expect(css).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+    expect(css).toMatch(/\[data-collapsed\] p \{\s*max-width:\s*none/);
+    expect(css).toMatch(/\.feature-use-notice\[data-collapsed\] \{[^}]*align-items:\s*center/);
+  });
+});

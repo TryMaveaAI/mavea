@@ -2,10 +2,10 @@
   width: 100%;
   box-sizing: border-box;
   display: grid;
-  /* The text column holds a reading measure, not the host's width: a notice spanning a 1920px
-     surface set its body at ~250 characters a line. The actions follow the text, not the edge. */
-  grid-template-columns: auto minmax(0, var(--content-max)) auto;
-  justify-content: start;
+  /* The actions sit at the bar's end, where a reader looks for them. The text column takes the
+     room between; a reading measure applies only to the open, multi-line text (below), since a
+     notice spanning a 1920px surface would otherwise set its body at ~250 characters a line. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: 8px;
   padding: 9px 11px;
@@ -25,7 +25,24 @@
 }
 
 .feature-use-notice p {
+  max-width: var(--content-max);
   margin: 0;
+}
+
+/* One clamped line has no measure to keep, so it runs up to the actions instead of stopping short
+   of them and leaving a gap in the middle of the bar — and the dot, the line and the actions sit
+   on one centre line rather than the text riding the top of a bar sized for the buttons. */
+.feature-use-notice[data-collapsed] {
+  align-items: center;
+  padding-block: 2px;
+}
+
+.feature-use-notice[data-collapsed] p {
+  max-width: none;
+}
+
+.feature-use-notice[data-collapsed] .feature-use-notice-dot {
+  margin-top: 0;
 }
 
 .feature-use-notice strong {
