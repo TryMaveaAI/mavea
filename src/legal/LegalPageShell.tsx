@@ -1,5 +1,5 @@
 import { useLayoutEffect, type ReactElement, type ReactNode } from 'react';
-import { legalDocumentHref } from './links';
+import { LEGAL_SECTION_PARAM, legalDocumentHref } from './links';
 import { legalSectionId } from './legalMarkdown';
 import './legal.css';
 
@@ -19,7 +19,13 @@ function anchorNewEntryToTop(page: LegalPageKind): void {
   if (ANCHOR_KEY in entry && entry[ANCHOR_KEY] === page) return;
   // Same entry, no new URL — the back button still returns to whatever preceded this document.
   window.history.replaceState({ ...entry, [ANCHOR_KEY]: page }, '');
-  window.scrollTo({ top: 0 });
+  // A section link opened on its own (a new tab, a pasted link) anchors at that section instead.
+  const section = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get(
+    LEGAL_SECTION_PARAM,
+  );
+  const heading = section ? document.getElementById(legalSectionId(Number(section))) : null;
+  if (heading) heading.scrollIntoView({ block: 'start' });
+  else window.scrollTo({ top: 0 });
 }
 
 function sourceQuery(): string {

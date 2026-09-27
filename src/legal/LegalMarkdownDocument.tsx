@@ -1,7 +1,7 @@
 import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react';
 import { LegalPageShell, LegalSection, type LegalPageKind } from './LegalPageShell';
 import { legalSectionId, parseLegalMarkdown, type MarkdownBlock } from './legalMarkdown';
-import { legalDocumentHref, type PackagedLegalDocument } from './links';
+import { legalDocumentHref, legalSectionHref, type PackagedLegalDocument } from './links';
 
 const PACKAGED_DOCS: Record<string, PackagedLegalDocument> = {
   './LICENSE': 'LICENSE.txt',
@@ -96,18 +96,27 @@ function MarkdownBlocks({ value }: { value: MarkdownBlock[] }): ReactElement {
   );
 }
 
-/** Jump to a section without touching the hash: the hash is the ROUTE here (`#/terms`), so a plain
- *  `#legal-section-3` link would navigate away from the document it points into. */
+/** Jump to a section in place. A plain click never follows the href — it names this same page — so
+ *  the route and the history entry stay put; a modified click (new tab, new window) is left to the
+ *  browser, which opens the href and lands on the section there. */
 function jumpTo(event: MouseEvent<HTMLAnchorElement>, id: string): void {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+    return;
+  event.preventDefault();
   const heading = document.getElementById(id);
   if (!heading) return;
-  event.preventDefault();
   const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? true;
   heading.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
   heading.focus({ preventScroll: true });
 }
 
-function Contents({ sections }: { sections: { number: number; title: string }[] }): ReactElement {
+function Contents({
+  route,
+  sections,
+}: {
+  route: 'terms' | 'privacy';
+  sections: { number: number; title: string }[];
+}): ReactElement {
   return (
     <nav className="legal-toc" aria-labelledby="legal-toc-title">
       <p className="legal-toc-title" id="legal-toc-title">
@@ -117,7 +126,7 @@ function Contents({ sections }: { sections: { number: number; title: string }[] 
         {sections.map(({ number, title }) => (
           <li key={number}>
             <a
-              href={`#${legalSectionId(number)}`}
+              href={legalSectionHref(route, number)}
               onClick={(event) => jumpTo(event, legalSectionId(number))}
             >
               <span className="legal-toc-number" aria-hidden>
@@ -149,7 +158,11 @@ export function LegalMarkdownDocument({
       title={document.title}
       effectiveDate={document.effectiveDate}
       intro={<MarkdownBlocks value={document.intro} />}
-      contents={document.sections.length > 1 ? <Contents sections={document.sections} /> : null}
+      contents={
+        page !== 'important' && document.sections.length > 1 ? (
+          <Contents route={page} sections={document.sections} />
+        ) : null
+      }
     >
       <div className="legal-prose">
         {document.sections.map((section) => (
