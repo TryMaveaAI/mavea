@@ -107,8 +107,6 @@ A few specific things worth trying:
   sources actually back, and the question that would break it. Step through the rest with the
   arrows, magnify if you want to, and Escape puts you back. When you'd rather be walked
   through the whole thing, _Guide me_ pulls the answer onto a lamplit desk.
-- **It answers while you talk.** Mid-sentence, dashed ghost cards sketch the answer taking shape
-  behind your words, reshaping as your question turns.
 - **It maps your thinking.** Ramble for a minute and Mavéa clusters your words into the themes that
   surface from what you actually said — never fixed buckets — with the tensions between them.
 - **The Blank Space.** When an answer needs a number only you have, Mavéa leaves a hole to fill —

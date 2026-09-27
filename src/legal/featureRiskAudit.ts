@@ -107,7 +107,6 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
   'watch-me-think': { notice: 'voice-data', reviewed: ['speech transcription', 'nearby speakers'] },
   'just-listen': { notice: 'voice-data', reviewed: ['speech transcription', 'sensitive speech'] },
   whisper: { notice: 'voice-data', reviewed: ['speech transcription', 'not silent recording'] },
-  ghost: { notice: 'voice-data', reviewed: ['speech transcription', 'AI-authored drafts'] },
   settings: { notice: 'credentials', reviewed: ['key storage', 'provider transmission'] },
   'morning-brief': {
     notice: 'monitoring',

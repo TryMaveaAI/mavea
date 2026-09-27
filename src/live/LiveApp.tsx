@@ -266,8 +266,6 @@ import { turnFrameId } from './history';
 import { VoiceScrubber } from './scrubvoice/VoiceScrubber';
 import { VoiceSpeedChip } from './scrubvoice/VoiceSpeedChip';
 import { ExplainLevelChip } from './ExplainLevelChip';
-import { useGhosts } from './ghost/useGhosts';
-import { GhostRow } from './ghost/GhostRow';
 import { useWhisper, WHISPER_GAIN } from './whisper/quietHours';
 import { useMindShape } from './mindshape/useMindShape';
 import { MindShapeCanvas } from './mindshape/MindShapeCanvas';
@@ -857,13 +855,6 @@ export function LiveApp(): ReactElement {
   // Recent turns' finished voice tracks, kept (bounded) so the scrubber works on a chat you've
   // scrolled back to — not just the live head.
   const audioStore = useRef(new TurnAudioStore()).current;
-  // Ghost blocks ("it answers while you talk"): tiny speculative glimpses off the partial
-  // transcript. Off on the 'fast' quality dial — speculation is a spend the user opted into
-  // by choosing a deeper setting. (The hook itself runs below, once the turn it defers to exists.)
-  const ghostCfg = useMemo(
-    () => (modelCallsAllowed && cfg.quality !== 'fast' ? toModelConfig(cfg) : null),
-    [cfg, modelCallsAllowed],
-  );
   // Think-out-loud's "just listening" mode — utterances bank into a ramble instead of
   // answering, until the user says "thoughts?".
   const [justListen, setJustListen] = useState(false);
@@ -1194,11 +1185,6 @@ export function LiveApp(): ReactElement {
     getLibraryEnabled: () => getLiveConfigV2().libraryEnabled,
     initial: restoredSession ? hydrateFromSession(restoredSession) : undefined,
   });
-
-  // Speculation stands down while a real turn is in flight: the user keeps talking over the answer
-  // that's already streaming, and guessing at it would bill their key for a preview of what they're
-  // about to see anyway.
-  const ghosts = useGhosts(listening, heard, ghostCfg, turn.busy);
 
   // (The walkthrough driver is built further below, after all the real controls it drives —
   //  the Lens, Present, export, the palette, the pen, mute — have been declared.)
@@ -4937,7 +4923,7 @@ export function LiveApp(): ReactElement {
   const buyExpansion = modelCallsAllowed ? expandWorldNode : undefined;
 
   // The registry resolved to live actions + availability. One map so the palette and the menu
-  // can never disagree about what exists. Behavioral/automatic features (whisper, ghost, focus)
+  // can never disagree about what exists. Behavioral/automatic features (whisper, focus)
   // teach via a soft notice rather than forcing a manual trigger.
   const featureActions: Record<
     string,
@@ -5109,19 +5095,6 @@ export function LiveApp(): ReactElement {
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
-    },
-    ghost: {
-      available: sttOk && cfg.quality !== 'fast',
-      // Ghost drafts surface during Just Listen — entering that mode is how you actually use it.
-      // But they're gated off on the 'fast' quality dial (speculation is a spend the user opted
-      // out of), so clicking this on Fast would silently behave exactly like Just Listen with no
-      // explanation. Surface that instead of pretending the click did something distinct.
-      reason: !sttOk
-        ? MIC_UNSUPPORTED_MSG
-        : cfg.quality === 'fast'
-          ? "Needs Balanced quality or higher — you're on Fast"
-          : undefined,
-      run: () => enterListening('listen'),
     },
     delegate: {
       available: true,
@@ -6413,7 +6386,6 @@ export function LiveApp(): ReactElement {
           }
         />
       )}
-      {listening && !watchThinking && <GhostRow ghosts={ghosts} />}
 
       {/* The persistent voice-scrubber strip was removed — it was a near-empty bar most of the
           time (only earning its space in long multi-turn sessions) and added dead vertical bulk

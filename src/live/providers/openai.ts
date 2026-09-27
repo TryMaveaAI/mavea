@@ -13,7 +13,7 @@
 // Native web search: `{type:'web_search'}` in tools[], only injected when the turn asks
 // for fresh data. OpenAI's own docs caution that search doesn't engage reliably at 'minimal'
 // reasoning effort — the shared transport uses the provider's no-thinking tier for ordinary
-// composition and disposable glimpses, while a search turn stays above it so the tool engages.
+// composition and small self-sized asks, while a search turn stays above it so the tool engages.
 import { openaiResponsesCompatible } from './openaiResponsesCompatible';
 
 export const openaiAdapter = openaiResponsesCompatible({

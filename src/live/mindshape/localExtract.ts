@@ -14,8 +14,8 @@ function clamp(s: string, max: number): string {
 /**
  * Drop the trailing word of an INTERIM (still-being-spoken) transcript — the word currently coming
  * through the STT, which is often only half-heard ("India" still arriving as "Ind"). Feeding that
- * half-word to the live tagging (the ghost glimpses, the mind-map preview) makes a small model riff
- * on a truncated token — "tell me about Ind" became a card titled "The Essence of IND". The COMPLETED
+ * half-word to the live tagging (the mind-map preview) makes a small model riff on a truncated
+ * token — "tell me about Ind" became a card titled "The Essence of IND". The COMPLETED
  * utterance is always used whole (it's final); this only guards the live, mid-speech partial. A partial
  * that already ends on a word boundary (trailing space / sentence punctuation) is returned unchanged.
  */

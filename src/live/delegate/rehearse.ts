@@ -1,7 +1,6 @@
 // The Rehearsal's take-the-seat engine — Mavéa plays the other side while YOU say your own lines.
-// Two small side-channel calls on the user's own key (the ghost-glimpse pattern: bounded,
-// abortable, never throws): the counterpart's next line during a take, and one coach card
-// between takes. Honesty is structural: the persona is grounded ONLY in the context the
+// Two small side-channel calls on the user's own key (bounded, abortable, never throw): the
+// counterpart's next line during a take, and one coach card between takes. Honesty is structural: the persona is grounded ONLY in the context the
 // user typed (plus memory facts they opted in) — the prompt forbids inventing anything
 // about the real person, and when the context runs out the counterpart plays it generic
 // rather than pretending to know them.

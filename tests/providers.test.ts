@@ -9,7 +9,6 @@ import { getUsageLedger, resetUsageLedgerForTest } from '../src/live/usage/ledge
 import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
-import { speculate } from '../src/live/ghost/speculate';
 import {
   isTransientProviderFailure,
   providerRetryDelayMs,
@@ -262,7 +261,7 @@ describe('anthropic adapter — non-canvas caller (format omitted, no blockTypes
     mockFetchOnce(
       streamResponse(
         [
-          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ghosts\\":"}}\n',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"cards\\":"}}\n',
           'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"[]}"}}\n',
         ],
         'text/event-stream',
@@ -271,8 +270,8 @@ describe('anthropic adapter — non-canvas caller (format omitted, no blockTypes
     const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
     const { raw } = await anthropicAdapter.generate(req, cfg);
     // Free-form text that happens to be valid JSON resolves as the parsed object (same as the
-    // canvas path) — callers like ghost/speculate.ts accept either shape.
-    expect(raw).toEqual({ ghosts: [] });
+    // canvas path) — non-canvas callers accept either shape.
+    expect(raw).toEqual({ cards: [] });
   });
 });
 
@@ -560,10 +559,9 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
 });
 
 // The floor above is a reservation for hidden thinking — and a GLIMPSE does none. A caller that
-// declares `minimal` thinking AND sizes its own budget (the ghost speculation off a half-spoken
-// sentence, a node breakdown, a grounding resolve) was paying the 1500-token floor on a reasoning
-// model: the default provider IS one, and up to three glimpses fire per listen, so the "150-token"
-// ghost billed an order of magnitude more than it asked for. Asking for the `minimal` tier removes
+// declares `minimal` thinking AND sizes its own budget (a node breakdown, a grounding resolve) was
+// paying the 1500-token floor on a reasoning model, so a 150-token ask billed an order of
+// magnitude more than it asked for. Asking for the `minimal` tier removes
 // the hidden pass the floor protects against, which is exactly what makes dropping the floor safe.
 // The two move TOGETHER — a floor removed while the model still thinks is how a small caller pays
 // for reasoning and receives an empty completion.
@@ -694,31 +692,6 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_tokens).toBe(2200);
-  });
-
-  it('the ghost glimpse itself lands on the wire as one — and still parses its cards', async () => {
-    // End-to-end over the real adapter (no provider mock): speculate's request shape is what has
-    // to trip the exemption, not a hand-copied approximation of it. And it must still WORK —
-    // ghosts are default-on and user-visible.
-    const fetchMock = vi.fn(async () =>
-      streamResponse(
-        [
-          'data: {"type":"response.output_text.delta","delta":"{\\"ghosts\\":[{\\"kind\\":\\"forming\\",\\"title\\":\\"Bloom forecast\\"}]}"}\n',
-        ],
-        'text/event-stream',
-      ),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const cards = await speculate(
-      'we are thinking Tokyo in',
-      { provider: 'openai', model: 'gpt-5.6-luna', apiKey: 'k' },
-      new AbortController().signal,
-    );
-    expect(cards).toEqual([{ kind: 'forming', title: 'Bloom forecast' }]);
-    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body.reasoning).toEqual({ effort: 'none' });
-    expect(body.max_output_tokens).toBe(150);
   });
 });
 

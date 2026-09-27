@@ -430,17 +430,6 @@ export const FEATURES: Feature[] = [
     tourChapter: 'whisper',
     keywords: ['quiet', 'whisper', 'night', 'silent'],
   },
-  {
-    id: 'ghost',
-    label: 'Ghost answers',
-    // Its action starts Just Listen (where the drafts actually appear) — name that so the outcome
-    // matches the click.
-    blurb: 'Mavéa quietly drafts what it would say — starts Just listen, where the drafts appear',
-    group: 'While listening',
-    surface: 'live',
-    tourChapter: 'ghost',
-    keywords: ['ghost', 'draft', 'preview', 'alternative'],
-  },
 
   // ── Setup (connect, configure, learn the ropes) ─────────────────────────────
   {

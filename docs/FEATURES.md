@@ -45,9 +45,6 @@ index, or open the **Explore** menu in Live's top bar.
   "step by step") — or turn on **Pen mode** in Settings — and it draws more generously. Turn off the
   **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
   microphone.
-- 👻 **It answers while you talk** — mid-sentence, dashed _forming / maybe_ ghost cards sketch the
-  answer taking shape behind your words, reshaping as the sentence changes direction (off on the Fast
-  quality dial — speculation is a spend you opt into).
 - ✏️ **Edit its mind** — generated answers can state their read of the constraints as chips
   ("Tokyo trip" · "late April" · "~$2,500 each"). Tap one, fix it, and a correction turn
   re-renders the answer without requiring you to restate the whole ask.

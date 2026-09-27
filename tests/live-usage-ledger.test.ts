@@ -56,9 +56,9 @@ describe('usage ledger', () => {
   });
 
   it('totals the whole session, including the calls the capped list has dropped', () => {
-    // Fifty billed calls is an ordinary session (a Prism map bills one per page, glimpses up to
-    // three an utterance), and the panel's headline read "this session" while it was really
-    // summing a bounded tail — so the number shrank as new calls arrived.
+    // Fifty billed calls is an ordinary session (a Prism map bills one per page), and the panel's
+    // headline read "this session" while it was really summing a bounded tail — so the number
+    // shrank as new calls arrived.
     for (let i = 0; i < 60; i++) recordUsage('canvas', usage(10, 1, 4), i);
     const totals = getUsageSummary();
     expect(getUsageLedger()).toHaveLength(50);

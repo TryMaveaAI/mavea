@@ -1138,9 +1138,8 @@ export function LiveSettings({
               />
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 How long Mavéa reasons before answering — speed versus care on hard questions.
-                Thorough also buys two speculative turns per answer; Balanced glimpses cost up to
-                three small calls per utterance. (How the answer is written is Explanation level,
-                above.)
+                Thorough also buys two speculative turns per answer. (How the answer is written is
+                Explanation level, above.)
               </span>
             </div>
 

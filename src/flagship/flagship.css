@@ -1527,82 +1527,6 @@
   animation-delay: calc(var(--in-i, 0) * 90ms);
 }
 
-/* ghost */
-.fl-ghostwrap {
-  min-height: 230px;
-}
-.fl-ghost-said {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.fl-wave {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 22px;
-  flex: none;
-}
-.fl-wave i {
-  width: 3px;
-  height: 20px;
-  border-radius: var(--r-full);
-  background: var(--presence-soft);
-  transform: scaleY(0.3);
-  /* 1.6s, not 1s — at 1s the bars twitch; speech has a slower envelope. */
-  animation: fl-wave 1.6s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.08s);
-  animation-play-state: var(--ambient-play, running);
-}
-.fl-ghost-words {
-  font-size: var(--fs-md);
-  color: var(--text-primary);
-}
-.fl-ghost-cards {
-  display: flex;
-  gap: 12px;
-}
-.fl-ghost {
-  flex: 1;
-  border: 1.5px dashed color-mix(in oklab, var(--presence) 50%, transparent);
-  border-radius: var(--r-md);
-  padding: 14px;
-  animation: fl-ghostform 2.6s ease-in-out infinite;
-  animation-play-state: var(--ambient-play, running);
-  min-width: 0;
-}
-.fl-ghost.delay {
-  border-color: color-mix(in oklab, var(--fl-blue) 50%, transparent);
-  animation-delay: 0.5s;
-}
-.fl-ghost-tag {
-  font-family: var(--font-data);
-  font-size: var(--fs-2xs);
-  color: var(--text-faint);
-  margin-bottom: 8px;
-}
-.fl-ghost-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  height: 50px;
-}
-.fl-ghost-bars i {
-  flex: 1;
-  background: color-mix(in oklab, var(--presence) 50%, transparent);
-  border-radius: 3px 3px 0 0;
-}
-.fl-ghost svg {
-  width: 100%;
-  height: 50px;
-}
-.fl-ghost svg polyline {
-  fill: none;
-  stroke: color-mix(in oklab, var(--fl-blue) 60%, transparent);
-  stroke-width: 2.5;
-}
-
 /* mind-map */
 .fl-mindmap {
   height: 264px;
@@ -2688,8 +2612,6 @@
   .fl-caret,
   .fl-hl-sweep,
   .fl-hl-chip,
-  .fl-wave i,
-  .fl-ghost,
   .fl-mindmap-links path,
   .fl-node,
   .fl-blank-hole,
@@ -2828,29 +2750,9 @@
     opacity: 1;
   }
 }
-@keyframes fl-ghostform {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: translateY(6px) scale(0.99);
-  }
-  50% {
-    opacity: 0.9;
-    transform: none;
-  }
-}
 @keyframes fl-dash {
   to {
     stroke-dashoffset: -32;
-  }
-}
-@keyframes fl-wave {
-  0%,
-  100% {
-    transform: scaleY(0.22);
-  }
-  50% {
-    transform: scaleY(1);
   }
 }
 @keyframes fl-float {

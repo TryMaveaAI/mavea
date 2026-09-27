@@ -31,7 +31,6 @@ const surfaceFiles = [
   'live/srs/srs-review.css',
   'live/annotate/annotate.css',
   'live/annotate/gesture-track.css',
-  'live/ghost/ghost.css',
   'live/voice/voice.css',
   'live/dashboards/dashboards.css',
   'live/zoom/zoom.css',

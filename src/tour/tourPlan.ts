@@ -502,16 +502,6 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     hook: "Everything we've covered, at a glance",
   },
   {
-    id: 'ghost',
-    title: 'Ghost answers',
-    mode: 'explain',
-    coach: 'While you listen, I quietly draft a response, so it is ready when you want it.',
-    action: { kind: 'showcase', featureId: 'ghost' },
-    durationMs: 9000,
-    glyph: '👻',
-    hook: 'I draft what I would say, quietly',
-  },
-  {
     id: 'whisper',
     title: 'Whisper mode',
     mode: 'explain',
