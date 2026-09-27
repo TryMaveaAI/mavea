@@ -153,4 +153,60 @@ describe('useZoomGesture', () => {
     fireEvent.wheel(zone, { deltaY: -120, ctrlKey: true });
     expect(onZoom).toHaveBeenLastCalledWith('in');
   });
+
+  // Two fingers `gap` px apart on a horizontal line, as a touchscreen reports them.
+  const fingers = (gap: number) => [
+    { identifier: 0, clientX: 200 - gap / 2, clientY: 300 },
+    { identifier: 1, clientX: 200 + gap / 2, clientY: 300 },
+  ];
+
+  it('treats a two-finger touch pinch as the same steps: closing is out, spreading is in', () => {
+    const onZoom = vi.fn();
+    render(<Host onZoom={onZoom} />);
+    const zone = screen.getByTestId('zone');
+    fireEvent.touchStart(zone, { touches: fingers(300) });
+    fireEvent.touchMove(zone, { touches: fingers(250) }); // 50px: under one step
+    expect(onZoom).not.toHaveBeenCalled();
+    fireEvent.touchMove(zone, { touches: fingers(200) }); // 100px closed: one step out
+    expect(onZoom).toHaveBeenCalledTimes(1);
+    expect(onZoom).toHaveBeenLastCalledWith('out');
+    fireEvent.touchMove(zone, { touches: fingers(320) }); // 120px spread: one step in
+    expect(onZoom).toHaveBeenCalledTimes(2);
+    expect(onZoom).toHaveBeenLastCalledWith('in');
+  });
+
+  it('keeps the browser from page-zooming on a pinch, and leaves a one-finger scroll alone', () => {
+    render(<Host onZoom={vi.fn()} />);
+    const zone = screen.getByTestId('zone');
+    fireEvent.touchStart(zone, { touches: fingers(300) });
+    // fireEvent returns false when the listener called preventDefault.
+    expect(fireEvent.touchMove(zone, { touches: fingers(280) })).toBe(false);
+    fireEvent.touchEnd(zone, { touches: [fingers(280)[0]] });
+    expect(
+      fireEvent.touchMove(zone, { touches: [{ identifier: 0, clientX: 100, clientY: 200 }] }),
+    ).toBe(true);
+  });
+
+  it('drops a half-made pinch when a finger lifts, so the next pinch starts from zero', () => {
+    const onZoom = vi.fn();
+    render(<Host onZoom={onZoom} />);
+    const zone = screen.getByTestId('zone');
+    fireEvent.touchStart(zone, { touches: fingers(300) });
+    fireEvent.touchMove(zone, { touches: fingers(240) }); // 60px of a 90px step
+    fireEvent.touchEnd(zone, { touches: [] });
+    fireEvent.touchStart(zone, { touches: fingers(300) });
+    fireEvent.touchMove(zone, { touches: fingers(240) }); // another 60px, a fresh pinch
+    expect(onZoom).not.toHaveBeenCalled();
+  });
+
+  it('removes every listener it added when the surface unmounts', () => {
+    const onZoom = vi.fn();
+    const { unmount } = render(<Host onZoom={onZoom} />);
+    const zone = screen.getByTestId('zone');
+    unmount();
+    fireEvent.touchStart(zone, { touches: fingers(300) });
+    fireEvent.touchMove(zone, { touches: fingers(100) });
+    fireEvent.wheel(zone, { deltaY: 500, ctrlKey: true });
+    expect(onZoom).not.toHaveBeenCalled();
+  });
 });
