@@ -95,6 +95,28 @@ describe('the standalone morning briefing', () => {
     unmount();
   });
 
+  it('logs the failed call it spent, once, and counts it against the budget', async () => {
+    refreshDashboards.mockResolvedValue(noBriefing);
+    const { useDashboardLoop } = await import('../src/live/dashboards/useDashboardLoop');
+    const { unmount } = renderHook(() => useDashboardLoop());
+    await runTicks(6);
+    const { getLedger, searchesToday } = await import('../src/live/dashboards/ledger');
+    const briefings = getLedger().filter((e) => e.kind === 'briefing');
+    expect(briefings).toEqual([
+      expect.objectContaining({ text: 'Morning briefing didn’t come through.', searches: 1 }),
+    ]);
+    expect(searchesToday(getLedger(), Date.now())).toBe(1);
+    unmount();
+  });
+
+  it('logs nothing when there was no call to spend', async () => {
+    refreshDashboards.mockResolvedValue({ ...noBriefing, attempts: 0 });
+    const { composeBriefingNow } = await import('../src/live/dashboards/useDashboardLoop');
+    await expect(composeBriefingNow()).resolves.toBe('failed');
+    const { getLedger } = await import('../src/live/dashboards/ledger');
+    expect(getLedger().filter((e) => e.kind === 'briefing')).toEqual([]);
+  });
+
   it('asks again only when the reader presses Try again — one call from that press', async () => {
     refreshDashboards.mockResolvedValue(noBriefing);
     const { useDashboardLoop, composeBriefingNow } =

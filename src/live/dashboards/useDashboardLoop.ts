@@ -634,6 +634,16 @@ async function composeBriefing(all: Dashboard[], cfg: ModelConfig, now: number):
   const result = await refreshDashboards([], cfg, { briefingContext: context });
   if (!result.briefing) {
     markBriefingMissed(now);
+    // A call that went out is logged and counted against the budget whether or not it composed a
+    // briefing, like a failed check: the log is the reader's record of what was spent.
+    if (result.attempts > 0) {
+      appendLedger({
+        kind: 'briefing',
+        text: 'Morning briefing didn’t come through.',
+        dashboardIds: [],
+        searches: 1,
+      });
+    }
     return false;
   }
   recordBriefing(result.briefing, all, now);
