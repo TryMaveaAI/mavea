@@ -75,6 +75,43 @@ describe('LiveSettings — segmented pickers behave like radio groups', () => {
   });
 });
 
+describe('LiveSettings — the provider chips', () => {
+  const chipsOf = (group: HTMLElement) => within(group).getAllByRole('radio');
+  const picked = (group: HTMLElement) =>
+    chipsOf(group).filter((c) => c.getAttribute('aria-checked') === 'true');
+
+  it('are a named radio group with exactly one pick, and a press moves it', () => {
+    setLiveConfigV2({ provider: 'gemini' });
+    render(<LiveSettings initialTab="model" />);
+    const group = screen.getByRole('radiogroup', { name: 'Model providers' });
+    const chips = chipsOf(group);
+    expect(chips.length).toBeGreaterThan(1);
+    expect(picked(group)).toHaveLength(1);
+    // Styled by the stylesheet, never the field style inline: that set them in the input face at
+    // input size and dimmed every unpicked chip to 70%, so four of five read as disabled.
+    for (const chip of chips) expect(chip).not.toHaveAttribute('style');
+
+    const other = chips.find((c) => c.getAttribute('aria-checked') === 'false') as HTMLElement;
+    fireEvent.click(other);
+    expect(picked(group)).toEqual([other]);
+  });
+
+  it('is one tab stop, and the arrows move the pick and the focus together', () => {
+    setLiveConfigV2({ provider: 'gemini' });
+    render(<LiveSettings initialTab="model" />);
+    const group = screen.getByRole('radiogroup', { name: 'Model providers' });
+    const chips = chipsOf(group);
+    const at = chips.findIndex((c) => c.getAttribute('aria-checked') === 'true');
+    expect(chips.filter((c) => c.tabIndex === 0)).toEqual([chips[at]]);
+
+    fireEvent.keyDown(chips[at], { key: 'ArrowLeft' });
+    const back = chipsOf(group)[(at - 1 + chips.length) % chips.length];
+    expect(back).toHaveAttribute('aria-checked', 'true');
+    expect(back).toHaveFocus();
+    expect(back.tabIndex).toBe(0);
+  });
+});
+
 describe('LiveSettings — switch rows', () => {
   it('flips from the label text and describes its consequence', () => {
     render(<LiveSettings initialTab="you" />);

@@ -384,6 +384,13 @@ function ArmedActionButton({
   );
 }
 
+/** The WAI-ARIA radio pattern's arrow step: +1 forward, -1 back, 0 for any other key. */
+function radioStep(key: string): number {
+  if (key === 'ArrowRight' || key === 'ArrowDown') return 1;
+  if (key === 'ArrowLeft' || key === 'ArrowUp') return -1;
+  return 0;
+}
+
 /** A segmented picker (2–3 options) with an optional feature badge per option. */
 function SegRow({
   value,
@@ -407,12 +414,7 @@ function SegRow({
   // The handler sits on the options, not the group: the group itself must never be focusable
   // under this pattern, and a key press always reaches the focused option first anyway.
   const move = (e: React.KeyboardEvent<HTMLButtonElement>): void => {
-    const step =
-      e.key === 'ArrowRight' || e.key === 'ArrowDown'
-        ? 1
-        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-          ? -1
-          : 0;
+    const step = radioStep(e.key);
     if (!step) return;
     e.preventDefault();
     const next = (activeIndex + step + options.length) % options.length;
@@ -499,6 +501,11 @@ export function LiveSettings({
   const { style: studyStyle, newPerDay } = useStudyPrefs();
   const cardCounts = useCardCounts();
   const info = providerInfo(cfg.provider);
+  // The provider chips' roving tab stop; an unlisted provider leaves it on the first chip.
+  const providerIndex = Math.max(
+    0,
+    VISIBLE_PROVIDERS.findIndex((v) => v.id === cfg.provider),
+  );
   // What is actually stored, which may be empty from a deliberate clear. Nothing substitutes a
   // model here — an empty field means no model is chosen, and the readiness dot says so.
   const rawModel = cfg.models[cfg.provider] ?? '';
@@ -895,26 +902,36 @@ export function LiveSettings({
         {tab === 'model' && (
           <div className="settings-model-connect">
             {/* provider chips */}
+            {/* One provider is picked at a time, so this is a radio group: one tab stop, arrows
+                move the pick (the same pattern as SegRow). */}
             <div
               className="settings-provider-picker"
-              style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+              role="radiogroup"
               aria-label="Model providers"
             >
-              {VISIBLE_PROVIDERS.map((p) => {
+              {VISIBLE_PROVIDERS.map((p, i) => {
                 const active = p.id === cfg.provider;
                 return (
                   <button
                     key={p.id}
+                    type="button"
+                    role="radio"
+                    className="settings-provider-chip"
+                    aria-checked={active}
+                    tabIndex={i === providerIndex ? 0 : -1}
                     onClick={() => setLiveConfigV2({ provider: p.id })}
-                    style={{
-                      ...inputStyle,
-                      width: 'auto',
-                      cursor: 'pointer',
-                      borderColor: active ? 'var(--presence)' : 'var(--line)',
-                      boxShadow: active ? '0 0 0 1px var(--presence)' : 'none',
-                      opacity: active ? 1 : 0.7,
+                    onKeyDown={(e) => {
+                      const step = radioStep(e.key);
+                      if (!step) return;
+                      e.preventDefault();
+                      const next =
+                        (providerIndex + step + VISIBLE_PROVIDERS.length) %
+                        VISIBLE_PROVIDERS.length;
+                      setLiveConfigV2({ provider: VISIBLE_PROVIDERS[next].id });
+                      (
+                        e.currentTarget.parentElement?.children[next] as HTMLElement | undefined
+                      )?.focus();
                     }}
-                    aria-pressed={active}
                   >
                     {p.label}
                   </button>
