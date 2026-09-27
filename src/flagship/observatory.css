@@ -328,6 +328,18 @@
 .ob-universe {
   position: relative;
   aspect-ratio: 640 / 525;
+  /* The drawing's numerals are viewBox units, so they paint at (size × width ÷ ~683) — the box is
+     wider than the 640×560 view, so its HEIGHT sets the scale. Queried below. */
+  container-type: inline-size;
+}
+/* Under ~280px wide (a phone on its side holds the illustration to the window's height) the
+   numerals would paint under the 9px floor: 22 × 280 ÷ 683 = 9. The nodes and stops are the
+   picture; their numbers are a label on it, so they go rather than be squinted at. */
+@container (width < 280px) {
+  .ob-node text,
+  .ob-map-stop text {
+    display: none;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .ob-universe {
@@ -582,6 +594,10 @@
 .ob-map-stop text {
   fill: var(--ob-ink);
   font: 600 var(--fs-lg) var(--font);
+  /* Sized to its stop (r=22) in viewBox units, like `.ob-node text`: a type token is read as user
+     units here and shrank with the map. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
+  font-size: 24px;
 }
 .ob-detail-paper {
   fill: var(--ob-card);
