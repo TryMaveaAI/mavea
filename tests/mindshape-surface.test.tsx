@@ -208,6 +208,40 @@ describe('useMindShape', () => {
     expect(result.current.phase).toBe('listening'); // seeding stays live — it is not the settle
   });
 
+  it('never re-sends a failed seed for the same words — only new speech asks again', async () => {
+    vi.useFakeTimers();
+    const said = 'a learning roadmap for linear algebra and how to go viral with open source';
+    const { result } = renderHook(() => useMindShape(FAKE_CFG));
+    const settle = async () => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000); // well past the debounce
+      });
+    };
+    await act(async () => {
+      result.current.onTranscript(said);
+    });
+    await settle();
+    expect(settleMindShape).toHaveBeenCalledTimes(1); // the seed went out and came back empty
+
+    // The recogniser re-reports the same words (a final after the interims, a pause): no re-send.
+    for (let i = 0; i < 4; i++) {
+      await act(async () => {
+        result.current.onTranscript(said);
+      });
+      await settle();
+    }
+    expect(settleMindShape).toHaveBeenCalledTimes(1);
+
+    // Real new speech is a new input — one more seed.
+    await act(async () => {
+      result.current.onTranscript(
+        `${said} and then maybe a newsletter every single week for the whole year`,
+      );
+    });
+    await settle();
+    expect(settleMindShape).toHaveBeenCalledTimes(2);
+  });
+
   it('removeAtom drops the card and any link touching it', async () => {
     const seeded: MindShapeSpec = {
       center: 'c',
