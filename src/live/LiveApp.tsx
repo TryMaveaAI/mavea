@@ -2948,8 +2948,16 @@ export function LiveApp(): ReactElement {
       spokenLine: string | undefined,
     ): Promise<void> => {
       const estimateMs = beat.ms ?? 1700;
+      // The line is primed first so its synthesis runs while the card settles.
       const prepareStop = async (text: string): Promise<void> => {
         primeLine(text, 'mavea');
+        await settleStop();
+      };
+      // Bring the stop's card to rest in view before anything is said or drawn on it. Every stop
+      // centres here — the spotlight's own glide effect stands down for a spoken walk, so a stop
+      // that skipped this (one with a caption but no voice line) was lit wherever it happened to
+      // sit, sometimes half under the bar.
+      const settleStop = async (): Promise<void> => {
         if (spot) turn.setSpot(spot);
         await awaitFirstPaint(
           () => scrollRef.current,
@@ -3038,6 +3046,8 @@ export function LiveApp(): ReactElement {
         return;
       }
       if (!spokenLine) {
+        await settleStop();
+        if (bail()) return;
         applyStop(spot, line, idx);
         primeNextSpoken(idx);
         await waitQueueQuiet({
