@@ -46,8 +46,8 @@
   min-width: 0;
 }
 .canvas-header > .canvas-header-actions {
-  /* Reading + Focus/Everything + View-as-canvas + a Live headerSlot can all be present on the same
-     answer — that cluster doesn't shrink (buttons losing their labels reads worse than the row
+  /* The revision pill, a Live headerSlot, Expand sections, Guide me, the world chip and View as
+     canvas can all be present on the same answer — that cluster doesn't shrink (buttons losing their labels reads worse than the row
      wrapping), so on a narrow screen it drops to its own line under the title via .canvas-header's
      own flex-wrap instead of running past the card's edge. */
   flex: 0 0 auto;

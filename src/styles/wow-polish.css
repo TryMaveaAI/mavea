@@ -685,9 +685,9 @@
     animation: none;
   }
 }
-/* The rest of the answer, along the foot of the stage. Focus's rail is built as a tall column
-   for the side of a page; here it lies down. Only the axis changes — the entries, their live
-   miniatures, the roving tab stop and the arrow-key walking are all its own. */
+/* The rest of the answer, along the foot of the stage. FilmstripRail lays out as a tall column
+   by default; here it lies down. Only the axis changes — the entries, their live miniatures, the
+   roving tab stop and the arrow-key walking are all its own. */
 .lens-strip {
   /* Tile width as a UNITLESS number, because the miniature's scale has to be derived from it:
      FilmstripThumb renders a real card at a 340px design width and shrinks it with a transform,

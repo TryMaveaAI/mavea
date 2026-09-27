@@ -317,7 +317,7 @@ export function useTourDriver(opts: {
     const speakWhenUnlocked = (line: string): void => whenUnlocked(() => o.speak(line));
     // Put a canvas on screen WITHOUT its voice — no narration AND no model-authored tour, since a
     // baked tour would have the reveal walk speak its per-stop lines right over the chapter's coach
-    // line. A view-change chapter (canvas/focus), a montage flip, or a just-need-a-canvas seed is
+    // line. A view-change chapter (canvas), a montage flip, or a just-need-a-canvas seed is
     // visual; only the 'answer' chapter keeps the full narration + spoken walk (there it IS the voice).
     // `silent` keeps the RECORDED frame authentic, so a later replay or video cut has its narration.
     const showSilent = (f: { frame: TurnFrame; question: string }): void =>

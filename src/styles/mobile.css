@@ -185,7 +185,7 @@
    hides the dock. A host alone reaches too far the other way — the card's action cluster and a
    section's controls sit in the cell BESIDE the card, shown at rest on touch, and those are
    chrome. The hosts are every place a `Block` is drawn: the board grid (depth drawers included),
-   the Focus hero, a canvas-board node, the Study desk's card face, the Lens stage, the gallery
+   a canvas-board node, the Study desk's card face, the Lens stage, the gallery
    preview, the world's parts rail, and an exported figure's frame. Add the host here when you add
    a surface that renders blocks.
    ============================================================ */
