@@ -10,6 +10,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { useTimeout } from '../../../hooks/useTimeout';
 import { richInnerHtml } from '../../../lib/richText';
+import { trustedHtml, type SanitizedHtml } from '../../../lib/trustedTypes';
 import type { CodeblockProps, CodeLine } from './types';
 import { isRunnableLang, type SandboxResult } from '../code/sandbox';
 import { RunButton } from '../code/RunButton';
@@ -89,7 +90,7 @@ export function Codeblock({
   const [copied, setCopied] = useState(false);
   const [sandboxResult, setSandboxResult] = useState<SandboxResult | null>(null);
   // Shiki's rendered HTML, or null until it resolves / when we have no raw `code`.
-  const [shikiHtml, setShikiHtml] = useState<string | null>(null);
+  const [shikiHtml, setShikiHtml] = useState<SanitizedHtml | null>(null);
   const hi = new Set(highlight);
   // Reset the "copied" affordance after a beat — self-cancels on unmount.
   useTimeout(() => setCopied(false), copied ? 1600 : null);
@@ -161,7 +162,7 @@ export function Codeblock({
             // grammar, never raw model HTML. Line numbers come from a CSS counter on `.cb-shiki`.
             <div
               className={`cb-shiki ${lineNumbers ? 'cb-nums' : ''}`}
-              dangerouslySetInnerHTML={{ __html: shikiHtml }}
+              dangerouslySetInnerHTML={{ __html: trustedHtml(shikiHtml) }}
             />
           ) : (
             // Pre-highlight (loading) or highlighter-unavailable fallback: plain, readable,

@@ -1,3 +1,6 @@
+// First, before any library can reach a DOM sink: this is where the Trusted Types policies the
+// CSP names are created, including the `default` one third-party code falls back on.
+import './lib/trustedTypes';
 import { Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/styles.css';

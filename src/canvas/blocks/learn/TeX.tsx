@@ -9,6 +9,7 @@
 // rather than throwing. If the import fails (offline / jsdom) we fall back to the raw LaTeX as
 // plain, auto-escaped text.
 import { useEffect, useState } from 'react';
+import { trustedHtml, type SanitizedHtml } from '../../../lib/trustedTypes';
 
 interface TeXProps {
   /** The LaTeX source, e.g. "\\frac{a}{b}" or "\\begin{bmatrix}1&0\\\\0&1\\end{bmatrix}". */
@@ -21,7 +22,7 @@ interface TeXProps {
 
 export function TeX({ tex, display, label }: TeXProps) {
   // KaTeX's MathML string, or null until it resolves / when the module can't be loaded.
-  const [html, setHtml] = useState<string | null>(null);
+  const [html, setHtml] = useState<SanitizedHtml | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,12 +31,14 @@ export function TeX({ tex, display, label }: TeXProps) {
       try {
         const mod = await import('katex');
         const katex = mod.default ?? mod;
-        const out: string = katex.renderToString(tex, {
+        // trust:false refuses every command that could emit a URL, class or raw HTML, so the
+        // MathML KaTeX builds is sanitized by construction — which is what the brand records.
+        const out = katex.renderToString(tex, {
           displayMode: !!display,
           output: 'mathml',
           throwOnError: false,
           trust: false,
-        });
+        }) as SanitizedHtml;
         if (!cancelled) setHtml(out);
       } catch {
         // Offline / jsdom / unexpected error — leave html null so the raw-LaTeX fallback
@@ -62,7 +65,7 @@ export function TeX({ tex, display, label }: TeXProps) {
       aria-label={label ?? 'mathematical expression'}
       // KaTeX output (trust:false, MathML-only) is controlled, sanitized markup, not raw model
       // input — the documented-safe way to mount KaTeX from React.
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: trustedHtml(html) }}
     />
   );
 }

@@ -13,6 +13,8 @@
 // while keeping the formatting real content actually uses. A disallowed tag is unwrapped
 // (its text is kept), so sanitizing never silently drops a user's words, only unsafe markup.
 
+import { parseInert, trustedHtml, type SanitizedHtml } from './trustedTypes';
+
 /** Inline + light structural tags real content uses for emphasis and lists. No media, no
  *  links, no anything that carries a URL or a handler. */
 const ALLOWED_TAGS: ReadonlySet<string> = new Set([
@@ -106,7 +108,11 @@ function serialize(node: Node, depth: number): string {
  *  `dangerouslySetInnerHTML={{ __html: value }}` this replaced tolerated that by construction
  *  (the DOM's own innerHTML setter stringifies); coerce the same way here so sanitizing never
  *  regresses that robustness into a crash. */
-export function sanitizeRichText(input: string): string {
+export function sanitizeRichText(input: string): SanitizedHtml {
+  return sanitize(input) as SanitizedHtml;
+}
+
+function sanitize(input: string): string {
   if (input == null) return '';
   const raw = typeof input === 'string' ? input : String(input);
   if (!raw) return '';
@@ -114,11 +120,11 @@ export function sanitizeRichText(input: string): string {
   // whatever tag the cut lands inside.
   const str = raw.length > MAX_INPUT ? raw.slice(0, MAX_INPUT) : raw;
   if (!str.includes('<') && !str.includes('&')) return escapeText(str);
-  const doc = new DOMParser().parseFromString(str, 'text/html');
+  const doc = parseInert(str, 'text/html');
   return serialize(doc.body, 0);
 }
 
 /** Convenience for `dangerouslySetInnerHTML={richInnerHtml(value)}`. */
-export function richInnerHtml(input: string): { __html: string } {
-  return { __html: sanitizeRichText(input) };
+export function richInnerHtml(input: string): { __html: TrustedHTML | string } {
+  return { __html: trustedHtml(sanitizeRichText(input)) };
 }
