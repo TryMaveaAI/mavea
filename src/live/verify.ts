@@ -425,8 +425,8 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // rich answer should reach them, the way a hand-built demo does. We count DISTINCT specialized
   // types and flag a rich canvas that uses too few, so the repair pass rebuilds it around the
   // hero components the turn actually offered. Only fires on a genuinely large canvas, so a short,
-  // complete answer is never padded with exotic blocks it doesn't need. HARD (see HARD_ISSUE_CODES):
-  // code can't add a fitting specialized component under the real-data rule — only the model can.
+  // complete answer is never padded with exotic blocks it doesn't need. Code can't add a fitting
+  // specialized component under the real-data rule — only the model can.
   if (r.blocks.length >= RICH_CANVAS_MIN) {
     const specialized = specializedTypes(r.blocks);
     if (specialized.size < MIN_SPECIALIZED_TYPES) {
@@ -456,38 +456,10 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
 }
 
 /**
- * Issues a model CANNOT be cheaply replaced on — they signal a genuinely wrong
- * choice (a "trend" with one point, a comparison with one option, a lone single-card
- * canvas) that needs the model to rethink. Numeric contradictions are here too:
- * code cannot know WHICH of two disagreeing numbers is right, and silently
- * mutating data would be worse than the bug, so only the model can reconcile.
- * Everything else is fixed for free by autoFix below, so we only ever spend a
- * second model call on these.
- */
-export const HARD_ISSUE_CODES = new Set<string>([
-  'chart-too-short',
-  'compare-too-few',
-  'too-sparse',
-  'value-conflict',
-  'stack-sum',
-  // The staple-collapse: only the model can swap in a fitting specialized component (autoFix
-  // can't invent one under the real-data rule), so a re-ask is the only fix.
-  'low-variety',
-  // All-prose canvas (no chart/comparison/diagram at all): same deal — only the model can add a
-  // real-data visual, so re-ask rather than ship a wall of text.
-  'no-visual',
-]);
-
-export function hasHardIssue(issues: Issue[]): boolean {
-  return issues.some((i) => HARD_ISSUE_CODES.has(i.code));
-}
-
-/**
  * Deterministic, zero-cost repair of the COMMON, mechanical issues — no model
  * call. Normalizes breakdown shares to 100 and aligns chart series/labels lengths.
  * This is the "be smart, save calls" layer: it clears most checkConsistency hits
- * without a round-trip, leaving only the rare semantic ones (HARD_ISSUE_CODES) for
- * the model. Pure.
+ * without a round-trip. Pure.
  */
 /** Blocks that cannot be drawn honestly at all: a "trend" across a single point is not a trend,
  *  and a comparison holding one option compares nothing. Both mislead by existing, and neither can
@@ -588,8 +560,8 @@ export function autoFix(r: LiveResponse): LiveResponse {
 /**
  * The recovery re-ask: fired when the first pass produced nothing usable (or far too few blocks)
  * for an ask that deserves a full canvas — the failure that collapses a substantive question to a
- * single "Here's what I can say" text card. Unlike repairInstruction (which fixes a listed defect),
- * this re-asks for the WHOLE answer with a firm block floor, so a weak model that under-delivered or
+ * single "Here's what I can say" text card. It
+ * re-asks for the WHOLE answer with a firm block floor, so a weak model that under-delivered or
  * emitted unparseable/truncated JSON gets ONE concrete second chance before we degrade to text.
  * `floor` is the minimum block count the ask warrants.
  */

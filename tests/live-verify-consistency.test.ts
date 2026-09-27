@@ -7,13 +7,7 @@
 // labeled amounts across blocks and flags contradictions and part/total mismatches as
 // HARD issues — routed to the same one-shot self-correction pass as the sparse guard.
 // Numbers are NEVER silently mutated: only the model can know which figure is right.
-import {
-  autoFix,
-  checkConsistency,
-  hasHardIssue,
-  parseAmount,
-  HARD_ISSUE_CODES,
-} from '../src/live/verify';
+import { autoFix, checkConsistency, parseAmount } from '../src/live/verify';
 import type { LiveResponse } from '../src/engine/liveSchema';
 import type { Block } from '../src/data/conversation';
 
@@ -72,12 +66,6 @@ describe('parseAmount', () => {
 });
 
 describe('checkConsistency — cross-block value conflicts', () => {
-  it('lists value-conflict and stack-sum as HARD issue codes (repair, never mutate)', () => {
-    expect(HARD_ISSUE_CODES.has('value-conflict')).toBe(true);
-    expect(HARD_ISSUE_CODES.has('stack-sum')).toBe(true);
-    expect(HARD_ISSUE_CODES.has('donut-sum')).toBe(false); // mechanical, autoFix handles it
-  });
-
   it('flags the real rent-increase failure: same bucket, different dollars across blocks', () => {
     const r = resp([
       kpi('Your three buckets (revised)', [
@@ -98,7 +86,6 @@ describe('checkConsistency — cross-block value conflicts', () => {
     expect(conflict?.detail).toContain('future');
     expect(conflict?.detail).toContain('$1,800');
     expect(conflict?.detail).toContain('$1,100');
-    expect(hasHardIssue(issues)).toBe(true);
   });
 
   it('matches labels case-insensitively and ignoring punctuation', () => {
@@ -207,7 +194,6 @@ describe('checkConsistency — parts vs stated total', () => {
     ]);
     const issues = checkConsistency(r);
     expect(issues.some((i) => i.code === 'stack-sum')).toBe(true);
-    expect(hasHardIssue(issues)).toBe(true);
   });
 
   it('accepts pct-style segment values (sum ≈100) against a dollar total', () => {
@@ -244,7 +230,6 @@ describe('checkConsistency — parts vs stated total', () => {
     ]);
     const issues = checkConsistency(r);
     expect(issues.some((i) => i.code === 'donut-sum')).toBe(true);
-    expect(hasHardIssue(issues)).toBe(false); // soft — autoFix clears it for free
     const fixed = autoFix(r);
     const d = fixed.blocks.find((b) => b.type === 'donut');
     const sum = (d as Extract<Block, { type: 'donut' }>).props.rows.reduce((a, x) => a + x.pct, 0);
