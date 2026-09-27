@@ -8,7 +8,7 @@ import { join, relative } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAdapter } from '../src/live/providers';
 import { PROVIDERS } from '../src/live/providers/info';
-import { _resetVerifiedGenerationForTest } from '../src/live/providers/anthropic';
+import { forgetReadiness } from '../src/live/providers/readiness';
 import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 
@@ -45,7 +45,7 @@ const ask: LiveRequest = { system: 'sys', history: [], user: 'hello', thinkingLe
 /** Every id this codebase knows by name — none may appear in a request for another model. */
 const KNOWN_IDS = PROVIDERS.flatMap((p) => [p.defaultModel, ...p.suggestedModels]).filter(Boolean);
 
-beforeEach(() => _resetVerifiedGenerationForTest());
+beforeEach(() => forgetReadiness());
 afterEach(() => vi.unstubAllGlobals());
 
 describe('every request names the model the reader chose', () => {

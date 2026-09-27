@@ -74,10 +74,10 @@ export function ConnectStep(): ReactElement {
   const [checking, setChecking] = useState(false);
   const probeSeq = useRef(0);
 
-  const probe = useCallback(async () => {
+  const probe = useCallback(async (fresh = false) => {
     const seq = ++probeSeq.current;
     setChecking(true);
-    const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false });
+    const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false, fresh });
     if (seq === probeSeq.current) {
       setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode, detail: r.detail });
       setChecking(false);
@@ -225,7 +225,7 @@ export function ConnectStep(): ReactElement {
         <button
           type="button"
           className="status-strip-test"
-          onClick={() => void probe()}
+          onClick={() => void probe(true)}
           title="Re-check the connection"
         >
           Test

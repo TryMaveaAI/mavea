@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, vi } from 'vitest';
-import { _resetVerifiedGenerationForTest, anthropicAdapter } from '../src/live/providers/anthropic';
+import { anthropicAdapter } from '../src/live/providers/anthropic';
+import { forgetReadiness } from '../src/live/providers/readiness';
 import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
@@ -280,7 +281,7 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
   // only the latter) — so "Ready" must be earned by the endpoint a turn actually hits.
   const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
 
-  beforeEach(() => _resetVerifiedGenerationForTest());
+  beforeEach(() => forgetReadiness());
 
   /** Mocks fetch per-endpoint and records every call so tests can assert what was hit. */
   function mockProbeFetch(
@@ -338,6 +339,28 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     await getAdapter('anthropic').probe({ ...cfg, model: 'claude-sonnet-5' });
     await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
     expect(messages()).toBe(3);
+  });
+
+  it('re-runs the paid pass when the reader asks for a fresh check', async () => {
+    const calls = mockProbeFetch(200, 200);
+    await getAdapter('anthropic').probe(cfg);
+    await getAdapter('anthropic').probe(cfg, { fresh: true });
+    expect(calls.filter((c) => c.url.includes('/v1/messages'))).toHaveLength(2);
+  });
+
+  it('forgets a passed check once a turn is refused for its key or credit', async () => {
+    for (const status of [400, 401, 403]) {
+      forgetReadiness();
+      mockProbeFetch(200, 200);
+      expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+
+      // The key is revoked (or out of credit) between the check and the next turn.
+      const calls = mockProbeFetch(200, status);
+      await expect(anthropicAdapter.generate(req, cfg)).rejects.toThrow(String(status));
+      const verdict = await getAdapter('anthropic').probe(cfg);
+      expect(verdict.ok).toBe(false);
+      expect(calls.filter((c) => c.url.includes('/v1/messages'))).toHaveLength(2);
+    }
   });
 
   it('reports NOT ready when models is 200 but messages 401s (the production trap)', async () => {

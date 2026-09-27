@@ -23,7 +23,15 @@
 // web_search + structured output all coexist in one call.
 // Goes through the same-origin /llm/anthropic proxy (key in header, no CORS).
 import type { ModelConfig } from '../../types/mavea';
-import type { ProviderAdapter, LiveRequest, LiveProbe, DeltaFn, RawResult } from './types';
+import type {
+  ProviderAdapter,
+  LiveRequest,
+  LiveProbe,
+  DeltaFn,
+  ProbeOptions,
+  RawResult,
+} from './types';
+import { forgetVerified, isVerified, markVerified, readinessFingerprint } from './readiness';
 import {
   fetchWithTimeout,
   providerErrorDetail,
@@ -85,23 +93,6 @@ const noStructuredOutput = new Set<string>();
 const noExtendedCacheTtl = new Set<string>();
 const noCacheControl = new Set<string>();
 
-/** Fingerprints of endpoint + model + key combinations whose paid readiness check already passed
- *  this session. Settings and the Connect step re-check every time they open, and each paid pass
- *  is a real messages call on the reader's key, so a combination is billed once per session: after
- *  that the free models check alone confirms the key still works. Hashed so this set never holds a
- *  second copy of the key. */
-const verifiedGeneration = new Set<string>();
-
-async function generationFingerprint(base: string, cfg: ModelConfig): Promise<string | null> {
-  try {
-    const bytes = new TextEncoder().encode(`${base}\n${cfg.model}\n${cfg.apiKey ?? ''}`);
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return null; // no WebCrypto: check every time rather than trust an unverified pairing
-  }
-}
-
 /** The billed tokens a non-streamed messages reply reports, or nothing if it names none. */
 function probeUsage(body: string): { usage?: TokenUsage } {
   try {
@@ -113,11 +104,6 @@ function probeUsage(body: string): { usage?: TokenUsage } {
   } catch {
     return {};
   }
-}
-
-/** Test-only: forget which combinations were verified, so each case starts cold. */
-export function _resetVerifiedGenerationForTest(): void {
-  verifiedGeneration.clear();
 }
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
@@ -171,7 +157,7 @@ export const anthropicAdapter: ProviderAdapter = {
     nativeWebSearch: true,
   },
 
-  async probe(cfg: ModelConfig): Promise<LiveProbe> {
+  async probe(cfg: ModelConfig, opts: ProbeOptions = {}): Promise<LiveProbe> {
     try {
       const base = cfg.baseUrl ?? PROXY_BASE;
       // Pass 1 (free): GET /v1/models — catches an unreachable endpoint and an obviously bad
@@ -192,9 +178,10 @@ export const anthropicAdapter: ProviderAdapter = {
       // Pass 2 (paid, ~1 token): a minimal POST /v1/messages. /v1/models can return 200 while
       // the REAL generation endpoint 401s (Anthropic's browser detection blocks /v1/messages
       // only) — so "Ready" must come from the endpoint a turn actually uses. It runs once per
-      // endpoint + model + key per session; its tokens are reported so they reach the ledger.
-      const fingerprint = await generationFingerprint(base, cfg);
-      if (fingerprint && verifiedGeneration.has(fingerprint)) {
+      // endpoint + model + key per session unless the reader asks for a fresh check (see
+      // ./readiness); its tokens are reported so they reach the ledger.
+      const fingerprint = await readinessFingerprint(base, cfg);
+      if (fingerprint && !opts.fresh && isVerified(fingerprint)) {
         return { ok: true, model: true, statusCode: res.status };
       }
       const gen = await fetchWithTimeout(
@@ -218,7 +205,7 @@ export const anthropicAdapter: ProviderAdapter = {
           detail: await providerErrorDetail(gen),
         };
       const billed = probeUsage(await gen.text());
-      if (fingerprint) verifiedGeneration.add(fingerprint);
+      if (fingerprint) markVerified(fingerprint);
       return { ok: true, model: true, statusCode: gen.status, ...billed };
     } catch {
       return { ok: false, model: false };
@@ -448,6 +435,11 @@ export const anthropicAdapter: ProviderAdapter = {
         if (cacheKnob && !noCacheControl.has(cfg.model)) {
           noCacheControl.add(cfg.model);
           continue;
+        }
+        // Refused for its key or its credit: whatever readiness check passed for this combination
+        // no longer describes it, so Settings must not keep saying "Ready".
+        if (res.status === 400 || res.status === 401 || res.status === 403) {
+          forgetVerified(await readinessFingerprint(base, cfg));
         }
         throw new Error(`anthropic ${res.status}${detail}`);
       }

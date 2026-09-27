@@ -134,6 +134,12 @@ export interface LiveProbe {
   usage?: TokenUsage;
 }
 
+export interface ProbeOptions {
+  /** The reader pressed Recheck or Test: re-run a paid check this session already passed, rather
+   *  than answering from the remembered verdict. */
+  fresh?: boolean;
+}
+
 /** Optional per-delta metadata. `reasoning` marks a model "thinking" token (e.g. OpenRouter's
  *  `delta.reasoning`): surfaced so the UI can show a live "Thinking…" state, but NEVER folded
  *  into the answer JSON. */
@@ -183,7 +189,7 @@ export interface ProviderAdapter {
   /** Short, never-throws readiness probe. Answers "will a turn actually work?", so an adapter may
    *  spend a token to ask the generation endpoint itself — only call it when the user asked for a
    *  readiness verdict (setup, Recheck, a settled key/model change), never on speculation. */
-  probe(cfg: ModelConfig): Promise<LiveProbe>;
+  probe(cfg: ModelConfig, opts?: ProbeOptions): Promise<LiveProbe>;
   /**
    * Open the network path without asking for a verdict — for prewarming, where the result is
    * discarded and the only goal is a warm connection. Implement this wherever `probe` would cost

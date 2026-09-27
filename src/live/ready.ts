@@ -15,10 +15,10 @@ const TTS_PROBE_MS = 2_500;
 /** Readiness for the connected model + (optionally) the local TTS service. Never throws. */
 export async function checkLiveReady(
   cfg: ModelConfig,
-  opts: { tts?: boolean } = {},
+  opts: { tts?: boolean; fresh?: boolean } = {},
 ): Promise<{ llm: boolean; tts: boolean; model: boolean; statusCode?: number; detail?: string }> {
   const probeP = getAdapter(cfg.provider)
-    .probe(cfg)
+    .probe(cfg, { fresh: opts.fresh })
     .catch((): LiveProbe => ({ ok: false, model: false }));
   const ttsP =
     opts.tts === false

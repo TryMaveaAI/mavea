@@ -755,7 +755,7 @@ export function LiveSettings({
     applyPerfTier(resolveTierNow());
   }, []);
 
-  const probe = useCallback(async () => {
+  const probe = useCallback(async (fresh = false) => {
     const seq = ++probeSeq.current;
     setChecking(true);
     setProbeError(false);
@@ -763,7 +763,7 @@ export function LiveSettings({
       // The readiness probe lives in the catalog-free leaf ./ready — import it directly (no longer
       // via generateLive, which would drag the turn engine + catalog into the settings chunk).
       const { checkLiveReady } = await import('./ready');
-      const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false });
+      const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false, fresh });
       if (seq === probeSeq.current) {
         setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode });
       }
@@ -989,7 +989,7 @@ export function LiveSettings({
               <span style={{ color: 'var(--text-muted)' }}>·</span>
               <span style={{ color: 'var(--text-muted)' }}>{info.hint}</span>
               <button
-                onClick={() => void probe()}
+                onClick={() => void probe(true)}
                 disabled={checking}
                 style={{
                   marginLeft: 'auto',

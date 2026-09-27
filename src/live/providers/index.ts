@@ -16,9 +16,9 @@ import { recordUsage } from '../usage/ledger';
 function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
   const facade: ProviderAdapter = {
     ...adapter,
-    async probe(cfg) {
+    async probe(cfg, opts) {
       if (!providerGenerationAllowed(cfg)) return { ok: false, model: false };
-      const verdict = await ADAPTERS[id].probe(cfg);
+      const verdict = await ADAPTERS[id].probe(cfg, opts);
       if (verdict.usage) recordUsage('readiness-check', verdict.usage);
       return verdict;
     },
