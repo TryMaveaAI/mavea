@@ -308,7 +308,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'present',
     label: 'Present',
-    blurb: 'Fill the room — the chrome falls away, the mic stays live',
+    blurb: 'Fill the room — the chrome falls away and the answer takes the stage',
     group: 'This session',
     surface: 'live',
     tourChapter: 'present',

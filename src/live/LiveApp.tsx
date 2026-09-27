@@ -803,7 +803,7 @@ export function LiveApp(): ReactElement {
     open: false,
     spec: null,
   });
-  // Present mode: chrome falls away, the Focus stage fills the room, the mic stays live.
+  // Present mode: chrome falls away and the Focus stage fills the room; the mic stays as it was.
   // Frames born while presenting are room questions — the rail labels them honestly.
   const [presenting, setPresenting] = useState(false);
   const presentingRef = useRef(false);
@@ -5344,7 +5344,7 @@ export function LiveApp(): ReactElement {
   const shareMenu: TopbarMenuItem[] = [
     {
       label: 'Present',
-      blurb: 'Fill the room — the chrome falls away, the mic stays live',
+      blurb: 'Fill the room — the chrome falls away and the answer takes the stage',
       onClick: featureActions.present.run,
       preload: featureActions.present.preload,
       show: !!turn.spec,

@@ -58,7 +58,7 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
       ),
     ],
     share: [
-      inLive('Present', 'Fill the room — the chrome falls away, the mic stays live'),
+      inLive('Present', 'Fill the room — the chrome falls away and the answer takes the stage'),
       inLive('Export', 'Turn this answer into a presentation deck or a designed document'),
       inLive('Share', 'Share this conversation as a story'),
     ],
