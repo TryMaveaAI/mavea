@@ -344,7 +344,9 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
     const providerReason = msg
       .replace(new RegExp(`^${provider}\\s+${status}\\s*(?:—|-)?\\s*`, 'i'), '')
       .replace(/^[A-Z_]+:\s*/i, '')
-      .trim();
+      // The provider's own sentence ends however it ends; the line around it adds its own stop, so
+      // "demand. — try again." and "demand Mavéa already…" never reach the reader.
+      .replace(/[\s.!?;:,]+$/, '');
     // Only a refusal made before any work (503 overloaded, 529) is re-sent automatically. A timeout
     // or a server error may arrive after the model already ran and billed the ask, so those are
     // never re-sent, and their message must not claim a retry happened.
@@ -353,7 +355,7 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
         kind: 'http',
         status,
         message: providerReason
-          ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
+          ? `${label} returned ${status}: ${providerReason}. Mavéa already retried with backoff.`
           : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
       };
     }

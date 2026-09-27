@@ -760,6 +760,21 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
     expect(e.message).toContain('currently experiencing high demand');
     expect(e.message).not.toMatch(/temporarily overloaded or unavailable/i);
 
+    // One sentence stop between the provider's words and ours, whatever the provider ended with.
+    expect(e.message).toBe(
+      'Google returned 503: This model is currently experiencing high demand. Please try again ' +
+        'later. Mavéa already retried with backoff.',
+    );
+    for (const tail of ['', '.', '!', '. ']) {
+      const reason = `upstream connect error${tail}`;
+      const server = describeLiveError(new Error(`openai 500 — ${reason}`), 'openai').message;
+      expect(server).toBe('OpenAI returned 500: upstream connect error — try again.');
+      const busy = describeLiveError(new Error(`anthropic 529 — ${reason}`), 'anthropic').message;
+      expect(busy).toBe(
+        'Anthropic returned 529: upstream connect error. Mavéa already retried with backoff.',
+      );
+    }
+
     const bare = describeLiveError(new Error('anthropic 529'), 'anthropic');
     expect(bare).toMatchObject({ kind: 'http', status: 529 });
     expect(bare.message).toContain('Anthropic returned 529');
