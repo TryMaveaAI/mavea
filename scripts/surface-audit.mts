@@ -250,6 +250,7 @@ const MEASURE_SCRIPT = (
   // A declared fade: a mask that runs to transparent hides the overflow on purpose, the way a
   // line clamp does — the reader is shown an edge, not a cut.
   const fades = (style) => /gradient/.test(style.maskImage || '') || /gradient/.test(style.webkitMaskImage || '');
+  const modal = Array.from(document.querySelectorAll('[aria-modal="true"]')).find((d) => d.getBoundingClientRect().width > 0) ?? null;
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
@@ -384,7 +385,9 @@ const MEASURE_SCRIPT = (
       }
     }
 
-    if (CHECK.has('type')) {
+    // With a modal open, the modal IS the surface: what sits under its scrim is another surface's
+    // type system, and counting it made Ripple answer for the setup wizard's buttons.
+    if (CHECK.has('type') && (!modal || modal.contains(el))) {
       const tag = el.tagName.toLowerCase();
       // font-size: 0 is the icon-only-button idiom (the label is for assistive tech), not a size.
       const fs = Math.round(parseFloat(style.fontSize) * 2) / 2;
