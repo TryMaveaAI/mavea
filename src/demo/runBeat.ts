@@ -10,6 +10,8 @@ import type { DemoBeat } from './beats';
 /** Camera-glide pacing for the focus/canvas card walks (per card, ms). */
 const FLY_STEP_MS = 1300;
 const FLY_SETTLE_MS = 900;
+/** How long each card holds on the Lens stage before the next — long enough to read its notes. */
+const LENS_STEP_MS = 2600;
 
 function blockIds(frame: TurnFrame | null, cap: number): string[] {
   return (frame?.spec.blocks ?? [])
@@ -56,14 +58,10 @@ export function runBeat(
     case 'pen':
       after(b.atMs, () => o.drawPenOnFirstBlock());
       break;
-    case 'focus': {
-      after(b.atMs, () => o.setViewMode('focus'));
-      if (b.walk) {
-        const ids = blockIds(frame, 4);
-        ids.forEach((id, i) =>
-          after(b.atMs + FLY_SETTLE_MS + i * FLY_STEP_MS, () => o.setSpot(id)),
-        );
-      }
+    case 'lens': {
+      const ids = blockIds(frame, 1 + (b.walk ?? 0));
+      ids.forEach((id, i) => after(b.atMs + i * LENS_STEP_MS, () => o.openLens(id)));
+      after(b.atMs + ids.length * LENS_STEP_MS, () => o.closeLens());
       break;
     }
     case 'canvas': {
@@ -110,8 +108,8 @@ export function beatDurationMs(b: DemoBeat): number {
       return STUDY_ENTRANCE_MS + 3 * 1050 + 1000;
     case 'canvas':
       return FLY_SETTLE_MS + 3 * FLY_STEP_MS + 1600;
-    case 'focus':
-      return b.walk ? FLY_SETTLE_MS + 4 * FLY_STEP_MS + 1200 : 1600;
+    case 'lens':
+      return (2 + (b.walk ?? 0)) * LENS_STEP_MS;
     case 'export':
       return b.format === 'document' ? 4800 : 3800;
     case 'dashboard':

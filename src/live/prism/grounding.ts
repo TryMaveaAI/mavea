@@ -9,4 +9,4 @@ export {
   groundedPageOf,
   type GroundableClaim,
 } from '../ground/verbatim';
-export { snapQuoteToPage, makePageSnapper } from '../ground/snap';
+export { makePageSnapper } from '../ground/snap';

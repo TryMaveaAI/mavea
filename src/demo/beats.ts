@@ -19,8 +19,9 @@ export type DemoBeat =
   | { kind: 'mark'; atMs: number }
   /** Let Mavéa's real answer-annotation Pen draw on the current answer. */
   | { kind: 'pen'; atMs: number }
-  /** Enter Focus mode; with `walk`, spotlight the cards one by one. */
-  | { kind: 'focus'; atMs: number; walk?: boolean }
+  /** Open the Lens on the first card the way a reader does — its own "Look closer" control — then
+   *  step through `walk` more cards on the stage and return to the board. */
+  | { kind: 'lens'; atMs: number; walk?: number }
   /** Enter the spatial Canvas and fly the camera across the first few cards. */
   | { kind: 'canvas'; atMs: number }
   /** Open the export studio; optionally flip to a format and pick a template. */

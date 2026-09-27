@@ -76,6 +76,10 @@ export interface TourOps {
   setPaletteOpen: (on: boolean) => void;
   /** Visually press the Keep-going chip with this label (the tap the chapter then acts on). */
   pressKeepGoing: (label: string) => void;
+  /** Open the Lens on this card through its own "Look closer" control, as a reader would. */
+  openLens: (id: string) => void;
+  /** Close the Lens through its own "Back to the board" control. */
+  closeLens: () => void;
   /** Pin the answer's first card via its Ask affordance — the real point-and-ask gesture. */
   pinFirstBlock: () => void;
   /** Pin the answer's first `count` cards together, so one follow-up can ground on all of them —
@@ -155,27 +159,26 @@ export function montageSchedule(frameCount: number, durationMs: number): number[
   return Array.from({ length: frameCount }, (_, i) => MONTAGE_LEAD_IN_MS + i * each);
 }
 
-/** How long the "focusWalk" chapter holds on the normal, unblurred canvas before Focus mode dims
- *  everything but the spotlit card — the viewer needs to actually see the "everything" the chapter
- *  is about to transform, not have it dim out from under them the instant the chapter starts. */
-const FOCUS_HOLD_MS = 1500;
-/** A settle beat after Focus mode itself takes over, before the card-by-card walk begins. */
-const FOCUS_WALK_SETTLE_MS = 350;
-const FOCUS_WALK_MIN_CARD_MS = 900;
+/** How long the "lensWalk" chapter holds on the plain board before the first card opens — the
+ *  viewer needs to see the board the gesture starts from, not have a card fly up the instant the
+ *  chapter begins. */
+const LENS_HOLD_MS = 1500;
+/** The shortest a card may hold on the stage — long enough to read the notes beside it. */
+const LENS_MIN_CARD_MS = 2000;
+/** How many cards the chapter opens; the rest of the answer stays on the board. */
+const LENS_WALK_CARDS = 3;
 
-/** The focusWalk chapter's schedule: when Focus mode itself kicks in, and the per-card spotlight
- *  delays (ms from chapter entry) after it settles. Exported for its own unit test. */
-export function focusWalkSchedule(
+/** The lensWalk chapter's schedule: when each card opens on the stage (ms from chapter entry) and
+ *  when the Lens closes back to the board. Exported for its own unit test. */
+export function lensWalkSchedule(
   cardCount: number,
   durationMs: number,
-): { focusAt: number; spotlightAt: number[] } {
-  const walkStart = FOCUS_HOLD_MS + FOCUS_WALK_SETTLE_MS;
-  if (cardCount <= 0) return { focusAt: FOCUS_HOLD_MS, spotlightAt: [] };
-  const each = Math.max(FOCUS_WALK_MIN_CARD_MS, Math.floor((durationMs - walkStart) / cardCount));
-  return {
-    focusAt: FOCUS_HOLD_MS,
-    spotlightAt: Array.from({ length: cardCount }, (_, i) => walkStart + i * each),
-  };
+): { openAt: number[]; closeAt: number } {
+  const n = Math.min(cardCount, LENS_WALK_CARDS);
+  if (n <= 0) return { openAt: [], closeAt: LENS_HOLD_MS };
+  const each = Math.max(LENS_MIN_CARD_MS, Math.floor((durationMs - LENS_HOLD_MS) / (n + 0.5)));
+  const openAt = Array.from({ length: n }, (_, i) => LENS_HOLD_MS + i * each);
+  return { openAt, closeAt: LENS_HOLD_MS + n * each };
 }
 
 // The 'listen' chapter's scripted ramble — each line trips a different local-extractor heuristic
@@ -429,8 +432,6 @@ export function useTourDriver(opts: {
       after(3900, () => o.drawPenTourStep('reason'));
       // Let the complete marked-up answer breathe before autoplay is allowed to move on.
       after(7200, () => o.setSpot(null));
-    } else if (a.kind === 'focus') {
-      after(500, () => o.setViewMode('focus'));
     } else if (a.kind === 'canvas') {
       const f = tourFrame(a.convoId);
       if (f) showSilent(f);
@@ -446,15 +447,15 @@ export function useTourDriver(opts: {
         .slice(0, 3);
       ids.forEach((id, i) => after(2700 + i * 1900, () => o.setSpot(id)));
       after(2700 + ids.length * 1900, () => o.setSpot(null));
-    } else if (a.kind === 'focusWalk') {
+    } else if (a.kind === 'lensWalk') {
       const f = tourFrame(a.convoId);
       if (f) showSilent(f);
-      // See focusWalkSchedule for why Focus mode itself waits (the hold) before the card-by-card
-      // walk starts.
+      // The chapter performs the reader's own gesture: each card opens through its "Look closer"
+      // control, holds long enough to read its notes, and the Lens closes back to the board.
       const ids = (f?.frame.spec.blocks ?? []).map((b) => b.id).filter((id): id is string => !!id);
-      const { focusAt, spotlightAt } = focusWalkSchedule(ids.length, ch.durationMs);
-      after(focusAt, () => o.setViewMode('focus'));
-      ids.forEach((id, i) => after(spotlightAt[i], () => o.setSpot(id)));
+      const { openAt, closeAt } = lensWalkSchedule(ids.length, ch.durationMs);
+      openAt.forEach((t, i) => after(t, () => o.openLens(ids[i])));
+      if (openAt.length > 0) after(closeAt, () => o.closeLens());
     } else if (a.kind === 'listen') {
       // Watch Me Think, for real: open the live map, then "think out loud" — each scripted thought
       // types into the real composer and banks into the map, so atoms bloom as the rambling goes.

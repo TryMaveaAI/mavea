@@ -28,13 +28,12 @@ export type TourAction =
   | { kind: 'penDemo' } // draw with Mavéa's real answer-annotation Pen
   | { kind: 'ask' } // point at a card's Ask affordance (needs a canvas)
   | { kind: 'askMulti' } // select two cards and compose one grounded follow-up across both
-  | { kind: 'focus' } // setViewMode('focus')
   | { kind: 'listen' } // Watch-me-think (spotlight/explain)
   | { kind: 'memory' } // fire the "saved to memory" face glow
   | { kind: 'atlas' } // seed + open Atlas (explored topics as a wanderable place)
   | { kind: 'prism' } // open a baked Prism analysis of a real public document
   | { kind: 'canvas'; convoId: string } // seed a board answer, then flip it into the spatial Canvas
-  | { kind: 'focusWalk'; convoId: string } // seed an answer, enter Focus, walk the spotlight card-by-card
+  | { kind: 'lensWalk'; convoId: string } // seed an answer, then open cards in the Lens as a reader does
   | { kind: 'flashcards' } // turn a card into a flashcard (the capture flow)
   | { kind: 'course' } // seed + open a real course lesson in-place (the CourseRail over its canvas)
   | { kind: 'connect' } // open the real Model settings with all five providers + the BYOK field
@@ -279,19 +278,18 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'See the visual range',
   },
   {
-    id: 'focus',
-    title: 'One card at a time',
+    id: 'lens',
+    title: 'Look closer',
     mode: 'explain',
-    coach: 'Feeling overwhelmed? Focus puts one card center stage, one at a time.',
-    // No spotlight: Focus is something the walkthrough SHOWS rather than a control to point at —
-    // the ring would have nothing to sit on now the view switch is a single door to the desk.
+    coach: 'Want a closer look? Click any card and it opens on its own, with my notes beside it.',
+    // No spotlight: the chapter performs the gesture itself — it presses a card's own "Look
+    // closer" control — so the ring would only sit on top of the thing being shown.
     spotlight: undefined,
-    action: { kind: 'focusWalk', convoId: 'money' },
-    // Room for the hold-then-transform beat before Focus dims the canvas (see useTourDriver's
-    // 'focusWalk' handling) plus the per-card walk after it.
+    action: { kind: 'lensWalk', convoId: 'money' },
+    // Room to see the plain board first, then a few cards on the stage (see lensWalkSchedule).
     durationMs: 11000,
-    glyph: '🎯',
-    hook: 'One card at a time, center stage',
+    glyph: '🔍',
+    hook: 'Click any card to look closer',
   },
   {
     id: 'think',

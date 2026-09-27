@@ -127,8 +127,8 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
     steps: [
       {
         ask: "Explain how OAuth login works, step by step. I'm adding it to our app.",
-        beats: [{ kind: 'focus', atMs: 1200, walk: true }],
-        note: 'Focus mode: one card at a time, everything else dims.',
+        beats: [{ kind: 'lens', atMs: 1200, walk: 2 }],
+        note: 'Click any card to look closer. Mavéa’s notes sit right beside it.',
         expect: { minBlocks: 3, suggests: true },
       },
       {

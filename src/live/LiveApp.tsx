@@ -2310,6 +2310,17 @@ export function LiveApp(): ReactElement {
       btn.classList.add('kg-tour-press');
       window.setTimeout(() => btn.classList.remove('kg-tour-press'), 620);
     },
+    // The replay opens the Lens the way a reader does, by pressing the card's own control, so it
+    // shows the gesture the app actually offers rather than a view it no longer has a door to.
+    openLens: (id) => {
+      const card = document.querySelector(`[data-spot-id="${CSS.escape(id)}"]`);
+      card?.querySelector<HTMLButtonElement>('.block-lens')?.click();
+    },
+    closeLens: () => {
+      document
+        .querySelector<HTMLButtonElement>('.zoom-sheet [aria-label="Back to the board"]')
+        ?.click();
+    },
     pinFirstBlock: () => {
       // Timed tour actions can run after showFrame has replaced the canvas. Read the live ref,
       // not the render-time closure captured when the chapter began, so Ask always selects the
