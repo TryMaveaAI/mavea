@@ -25,6 +25,32 @@ const CLIP = new Set(['hidden', 'clip', 'auto', 'scroll']);
  *  under it; past that point the host scrolls the remainder rather than paint the unreadable. */
 const LEGIBLE_FLOOR_PX = 9;
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** What one unit of `el`'s font-size paints at on screen. Inside an SVG the size is in USER
+ *  units, so the element's own screen CTM says what they come to (a chart drawn at 2.4x makes
+ *  8 units 19px; one drawn small makes them a speck). Everywhere else it is `rendered`, the scale
+ *  every ancestor applies to the host. The CTM already carries those ancestors. */
+function unitPx(el: Element, rendered: number): number {
+  const ctm = (el as Partial<SVGGraphicsElement>).getScreenCTM;
+  if (el.namespaceURI === SVG_NS && typeof ctm === 'function') {
+    const m = ctm.call(el);
+    if (m) return Math.hypot(m.a, m.b);
+  }
+  return rendered;
+}
+
+/** How many characters of text `el` holds DIRECTLY — its own text nodes, not its children's. A
+ *  label set as `Revenue <b>up</b>` carries its own words beside an element, and a walk that
+ *  only read elements with no children never saw them. */
+function ownChars(el: Element): number {
+  let n = 0;
+  for (let c = el.firstChild; c; c = c.nextSibling) {
+    if (c.nodeType === Node.TEXT_NODE) n += (c.nodeValue ?? '').trim().length;
+  }
+  return n;
+}
+
 /** The nearest ancestor that bounds this box's height: a scroller, or any clipped element whose
  *  height is capped. Null when nothing above the box is bounded — the block may run as tall as
  *  it likes there, so there is no height to fit. */
@@ -170,28 +196,32 @@ export function FitBox({
         el.style.webkitLineClamp = 'unset';
       }
 
-      // Read phase: measure with clipping neutralized, no writes in between. The smallest type
-      // rides along in the same walk: it is what the legibility floor is measured against.
+      // What one CSS px of this box paints at, after every ancestor's own scale (the Study's
+      // desk, a dimmed card): the floor is a promise about the retina, not the stylesheet.
+      const rendered = h.offsetWidth ? h.getBoundingClientRect().width / h.offsetWidth : 1;
+      // Read phase: measure with clipping neutralized, no writes in between. The smallest type,
+      // in the px it PAINTS at, rides along in the same walk: it is what the legibility floor is
+      // measured against. Text nobody can see (a faded label, a hidden layer) sets no floor.
       let needW = i.scrollWidth;
       const needH = i.scrollHeight;
-      let minFont = Infinity;
+      let minPx = Infinity;
       // The body size is the one most of the words are set in — a weighted mode, so a heading
       // and a badge cannot pull it either way.
       const words = new Map<number, number>();
       for (const el of all) {
         if (el.scrollWidth > needW) needW = el.scrollWidth;
-        if (fitHeight && el.childElementCount === 0) {
-          const chars = (el.textContent ?? '').trim().length;
-          if (chars > 1) {
-            const fs = parseFloat(getComputedStyle(el).fontSize);
-            if (fs > 0 && fs < minFont) minFont = fs;
-            if (fs > 0) words.set(fs, (words.get(fs) ?? 0) + chars);
-          }
+        if (!fitHeight) continue;
+        const chars = ownChars(el);
+        if (chars <= 1) continue;
+        if (el.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) === false) {
+          continue;
         }
+        const px =
+          Math.round(parseFloat(getComputedStyle(el).fontSize) * unitPx(el, rendered) * 10) / 10;
+        if (!(px > 0)) continue;
+        if (px < minPx) minPx = px;
+        words.set(px, (words.get(px) ?? 0) + chars);
       }
-      // What one CSS px of this box paints at, after every ancestor's own scale (the Study's
-      // desk, a dimmed card): the floor is a promise about the retina, not the stylesheet.
-      const rendered = h.offsetWidth ? h.getBoundingClientRect().width / h.offsetWidth : 1;
       let availH = Infinity;
       if (fitHeight) {
         const box = boundedAncestor(h);
@@ -222,11 +252,11 @@ export function FitBox({
       // width is what the box has to hold, not its height at full width times the scale. Read
       // while the clips are still neutralized and the transform is still off.
       let grown: { k: number; needH: number } | null = null;
-      let bodyFont = 0;
+      let bodyPx = 0;
       let bodyChars = 0;
-      for (const [fs, chars] of words) if (chars > bodyChars) [bodyFont, bodyChars] = [fs, chars];
-      if (fitHeight && readingPx && bodyFont > 0 && Number.isFinite(availH)) {
-        const want = Math.min(GROW_MAX, readingPx / (bodyFont * (rendered || 1)));
+      for (const [px, chars] of words) if (chars > bodyChars) [bodyPx, bodyChars] = [px, chars];
+      if (fitHeight && readingPx && bodyPx > 0 && Number.isFinite(availH)) {
+        const want = Math.min(GROW_MAX, readingPx / bodyPx);
         if (want > 1.01) {
           const prevW = i.style.width;
           for (const kc of [
@@ -273,8 +303,8 @@ export function FitBox({
       // The legibility floor: the smallest type in the block, as it will actually paint, stays
       // at or above the floor. A width fit keeps its old hard stop; a height fit that cannot
       // get there legibly stops at the floor and leaves the rest to the host's scroll.
-      if (fitHeight && Number.isFinite(minFont)) {
-        const floor = LEGIBLE_FLOOR_PX / (minFont * (rendered || 1));
+      if (fitHeight && Number.isFinite(minPx)) {
+        const floor = LEGIBLE_FLOOR_PX / minPx;
         raw = Math.max(raw, Math.min(1, floor));
       }
       const next = Math.max(0.4, Math.floor(raw * 1000) / 1000); // floor so we never shrink to nothing
