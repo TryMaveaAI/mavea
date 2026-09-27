@@ -3,11 +3,13 @@
 // line more without moving a single box the ResizeObserver watches — so the fit has to re-run on a
 // re-cast, or the card's lower edge is solved against the previous sentence and lands in the
 // handwriting. jsdom has no layout, so the boxes the hook reads are stated here.
-import { STAGE_H_MIN } from '../src/canvas/study/slots';
+import { COMPACT_H, STAGE_H_MIN } from '../src/canvas/study/slots';
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useStudyScale } from '../src/canvas/study/useStudyScale';
 
+// A window tall enough to keep the desk (over COMPACT_H), holding a 760px canvas column.
+const WINDOW_H = 900;
 const VIEWPORT_H = 760;
 
 class InertResizeObserver {
@@ -61,7 +63,7 @@ describe('the Study desk re-fits when the takeaway does', () => {
 
   beforeEach(() => {
     globalThis.ResizeObserver = InertResizeObserver as unknown as typeof ResizeObserver;
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: VIEWPORT_H });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: WINDOW_H });
   });
 
   afterEach(() => {
@@ -117,11 +119,31 @@ describe('the Study desk re-fits when the takeaway does', () => {
     expect(stage.style.getPropertyValue('--study-front-max')).toBe(first);
   });
 
-  it('keeps the authored desk on a wide but short laptop viewport', () => {
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 500 });
-    const stage = mountStage(() => 70);
+  it('gives a wide but short laptop window the flat column, so a card is read whole', () => {
+    // At the floored desk a real card needs ~1.5× the front slot's cap in a 730px window: it
+    // scrolled inside itself with Mavéa's note across the desk. The flat column shows it whole
+    // with the note beside it.
+    for (const height of [657, 730, 789, COMPACT_H]) {
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+      const stage = mountStage(() => 70);
 
-    renderHook(() => useStudyScale({ current: stage }, 'short-laptop'));
+      renderHook(() => useStudyScale({ current: stage }, `short-laptop-${height}`));
+
+      expect(stage.hasAttribute('data-compact')).toBe(true);
+      expect(stage.style.getPropertyValue('--study-scale')).toBe('1');
+      expect(stage.style.getPropertyValue('--study-front-max')).toBe('');
+      document.body.replaceChildren();
+    }
+  });
+
+  it('keeps the authored desk in a tall window whose canvas column is short', () => {
+    // A tall window can still hand the Study a short column (a docked panel). The desk holds its
+    // floor height there and the canvas scrolls it, rather than swapping the UI.
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: COMPACT_H + 1 });
+    const stage = mountStage(() => 70);
+    stage.closest<HTMLElement>('.canvas-scroll')!.getBoundingClientRect = () => box(0, 500, 1700);
+
+    renderHook(() => useStudyScale({ current: stage }, 'short-column'));
 
     expect(stage.hasAttribute('data-compact')).toBe(false);
     expect(stage.style.getPropertyValue('--study-scale')).not.toBe('1');

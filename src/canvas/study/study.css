@@ -1936,10 +1936,11 @@
 }
 
 /* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
-   Under 940px of container the 3-D composition has nothing to offer but horizontal cropping.
-   Height never selects this alternate UI: a wide, short laptop keeps the real Study and spends
-   its decorative floor band first. A genuinely narrow Study reflows to a flat reading column — the front card full-width,
-   Mavéa's note beneath it, and one unbroken beat bar. Background objects keep their names in the
+   Under COMPACT_W of container the 3-D composition has nothing to offer but horizontal cropping,
+   and in a window at or under COMPACT_H (820) tall the floored desk cannot show a real card whole —
+   it scrolled inside itself with Mavéa's note across the desk. Either one reflows to a flat
+   reading column: the front card whole, Mavéa's note beside it where there is width (beneath it
+   where there is not), and one unbroken beat bar. Background objects keep their names in the
    navigator, never as unreadable miniatures. The scale hook publishes the attribute because a
    container query cannot switch its own stage from fixed height to content height. */
 .study-stage[data-compact] {

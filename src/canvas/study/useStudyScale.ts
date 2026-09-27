@@ -6,6 +6,7 @@
 // cost, and it disconnects with the stage.
 import { useLayoutEffect, type RefObject } from 'react';
 import {
+  COMPACT_H,
   COMPACT_W,
   DESK_H,
   FIT_H,
@@ -60,8 +61,8 @@ export function useStudyScale(
       // screen has no such cap (study.css: `height: 100dvh; max-height: none`), and applying one
       // here is what made SCALE_MAX_FULL unreachable.
       // Below STAGE_H_MIN the authored objects physically cannot stay both readable and in-frame.
-      // Keep the real desk at that floor and let the existing canvas scroller expose the rest;
-      // changing to the flat fallback is a WIDTH decision, never a short-window surprise.
+      // Keep the real desk at that floor and let the existing canvas scroller expose the rest
+      // (only a tall window with a short column gets here; a short window is the flat column).
       const h = Math.max(
         0,
         full ? availableH : Math.max(STAGE_H_MIN, Math.min(STAGE_H_MAX, availableH)),
@@ -72,11 +73,11 @@ export function useStudyScale(
       // itself kept a desk-sized height, leaving a page of empty parchment underneath. The
       // observer already measures this box; publishing the state as an attribute is what lets
       // the stage restyle itself.
-      // Height alone must not replace the Study with a different UI. Compact laptops are often
-      // short but still wide enough for the authored desk; the scale floor + shallow treatment
-      // deliberately sacrifice decorative floor space there. Only a genuinely narrow container
-      // uses the flat reading column.
-      const compact = !full && w <= COMPACT_W;
+      // Either axis can retire the desk. A narrow container crops Mavéa's note off the desk's
+      // right edge; a short window (the ladder's 820 rung, COMPACT_H) leaves the floored desk too
+      // little height to show a real card whole, so it scrolled inside itself with the note
+      // across the desk from it. The flat column shows the card whole with its notes beside it.
+      const compact = !full && (w <= COMPACT_W || window.innerHeight <= COMPACT_H);
       stage.toggleAttribute('data-compact', compact);
       if (compact) {
         stage.style.removeProperty('--study-stage-height');

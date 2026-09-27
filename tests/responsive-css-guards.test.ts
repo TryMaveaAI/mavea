@@ -3,8 +3,10 @@
 // scanning the source text, the same idiom canvas-svg-label-patterns.test.ts uses for a layout bug
 // that's likewise invisible to a jsdom render.
 import { fontSizeFloorPx } from './helpers/fluidType';
+import { BREAKPOINT_HEIGHTS } from '../scripts/breakpoints.mjs';
 import {
   CARD_W,
+  COMPACT_H,
   COMPACT_W,
   FRONT_SLOT,
   STUDY_FIT_FLOOR,
@@ -150,10 +152,18 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(scene).toMatch(/COMPACT_W = 1120/);
   });
 
-  it('does not replace a wide Study with the flat fallback merely because the window is short', () => {
+  it('gives a short window the flat column too, at a rung of the height ladder', () => {
+    // The floored desk in a laptop-height window scrolled a real card inside itself with the note
+    // across the desk from it; the flat column reads it whole with the note beside it. The cutoff
+    // is a named rung, so it moves with the ladder and never with a guess.
     const scale = read('src/canvas/study/useStudyScale.ts');
-    expect(scale).toMatch(/const compact = !full && w <= COMPACT_W/);
-    expect(scale).not.toMatch(/const compact =[^;]*\|\|[^;]*h/);
+    expect(scale).toMatch(
+      /const compact = !full && \(w <= COMPACT_W \|\| window\.innerHeight <= COMPACT_H\)/,
+    );
+    expect(BREAKPOINT_HEIGHTS).toContain(COMPACT_H);
+    // 1440×789, 1536×730 and 1366×657 take the column; 1728×993 and 1920×955 keep the desk.
+    for (const h of [657, 730, 789]) expect(h).toBeLessThanOrEqual(COMPACT_H);
+    for (const h of [955, 993]) expect(h).toBeGreaterThan(COMPACT_H);
   });
 
   it('returns the compact front card to flow POSITIONED and with the desk slot cleared', () => {
