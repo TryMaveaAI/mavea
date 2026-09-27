@@ -24,7 +24,9 @@
 // back to their own documented policy (secrets → session-only storage, never plaintext; content →
 // plaintext-on-disk beats losing the save, see contentVault.ts).
 
-const DB_NAME = 'mavea-key-vault';
+/** Exported so "forget this device" can delete the database by its real name. */
+export const KEY_VAULT_DB_NAME = 'mavea-key-vault';
+const DB_NAME = KEY_VAULT_DB_NAME;
 const STORE = 'vault';
 /** The BYOK provider/search keys — kept separate from content so compromising one key's on-disk
  *  ciphertext never exposes the other. See contentVault.ts for the content-side key. */
@@ -93,6 +95,12 @@ function getKey(keyId: string): Promise<CryptoKey> {
   });
   keyPromises.set(keyId, pending);
   return pending;
+}
+
+/** Drop every cached device key. Deleting the vault database on its own is not enough: a key
+ *  already resolved in memory would keep sealing and unsealing until the page went away. */
+export function forgetVaultKeys(): void {
+  keyPromises.clear();
 }
 
 function toBase64(bytes: Uint8Array): string {

@@ -334,6 +334,7 @@ function ArmedActionButton({
   confirmLabel,
   onConfirm,
   variant = 'pill',
+  disabled = false,
 }: {
   label: string;
   confirmLabel: string;
@@ -341,6 +342,8 @@ function ArmedActionButton({
   /** 'link' wears the surrounding text's look — for an armed action that lives in a row of
    *  links rather than beside the other controls. */
   variant?: 'pill' | 'link';
+  /** While the confirmed action is still running. */
+  disabled?: boolean;
 }): ReactElement {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
@@ -367,6 +370,7 @@ function ArmedActionButton({
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => {
         if (!armed) {
           setArmed(true);
@@ -376,7 +380,7 @@ function ArmedActionButton({
         onConfirm();
       }}
       style={{
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         font: 'inherit',
         ...(variant === 'link' ? link : pill),
       }}
@@ -539,6 +543,32 @@ export function LiveSettings({
   const [backupBusy, setBackupBusy] = useState<'export' | 'import' | null>(null);
   const [backupNote, setBackupNote] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
+  const [forgetBusy, setForgetBusy] = useState(false);
+  const [forgetError, setForgetError] = useState<string | null>(null);
+
+  // Loaded on the click: the sweep touches every store module and almost nobody presses it. A
+  // clean sweep reloads from the landing so nothing in memory outlives it; a partial one stays on
+  // this screen and says what survived, since the vault key still being there is the one thing
+  // the reader must not walk away believing gone.
+  const handleForget = useCallback(async () => {
+    setForgetBusy(true);
+    setForgetError(null);
+    try {
+      const { forgetDevice, reloadToLanding } = await import('./forgetDevice');
+      const { failed } = await forgetDevice();
+      if (failed.length > 0) {
+        setForgetError(
+          `Some of it could not be removed (${failed.join(', ')}). Close any other Mavéa tabs and try again.`,
+        );
+        return;
+      }
+      reloadToLanding();
+    } catch {
+      setForgetError('Forgetting did not finish. Close any other Mavéa tabs and try again.');
+    } finally {
+      setForgetBusy(false);
+    }
+  }, []);
   // Board-grade modal behavior, matching the other Live overlays: trap focus inside the dialog
   // and close on Escape (it previously closed only on a backdrop click — a keyboard/a11y gap).
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -1572,6 +1602,27 @@ export function LiveSettings({
               {backupError && (
                 <span className="settings-import-error" role="alert">
                   {backupError}
+                </span>
+              )}
+            </div>
+            <div
+              className="settings-transfer-row"
+              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}
+              aria-busy={forgetBusy}
+            >
+              <ArmedActionButton
+                label={forgetBusy ? 'Forgetting…' : 'Forget everything on this device'}
+                confirmLabel="Confirm: forget everything on this device"
+                disabled={forgetBusy}
+                onConfirm={() => void handleForget()}
+              />
+              <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                Removes saved keys, the encryption key that sealed them, and every Mavéa cache and
+                store in this browser. A backup taken earlier still holds what was there.
+              </span>
+              {forgetError && (
+                <span className="settings-import-error" role="alert">
+                  {forgetError}
                 </span>
               )}
             </div>
