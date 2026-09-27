@@ -278,22 +278,6 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-
-/* ===================== HERO ===================== */
-.fl-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 760px;
-  margin: 0 auto;
-  padding-top: 30px;
-}
-/* Room for the hero mascot — she's the opening statement now (the old eyebrow line repeated
-   the H1), so give the full jelly, trailing curtains included, space to hang. */
-.fl-hero-orbspace {
-  height: clamp(118px, 16dvh, 154px);
-}
 .fl-hero-title {
   font-family: var(--font-voice);
   font-weight: 400;
@@ -323,145 +307,11 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.fl-hero-lede {
-  margin-top: 16px;
-  max-width: 60ch;
-  font-size: var(--fs-lg);
-  line-height: 1.52;
-  color: var(--text-secondary);
-  text-wrap: pretty;
-}
-
-/* hero composer */
-.fl-composer {
-  /* max-width keeps the pill inside the section's padding box — 94vw alone ignores the 48px
-     of section gutter and near-full-bleeds at 320px. */
-  width: min(680px, 94vw);
-  max-width: 100%;
-  margin-top: 22px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 8px 8px 20px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  /* Frosted glass over the hero flow, biased to the solid surface so the bar stays crisp
-     and high-contrast in light mode (a pure glass tint washes out on the pale page). The
-     blur+saturate pair lives in one local var — a compound can't read the shared blur tokens
-     (`none saturate(...)` is invalid), and perf-lite already kills this property wholesale. */
-  --fl-composer-frost: blur(20px) saturate(1.1);
-  background: color-mix(in oklab, var(--surface-elevated) 86%, transparent);
-  backdrop-filter: var(--fl-composer-frost);
-  -webkit-backdrop-filter: var(--fl-composer-frost);
-  box-shadow: var(--shadow-floating);
-}
-/* the input itself has no border to hang a ring on, so the whole pill takes it — the input's
-   own outline:none (below) would otherwise silently defeat the app-wide :focus-visible rule
-   with no replacement, leaving the main composer with no visible keyboard focus at all. */
-.fl-composer:focus-within {
-  outline: 2px solid var(--presence-soft);
-  outline-offset: 2px;
-}
-.fl-composer-field {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-}
-.fl-composer-input {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  outline: none;
-  font: var(--fs-lg) var(--font);
-  color: var(--text-primary);
-}
-/* The example prompt is an overlay span, not the placeholder attribute, so each rotation
-   cross-fades in (keyed remount) instead of hard-cutting every few seconds. */
-.fl-composer-ghost {
-  position: absolute;
-  inset: 0;
-  align-content: center;
-  color: var(--text-muted);
-  font: var(--fs-lg) var(--font);
-  pointer-events: none;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  animation: fl-ghosttext 260ms var(--ease-out);
-}
 @keyframes fl-ghosttext {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
-}
-.fl-composer-actions {
-  display: flex;
-  gap: 8px;
-  flex: none;
-}
-.fl-composer-btn {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    transform var(--m-fast);
-}
-.fl-composer-btn svg {
-  width: 18px;
-  height: 18px;
-}
-.fl-composer-btn:hover {
-  background: color-mix(in oklab, var(--presence) 18%, transparent);
-  color: var(--text-primary);
-}
-.fl-composer-btn.primary {
-  border: none;
-  color: #fff;
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-  box-shadow: 0 8px 20px -6px var(--glow-presence);
-}
-.fl-composer-btn.primary:hover {
-  transform: scale(1.06);
-}
-.fl-hero-hint {
-  font-family: var(--font-data);
-  margin-top: 14px;
-  font-size: var(--fs-sm);
-  color: var(--text-faint);
-}
-.fl-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 9px;
-  margin: 14px 0 0;
-}
-.fl-chip {
-  padding: 8px 14px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  font: var(--fs-sm) var(--font);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    color var(--m-fast);
-}
-.fl-chip:hover {
-  background: color-mix(in oklab, var(--presence) 16%, transparent);
-  color: var(--text-primary);
 }
 
 /* Explore dropdown — nav entry that reveals standalone features without a conversation */
@@ -2420,98 +2270,6 @@
   animation: spin 0.8s linear infinite;
 }
 
-/* ===================== TWO SURFACES ===================== */
-.fl-surfaces {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-.fl-surface {
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
-}
-.fl-surface.live {
-  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
-  background: linear-gradient(
-    160deg,
-    color-mix(in oklab, var(--presence) 18%, transparent),
-    color-mix(in oklab, var(--insight) 8%, transparent)
-  );
-}
-.fl-surface-tag {
-  font-family: var(--font-data);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.fl-surface-tag.insight {
-  color: var(--fl-ink-insight);
-}
-.fl-surface-tag.live {
-  color: var(--fl-ink-presence);
-}
-.fl-surface-title {
-  font-weight: 700;
-  font-size: var(--fs-xl);
-  letter-spacing: -0.01em;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-}
-.fl-surface-body {
-  font-size: var(--fs-md);
-  line-height: 1.55;
-  color: var(--text-secondary);
-  margin-bottom: 18px;
-}
-/* Shared by both cards — the demo's category row and the live card's provider row are the same
-   pill so the two pitches read as one balanced pair rather than one card looking unfinished. */
-.fl-surface-chips {
-  display: flex;
-  flex-wrap: wrap;
-  /* Centered so an odd count (five providers) wraps as a balanced cluster instead of a lonely
-     orphan chip hanging under a full row. */
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.fl-surface-chip {
-  font-family: var(--font-data);
-  font-size: var(--fs-xs);
-  padding: 6px 11px;
-  border-radius: var(--r-sm);
-  background: var(--surface-glass-strong);
-  border: 1px solid var(--line);
-  color: var(--text-secondary);
-}
-.fl-ghost-btn {
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 13px 22px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  color: var(--text-primary);
-  cursor: pointer;
-  font: 600 var(--fs-md) var(--font);
-  transition: background var(--m-fast);
-}
-.fl-ghost-btn:hover {
-  background: color-mix(in oklab, var(--presence) 14%, transparent);
-}
-.fl-ghost-btn.live {
-  /* The same box as the ghost button beside it: dropping the border made this pill shorter and
-     narrower by the border's width, so the pair sat at two heights. */
-  border: 1px solid transparent;
-  color: #fff;
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-  box-shadow: 0 8px 22px -8px var(--glow-presence);
-}
-
 /* ===================== CTA ===================== */
 .fl-cta {
   text-align: center;
@@ -2760,24 +2518,6 @@
   background: var(--surface-elevated);
 }
 
-/* Glass pills vanish on the pale page (the known --surface-glass gotcha — a 4.5% tint over the
-   aurora wash reads as a bare outline). Frost them white the same way .fl-composer already
-   biases itself to a solid surface. */
-:root[data-theme='light']
-  .fl-landing
-  :is(
-    .fl-chip,
-    .fl-composer-btn:not(.primary),
-    .fl-blank-btn,
-    .fl-dock-mark,
-    .fl-rail-chip,
-    .fl-ghost-btn:not(.live),
-    .fs-after-item
-  ) {
-  background: color-mix(in oklab, #ffffff 72%, transparent);
-  border-color: var(--line-strong);
-}
-
 /* ===================== responsive ===================== */
 /* Monitors and ultrawides: the type clamps hit their px caps by ~1370px, so beyond that the
    page froze at "1440 size" inside an ever-larger frame. One deliberate tier scales the column,
@@ -2790,17 +2530,8 @@
   .fl-section {
     margin-top: 128px;
   }
-  .fl-hero {
-    max-width: 880px;
-  }
-  .fl-hero-orbspace {
-    height: clamp(170px, 16dvh, 230px);
-  }
   .fl-hero-title {
     font-size: clamp(92px, min(5vw, 10dvh), 116px);
-  }
-  .fl-hero-lede {
-    font-size: var(--fs-xl);
   }
   .fl-title {
     font-size: clamp(52px, 2.6vw, 62px);
@@ -2824,44 +2555,14 @@
    pushing the page's primary input below the first screen. Keep the face's reserved slot intact,
    then compress the surrounding rhythm and let the headline respond to BOTH axes. */
 @media (width > 768px) and (height <= 900px) {
-  .fl-hero {
-    padding-top: 40px;
-  }
-  .fl-hero-orbspace {
-    height: 150px;
-  }
   .fl-hero-title {
     font-size: clamp(50px, min(6vw, 9dvh), 72px);
-  }
-  .fl-hero-lede {
-    margin-top: 16px;
-    font-size: var(--fs-lg);
-    line-height: 1.48;
-  }
-  .fl-composer {
-    margin-top: 22px;
   }
 }
 
 @media (width > 768px) and (height <= 650px) {
-  .fl-hero {
-    padding-top: 32px;
-  }
-  .fl-hero-orbspace {
-    /* The face ends around 220px in this tier; this reserve keeps its trailing curtains clear of
-       the first line while the smaller headline still recovers enough height for the composer. */
-    height: 162px;
-  }
   .fl-hero-title {
     font-size: clamp(46px, min(5.6vw, 9dvh), 58px);
-  }
-  .fl-hero-lede {
-    margin-top: 14px;
-    font-size: var(--fs-lg);
-    line-height: 1.42;
-  }
-  .fl-composer {
-    margin-top: 20px;
   }
 }
 
@@ -2903,7 +2604,6 @@
   }
   .fl-compare,
   .fl-trust,
-  .fl-surfaces,
   .fl-cardrow {
     grid-template-columns: 1fr;
   }
@@ -2988,7 +2688,6 @@
   .fl-caret,
   .fl-hl-sweep,
   .fl-hl-chip,
-  .fl-composer-ghost,
   .fl-wave i,
   .fl-ghost,
   .fl-mindmap-links path,
@@ -3887,142 +3586,6 @@
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
-}
-
-/* Hero: the watch-it-work CTA sits beside the hint line. */
-.fl-hero-watch {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 18px;
-  padding: 11px 20px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  color: var(--text-primary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    border-color var(--m-fast),
-    background var(--m-fast),
-    transform 160ms var(--ease-out);
-}
-.fl-hero-watch:hover {
-  border-color: var(--presence);
-  background: color-mix(in oklab, var(--presence) 7%, var(--surface-elevated));
-  transform: translateY(-1px);
-}
-.fl-hero-watch .fl-hero-watch-glyph,
-.fl-tour-invite-play .fl-hero-watch-glyph {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--presence);
-  color: #fff;
-  font-size: var(--fs-2xs);
-}
-.fl-hero-watch .fl-hero-watch-time {
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: var(--fs-sm);
-}
-
-/* Hero: the first-run tour invite — a dismissible offer in the exact slot "Watch it work" holds
-   afterward, so nothing shifts when it retires. Either choice ("Play the tour" or "I'll explore on
-   my own") marks it seen for good; the tour stays reachable from the nav, ⌘K, and ?tour=1. */
-.fl-tour-invite {
-  margin-top: 18px;
-  padding: 14px 18px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  max-width: 480px;
-}
-.fl-tour-invite-text {
-  margin: 0 0 12px;
-  font-size: var(--fs-md);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-.fl-tour-invite-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* Column gap unchanged — the pills sit 10px apart on a line, as designed. The ROW gap is bigger
-     because this row WRAPS on a phone, and 10px between stacked controls is inside the reach of the
-     thumb aimed at either one: a press meant for the lower edge of one lands on its neighbour.
-     Measured with the tap audit's own probe at 390×844 — 3 of 4 reachable at 10px, 4 of 4 at 18. */
-  column-gap: 10px;
-  row-gap: 18px;
-}
-/* Both pills in this row are 9px of padding around 13.5px type — 35px tall, under the 44px floor
-   the tap audit enforces for a thumb. The floor is a MINIMUM, not a new height: the padding stays,
-   so on a pointer the pill looks as it did, and on a touch screen the box grows to something a
-   finger can actually land on. Raised together because they sit side by side and a 44px pill beside
-   a 35px one reads as a mistake. */
-.fl-tour-invite-play,
-.fl-tour-invite-world {
-  min-height: 44px;
-}
-
-.fl-tour-invite-play {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--presence);
-  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
-  color: var(--text-primary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    transform 160ms var(--ease-out);
-}
-.fl-tour-invite-play:hover {
-  background: color-mix(in oklab, var(--presence) 20%, var(--surface-elevated));
-  transform: translateY(-1px);
-}
-/* A lighter, outlined pill — a taste of one feature, not the full guided tour "Play the tour"
-   already offers, so it reads as the secondary choice. */
-.fl-tour-invite-world {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text-secondary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    border-color var(--m-fast),
-    color var(--m-fast);
-}
-.fl-tour-invite-world svg {
-  width: 15px;
-  height: 15px;
-}
-.fl-tour-invite-world:hover {
-  border-color: var(--presence);
-  color: var(--text-primary);
-}
-.fl-tour-invite-skip {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 4px 2px;
-  color: var(--text-muted);
-  font: 500 var(--fs-sm)/1 var(--font);
-  cursor: pointer;
-  transition: color var(--m-fast);
-}
-.fl-tour-invite-skip:hover {
-  color: var(--text-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -77,8 +77,6 @@ describe('landing copy labels invented figures as illustrative', () => {
     'src/flagship/sections/DemoGallery.tsx',
     'src/flagship/sections/FeatureFilm.tsx',
     'src/flagship/sections/FeatureIndex.tsx',
-    'src/flagship/sections/Hero.tsx',
-    'src/flagship/sections/TwoSurfaces.tsx',
   ];
   const FIGURE = /\$\d[\d.,]*\s*[MB]\b|\b\d+(\.\d+)?%/;
 
