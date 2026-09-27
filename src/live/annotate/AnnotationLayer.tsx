@@ -15,6 +15,8 @@ import type { TourMark } from '../../engine/liveSchema';
 import {
   gestureOf,
   labelPlacements,
+  stepChipAt,
+  strokeBounds,
   strokeFor,
   type Gesture,
   type InkStroke,
@@ -430,35 +432,22 @@ function measure(
   if (!stroke) return null;
   // The numbered step chip is opaque UI, so it obeys the same law as written words: it sits in
   // the first clear pocket around the target — up-left, beside, up-right, below — and stays
-  // undrawn when every pocket holds content.
-  let chip: { x: number; y: number } | undefined;
-  if (typeof stepNumber === 'number') {
-    const cl = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
-    const cands = [
-      { x: local.left - CHIP_R - 2, y: local.top - CHIP_R - 2 },
-      { x: local.left - CHIP_R - 4, y: local.top + local.height / 2 },
-      { x: local.left + local.width + CHIP_R + 3, y: local.top - CHIP_R - 2 },
-      { x: local.left - CHIP_R - 2, y: local.top + local.height + CHIP_R + 3 },
-    ].map((c) => ({
-      x: cl(c.x, CHIP_R + 1, hostBox.width - CHIP_R - 1),
-      y: cl(c.y, CHIP_R + 1, hostBox.height - CHIP_R - 1),
-    }));
-    // The pocket must clear the card's content AND whatever this stop's earlier marks already
-    // drew — chips are opaque UI, and two of them parked in the same gap (rows 1 and 2 of the
-    // same tight list) read as a scribble, not a sequence.
-    const inked = priorInkRects(container, stepNumber).map(toLocal);
-    chip = cands.find((c) => {
-      const box: Rect = {
-        left: c.x - CHIP_R,
-        top: c.y - CHIP_R,
-        width: CHIP_R * 2,
-        height: CHIP_R * 2,
-      };
-      return (
-        !occupied().some((o) => intersects(box, o, 2)) && !inked.some((o) => intersects(box, o, 2))
-      );
-    });
-  }
+  // undrawn when every pocket holds content. The pocket must clear the card's content and
+  // whatever this stop's earlier marks already drew (two chips parked in the same gap of a tight
+  // list read as a scribble, not a sequence), and it may not sit on this mark's own stroke when
+  // that stroke lives in the MARGIN — a tick. One drawn over its target (a loop, a highlight) is
+  // meant to sit under the chip's corner.
+  const own = strokeBounds(stroke);
+  const chip =
+    typeof stepNumber === 'number'
+      ? stepChipAt(
+          local,
+          hostBox,
+          CHIP_R,
+          [...occupied(), ...priorInkRects(container, stepNumber).map(toLocal)],
+          own && !intersects(own, local, 0) ? own : null,
+        )
+      : undefined;
   return {
     host,
     container,

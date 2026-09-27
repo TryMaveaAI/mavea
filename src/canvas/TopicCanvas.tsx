@@ -473,7 +473,11 @@ export function TopicCanvas({
   const lensedIdRef = useRef<string | null>(null);
   useEffect(() => {
     const id = zoomedBlock?.id ?? null;
-    if (lensedIdRef.current === id) return;
+    // The surface withdraws `onLens` while a turn streams, and the sheet can close in that window.
+    // Recording the change with nobody listening would leave the surface believing the Lens is
+    // still open — which now also holds a replay's chrome back — so it is reported once the
+    // listener returns instead.
+    if (!onLens || lensedIdRef.current === id) return;
     lensedIdRef.current = id;
     onLens?.(zoomedBlock);
   }, [zoomedBlock, onLens]);

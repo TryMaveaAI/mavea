@@ -14,6 +14,7 @@
 // kind, it never clamps to a host box (there's no single card to stay inside), so its caller
 // passes a shared frame rather than one card's own bounds. See `connect()` below.
 import { fnv1aInt } from '../../lib/hash';
+import { intersects } from './clearSpace';
 
 export type Gesture =
   | 'circle'
@@ -724,6 +725,64 @@ function question(r: Rect, host: Rect, rnd: () => number, place?: LabelPlace): I
     // replay) draws the same "?" — CSS default when the target is card-scale.
     label: { text: '?', x: lx, y: ly, anchor: 'start', ...(u > 1.2 ? { size: 26 * u } : {}) },
   };
+}
+
+/** The box a stroke's ink can reach, in host coordinates. Every path here is built from absolute
+ *  M/L/C commands, so its numbers read as x,y pairs; a curve's control points bound the curve,
+ *  which makes this a slightly generous box — the safe side for keeping things off the ink. */
+export function strokeBounds(stroke: InkStroke): Rect | null {
+  const nums = `${stroke.d} ${stroke.head ?? ''}`.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (nums.length < 2) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    x0 = Math.min(x0, nums[i]);
+    x1 = Math.max(x1, nums[i]);
+    y0 = Math.min(y0, nums[i + 1]);
+    y1 = Math.max(y1, nums[i + 1]);
+  }
+  return { left: x0, top: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+/** How much of its own stroke a step chip may cover. A chip tucked against its tick's corner reads
+ *  as the tick's number; one sitting on top of it hides the mark it numbers. */
+const CHIP_OWN_COVER_MAX = 0.25;
+
+/** Where a numbered step chip of radius `r` sits beside its target: the first pocket — up-left,
+ *  beside, up-right, below — whose box clears everything in `blocked` (the card's content, the
+ *  ink earlier steps drew) and covers no more than a corner of `own`, this mark's own stroke.
+ *  Undefined when no pocket is clear. The own stroke matters for a tick: it is drawn in the
+ *  leading margin at the row's middle, which is exactly the "beside" pocket, so a chip that only
+ *  dodged the content parked squarely on its own tick — hiding it — whenever the pocket above
+ *  was taken by the previous row's mark (every single-line checklist row on a tablet). */
+export function stepChipAt(
+  anchor: Rect,
+  host: Rect,
+  r: number,
+  blocked: readonly Rect[],
+  own?: Rect | null,
+): { x: number; y: number } | undefined {
+  const cl = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
+  const covers = (box: Rect, o: Rect): number => {
+    const w = Math.min(box.left + box.width, o.left + o.width) - Math.max(box.left, o.left);
+    const h = Math.min(box.top + box.height, o.top + o.height) - Math.max(box.top, o.top);
+    const area = o.width * o.height;
+    return w > 0 && h > 0 && area > 0 ? (w * h) / area : 0;
+  };
+  return [
+    { x: anchor.left - r - 2, y: anchor.top - r - 2 },
+    { x: anchor.left - r - 4, y: anchor.top + anchor.height / 2 },
+    { x: anchor.left + anchor.width + r + 3, y: anchor.top - r - 2 },
+    { x: anchor.left - r - 2, y: anchor.top + anchor.height + r + 3 },
+  ]
+    .map((c) => ({ x: cl(c.x, r + 1, host.width - r - 1), y: cl(c.y, r + 1, host.height - r - 1) }))
+    .find((c) => {
+      const box: Rect = { left: c.x - r, top: c.y - r, width: r * 2, height: r * 2 };
+      if (blocked.some((o) => intersects(box, o, 2))) return false;
+      return !own || covers(box, own) <= CHIP_OWN_COVER_MAX;
+    });
 }
 
 /** The relative box of the mark inside its host. */

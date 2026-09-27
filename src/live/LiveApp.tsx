@@ -304,6 +304,7 @@ import {
 // this keeps its surface minimal. See index.ts.
 import { pendingCard } from './turnstate/pendingCard';
 import { anyOverlayOpen } from './hooks/overlayGuard';
+import { useKeepSpotInView } from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
 import {
   MIC_AUDIO_MSG,
@@ -3239,6 +3240,9 @@ export function LiveApp(): ReactElement {
     id = window.setTimeout(attempt, 90);
     return () => window.clearTimeout(id);
   }, [turn.spot, turn.spec, tourMarksById]);
+  // …and keep it there when the window changes shape under it (a rotation, a drag), which moves
+  // every card above it while the scroll offset holds still.
+  useKeepSpotInView(scrollRef, !!turn.spot);
 
   // Dismiss the guided spotlight: end the walk early and clear the dimmed state so the
   // whole canvas is interactive again. Safe to call when nothing is spotlit (no-op).
@@ -4178,6 +4182,7 @@ export function LiveApp(): ReactElement {
       srsOpen,
       zoomLevel,
       mindViewOpen: mindView.open,
+      lensOpen: lensedId !== null,
     });
   // Published to the window-level Escape handlers declared above, which run before this point in
   // the file but need the same single notion of "an overlay is on top".
