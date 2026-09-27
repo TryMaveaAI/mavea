@@ -281,7 +281,7 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     id: 'lens',
     title: 'Look closer',
     mode: 'explain',
-    coach: 'Want a closer look? Click any card and it opens on its own, with my notes beside it.',
+    coach: 'Any card comes forward on its own for a closer look, with my notes beside it.',
     // No spotlight: the chapter performs the gesture itself — it presses a card's own "Look
     // closer" control — so the ring would only sit on top of the thing being shown.
     spotlight: undefined,

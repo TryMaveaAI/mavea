@@ -128,7 +128,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         ask: "Explain how OAuth login works, step by step. I'm adding it to our app.",
         beats: [{ kind: 'lens', atMs: 1200, walk: 2 }],
-        note: 'Click any card to look closer. Mavéa’s notes sit right beside it.',
+        note: 'Any card comes forward for a closer look, with Mavéa’s notes right beside it.',
         expect: { minBlocks: 3, suggests: true },
       },
       {
