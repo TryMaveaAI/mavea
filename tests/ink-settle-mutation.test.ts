@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { pollUntilSettled } from '../src/live/annotate/settle';
+import { isInMotion, pollUntilSettled } from '../src/live/annotate/settle';
 
 // The stale-mark bug: a block that re-sorts its rows or expands inside its own capped scroller
 // changes NOTHING the old triggers could see — the outer box is unchanged (no ResizeObserver),
@@ -235,5 +235,27 @@ describe('pollUntilSettled — a region that keeps changing is not re-measured f
     expect(measure.mock.calls.length).toBe(total + 1);
     stop();
     host.remove();
+  });
+});
+
+describe('isInMotion — the card can sit below a wrapper', () => {
+  it('sees an entrance running on a card nested inside a FitBox', () => {
+    const host = document.createElement('div');
+    const fit = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'card';
+    fit.appendChild(card);
+    host.appendChild(fit);
+    const rise = {
+      playState: 'running',
+      transitionProperty: 'transform',
+      effect: { getComputedTiming: () => ({ endTime: 600 }) },
+    } as unknown as Animation;
+    for (const el of [host, fit]) el.getAnimations = () => [];
+    let entering = true;
+    card.getAnimations = () => (entering ? [rise] : []);
+    expect(isInMotion(host)).toBe(true);
+    entering = false;
+    expect(isInMotion(host)).toBe(false);
   });
 });

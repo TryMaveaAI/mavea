@@ -42,11 +42,33 @@ function movesGeometry(a: Animation): boolean {
 }
 
 /** True while the host — or the card it wraps — is part-way through a transition or entrance
- *  that moves it. A read taken then is a frame of the motion, not where the target will rest. */
+ *  that moves it. A read taken then is a frame of the motion, not where the target will rest.
+ *  The card can sit a wrapper or two below the host (a FitBox, the Study's card face), so the
+ *  whole path from the host down to its card is checked, not just the host's own children. */
 export function isInMotion(host: HTMLElement): boolean {
   if (typeof host.getAnimations !== 'function') return false;
-  const own = [host, ...Array.from(host.children)];
-  return own.some((el) => el.getAnimations().some(movesGeometry));
+  const path: Element[] = [host, ...Array.from(host.children)];
+  for (let el = host.querySelector('.card'); el && el !== host; el = el.parentElement) {
+    path.push(el);
+  }
+  return path.some((el) => el.getAnimations().some(movesGeometry));
+}
+
+/** The pen's strokes on `spot`'s card that have not finished drawing yet (a stroke waiting out its
+ *  `--ink-delay` counts: it is scheduled, and cutting it off is the same fault). */
+export function inkStillDrawing(spot: string, root: ParentNode = document): Animation[] {
+  const out: Animation[] = [];
+  for (const layer of Array.from(
+    root.querySelectorAll(`[data-spot-id="${CSS.escape(spot)}"] .ink-layer`),
+  )) {
+    if (typeof layer.getAnimations !== 'function') continue;
+    for (const a of layer.getAnimations({ subtree: true })) {
+      if (a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity) {
+        out.push(a);
+      }
+    }
+  }
+  return out;
 }
 
 /** Measure until the result's geometry (per `fingerprint`) stops changing for `STABLE_STREAK` reads
