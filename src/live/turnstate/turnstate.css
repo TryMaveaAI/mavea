@@ -282,78 +282,7 @@
   }
 }
 
-/* ===== state 3 — speaking (pill + lit ribbon) =====
-   An ordinary row inside the dock's .dock-main column (same slot as .dock-modes/.voice-notice/
-   .attach-strip) — never a floating overlay, so it can't sit over the canvas at any viewport
-   width. The dock's own --dock-h measurement absorbs the row's height for everything that
-   offsets by it (the scrubber, the canvas padding). */
-.live-voice .speak-strip {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-}
-.live-voice .speak-ribbon {
-  /* Wraps rather than truncating — the line is short-lived (it's replaced by the next spoken
-     line within seconds), so cutting it off with an ellipsis just hides content a reader could
-     otherwise get ahead of while Mavéa is still speaking it. */
-  flex: 1;
-  min-width: 0;
-  max-width: 70ch;
-  margin: 0;
-  padding-top: 2px;
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  color: var(--text-muted);
-  text-align: left;
-}
-.live-voice .speak-phrase {
-  transition: color var(--m-fast) var(--ease-out);
-}
-.live-voice .speak-phrase.said {
-  color: var(--text-primary);
-}
-.live-voice .speak-phrase .hero-accent {
-  color: inherit;
-  font-style: normal;
-  border-radius: 3px;
-  padding: 0 3px;
-  transition: background var(--m-fast) var(--ease-out);
-}
-.live-voice .speak-phrase.said .hero-accent {
-  background: var(--mark-bg);
-  color: var(--text-primary);
-}
-/* Sampled from the Design source: a soft indigo-tinted pill (no border), gap 10, padding
-   7px 14px 7px 8px, radius 18px — not the plain bordered button an earlier pass had. */
-.live-voice .speak-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-  padding: 7px 14px 7px 8px;
-  border-radius: 18px;
-  border: none;
-  background: color-mix(in oklab, var(--presence) 14%, transparent);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--presence);
-  cursor: pointer;
-}
-.live-voice .speak-orb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 32% 28%,
-    var(--presence-soft) 0%,
-    var(--presence) 55%,
-    var(--presence-deep) 100%
-  );
-  animation: speak-breathe 1.3s ease-in-out infinite;
-  /* REACTIVE loop — pausable only while unseen. */
-  animation-play-state: var(--reactive-play, running);
-}
+/* Shared by the composing orb. */
 @keyframes speak-breathe {
   0%,
   100% {
@@ -368,15 +297,8 @@
   .live-voice .listen-eq i,
   .live-voice .listen-caret,
   .live-voice .turn-chip-dot,
-  .live-voice .speak-orb,
   .live-voice .composing-orb,
   .live-voice .composing-dots i {
     animation: none;
-  }
-}
-
-@media (width <= 768px) or (height <= 500px) {
-  .live-voice .speak-strip .speak-ribbon {
-    display: none;
   }
 }

@@ -9,11 +9,10 @@
 // that never jumps. `TRANSPORT_BAND` is the single source of that number: it reaches the sheet as a
 // custom property, so the reserve and the paint cannot drift apart.
 //
-// The caption is rendered HERE rather than through turnstate's SpeakingDock, which is voice-gated by
-// contract ("when muted the caller hides it entirely"). A world walk has to caption in the silent
-// case too — muted, or a harness with no voice wired at all — or the muted reader gets a camera
-// flying between cards with nothing telling them why. What is worth borrowing from that component is
-// `renderHeroLine`, so a figure inside a spoken line still takes the highlight mark; that is shared.
+// The caption is rendered HERE, and not gated on the voice: a world walk has to caption in the
+// silent case too — muted, or a harness with no voice wired at all — or the muted reader gets a
+// camera flying between cards with nothing telling them why. It uses the answer hero's
+// `renderHeroLine`, so a figure inside a spoken line still takes the highlight mark.
 import type { CSSProperties, ReactElement } from 'react';
 import { renderHeroLine } from '../voice/emphasize';
 
