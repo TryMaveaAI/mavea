@@ -183,7 +183,7 @@ import {
 import { useTurnLatency, formatLatency } from './voice/useTurnLatency';
 import type { HeroContent } from './voice/heroSource';
 import { AnnotationLayer, BADGE_MS, MARK_DRAW_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
-import { INK_SETTLE_MS } from './annotate/settle';
+import { INK_SETTLE_MS, inkStillDrawing } from './annotate/settle';
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
@@ -2964,8 +2964,34 @@ export function LiveApp(): ReactElement {
       // When this stop's last stroke finishes drawing — the stop stays open until then, so the
       // next stop's glide (or the next answer) never scrolls or replaces a card mid-stroke.
       let penLiftsAt = 0;
-      const penLifted = (): Promise<void> =>
-        delay(Math.max(0, penLiftsAt - performance.now()), walkController.signal);
+      let inkAskedAt = 0;
+      // Waits only for strokes that are really still drawing, and for a mark still settling onto
+      // its card — `penLiftsAt` is the ceiling, never the wait. Holding every stop to the worst
+      // case put dead air after lines whose pen had long since lifted.
+      const penLifted = async (): Promise<void> => {
+        if (!spot) return;
+        for (;;) {
+          const left = penLiftsAt - performance.now();
+          if (left <= 0 || bail()) return;
+          const drawing = inkStillDrawing(spot);
+          const settling = INK_SETTLE_MS - (performance.now() - inkAskedAt);
+          if (drawing.length) {
+            await Promise.race([
+              Promise.all(drawing.map((a) => a.finished.catch(() => undefined))),
+              delay(left, walkController.signal),
+            ]);
+          } else if (settling > 0) {
+            await delay(Math.min(left, settling), walkController.signal);
+          } else {
+            return;
+          }
+        }
+      };
+      /** Lights the stop and starts its pen, remembering when so `penLifted` can judge it. */
+      const lightStop = (shownLine: string | undefined): void => {
+        inkAskedAt = performance.now();
+        penLiftsAt = applyStop(spot, shownLine, idx);
+      };
       // The line is primed first so its synthesis runs while the card settles.
       const prepareStop = async (text: string): Promise<void> => {
         primeLine(text, 'mavea');
@@ -3038,15 +3064,19 @@ export function LiveApp(): ReactElement {
           if (bail()) return;
           const handle = speak(ownLine);
           const heard = await waitLineStart(handle, undefined, walkController.signal);
+          const lineStartedAt = performance.now();
           await landed;
           if (bail()) return;
-          penLiftsAt = applyStop(spot, shown ?? ownLine, idx);
+          lightStop(shown ?? ownLine);
           primeNextSpoken(idx);
           if (heard) {
             await waitLineEnd(handle, spokenMsUncapped(ownLine), undefined, walkController.signal);
           } else {
             cancelSpeech();
-            await delay(spokenMs(ownLine), walkController.signal);
+            await delay(
+              spokenMs(ownLine) - (performance.now() - lineStartedAt),
+              walkController.signal,
+            );
           }
           await penLifted();
           const verdict = await pauseVerdict();
@@ -3065,7 +3095,7 @@ export function LiveApp(): ReactElement {
         await settleStop();
         await landed;
         if (bail()) return;
-        penLiftsAt = applyStop(spot, line, idx);
+        lightStop(line);
         primeNextSpoken(idx);
         await waitQueueQuiet({
           floorMs: MIN_STOP_MS,
@@ -3087,10 +3117,11 @@ export function LiveApp(): ReactElement {
         if (bail()) return;
         const handle = speak(spokenLine);
         const heard = await waitLineStart(handle, undefined, walkController.signal);
+        const lineStartedAt = performance.now();
         await landed;
         if (bail()) return;
         // Re-applying on a replay is safe by design: ink() dedupes per (block, gesture).
-        penLiftsAt = applyStop(spot, line, idx);
+        lightStop(line);
         // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
         // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
         // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
@@ -3101,7 +3132,8 @@ export function LiveApp(): ReactElement {
           cancelSpeech();
           // This line will never be heard (voice down, or hard-stopped) — dwell for the
           // caption's own reading length instead of sprinting through the remaining stops.
-          await delay(estimateMs, walkController.signal);
+          // Counted from the line's start, so the glide the pen waited for is not added on top.
+          await delay(estimateMs - (performance.now() - lineStartedAt), walkController.signal);
         }
         await penLifted();
         // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
