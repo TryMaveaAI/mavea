@@ -2,7 +2,7 @@
 // a bold ink outline and an offset shadow holding the line, a spiky "burst" orb that explodes in behind
 // it, and an attribution caption on a small ink-outlined tab. The comic identity — the black ink line,
 // the speech-bubble white and the warm halftone dots — isn't tinted by the reel (a comic page is a comic
-// page), so those few colors live in a scoped <style>; the burst star and the highlight pull from the
+// page), so those few colors live in finishes.css; the burst star and the highlight pull from the
 // palette so the explosion still recolors. The pow keyframe gives the burst a one-shot punch-in, and
 // bubble-pop bakes a tiny overshoot so the speech bubble lands like a printed panel snapping into place.
 import type { CSSProperties } from 'react';
@@ -51,25 +51,6 @@ export function ComicPanelSlide({ slots }: SlideProps<'quote'>) {
         overflow: 'hidden',
       }}
     >
-      <style>{`
-        .reel[data-palette] {
-          --comic-ink: #141118;
-          --comic-paper: #fbf3df;
-          --comic-dot: rgba(20, 17, 24, 0.16);
-          --comic-bubble: #ffffff;
-        }
-        @keyframes comic-pow {
-          from { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-24deg); }
-          70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(4deg); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-        }
-        @keyframes comic-bubble-pop {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 2.2)) scale(0.92); }
-          65%  { opacity: 1; transform: translateY(0) scale(1.03); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-
       {/* The exploding star bursts in behind the bubble, drawn with the palette accent and an ink edge. */}
       <svg
         viewBox="0 0 100 100"

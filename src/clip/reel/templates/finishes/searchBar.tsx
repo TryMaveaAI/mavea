@@ -2,7 +2,7 @@
 // typed query with a blinking caret, an autocomplete dropdown lists a few suggestions derived from the
 // subtitle, and a mono "results" line closes it off. A search panel has its own dark chrome identity
 // (the near-black field, the hairline divider) that a real search box keeps regardless of theme, so
-// those two neutrals live in a scoped <style>; everything that should recolor — the caret, the leading
+// those two neutrals live in finishes.css; everything that should recolor — the caret, the leading
 // magnifier, the query echo and the result count — leans on palette vars. The caret reuses reel-blink;
 // the rows fall in one after another via a bespoke search-drop so the list feels like it's resolving.
 import type { SlideProps } from '../types';
@@ -39,17 +39,6 @@ export function SearchBarSlide({ slots }: SlideProps<'concept'>) {
         animation: 'reel-pop 0.55s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        .reel[data-palette] {
-          --search-field: #16181f;
-          --search-row: #1d2029;
-        }
-        @keyframes search-drop {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * -1.6)); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
       {/* The search field: a dark pill with a leading magnifier, the typed query, and a live caret. */}
       <div
         style={{

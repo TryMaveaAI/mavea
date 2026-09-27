@@ -18,33 +18,6 @@ export function WidgetsSlide({ slots }: SlideProps<'recap'>) {
   const topic = fitText(slots.topic, TOPIC_TIERS);
   return (
     <div className="reel-widgets reel-fade">
-      <style>{`
-        .reel-widgets { position: relative; display: flex; flex-direction: column; gap: calc(var(--ru) * 3);
-          width: calc(var(--rw) * 70); padding: calc(var(--ru) * 5) calc(var(--rw) * 5); border-radius: calc(var(--ru) * 7); isolation: isolate; overflow: hidden; }
-        .reel-widgets::before { content: ''; position: absolute; inset: -10%; z-index: -1;
-          background:
-            radial-gradient(38% 38% at 22% 18%, var(--reel-orb-1) 0%, transparent 70%),
-            radial-gradient(42% 42% at 82% 30%, var(--reel-accent-2) 0%, transparent 72%),
-            radial-gradient(46% 46% at 30% 88%, var(--reel-accent) 0%, transparent 72%),
-            radial-gradient(40% 40% at 88% 86%, var(--reel-orb-2) 0%, transparent 74%);
-          filter: blur(calc(var(--ru) * 2)) saturate(1.1);
-          animation: widgets-mesh 14s ease-in-out infinite alternate; }
-        .reel-widget-tile { position: relative; border-radius: calc(var(--ru) * 5); padding: calc(var(--ru) * 3.4) calc(var(--rw) * 4);
-          background: rgba(255, 255, 255, 0.34);
-          border: 1px solid rgba(255, 255, 255, 0.55);
-          box-shadow: 0 calc(var(--ru) * 3) calc(var(--ru) * 8) calc(var(--ru) * -4) rgba(20, 16, 44, 0.45),
-            inset 0 1px 0 rgba(255, 255, 255, 0.6);
-          backdrop-filter: blur(10px) saturate(1.4);
-          animation: widgets-tile 0.66s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
-        .reel-widget-row { display: grid; grid-template-columns: 1fr; gap: calc(var(--ru) * 3); }
-        @keyframes widgets-mesh {
-          from { transform: translate(0, 0) scale(1); }
-          to { transform: translate(calc(var(--rw) * -2.4), calc(var(--ru) * 2)) scale(1.08); } }
-        @keyframes widgets-tile {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 2.6)) scale(0.96); }
-          to { opacity: 1; transform: translateY(0) scale(1); } }
-      `}</style>
-
       <div className="reel-widget-tile" data-tight-lockup="" style={{ animationDelay: '0.04s' }}>
         <div
           style={{

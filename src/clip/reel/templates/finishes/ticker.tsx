@@ -47,8 +47,6 @@ export function TickerSlide({ slots }: SlideProps<'stat'>) {
         animation: 'reel-fade-up 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`@keyframes ticker-tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
-
       {/* Symbol header with a live "market open" dot. */}
       <div
         style={{

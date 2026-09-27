@@ -46,11 +46,6 @@ export function CosmicSlide({ slots }: SlideProps<'concept'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`
-        @keyframes cosmic-tw { 0%,100% { opacity: 0.2; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1); } }
-        @keyframes cosmic-spin { to { transform: rotate(360deg); } }
-      `}</style>
-
       {/* The starfield + orbiting orb live in one square so the stars frame the orb. */}
       <div
         style={{

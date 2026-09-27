@@ -27,12 +27,6 @@ export function MysticCardSlide({ slots }: SlideProps<'concept'>) {
         boxShadow: `0 0 calc(var(--ru) * 4) calc(var(--ru) * -1) var(--reel-glow), inset 0 0 calc(var(--ru) * 6) calc(var(--ru) * -2) ${gilt}`,
       }}
     >
-      <style>{`
-        @keyframes mystic-emblem {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 calc(var(--ru) * 5) calc(var(--ru) * 0.4) var(--reel-glow); }
-          50% { transform: scale(1.045); box-shadow: 0 0 calc(var(--ru) * 8) calc(var(--ru) * 1.2) var(--reel-glow); }
-        }
-      `}</style>
       <div
         style={{
           border: `1px solid ${gilt}`,

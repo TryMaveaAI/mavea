@@ -38,8 +38,6 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
         aspectRatio: '1',
       }}
     >
-      <style>{`@keyframes orbit-ring{from{opacity:0;transform:scale(0.7)}to{opacity:1;transform:scale(1)}}`}</style>
-
       <svg
         viewBox="0 0 100 100"
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}

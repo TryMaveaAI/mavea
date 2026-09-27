@@ -3,7 +3,7 @@
 // filename, its value in the size column — with the first (headline) row selected in accent, the way a
 // Finder selection reads. A real window's chrome (the title bar gradient, the sidebar and list grays, the
 // near-white field) is an intrinsic desktop identity that doesn't tint with the reel, so those neutrals
-// live in a scoped <style>; the selection, the value column and the leading folder lean on palette vars.
+// live in finishes.css; the selection, the value column and the leading folder lean on palette vars.
 // Rows cascade in via a bespoke finder-row so the listing feels like it's populating as the window opens.
 import type { SlideProps } from '../types';
 
@@ -27,22 +27,6 @@ export function FinderSlide({ slots }: SlideProps<'recap'>) {
         animation: 'reel-pop 0.55s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        .reel[data-palette] {
-          --finder-window: #f4f5f7;
-          --finder-sidebar: #e8e9ed;
-          --finder-titlebar: linear-gradient(180deg, #e9eaee 0%, #dcdee3 100%);
-          --finder-edge: rgba(20, 18, 40, 0.16);
-          --finder-line: rgba(20, 18, 40, 0.08);
-          --finder-text: #2c2e36;
-          --finder-mute: rgba(44, 46, 54, 0.5);
-        }
-        @keyframes finder-row {
-          from { opacity: 0; transform: translateX(calc(var(--rw) * -1.4)); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
       {/* Title bar: the three traffic lights, then the window's title centered on the topic. */}
       <div
         style={{

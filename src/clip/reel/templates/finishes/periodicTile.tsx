@@ -48,17 +48,6 @@ export function PeriodicTileSlide({ slots }: SlideProps<'concept'>) {
         animation: 'tile-settle 0.7s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        @keyframes tile-settle {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 3)) scale(0.94); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes tile-sheen {
-          0%, 100% { transform: translate(-12%, -8%); opacity: 0.45; }
-          50% { transform: translate(12%, 8%); opacity: 0.8; }
-        }
-      `}</style>
-
       {/* A drifting highlight gives the coated-tile glint without competing with the type. */}
       <span
         aria-hidden="true"

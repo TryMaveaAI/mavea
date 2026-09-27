@@ -56,8 +56,6 @@ export function WrappedSlide({ slots }: SlideProps<'stat'>) {
         color: '#fff',
       }}
     >
-      <style>{`@keyframes wrapped-fall{0%{transform:translateY(calc(var(--ru) * -12)) rotate(0);opacity:0}12%{opacity:1}100%{transform:translateY(calc(var(--ru) * 60)) rotate(240deg);opacity:0}}`}</style>
-
       {/* Confetti rains the full height behind the type, each dot on its own cadence and tint. */}
       {CONFETTI.map(([x, size, delay, drift], i) => (
         <span

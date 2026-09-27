@@ -23,21 +23,6 @@ export function AuroraGlassSlide({ slots }: SlideProps<'concept'>) {
         borderRadius: 'calc(var(--ru) * 5)',
       }}
     >
-      <style>{`
-        @keyframes auroraglass-mesh {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        @keyframes auroraglass-orb {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(calc(var(--rw) * 6), calc(var(--ru) * -4)) scale(1.18); }
-        }
-        @keyframes auroraglass-orb-2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(calc(var(--rw) * -5), calc(var(--ru) * 5)) scale(0.86); }
-        }
-      `}</style>
-
       {/* The breathing mesh: an oversized gradient whose position drifts, so the wash never sits still. */}
       <div
         aria-hidden="true"

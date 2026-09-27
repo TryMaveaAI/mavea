@@ -16,7 +16,6 @@ export function LevelUpSlide({ slots }: SlideProps<'stat'>) {
   const unit = slots.unit ? fitLine(slots.unit, BADGE_UNIT_TIERS) : undefined;
   return (
     <Card kicker="XP gained">
-      <style>{`@keyframes levelup-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--ru) * -1.8))}}`}</style>
       <div
         style={{
           display: 'flex',

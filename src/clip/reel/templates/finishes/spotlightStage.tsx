@@ -24,17 +24,6 @@ export function SpotlightStageSlide({ slots }: SlideProps<'concept'>) {
         paddingTop: 'calc(var(--ru) * 6)',
       }}
     >
-      <style>{`
-        @keyframes spotstage-beam {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.78; }
-        }
-        @keyframes spotstage-rise {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 2.4)); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
       {/* The beam: a blurred CSS triangle widening downward from a point above the disc. */}
       <span
         aria-hidden="true"

@@ -41,8 +41,6 @@ export function StreakSlide({ slots }: SlideProps<'stat'>) {
 
   return (
     <Card kicker="Streak" lockup>
-      <style>{`@keyframes streak-cell{from{opacity:0;transform:scale(0.4)}to{opacity:1;transform:scale(1)}}`}</style>
-
       {/* The headline: the count blazing beside a flame, with the habit name on a quieter line. */}
       <div
         style={{

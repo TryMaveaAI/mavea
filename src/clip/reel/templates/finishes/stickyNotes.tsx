@@ -1,7 +1,7 @@
 // A list finish styled as a corkboard of sticky notes: a faint dot grid behind, then three or four
 // pastel squares — each pinned, slightly rotated and offset — carrying one item in a casual bold
 // hand. The pastel paper stock (yellow/cyan/pink) is an intrinsic, non-palette identity, so it lives
-// in a scoped <style>; the title rides above as a small pin label that DOES recolor with the reel.
+// in finishes.css; the title rides above as a small pin label that DOES recolor with the reel.
 // Each note pops in on a stagger via the shared reel-pop, and the per-note rotation is baked into a
 // uniquely-named keyframe so the gentle sway never flattens the tilt the way the shared loops would.
 import type { SlideProps } from '../types';
@@ -31,87 +31,6 @@ export function StickyNotesSlide({ slots }: SlideProps<'list'>) {
 
   return (
     <div className="reel-board-pin reel-fade">
-      <style>{`
-        .reel-board-pin {
-          --note-yellow: #fde98a;
-          --note-cyan: #a8e6ec;
-          --note-pink: #f9b8cf;
-          --note-ink: #3a2f1d;
-          --note-dot: rgba(58, 47, 29, 0.1);
-          position: relative;
-          width: calc(var(--rw) * 84);
-          padding: calc(var(--ru) * 5) calc(var(--rw) * 3);
-          border-radius: calc(var(--ru) * 3);
-          background:
-            radial-gradient(var(--note-dot) calc(var(--ru) * 0.5), transparent calc(var(--ru) * 0.5)) 0 0 / calc(var(--rw) * 5) calc(var(--rw) * 5),
-            color-mix(in oklab, var(--reel-ink) 5%, transparent);
-        }
-        .reel-board-pin .label {
-          display: block;
-          width: max-content;
-          max-width: calc(var(--rw) * 76);
-          margin: 0 auto calc(var(--ru) * 4);
-          padding: calc(var(--ru) * 1) calc(var(--rw) * 3);
-          border-radius: 999px;
-          font: 600 calc(var(--ru) * 2.2)/1 var(--reel-mono);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #fff;
-          background: var(--reel-accent);
-          box-shadow: 0 calc(var(--ru) * 2) calc(var(--ru) * 5) calc(var(--ru) * -2) var(--reel-glow);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .reel-board-pin .grid {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: calc(var(--rw) * 5) calc(var(--rw) * 6);
-        }
-        .reel-board-pin .note {
-          position: relative;
-          width: calc(var(--rw) * 34);
-          aspect-ratio: 1 / 1;
-          padding: calc(var(--ru) * 5) calc(var(--rw) * 2.6) calc(var(--ru) * 2.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          background: var(--note-paper);
-          color: var(--note-ink);
-          box-shadow: 0 calc(var(--ru) * 4) calc(var(--ru) * 9) calc(var(--ru) * -4) rgba(20, 16, 44, 0.55);
-          transform: rotate(var(--note-tilt));
-          animation:
-            note-pin 5.5s ease-in-out var(--note-delay) infinite,
-            reel-pop 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) var(--note-delay) both;
-        }
-        /* The pin: a small domed head punched through the top edge of each note. */
-        .reel-board-pin .note::before {
-          content: '';
-          position: absolute;
-          top: calc(var(--ru) * -1.4);
-          left: 50%;
-          width: calc(var(--ru) * 2.6);
-          height: calc(var(--ru) * 2.6);
-          border-radius: 50%;
-          transform: translateX(-50%);
-          background: radial-gradient(circle at 36% 30%, #fff 0%, var(--reel-accent-2) 60%, var(--reel-accent) 100%);
-          box-shadow: 0 calc(var(--ru) * 1) calc(var(--ru) * 2) calc(var(--ru) * -0.6) rgba(20, 16, 44, 0.6);
-        }
-        .reel-board-pin .note span {
-          /* Size, line and clamp come from the note's tier (inline); the hand stays bold. */
-          font-weight: 700;
-          font-family: var(--reel-sans);
-          letter-spacing: -0.01em;
-        }
-        /* Bake the per-note lean into the sway so the note keeps its tilt while it breathes. */
-        @keyframes note-pin {
-          0%, 100% { transform: rotate(var(--note-tilt)) translateY(0); }
-          50% { transform: rotate(var(--note-tilt)) translateY(calc(var(--ru) * -1.2)); }
-        }
-      `}</style>
-
       {slots.title && <span className="label">{slots.title}</span>}
       <div className="grid">
         {items.map((text, i) => {

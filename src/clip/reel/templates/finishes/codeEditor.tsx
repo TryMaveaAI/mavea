@@ -2,7 +2,7 @@
 // filename (label), then a few syntax-highlighted lines that recast the idea as code — a comment from
 // the note, a `def` named after the label, and a `return` carrying the equation. The dark editor
 // surface and the syntax palette (comment / keyword / string / number) are an intrinsic identity a
-// real editor owns, not something the reel tints, so those few colors live in a scoped <style>; the
+// real editor owns, not something the reel tints, so those few colors live in finishes.css; the
 // frame's lift and the accent filename still ride the reel. A blinking caret trails the last line, and
 // each line types itself in on a stagger so the snippet reads like it's being written.
 import type { SlideProps } from '../types';
@@ -23,79 +23,6 @@ export function CodeEditorSlide({ slots }: SlideProps<'diagram'>) {
 
   return (
     <div className="reel-ide reel-fade">
-      <style>{`
-        .reel-ide {
-          --ide-bg: #1e2430;
-          --ide-chrome: #2a3140;
-          --ide-line: rgba(255, 255, 255, 0.06);
-          --ide-comment: #6b7a8d;
-          --ide-keyword: #c792ea;
-          --ide-string: #b6e08a;
-          --ide-number: #f6a96b;
-          --ide-fn: #82c8ff;
-          --ide-text: #d7e0ea;
-          width: calc(var(--rw) * 80);
-          border-radius: calc(var(--ru) * 2.4);
-          overflow: hidden;
-          background: var(--ide-bg);
-          box-shadow: 0 calc(var(--ru) * 7) calc(var(--ru) * 16) calc(var(--ru) * -6) rgba(12, 10, 28, 0.7);
-          font: 500 calc(var(--ru) * 3)/1.7 var(--reel-mono);
-        }
-        .reel-ide .chrome {
-          display: flex;
-          align-items: center;
-          gap: calc(var(--rw) * 1.6);
-          padding: calc(var(--ru) * 2.2) calc(var(--rw) * 3.2);
-          background: var(--ide-chrome);
-          border-bottom: 1px solid var(--ide-line);
-        }
-        .reel-ide .light { width: calc(var(--ru) * 2.2); height: calc(var(--ru) * 2.2); border-radius: 50%; }
-        .reel-ide .file {
-          margin-left: calc(var(--rw) * 1.6);
-          font: 500 calc(var(--ru) * 2.4)/1 var(--reel-mono);
-          color: var(--reel-accent);
-          overflow-wrap: anywhere;
-        }
-        .reel-ide .body { padding: calc(var(--ru) * 3) calc(var(--rw) * 3.6); }
-        .reel-ide .row {
-          display: flex;
-          gap: calc(var(--rw) * 2.6);
-          color: var(--ide-text);
-          animation: ide-type 0.42s ease-out var(--d) both;
-        }
-        .reel-ide .ln {
-          color: rgba(255, 255, 255, 0.26);
-          flex-shrink: 0;
-          width: 2ch;
-          text-align: right;
-          user-select: none;
-        }
-        .reel-ide .code {
-          min-width: 0;
-          /* Preserve the indentation but let a long comment/equation wrap rather than truncate. */
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-        }
-        .reel-ide .c { color: var(--ide-comment); font-style: italic; }
-        .reel-ide .k { color: var(--ide-keyword); }
-        .reel-ide .f { color: var(--ide-fn); }
-        .reel-ide .s { color: var(--ide-string); }
-        .reel-ide .n { color: var(--ide-number); }
-        .reel-ide .caret {
-          display: inline-block;
-          width: 0.5ch;
-          height: calc(var(--ru) * 2.5);
-          margin-left: 0.4ch;
-          vertical-align: text-bottom;
-          background: var(--ide-text);
-          animation: reel-blink 1s step-end infinite;
-        }
-        @keyframes ide-type {
-          from { opacity: 0; transform: translateX(calc(var(--rw) * -1)); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
       <div className="chrome">
         <span className="light" style={{ background: '#ff5f57' }} />
         <span className="light" style={{ background: '#febc2e' }} />

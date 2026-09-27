@@ -2,7 +2,7 @@
 // that each tilt a few degrees off-level and scroll one item endlessly across the frame. Bands
 // alternate palette fills (accent → cream → orb-1 → accent-2) and scroll direction so the eye
 // zig-zags down the stack. The cream band is an intrinsic paper tone (a marquee always has one warm
-// stripe regardless of palette), so it lives in the scoped <style>; everything else rides the reel
+// stripe regardless of palette), so it lives in finishes.css; everything else rides the reel
 // vars. Each track duplicates its text so the loop is seamless, and the two scroll keyframes are
 // local + uniquely prefixed.
 import type { SlideProps } from '../types';
@@ -27,12 +27,6 @@ export function MarqueeSlide({ slots }: SlideProps<'list'>) {
         gap: 'calc(var(--ru) * 2.2)',
       }}
     >
-      <style>{`
-        .reel[data-palette] { --marq-cream: #f4ead6; }
-        @keyframes marq-l { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @keyframes marq-r { from { transform: translateX(-50%); } to { transform: translateX(0); } }
-      `}</style>
-
       {slots.title && (
         <span
           style={{

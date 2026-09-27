@@ -2,7 +2,7 @@
 // Impact-meme reading), a floaty palette-tinted orb suspended on the reel's wash in the middle, then a
 // bold bottom caption — the punchline (highlight, falling back to attribution). The white paper + ink
 // of a meme box is an intrinsic, non-palette identity (a meme bar reads the same on every reel), so
-// those two colors live in a scoped <style>; the orb and punchline recolor with the palette. The bob
+// those two colors live in finishes.css; the orb and punchline recolor with the palette. The bob
 // keeps the orb gently alive — it reuses the shared reel-floaty, which is exactly translateY drift.
 import type { SlideProps } from '../types';
 import { fitText, HERO_TIERS, QUOTE_TIERS } from '../fitText';
@@ -28,8 +28,6 @@ export function CaptionMemeSlide({ slots }: SlideProps<'quote'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`.reel[data-palette] { --meme-paper: #f7f7f5; --meme-ink: #15140f; }`}</style>
-
       {/* The top meme-text bar: white paper, near-black ink, a thin hard edge — reads as a caption box. */}
       <div
         data-fit-tier={setup.tier}

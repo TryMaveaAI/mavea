@@ -1,6 +1,6 @@
 // A concept finish styled as an instant photo: a tilted cream polaroid with a palette-tinted "photo"
 // pane up top and a handwritten caption on the wide bottom border. The cream stock is an intrinsic,
-// non-palette identity (real polaroid film is warm off-white), so it lives in a scoped <style>; the
+// non-palette identity (real polaroid film is warm off-white), so it lives in finishes.css; the
 // photo itself recolors with the reel. The bob keyframe bakes in the -4deg tilt — the shared
 // reel-floaty resets to translateY(0) and would flatten the lean — so it's local and uniquely named.
 import type { SlideProps } from '../types';
@@ -28,14 +28,6 @@ export function PolaroidSlide({ slots }: SlideProps<'concept'>) {
         width: 'calc(var(--rw) * 62)',
       }}
     >
-      <style>{`
-        .reel[data-palette] { --polaroid-cream: #f7f3e9; --polaroid-pen: #2b2620; }
-        @keyframes polaroid-bob {
-          0%, 100% { transform: rotate(-4deg) translateY(0); }
-          50% { transform: rotate(-4deg) translateY(calc(var(--ru) * -1.8)); }
-        }
-      `}</style>
-
       {/* The exposed photo: a soft radial gradient through the orb tints, with a faint inner vignette. */}
       <div
         style={{
