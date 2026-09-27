@@ -1077,12 +1077,30 @@ describe('Onboarding on a phone — the primary action and its targets stay reac
   });
 });
 
-describe('a collapsed feature notice reads as one bar', () => {
+describe('a feature notice reads as one bar in every one-line state', () => {
   const css = readFileSync('src/legal/feature-use-notice.css', 'utf8');
-  it('puts the actions at the end and lets the single line run up to them', () => {
+  it('puts the actions at the end and lets every clamped line run up to them', () => {
     expect(css).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
-    expect(css).toMatch(/\[data-collapsed\] p \{\s*max-width:\s*none/);
-    expect(css).toMatch(/\.feature-use-notice\[data-collapsed\] \{[^}]*align-items:\s*center/);
+    // A clamp is a one-line (or phone two-line) state wherever it comes from — a standing
+    // notice's default, a short window, a phone — and each one lifts the reading measure. Only
+    // the collapsed kind once did, so a short window's clamp stopped the line mid-bar.
+    const clamps = [...css.matchAll(/([^{}]+)\{([^{}]*-webkit-line-clamp:\s*\d[^{}]*)\}/g)];
+    expect(clamps.length).toBeGreaterThan(2);
+    for (const [, selector, body] of clamps) {
+      expect(selector).toMatch(/:not\(\[data-open\]\)/);
+      if (!/^\s*-webkit-line-clamp:\s*\d;\s*$/.test(body))
+        expect(body).toMatch(/max-width:\s*none/);
+    }
+  });
+
+  it('centres the dot and the actions on the first line, whatever the line count', () => {
+    const bar = /(?:^|\n)\.feature-use-notice \{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(bar).toMatch(/align-items:\s*start/);
+    expect(bar).toMatch(/text-align:\s*start/);
+    expect(css).toMatch(/\.feature-use-notice-dot \{[^}]*margin-top:\s*calc\(\(1lh - 6px\) \/ 2\)/);
+    expect(css).toMatch(
+      /\.feature-use-notice-actions \{[^}]*margin-block:\s*calc\(\(1lh - 44px\) \/ 2\)/,
+    );
   });
 });
 

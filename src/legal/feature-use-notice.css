@@ -3,9 +3,12 @@
   box-sizing: border-box;
   display: grid;
   /* The actions sit at the bar's end, where a reader looks for them. The text column takes the
-     room between; a reading measure applies only to the open, multi-line text (below), since a
-     notice spanning a 1920px surface would otherwise set its body at ~250 characters a line. */
+     room between; a reading measure applies only to text that wraps (below), since a notice
+     spanning a 1920px surface would otherwise set its body at ~250 characters a line. */
   grid-template-columns: auto minmax(0, 1fr) auto;
+  /* Top-aligned in every state, with the dot and the actions centred on the text's FIRST line
+     (their margins below are stated in the line's own height). One line or twelve, the three
+     share a centre line and nothing floats down to the middle of an opened paragraph. */
   align-items: start;
   gap: 8px;
   padding: 9px 11px;
@@ -14,12 +17,15 @@
   background: color-mix(in oklab, var(--surface-elevated) 94%, var(--warning) 6%);
   color: var(--text-secondary);
   font: 500 var(--fs-xs)/1.5 var(--font);
+  /* Its own reading direction, never the host's: in Prism's centred hero the body inherited
+     text-align: center and set as a ragged centred column. */
+  text-align: start;
 }
 
 .feature-use-notice-dot {
   width: 6px;
   height: 6px;
-  margin-top: 4px;
+  margin-top: calc((1lh - 6px) / 2);
   border-radius: 50%;
   background: var(--warning);
 }
@@ -29,20 +35,15 @@
   margin: 0;
 }
 
-/* One clamped line has no measure to keep, so it runs up to the actions instead of stopping short
-   of them and leaving a gap in the middle of the bar — and the dot, the line and the actions sit
-   on one centre line rather than the text riding the top of a bar sized for the buttons. */
-.feature-use-notice[data-collapsed] {
-  align-items: center;
-  padding-block: 2px;
-}
-
-.feature-use-notice[data-collapsed] p {
+/* One line has no measure to keep, so a clamped line runs up to the actions instead of stopping
+   short of them and leaving a gap in the middle of the bar. Every one-line state takes this — a
+   standing notice's default here, a short window's and a phone's in the queries below. */
+.feature-use-notice[data-collapsed]:not([data-open]) p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
   max-width: none;
-}
-
-.feature-use-notice[data-collapsed] .feature-use-notice-dot {
-  margin-top: 0;
+  overflow: hidden;
 }
 
 .feature-use-notice strong {
@@ -50,18 +51,15 @@
   font-weight: 700;
 }
 
-.feature-use-notice[data-collapsed] p {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
-}
-
 .feature-use-notice-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: -4px -4px -4px 0;
+  /* The row is as tall as its 44px link; the negative block margins centre it on the first line
+     of text (1lh, the notice's own line height) and let the hit boxes overlap the bar's padding
+     rather than stretch the bar. */
+  margin-block: calc((1lh - 44px) / 2);
+  margin-inline-end: -4px;
 }
 
 .feature-use-notice a {
@@ -135,16 +133,6 @@
 }
 
 @media (width <= 560px) {
-  .feature-use-notice {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .feature-use-notice-actions {
-    grid-column: 2;
-    justify-content: flex-end;
-    margin-block: -8px;
-  }
-
   .feature-use-notice-dismiss {
     width: 36px;
     height: 36px;
@@ -157,13 +145,13 @@
    is room for more. */
 @media (height <= 820px) {
   .feature-use-notice {
-    padding: 6px 10px;
-    font-size: var(--fs-xs);
+    padding: 7px 10px;
   }
-  .feature-use-notice p {
+  .feature-use-notice:not([data-open]) p {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
+    max-width: none;
     overflow: hidden;
   }
 }
@@ -174,27 +162,38 @@
 @media (width <= 768px) {
   .feature-use-notice {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    padding: 6px 8px;
+    /* Tall enough that the 36px dismiss sits inside the bar rather than hanging off it. */
+    padding: 9px 8px;
     line-height: 1.4;
   }
 
-  .feature-use-notice p {
+  .feature-use-notice:not([data-open]) p {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    max-width: none;
     overflow: hidden;
   }
 
   .feature-use-notice-actions {
     grid-column: auto;
     justify-content: flex-end;
-    margin: -6px -4px;
+  }
+
+  /* Opened on a phone the text takes the whole width and the actions follow it as a row; beside
+     it they left the body a column a few words wide, thirty lines tall. */
+  .feature-use-notice[data-open] {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .feature-use-notice[data-open] .feature-use-notice-actions {
+    grid-column: 2;
+    margin-block: calc((1lh - 44px) / 2);
   }
 }
 
 @media (width <= 768px) and (height <= 700px) {
-  .feature-use-notice p {
+  .feature-use-notice:not([data-open]) p {
     -webkit-line-clamp: 1;
   }
 }
@@ -208,10 +207,4 @@
     width: var(--tap-min);
     height: var(--tap-min);
   }
-}
-
-/* Opened in place: every clamp above (this kind's default, a short window's, a phone's) gives way. */
-.feature-use-notice[data-open] p {
-  display: block;
-  overflow: visible;
 }
