@@ -46,6 +46,7 @@ import { AsyncSurface } from '../../components/AsyncSurface';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import './prism.css';
 import './synthesis/synthesis.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 const askSurface = createPreloadableLazy(() =>
   import('./ask/PrismAskController').then((m) => ({ default: m.PrismAskController })),
@@ -334,9 +335,7 @@ export function PrismOverlay({
   // handled separately below (it backs out of nested panels before closing the whole overlay),
   // so onEscape is intentionally left unset here.
   const panelRef = useRef<HTMLElement>(null);
-  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim's
-  // handlers below. A click is only a dismissal when the whole gesture happened out there.
-  const downOnScrim = useRef(false);
+  const backdrop = useBackdropDismiss(onClose);
   useFocusTrap(panelRef);
   // Veracity: load-bearing claims checked against the live world → a verdict + gated web citation per
   // claim (keyed by claim id). `verifying` shows the honest "checking N claims" state while in flight.
@@ -1300,17 +1299,8 @@ export function PrismOverlay({
     <div
       className="prism-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      // Close only on a click that BEGAN and ENDED on the backdrop itself. `onClick={onClose}`
-      // alone closed the map on two ordinary gestures: a drag that started on a card and released
-      // past the panel's edge (the browser fires the click on their common ancestor — the scrim),
-      // and a click whose target unmounted mid-gesture, which the browser then dispatches on the
-      // nearest surviving ancestor. Both read as "I clicked a thing and the document shut".
-      onPointerDown={(e) => {
-        downOnScrim.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
     >
       {/* Clicks inside the panel are swallowed so they don't bubble to the scrim above and close
           the dialog — a propagation guard, not a click affordance, so it has no keyboard twin. */}

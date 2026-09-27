@@ -289,13 +289,14 @@ describe('RippleOverlay', () => {
     const panel = container.querySelector('.ripple-panel')!;
 
     // Began on the panel, released on the backdrop — the reader was selecting, not dismissing.
+    // A pointer's click carries a click count (`detail`); one without is keyboard activation.
     fireEvent.pointerDown(panel);
-    fireEvent.click(scrim);
+    fireEvent.click(scrim, { detail: 1 });
     expect(closed).toBe(0);
 
     // Began and ended on the backdrop — a real dismissal.
     fireEvent.pointerDown(scrim);
-    fireEvent.click(scrim);
+    fireEvent.click(scrim, { detail: 1 });
     expect(closed).toBe(1);
   });
 

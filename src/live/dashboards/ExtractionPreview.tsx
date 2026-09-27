@@ -32,6 +32,7 @@ import { hasLiveContent } from './format';
 import { dashHref } from './route';
 import type { Dashboard, DashboardDraft, DataCadenceMode } from './types';
 import { useFocusTrap } from '../useFocusTrap';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 import './dashboards.css'; // self-contained styling so the overlay can mount on any surface (incl. Live)
 
 type Tag = 'GOAL' | 'RISK' | 'METRIC';
@@ -327,12 +328,12 @@ export function ExtractionPreview({
     void fold(target);
   };
 
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <div
       className="xt-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close"

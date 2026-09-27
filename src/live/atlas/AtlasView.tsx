@@ -35,6 +35,7 @@ import { buildInsights, type AtlasInsight } from './insights';
 import { connectionArcs, type Connection } from './connections';
 import { starfield } from './starfield';
 import './atlas.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 type Tier = 'galaxy' | 'hood' | 'night';
 
@@ -496,13 +497,14 @@ export function AtlasView({
     [records, onLand, enterHood],
   );
 
+  const backdrop = useBackdropDismiss(onClose);
+  const nightStage = useBackdropDismiss(backOut);
   return (
     <div
       className="atlas-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close atlas"
@@ -813,9 +815,8 @@ export function AtlasView({
               {tier === 'night' && nightRecord && (
                 <div
                   className="atlas-night-stage"
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) backOut();
-                  }}
+                  onPointerDown={nightStage.onPointerDown}
+                  onClick={nightStage.onClick}
                   role="button"
                   tabIndex={0}
                   aria-label="Back out of the rehydrated night"

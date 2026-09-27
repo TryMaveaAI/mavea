@@ -5,6 +5,7 @@ import { useEffect, useRef, type ReactElement } from 'react';
 import type { RecapModel } from './recapModel';
 import { useFocusTrap } from '../useFocusTrap';
 import './recap.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 export function Recap({
   model,
@@ -26,10 +27,12 @@ export function Recap({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <div
       className="recap-scrim"
-      onClick={onClose}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close session recap"

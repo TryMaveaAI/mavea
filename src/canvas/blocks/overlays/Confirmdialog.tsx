@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../../live/useFocusTrap';
 import { OverlayPortal } from './portal';
 import type { ConfirmdialogProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useBackdropDismiss } from '../../../lib/useBackdropDismiss';
 
 type Props = ConfirmdialogProps & { delay?: number };
 
@@ -41,6 +42,7 @@ export function Confirmdialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const backdrop = useBackdropDismiss(() => setOpen(false));
   return (
     <div
       className="card reveal"
@@ -74,7 +76,9 @@ export function Confirmdialog({
           <div className="ov-portal">
             <div
               className="ov-backdrop"
-              onClick={() => setOpen(false)}
+              data-interactive
+              onPointerDown={backdrop.onPointerDown}
+              onClick={backdrop.onClick}
               role="button"
               tabIndex={0}
               aria-label="Close"

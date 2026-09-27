@@ -118,6 +118,7 @@ import { liveTourBeats } from './generateBeats';
 import { revealInkPlan } from './mutedReveal';
 import { claim as claimStepper } from '../canvas/focus/stepDriver';
 import { runDiagramWalk, STEP_DWELL_MS } from './diagramWalk';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 import { prefersReducedMotion } from '../canvas/focus/motion';
 import { TopbarMenu, type TopbarMenuItem } from './TopbarMenu';
 import type { PaletteItem } from './features/CommandPalette';
@@ -933,9 +934,7 @@ export function LiveApp(): ReactElement {
   const [pastOpen, setPastOpen] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  // Click-away closes Settings only for a press that began AND ended on the scrim: a drag released
-  // past the card's edge (selecting text in a field, say) must not throw the panel away.
-  const settingsPressOnScrim = useRef(false);
+  const settingsScrim = useBackdropDismiss(() => setShowSettings(false));
   // Which tab the settings modal opens on — the palette's "Connect apps" jumps straight to
   // Actions (the tab is otherwise hidden until something is connected).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>();
@@ -6956,14 +6955,8 @@ export function LiveApp(): ReactElement {
         <div
           role="presentation"
           className="ls-scrim"
-          onPointerDown={(e) => {
-            settingsPressOnScrim.current = e.target === e.currentTarget;
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && settingsPressOnScrim.current) {
-              setShowSettings(false);
-            }
-          }}
+          onPointerDown={settingsScrim.onPointerDown}
+          onClick={settingsScrim.onClick}
         >
           <LazyOverlay>
             <LiveSettings

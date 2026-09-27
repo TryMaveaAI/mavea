@@ -20,6 +20,7 @@ import type { TrackerPlan, StaticAnswer } from './planTracker';
 import { AnswerCard } from './AnswerCard';
 import './dashboards.css';
 import './dash-composer.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 const loadPlanner = cachedImport(() => import('./planTracker'));
 
@@ -120,6 +121,7 @@ export function TrackComposer({
     window.location.hash = dashHref.detail(dashboardId);
   };
 
+  const backdrop = useBackdropDismiss(dismiss);
   return (
     <>
       <div className="dash-composer">
@@ -160,9 +162,8 @@ export function TrackComposer({
       {sheet && (
         <div
           className="xt-scrim"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) dismiss();
-          }}
+          onPointerDown={backdrop.onPointerDown}
+          onClick={backdrop.onClick}
           role="button"
           tabIndex={0}
           aria-label="Close"

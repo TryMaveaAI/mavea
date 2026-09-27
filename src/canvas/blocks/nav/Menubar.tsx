@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { MenubarProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useBackdropDismiss } from '../../../lib/useBackdropDismiss';
 
 type Props = MenubarProps & { delay?: number };
 
@@ -28,6 +29,7 @@ export function Menubar({
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const backdrop = useBackdropDismiss(() => setOpen(null));
   return (
     <div
       className="card reveal"
@@ -46,7 +48,9 @@ export function Menubar({
         {open !== null && (
           <div
             className="mb-backdrop"
-            onClick={() => setOpen(null)}
+            data-interactive
+            onPointerDown={backdrop.onPointerDown}
+            onClick={backdrop.onClick}
             role="button"
             tabIndex={0}
             aria-label="Close"

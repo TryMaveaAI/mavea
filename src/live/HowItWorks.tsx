@@ -13,6 +13,7 @@ import { Icon } from '../icons/icons';
 import { buildLiveSeed } from './liveSeed';
 import { useFocusTrap } from './useFocusTrap';
 import { liveTourBeats } from './generateBeats';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 const OPENER = "Here's how it works — ask anything, and a living canvas builds while I talk.";
 
@@ -74,17 +75,19 @@ export function HowItWorks({
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, { onEscape: onClose });
 
+  const backdrop = useBackdropDismiss(onClose);
   return (
     // The dialog itself doubles as its own backdrop (no separate scrim element), so a click only
-    // dismisses when it lands on the dialog's own empty padding — never on its content, which is
-    // what the `e.target === e.currentTarget` guard below preserves. There is no ARIA role for
-    // "a dialog that's also its own click-outside-to-dismiss region," so the two rules below are
-    // narrowly suppressed for this element rather than mislabelled with an inaccurate role.
+    // dismisses when it lands on the dialog's own empty padding — never on its content, which
+    // useBackdropDismiss guarantees. There is no ARIA role for "a dialog that's also its own
+    // click-outside-to-dismiss region," so the two rules below are narrowly suppressed for this
+    // element rather than mislabelled with an inaccurate role.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       ref={dialogRef}
       tabIndex={-1}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="dialog"
       aria-modal="true"
       aria-label="How Live works — an example"

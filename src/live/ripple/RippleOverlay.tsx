@@ -43,6 +43,7 @@ import { cachedImport } from '../../lib/cachedImport';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { SecretInput } from '../../lib/SecretInput';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 // Every key Mavéa writes carries the `mavea` prefix so "Forget everything on this device" can find
 // it by name; the unprefixed spellings are still read so nobody sees the worked example twice.
@@ -1272,8 +1273,7 @@ export function RippleOverlay({
   // at window rather than on the dialog node).
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef);
-  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim.
-  const downOnScrim = useRef(false);
+  const backdrop = useBackdropDismiss(onClose);
 
   // The intake sits INSIDE the panel, so the panel's trap alone left its input 36 tab stops behind
   // the rail, the map and the verdict chips — every one of them covered by the intake's own scrim.
@@ -1381,15 +1381,9 @@ export function RippleOverlay({
     <div
       className="ripple-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      // Close only on a click that BEGAN and ENDED on the backdrop. Selecting a diff line or a file
-      // path and releasing past the panel's edge fires the click on the common ancestor — the scrim
-      // — and closing here discards the whole analysis, including the model spend behind it.
-      onPointerDown={(e) => {
-        downOnScrim.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
+      // A stray close here discards the whole analysis, including the model spend behind it.
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close Ripple"

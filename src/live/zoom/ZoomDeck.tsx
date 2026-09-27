@@ -10,6 +10,7 @@ import type { RecapModel } from '../recap/recapModel';
 import { useZoomGesture } from './useZoomGesture';
 import { useFocusTrap } from '../useFocusTrap';
 import './zoom.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 export type ZoomLevel = 'breath' | 'chapters';
 
@@ -56,9 +57,7 @@ export function ZoomDeck({ model, level, onLevel, onJump, onClose }: Props): Rea
   // The scrim itself carries the click/keyboard "dismiss" affordance (it wraps the whole deck, so
   // it can't be a real <button>); only a click or Enter/Space landing directly on the backdrop
   // closes it — anything that lands on the deck's own content is left alone.
-  const closeOnBackdrop = (e: { target: EventTarget; currentTarget: EventTarget }): void => {
-    if (e.target === e.currentTarget) onClose();
-  };
+  const backdrop = useBackdropDismiss(onClose);
 
   return (
     <OverlayPortal>
@@ -67,11 +66,12 @@ export function ZoomDeck({ model, level, onLevel, onJump, onClose }: Props): Rea
         role="button"
         tabIndex={0}
         aria-label="Close"
-        onClick={closeOnBackdrop}
+        onPointerDown={backdrop.onPointerDown}
+        onClick={backdrop.onClick}
         onKeyDown={(e) => {
           if (e.key !== 'Enter' && e.key !== ' ') return;
           if (e.key === ' ') e.preventDefault();
-          closeOnBackdrop(e);
+          if (e.target === e.currentTarget) onClose();
         }}
       >
         <div

@@ -8,6 +8,7 @@ import { type ReactElement } from 'react';
 import { Icon } from '../../icons/icons';
 import { MindShape } from '../../canvas/blocks/diagrams/MindShape';
 import type { MindShapeSpec } from './types';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 interface MindMapViewerDrawerProps {
   open: boolean;
@@ -21,11 +22,13 @@ export function MindMapViewerDrawer({
   onClose,
   spec,
 }: MindMapViewerDrawerProps): ReactElement {
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <>
       <div
         className={'scrim' + (open ? ' show' : '')}
-        onClick={onClose}
+        onPointerDown={backdrop.onPointerDown}
+        onClick={backdrop.onClick}
         role="button"
         tabIndex={open ? 0 : -1}
         aria-hidden={!open}

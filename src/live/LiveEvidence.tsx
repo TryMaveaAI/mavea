@@ -15,6 +15,7 @@ import type { Block, Conf, WebSource } from '../data/conversation';
 import { answerToContent } from './content/fromAnswer';
 import { ILLUSTRATIVE_CAVEAT } from './content/value';
 import { numberOf, rawOf, STATUS_LABEL } from './trust';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 interface LiveEvidenceProps {
   open: boolean;
@@ -82,12 +83,14 @@ export function LiveEvidence({
     : hadFiles
       ? 'How sure Mavéa is, based on your files'
       : CONF_TITLE_UNVERIFIED;
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <>
       <div
         className={'scrim' + (open ? ' show' : '')}
         role="presentation"
-        onClick={onClose}
+        onPointerDown={backdrop.onPointerDown}
+        onClick={backdrop.onClick}
         style={{ pointerEvents: open ? 'auto' : 'none' }}
       ></div>
       {/* `inert` keeps the closed subtree unfocusable and unclickable even mid-transition —

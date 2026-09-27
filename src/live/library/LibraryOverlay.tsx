@@ -10,6 +10,7 @@ import { Library } from '../Library';
 import { useFocusTrap } from '../useFocusTrap';
 import type { LibraryEntry } from './store';
 import './library-overlay.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 export function LibraryOverlay({
   entries,
@@ -36,15 +37,15 @@ export function LibraryOverlay({
   }, [entries.length, onClose]);
 
   // No saved canvases — nothing to browse (the rail only offers this when entries exist anyway).
+  const backdrop = useBackdropDismiss(onClose);
   if (entries.length === 0) return null;
 
   return (
     <OverlayPortal>
       <div
         className="lib-ov-scrim"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
+        onPointerDown={backdrop.onPointerDown}
+        onClick={backdrop.onClick}
         role="button"
         tabIndex={0}
         aria-label="Close"

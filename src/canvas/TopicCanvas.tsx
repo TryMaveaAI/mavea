@@ -96,6 +96,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   MouseEvent as ReactMouseEvent,
 } from 'react';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 // A replay extra is rare and opt-in; keeping its story composer out of the canvas's static graph
 // avoids making every answer, course lesson, and Gallery tile download the reel runtime up front.
@@ -654,8 +655,7 @@ export function TopicCanvas({
   // past the card's edge, and a click whose target unmounted mid-gesture (the browser retargets to
   // the nearest survivor), both read as "I clicked a thing and it did something else".
   const lensDown = useRef<{ id: string; x: number; y: number } | null>(null);
-  /** Whether the press that may become a backdrop click actually began on the backdrop. */
-  const scrimDown = useRef(false);
+  const zoomScrim = useBackdropDismiss(() => setZoomedBlock(null));
 
   const lensPointerDown = (b: Block) => (e: ReactPointerEvent<HTMLDivElement>) => {
     lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
@@ -850,6 +850,7 @@ export function TopicCanvas({
     );
   };
 
+  const appScrim = useBackdropDismiss(() => setLaunched(null));
   return (
     // Provide the fill wiring so a BlankSlot nested in any block reaches it; a null value (Demo)
     // is equivalent to no provider — the slot then keeps its own local state.
@@ -1136,7 +1137,8 @@ export function TopicCanvas({
           role="button"
           tabIndex={0}
           aria-label="Close app preview"
-          onClick={() => setLaunched(null)}
+          onPointerDown={appScrim.onPointerDown}
+          onClick={appScrim.onClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -1175,21 +1177,11 @@ export function TopicCanvas({
         (() => {
           const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
           return (
-            // Close only on a gesture that BEGAN and ENDED on the backdrop. A plain onClick also
-            // fires for a drag released past the sheet's edge (selecting text inside it, say) and
-            // for a click whose target unmounted mid-gesture, and both read as "I clicked a thing
-            // and it shut".
             // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
             <div
               className="zoom-scrim"
-              onPointerDown={(e) => {
-                scrimDown.current = e.target === e.currentTarget;
-              }}
-              onClick={(e) => {
-                const began = scrimDown.current;
-                scrimDown.current = false;
-                if (began && e.target === e.currentTarget) setZoomedBlock(null);
-              }}
+              onPointerDown={zoomScrim.onPointerDown}
+              onClick={zoomScrim.onClick}
             >
               <div
                 className="zoom-sheet"
