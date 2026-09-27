@@ -286,8 +286,12 @@ const ROUTE_BUDGETS = [
     // 164 (was 163): measured at 163.3. The Lens sizes its sheet for a large monitor, an unbuilt
     // lesson leads with Build, feature notices open in place, and the stage card ignores the
     // board's spotlight — all code the lesson reader loads.
-    gzip: 164,
-    files: 58,
+    // 166 kB and 59 files (were 164 and 58): measured at 165.5. The Lens traps focus and hands it
+    // back to the card it came from, states its scale in one readout, and holds a diagram's
+    // labels at the size the board drew them (TopicCanvas +3.4 kB); the stat tiles and the
+    // insight's headline read `longestRun`, and two importers gave lib/fitText a chunk of its own.
+    gzip: 166,
+    files: 59,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
   {
