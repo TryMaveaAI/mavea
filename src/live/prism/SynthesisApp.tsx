@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 import { homeTarget } from '../../lib/homeTarget';
 import { applyTheme, readTheme } from '../../lib/theme';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
-import { attachmentLabel, MAX_DOCUMENT_BYTES, type Attachment } from '../attachments';
+import { attachmentLabel, explodeRoute, MAX_DOCUMENT_BYTES, type Attachment } from '../attachments';
 import { Icon } from '../../icons/icons';
 import { filesToCorpus, MAX_CORPUS_SOURCES } from './synthesis/ingest';
 import { expandZip, isZip } from './synthesis/ingestZip';
@@ -315,8 +315,10 @@ export function SynthesisApp(): ReactElement {
                 setOpened({ sources: staged, mode });
               };
               const n = staged.length;
-              // 1 → Prism (single); 2 → Prism compare; 3 → pick either; 4+ → Synthesize.
-              if (n <= 2)
+              // 1 → Prism (single); 2 → Prism compare; 3 → pick either; 4+ → Synthesize — the same
+              // rule Live's attach strip and launcher follow.
+              const route = explodeRoute(n);
+              if (route === 'prism')
                 return (
                   <button
                     type="button"
@@ -328,7 +330,7 @@ export function SynthesisApp(): ReactElement {
                     <Icon.chevR />
                   </button>
                 );
-              if (n === 3)
+              if (route === 'choose')
                 return (
                   <div className="prism-confirm-row">
                     <button

@@ -115,6 +115,16 @@ export function isExplodable(a: Attachment): boolean {
   return isPdf(a) || isOffice(a) || isText(a) || isImage(a);
 }
 
+/** Which surface a set of sources opens: a few compare in Prism, a pile fuses in Synthesis, and
+ *  three sit in between — close enough to compare, enough to synthesize — so the reader picks.
+ *  One rule for Live and `#/synthesis`, so the same three files never open differently by door.
+ *  Count only what Synthesis can read (not pictures), since that is the side the count gates. */
+export type ExplodeRoute = 'prism' | 'choose' | 'synthesis';
+export function explodeRoute(sources: number): ExplodeRoute {
+  if (sources >= 4) return 'synthesis';
+  return sources === 3 ? 'choose' : 'prism';
+}
+
 /** A coarse kind the SELECTOR reasons over — an attached spreadsheet/CSV is a tabular medium the
  *  answer should ground in a table, a PDF is a document, an image may be a receipt/screenshot. Used
  *  (via generateLive) to steer component selection toward the right base for what the user uploaded,

@@ -156,9 +156,11 @@ import {
   isOffice,
   isText,
   isExplodable,
+  explodeRoute,
   ACCEPTED_TYPES,
   type Attachment,
 } from './attachments';
+import { ExplodeChoice } from './prism/ExplodeChoice';
 import { SetupWizard } from './setup/SetupWizard';
 import { isSetupDone } from './setup/setup';
 import { TemplatePicker } from './TemplatePicker';
@@ -777,16 +779,18 @@ export function LiveApp(): ReactElement {
   // A whole PILE of sources fuses into the Synthesis World (themes + contradictions + gaps across the
   // corpus); a document or a few go to Prism. Same "explode" gesture — it just scales by input count.
   const [synthesis, setSynthesis] = useState<Attachment[] | null>(null);
-  // The Synthesis World is OFFERED from 3 sources, and taken automatically at 4+. A single document is
-  // classic Prism; 2 (and 3, by choice) compare in Prism; 3 also offers Synthesize; 4+ synthesize.
-  const SYNTHESIS_MIN_SOURCES = 3; // synth available as a choice from here
-  const SYNTHESIS_AUTO_SOURCES = 4; // synth is the automatic default from here
+  // Set when a door that opens documents (⌘K, the launcher, its picker) met three of them: there is
+  // no right answer to pick for the reader, so the Compare / Synthesize choice takes focus instead.
+  const [explodeAsk, setExplodeAsk] = useState(false);
+  const clearExplodeAsk = useCallback(() => setExplodeAsk(false), []);
   const openExplode = useCallback((docs: Attachment[]) => {
     // Prism reads a picture (mapClaims routes it down the vision path); a Synthesis corpus does not
     // — mapCorpus extracts text and would hand a PNG to the PDF reader. So a pile counts only the
     // sources Synthesis can actually read when deciding which surface opens.
     const corpusReadable = docs.filter((d) => !isImage(d));
-    if (corpusReadable.length >= SYNTHESIS_AUTO_SOURCES) setSynthesis(corpusReadable);
+    const route = explodeRoute(corpusReadable.length);
+    if (route === 'synthesis') setSynthesis(corpusReadable);
+    else if (route === 'choose') setExplodeAsk(true);
     else if (docs.length > 0) setPrismDocs(docs);
   }, []);
   // Ripple — the code/ship companion. Null = closed; a ShipModel = the open overlay. For now it
@@ -6039,41 +6043,15 @@ export function LiveApp(): ReactElement {
               const docs = attached.filter(
                 (a) => isOffice(a) || isText(a) || (isPdf(a) && visionCaps),
               );
-              if (docs.length <= 1) return null;
-              const compareBtn = (
-                <button
-                  key="compare"
-                  type="button"
-                  className="attach-explode attach-compare"
-                  aria-label={`Compare ${docs.length} documents — map their claims and find where they agree and contradict`}
-                  title="Explode all documents together and compare them"
-                  onClick={() => setPrismDocs(docs)}
-                >
-                  ⊹ Compare {docs.length} documents
-                </button>
+              return (
+                <ExplodeChoice
+                  count={docs.length}
+                  onCompare={() => setPrismDocs(docs)}
+                  onSynthesize={() => setSynthesis(docs)}
+                  focusRequested={explodeAsk}
+                  onFocusHandled={clearExplodeAsk}
+                />
               );
-              const synthBtn = (
-                <button
-                  key="synth"
-                  type="button"
-                  className="attach-explode attach-compare"
-                  aria-label={`Synthesize ${docs.length} sources — fuse them into one map of themes, contradictions, and gaps`}
-                  title="Fuse all sources into one navigable Synthesis World"
-                  onClick={() => setSynthesis(docs)}
-                >
-                  ⊹ Synthesize {docs.length} sources
-                </button>
-              );
-              // 2 → compare; 3 → offer both; 4+ → synthesize.
-              if (docs.length >= SYNTHESIS_AUTO_SOURCES) return synthBtn;
-              if (docs.length >= SYNTHESIS_MIN_SOURCES)
-                return (
-                  <>
-                    {compareBtn}
-                    {synthBtn}
-                  </>
-                );
-              return compareBtn;
             })()}
             {attachError && (
               <span className="attach-error" role="status">
@@ -6836,6 +6814,22 @@ export function LiveApp(): ReactElement {
                         </li>
                       ))}
                     </ul>
+                    {(() => {
+                      // The wizard hides the dock's attach strip, so three staged documents need
+                      // their choice here, or the launcher's Prism card would have nowhere to ask.
+                      const docs = attached.filter(isExplodable);
+                      const readable = docs.filter((d) => !isImage(d));
+                      if (explodeRoute(readable.length) !== 'choose') return null;
+                      return (
+                        <ExplodeChoice
+                          count={readable.length}
+                          onCompare={() => setPrismDocs(docs)}
+                          onSynthesize={() => setSynthesis(readable)}
+                          focusRequested={explodeAsk}
+                          onFocusHandled={clearExplodeAsk}
+                        />
+                      );
+                    })()}
                     <button
                       type="button"
                       className="start-with-another"
