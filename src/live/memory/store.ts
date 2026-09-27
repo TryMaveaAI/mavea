@@ -400,7 +400,14 @@ export function getMemoryNodes(): MemoryNode[] {
  *  each through coerceNode (a bad item is dropped), upserts by id (never deleting a node the bundle
  *  omits), and on a collision keeps the newer `updatedAt`. Returns the count of valid nodes imported. */
 export function importMemoryNodes(raw: unknown[]): number {
-  const incoming = raw.map(coerceNode).filter((n): n is MemoryNode => n !== null);
+  // A backup is a file, and anyone can write one. Its claim that a memory is the reader's own
+  // words (or their edit, or a cited source) is exactly what would let a doctored file plant a
+  // "fact" the model then states as theirs — so every imported memory arrives as an unconfirmed
+  // guess, and becomes a fact again only when the reader confirms or edits it here.
+  const incoming = raw
+    .map(coerceNode)
+    .filter((n): n is MemoryNode => n !== null)
+    .map((n) => ({ ...n, source: 'model-inferred' as const }));
   if (!incoming.length) return 0;
   const byId = new Map(get().nodes.map((n) => [n.id, n]));
   for (const n of incoming) {
