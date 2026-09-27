@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Probe B: main world",
+  "version": "1.0.0",
+  "description": "A hostile extension: a content script in the page's own JavaScript world.",
+  "permissions": ["scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "worker.js" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["collect.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

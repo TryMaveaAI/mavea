@@ -119,6 +119,7 @@
     "audit:browsers": "node --import tsx scripts/browser-matrix.mts",
     "audit:interactions": "node --import tsx scripts/interaction-matrix.mts",
     "perf:world": "node --import tsx scripts/world-perf.mts",
+    "probe:extensions": "node --import tsx scripts/extension-probe.mts",
     "audit:world": "node --import tsx scripts/world-audit.mts",
     "world:smoke": "node --import tsx scripts/world-perf.mts --viewport=1280x720 --throttle=4",
     "perf": "node --import tsx scripts/perf-probe.mts",

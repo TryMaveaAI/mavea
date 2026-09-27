@@ -127,6 +127,13 @@ then pass `--url http://localhost:4173`).
 - **`pnpm perf:memory`** — warms every public route, then repeatedly mounts/unmounts them in one
   production Chromium process with forced GC. It fails on retained heap, DOM nodes, documents,
   event listeners, page errors, or console errors above the explicit budgets.
+- **`pnpm probe:extensions`** — after `pnpm build`, loads three real MV3 extensions
+  (`scripts/extension-probe/`: a broad-host isolated-world content script, a main-world one, and one
+  with no host permission) into Playwright Chromium, enters a fake key with Remember on, asks each
+  what it can read, runs Forget everything on this device, and asks again. Every row is PASS,
+  EXPECTED-EXPOSURE (readable, and the legal copy says so) or FAIL (a documented protection did not
+  hold); it exits 1 only on a FAIL. Every provider request is aborted in the browser. On demand, not
+  in CI; the table lands in `.audit-out/extension-probe.json`.
 
 ## Responsive rules
 
