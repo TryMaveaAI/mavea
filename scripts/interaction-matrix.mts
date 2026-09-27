@@ -51,7 +51,7 @@ interface Result {
 
 async function freshLanding(page: Page, base: string): Promise<void> {
   await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-  await page.locator('.fl-hero, .flagship').first().waitFor({ state: 'visible' });
+  await page.locator('.ob-page').waitFor({ state: 'visible' });
   await page.evaluate(() => sessionStorage.clear());
 }
 

@@ -31,7 +31,7 @@ interface Scenario {
 const COLD_SHELL_BUDGET_MS = 2000;
 
 const SCENARIOS: Scenario[] = [
-  { name: 'landing', path: '/', ready: '.fl-hero, .flagship', budgetMs: COLD_SHELL_BUDGET_MS },
+  { name: 'landing', path: '/', ready: '.ob-page', budgetMs: COLD_SHELL_BUDGET_MS },
   {
     name: 'live (welcome)',
     path: '/#/live',

@@ -114,7 +114,7 @@ async function landing(page: Page, oldReady?: string): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/';
   });
-  await page.locator('.fl-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('.ob-page').waitFor({ state: 'visible', timeout: 15000 });
   if (oldReady) await page.locator(oldReady).first().waitFor({ state: 'detached', timeout: 15000 });
 }
 
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
   await cdp.send('Performance.enable');
 
   await page.goto(`${baseUrl}/`, { waitUntil: 'commit' });
-  await page.locator('.fl-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('.ob-page').waitFor({ state: 'visible', timeout: 15000 });
 
   // Warm every lazy module and its stable caches before taking the baseline.
   for (const route of ROUTES) {
