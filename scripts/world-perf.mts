@@ -24,7 +24,7 @@
 // instead is the DETERMINISTIC half of the same contract, in jsdom: world-lever-drag pins that a
 // lever re-opens no camera flight and moves no node, which is the regression that actually recurs.
 import { chromium, type Browser, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 import { allWorldScenario } from '../src/live/world/scenarios/index';
 
 /** The window the budgets are measured in. `--viewport WxH` narrows it: a smaller stage fits fewer
@@ -186,14 +186,11 @@ async function main(): Promise<void> {
   try {
     const ctx = await browser.newContext({ viewport: size });
     await ctx.addInitScript(
-      ({ legalKey, legalVersion }) => {
+      ({ legalKey, legalValue }) => {
         localStorage.setItem('mavea-theme', 'dark');
-        localStorage.setItem(
-          legalKey,
-          JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-15T00:00:00.000Z' }),
-        );
+        localStorage.setItem(legalKey, legalValue);
       },
-      { legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY, legalVersion: LEGAL_ACCEPTANCE_VERSION },
+      { legalKey: LEGAL_SEED.key, legalValue: LEGAL_SEED.value },
     );
     await ctx.addInitScript(OBSERVE);
     const page = await ctx.newPage();

@@ -15,8 +15,8 @@
 //   pnpm perf -- --url http://localhost:4173
 //   pnpm perf -- --url http://localhost:4173 --throttle 4
 import { type Page, type CDPSession } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
 import { launchChromium } from './launch-chromium.mts';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 interface Scenario {
   name: string;
@@ -85,10 +85,7 @@ function readFlag(name: string, fallback: string): string {
  *  seed the acceptance the same way accepting it once would, before any script on the page runs. */
 const SEED_LEGAL_ACCEPTANCE = `
   try {
-    localStorage.setItem(${JSON.stringify(LEGAL_ACCEPTANCE_STORAGE_KEY)}, JSON.stringify({
-      version: ${JSON.stringify(LEGAL_ACCEPTANCE_VERSION)},
-      acceptedAt: new Date(0).toISOString(),
-    }));
+    localStorage.setItem(${JSON.stringify(LEGAL_SEED.key)}, ${JSON.stringify(LEGAL_SEED.value)});
   } catch { /* a context without storage still measures the landing route */ }
 `;
 

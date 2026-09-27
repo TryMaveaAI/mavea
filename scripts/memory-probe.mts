@@ -5,18 +5,15 @@
 // GC, and comparing the browser's own heap/DOM/listener counters after the lazy chunks and module
 // caches have already been warmed. Growth after that baseline is the suspicious part.
 import { type CDPSession, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
 import { launchChromium } from './launch-chromium.mts';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 /** Connected-feature surfaces sit behind the one-time legal acknowledgement, so a fresh context
  *  renders the gate instead of the route and every wait times out. Seed the acceptance before any
  *  page script runs — this probe measures a returning user's mount/unmount churn, not consent. */
 const SEED_LEGAL_ACCEPTANCE = `
   try {
-    localStorage.setItem(${JSON.stringify(LEGAL_ACCEPTANCE_STORAGE_KEY)}, JSON.stringify({
-      version: ${JSON.stringify(LEGAL_ACCEPTANCE_VERSION)},
-      acceptedAt: new Date(0).toISOString(),
-    }));
+    localStorage.setItem(${JSON.stringify(LEGAL_SEED.key)}, ${JSON.stringify(LEGAL_SEED.value)});
   } catch { /* no storage: the landing route still measures */ }
 `;
 

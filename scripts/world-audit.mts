@@ -30,7 +30,7 @@
 // time, and some of what it finds is a design decision waiting to be made rather than a defect
 // waiting to be fixed. Reach for --scenario while iterating; sweep everything before a release.
 import { chromium, type Browser, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 import { ALL_WORLD_SCENARIOS, allWorldScenario } from '../src/live/world/scenarios/index';
 import type { Representation } from '../src/canvas/spatial/morph/types';
 // useMorphStage's CLAMP.min, imported rather than copied so the audit and the camera can never
@@ -697,19 +697,16 @@ async function main(): Promise<void> {
         // renders the same final layout at once — deterministic instead of a sampled frame.
         const ctx = await browser.newContext({ viewport: size, reducedMotion: 'reduce' });
         await ctx.addInitScript(
-          ({ initialTheme, legalKey, legalVersion }) => {
+          ({ initialTheme, legalKey, legalValue }) => {
             localStorage.setItem('mavea-theme', initialTheme);
             // #/worldlab is not on the legal gate's bypass list, so without this every load stops on
             // the acknowledgement screen and the audit measures a form.
-            localStorage.setItem(
-              legalKey,
-              JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-15T00:00:00.000Z' }),
-            );
+            localStorage.setItem(legalKey, legalValue);
           },
           {
             initialTheme: theme,
-            legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-            legalVersion: LEGAL_ACCEPTANCE_VERSION,
+            legalKey: LEGAL_SEED.key,
+            legalValue: LEGAL_SEED.value,
           },
         );
         const page = await ctx.newPage();

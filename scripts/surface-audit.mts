@@ -35,7 +35,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 import { startDevServer } from './dev-server.mts';
 import { launchChromium } from './launch-chromium.mts';
 import { DEFAULT_SIZES, SURFACES, ZOOM_DPRS, ZOOM_SIZES, type Surface } from './surface-sweep.mjs';
@@ -660,21 +660,18 @@ export async function sweepSurfaces(opts: SweepOptions): Promise<Finding[]> {
           });
           const page = await ctx.newPage();
           await page.addInitScript(
-            ({ initialTheme, legalKey, legalVersion }) => {
+            ({ initialTheme, legalKey, legalValue }) => {
               try {
                 localStorage.setItem('mavea-theme', initialTheme);
-                localStorage.setItem(
-                  legalKey,
-                  JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-12T00:00:00.000Z' }),
-                );
+                localStorage.setItem(legalKey, legalValue);
               } catch {
                 // A sandboxed preview frame: no storage, and nothing here to seed.
               }
             },
             {
               initialTheme: theme,
-              legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-              legalVersion: LEGAL_ACCEPTANCE_VERSION,
+              legalKey: LEGAL_SEED.key,
+              legalValue: LEGAL_SEED.value,
             },
           );
           await page.addInitScript(OBSERVE_SCRIPT(surface.ready, surface.settleMs ?? 1200));

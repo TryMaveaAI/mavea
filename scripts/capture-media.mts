@@ -13,7 +13,7 @@
 // Run the dev server first (`pnpm dev`), then `pnpm gen:media`.
 import { mkdirSync } from 'node:fs';
 import { chromium, type Locator, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 /** Laptop-shaped: what the product is art-directed for, and short enough that a three-up row of
  *  them stays readable rather than becoming six tall crops. */
@@ -335,19 +335,16 @@ async function main(): Promise<void> {
       });
       const page = await ctx.newPage();
       await page.addInitScript(
-        ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
+        ({ initialTheme, initialTemplate, legalKey, legalValue }) => {
           localStorage.setItem('mavea-theme', initialTheme);
           localStorage.setItem('mavea-template', initialTemplate);
-          localStorage.setItem(
-            legalKey,
-            JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-12T00:00:00.000Z' }),
-          );
+          localStorage.setItem(legalKey, legalValue);
         },
         {
           initialTheme: THEME,
           initialTemplate: TEMPLATE,
-          legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-          legalVersion: LEGAL_ACCEPTANCE_VERSION,
+          legalKey: LEGAL_SEED.key,
+          legalValue: LEGAL_SEED.value,
         },
       );
       await openSurface(page, baseUrl, shot);

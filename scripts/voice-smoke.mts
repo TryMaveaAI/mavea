@@ -2,7 +2,7 @@
 // proves the app can create/unlock WebAudio, pass the Kokoro gate, receive PCM through Vite's
 // same-origin proxy, and schedule samples to the output device.
 import { launchChromium } from './launch-chromium.mts';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 function flag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);
@@ -19,10 +19,10 @@ const page = await context.newPage();
 const failures: string[] = [];
 
 await page.addInitScript(
-  ([key, version]) => {
-    localStorage.setItem(key, JSON.stringify({ version, acceptedAt: new Date(0).toISOString() }));
+  ([key, value]) => {
+    localStorage.setItem(key, value);
   },
-  [LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION] as const,
+  [LEGAL_SEED.key, LEGAL_SEED.value] as const,
 );
 
 page.on('console', (message) => {
