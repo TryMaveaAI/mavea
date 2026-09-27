@@ -102,23 +102,38 @@
   justify-content: center;
   transition: height var(--m-cinematic) var(--ease-out);
 }
-/* Rides just above each bar's top, centred on the bar and bounded by its COLUMN, not by the bar.
-   Positioned inside the bar, the label's box was the bar's 46px, so "3,000" had to break to fit
-   a box its column had room for. It sizes to its text up to the column (and 12ch), a label with
-   words wraps between them within that, and a figure too long for a crowded column shrinks until
-   its longest run fits — to the 10px floor, rather than spill over the next bar's value. */
+/* Rides just above each bar's top, centred on the bar, on one line: a value is one term and is
+   never broken. Its type is fitted to its COLUMN (whole text against the column's width), down
+   to the floor. A crowded row whose values still would not fit side by side at the floor draws
+   fewer of them instead — BarChart measures the rendered labels and marks the ones it leaves
+   out `data-quiet`, keeping the called-out bar, the smallest and both ends. */
 .bar-val {
   position: absolute;
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 4px;
-  width: max-content;
-  max-width: min(12ch, 100cqi);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term: a figure never breaks, and a row too crowded for it thins its labels instead */
+  white-space: nowrap;
   text-align: center;
   line-height: 1.2;
   font-size: clamp(var(--fs-2xs), calc(100cqi / (var(--bar-val-chars, 4) * 0.62)), var(--fs-xs));
   color: var(--text-secondary);
+}
+/* Left undrawn, still read out: the value stays in the document for a screen reader. */
+.bar-val[data-quiet] {
+  opacity: 0;
+}
+/* A pointer can still ask for any one of them: hovering its bar lifts that value over its
+   neighbours on the card's own surface. */
+@media (hover: hover) {
+  .bar-col:hover .bar-val[data-quiet] {
+    opacity: 1;
+    z-index: 1;
+    padding: 0 3px;
+    border-radius: 4px;
+    background: var(--surface-elevated);
+  }
 }
 /* Labels live in their own row below the plot so they never eat into the bar/goal scale. */
 .bars-axis {

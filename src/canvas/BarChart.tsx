@@ -1,8 +1,9 @@
 // Vertical bars with an optional goal line.
-import type { CSSProperties } from 'react';
+import { useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { formatValue, withUnit } from './lib/format';
-import { longestRun } from './lib/fitText';
+import { spreadOrder, thinLabels } from './lib/thinLabels';
+import { observeResize } from './layout/sharedResize';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import type { BarChartProps } from '../data/conversation';
 
@@ -40,6 +41,41 @@ export function BarChart({
   const u = unit.trim();
   const tightUnit = u !== '' && (/^[$€£¥₹]/.test(u) || u === '%' || u.length <= 2);
   const axisUnit = tightUnit ? '' : u;
+  const values = bars.map(
+    (b) => b.label2 || (tightUnit ? withUnit(b.value, unit) : formatValue(b.value)),
+  );
+
+  // Every value is drawn when the row has room for it. Past the type floor it does not, and the
+  // values would pile onto each other — so the chart draws the ones a reader needs first (the
+  // bar it calls out, the smallest, both ends) and as many evenly spaced others as fit, judged
+  // on the widths they actually render at. The rest stay in the document, only unpainted.
+  const plot = useRef<HTMLDivElement>(null);
+  const n = bars.length;
+  let low = 0;
+  bars.forEach((b, i) => {
+    if (b.value < bars[low].value) low = i;
+  });
+  // The figures themselves, as one key: a new array of the same figures is the same row, and
+  // re-measuring it on every parent render would be a layout read for nothing.
+  const valuesKey = values.join('\u0000');
+  useLayoutEffect(() => {
+    const el = plot.current;
+    if (!el) return;
+    const order = spreadOrder(n, [salient, low, 0, n - 1]);
+    const thin = (): void => {
+      const labels = Array.from(el.querySelectorAll<HTMLElement>('.bar-val'));
+      const spans = labels.map((l) => l.getBoundingClientRect());
+      // Not laid out (a skipped off-screen card, a collapsed drawer): every box reads zero and
+      // would "collide" with every other. Judge the row once it has a size, not before.
+      if (spans.some((r) => r.width === 0)) return;
+      const card = (el.closest('.card') ?? el).getBoundingClientRect();
+      const keep = thinLabels(spans, order, 4, card);
+      labels.forEach((l, i) => l.toggleAttribute('data-quiet', !keep.has(i)));
+    };
+    thin();
+    return observeResize(el, thin);
+  }, [n, salient, low, valuesKey]);
+
   return (
     <div className="card reveal" style={{ '--delay': (delay || 0) + 'ms' } as CSSProperties}>
       <div className="card-eyebrow">
@@ -47,14 +83,14 @@ export function BarChart({
       </div>
       {axisUnit && <div className="bars-unit">{axisUnit}</div>}
       <div className="bars-chart">
-        <div className="bars-plot">
+        <div className="bars-plot" ref={plot}>
           {goal != null && (
             <div className="bars-goal" style={{ bottom: `${(goal / max) * 100}%` }}>
               <span className="bars-goal-label">{goalLabel || 'Goal'}</span>
             </div>
           )}
           {bars.map((b, i) => {
-            const val = b.label2 || (tightUnit ? withUnit(b.value, unit) : formatValue(b.value));
+            const val = values[i];
             return (
               <div className="bar-col" key={i}>
                 <div
@@ -67,7 +103,7 @@ export function BarChart({
                 >
                   <span
                     className="bar-val tab-num"
-                    style={{ '--bar-val-chars': longestRun(val) } as CSSProperties}
+                    style={{ '--bar-val-chars': val.length } as CSSProperties}
                   >
                     {val}
                   </span>
