@@ -139,9 +139,11 @@
 /* Coach + transport panel — bottom-center, above the composer. */
 .tourx-panel {
   position: fixed;
-  /* Right above the dock, which measures itself into --dock-h; the 12px is the same 12 the
-     overlay adds when it publishes --tour-h, so the band the column reserves is exactly this. */
-  bottom: calc(var(--dock-h, 76px) + 12px);
+  /* Right above the dock, which measures itself into --dock-h (defaulted on the Live shell until
+     it does). --tour-gap is the air between them, and the overlay reads it back when it publishes
+     --tour-h, so the band the column reserves is exactly this one. */
+  --tour-gap: 12px;
+  bottom: calc(var(--dock-h) + var(--tour-gap));
   /* The live workspace begins after the session rail, and the mascot/canvas are centred in that
      remaining stage. Centre the coach on the SAME axis; viewport-centering left it exactly half a
      rail-width to the left of the thing it was teaching. --rail-w already collapses to 0 on mobile
@@ -335,7 +337,7 @@
 
 @media (width <= 640px) {
   .tourx-panel {
-    bottom: calc(var(--dock-h, 76px) + 12px);
+    bottom: calc(var(--dock-h) + var(--tour-gap));
     left: 50%;
     width: min(359px, calc(100vw - 32px));
     padding-inline: 16px;

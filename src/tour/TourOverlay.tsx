@@ -67,8 +67,10 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
     const panel = panelRef.current;
     const app = panel?.closest<HTMLElement>('.mavea-app');
     if (!panelShown || panelAtTop || !panel || !app) return;
+    // The gap above the dock is the stylesheet's (--tour-gap), read back rather than restated.
+    const gap = parseFloat(getComputedStyle(panel).getPropertyValue('--tour-gap')) || 0;
     const apply = (): void =>
-      app.style.setProperty('--tour-h', `${Math.round(panel.offsetHeight) + 12}px`);
+      app.style.setProperty('--tour-h', `${Math.round(panel.offsetHeight + gap)}px`);
     apply();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
     observer?.observe(panel);
