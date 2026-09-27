@@ -4,9 +4,9 @@ import type { Block, BlockStudy, ConversationSpec } from '../src/data/conversati
 // The on-demand Study call had no tests at all — only its coercer did (study-annotate.test.ts).
 // Everything that makes it affordable lives HERE, in the call: the content-addressed cache that
 // makes a re-open free, the in-flight dedup that stops a remount paying twice, the rule that a
-// failed call is remembered until the reader asks again, and the streaming that puts the first note in the margin seconds
-// before the last one is written. Each of those is a billing or latency promise on a BYOK key,
-// so each gets a test.
+// failed call is remembered until the reader asks again, and the streaming that puts the first
+// note in the margin seconds before the last one is written. Each of those is a billing or
+// latency promise on a BYOK key, so each gets a test.
 
 const cache = new Map<string, unknown>();
 const generate = vi.fn();
@@ -140,7 +140,7 @@ describe('the Study notes call', () => {
     expect(b?.size).toBe(2);
   });
 
-  it('remembers a failure, so re-runs never re-send it — only a reader retry asks again', async () => {
+  it('remembers a failure so re-runs never re-send it — only a reader retry asks', async () => {
     generate.mockRejectedValueOnce(new Error('gemini 503 — UNAVAILABLE'));
     expect(await studyNotesFor(specWith('fail'), 'why', cfg)).toBeNull();
     // Every re-run the desk's effect makes for the same answer (a config, view or busy change).

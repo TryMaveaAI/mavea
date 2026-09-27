@@ -154,7 +154,7 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     expect(r.deal).toBe('$88k now with a 6-month review');
   });
 
-  it('lets a first-move pass stand — the model decided, and nobody is billed to argue', async () => {
+  it('lets a first-move pass stand — the model decided, nobody is billed to argue', async () => {
     const { fn, calls } = scripted([
       move('Not worth discussing.', null, 'pass'),
       move('$88k now, review in six months.', '$88k now with a 6-month review', 'offer'),
@@ -174,7 +174,7 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     expect(events.at(-1)?.say).toContain('could not be read');
   });
 
-  it('names the last attempt when a withheld offer is followed by an unreadable reply', async () => {
+  it('names the last attempt when a withheld offer meets an unreadable reply', async () => {
     const { fn, calls } = scripted([
       move('Weekends it is, then.', 'Working weekends for the raise', 'offer'),
       'prose, not JSON',

@@ -65,7 +65,10 @@ export function failureLine(failure: TrackerFailure): string {
     case 'auth':
       return 'Your model rejected the key — reconnect it in Live, then check again.';
     case 'rate-limit':
-      return 'Your model provider is rate-limiting right now. The next scheduled check tries again, or check now.';
+      return (
+        'Your model provider is rate-limiting right now. The next scheduled check tries again, ' +
+        'or check now.'
+      );
     case 'network':
       return "Couldn't reach your model. The next scheduled check tries again, or check now.";
     case 'no-model':
@@ -83,7 +86,10 @@ export function failureLine(failure: TrackerFailure): string {
       // nothing on its own. Only the tracker's own promise is added to it.
       return `${searchBlockLine('search-off')} Then this starts checking.`;
     case 'provider-unavailable':
-      return 'Your model provider is unavailable right now. The next scheduled check tries again, or check now.';
+      return (
+        'Your model provider is unavailable right now. The next scheduled check tries again, ' +
+        'or check now.'
+      );
   }
 }
 

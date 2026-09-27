@@ -122,7 +122,7 @@ describe('the standalone morning briefing', () => {
 });
 
 describe('a briefing folded into a scheduled pass', () => {
-  it('is missed for the day when the pass returns none, so the next pass does not carry it', async () => {
+  it('is missed for the day when a pass returns none, not carried to the next', async () => {
     refreshDashboards.mockResolvedValue({
       ok: false,
       grounded: false,

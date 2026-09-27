@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Dashboard, MetricSpec } from '../src/live/dashboards/types';
 
 // The full outcome contract when a batched refresh call parses but never grounds in real search:
-// the pass spends exactly one call and is recorded honestly as 'unverified' — "an attempt happened, it just couldn't be verified"
-// — never silently discarded as a plain "no-change" (which would wrongly imply a grounded pass
-// that genuinely found nothing new). Exercises the REAL refresh.ts (only the provider adapter is
-// mocked), unlike dashboards-manual-refresh.test.ts which mocks refreshDashboards itself.
+// the pass spends exactly one call and is recorded honestly as 'unverified' — "an attempt
+// happened, it just couldn't be verified" — never silently discarded as a plain "no-change"
+// (which would wrongly imply a grounded pass that genuinely found nothing new). Exercises the
+// REAL refresh.ts (only the provider adapter is mocked), unlike dashboards-manual-refresh.test.ts
+// which mocks refreshDashboards itself.
 
 const metric = (over: Partial<MetricSpec> = {}): MetricSpec => ({
   id: 'm1',
@@ -76,7 +77,7 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe('unverified — one call per pass, and an honest outcome', () => {
-  it('records an ungrounded pass as unverified after exactly one call, at the effort it chose', async () => {
+  it('records an ungrounded pass as unverified after one call, at its chosen effort', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard());
     generateMock.mockResolvedValue({

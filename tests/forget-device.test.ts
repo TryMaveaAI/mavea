@@ -115,8 +115,11 @@ describe('forgetDevice', () => {
   it('names every unprefixed key the app still reads, so the sweep can find it', () => {
     // The sweep owns keys by their `mavea` prefix. A key read under any other name is one an
     // older build wrote, and it outlives "Forget everything" unless it is named here.
-    const call =
-      /\b(?:safeLocal(?:Get|Set)|safeSession(?:Get|Set)|(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*'([^']+)'/g;
+    const call = new RegExp(
+      String.raw`\b(?:safeLocal(?:Get|Set)|safeSession(?:Get|Set)|` +
+        String.raw`(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*'([^']+)'`,
+      'g',
+    );
     const files = execFileSync(
       'git',
       ['grep', '-lE', 'safeLocal|safeSession|Storage\\.', '--', 'src'],

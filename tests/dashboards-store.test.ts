@@ -667,7 +667,7 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
   });
 
   describe('unverified outcome — the honest "checked, could not verify" clock policy', () => {
-    it('winds the full cadence — an ungrounded pass is never re-asked sooner than the schedule', () => {
+    it('winds the full cadence — an ungrounded pass is never re-asked before the schedule', () => {
       addDashboard(makeDash({ cadence: { data: 'hourly', ai: 'on-change' } }));
       applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000);
       const d = getDashboard('d1')!;

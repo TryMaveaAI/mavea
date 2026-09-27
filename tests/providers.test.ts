@@ -271,7 +271,8 @@ describe('anthropic adapter — non-canvas caller (format omitted, no blockTypes
     mockFetchOnce(
       streamResponse(
         [
-          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"cards\\":"}}\n',
+          'data: {"type":"content_block_delta",' +
+            '"delta":{"type":"text_delta","text":"{\\"cards\\":"}}\n',
           'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"[]}"}}\n',
         ],
         'text/event-stream',
@@ -872,7 +873,7 @@ describe('a stream that goes quiet is never re-sent', () => {
     }
   });
 
-  it('re-sends only a refusal made before any work, and never claims a retry it did not make', () => {
+  it('re-sends only a refusal made before any work, never claiming a retry it skipped', () => {
     // 429, 503 and 529 are refused before the model runs. Everything else here can arrive after the
     // upstream already processed, and billed, the prompt.
     const resent = [408, 429, 500, 502, 503, 504, 524, 529].filter((status) =>

@@ -56,10 +56,11 @@ export function LessonBody({
   const [status, setStatus] = useState<Status>('idle');
   const [spot, setSpot] = useState<number | null>(null); // active spotlight step, null = list view
   const requested = useRef(false);
-  // Each load is ONE request. A failure says why and waits for the reader's Try again; nothing here
-  // asks a second time on its own. Unmounting (this component is keyed per lesson, so moving on is a
-  // real unmount) must never write into an instance that's gone, and a fresh press ("Try again" /
-  // "Rewrite this lesson") supersedes an older one still in flight via the generation counter.
+  // Each load is ONE request. A failure says why and waits for the reader's Try again; nothing
+  // here asks a second time on its own. Unmounting (this component is keyed per lesson, so moving
+  // on is a real unmount) must never write into an instance that's gone, and a fresh press ("Try
+  // again" / "Rewrite this lesson") supersedes an older one still in flight via the generation
+  // counter.
   const aliveRef = useRef(true);
   const genRef = useRef(0);
   useEffect(

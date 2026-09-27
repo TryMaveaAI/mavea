@@ -149,7 +149,7 @@ describe('refreshDashboardNow', () => {
     );
   });
 
-  it('a DEAD call returns "failed", applies nothing, and waits for the regular schedule', async () => {
+  it('a DEAD call returns "failed", applies nothing, and waits for the schedule', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard({ metrics: [metric()] }));
     getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });

@@ -116,8 +116,9 @@ export type { ChatMessage };
 /** How the user wants answers grounded in the live web (their choice, with cost in mind):
  *  - 'off'      — never search. No extra cost beyond the base model call.
  *  - 'realtime' — grounds through the provider's OWN native search (Gemini google_search,
- *    OpenRouter's web tool: cited + current; billed on the provider's own terms). Native-only — a provider without built-in search simply can't ground, even
- *    when this is selected; there is no keyless/keyed app-side fallback.
+ *    OpenRouter's web tool: cited + current; billed on the provider's own terms). Native-only —
+ *    a provider without built-in search simply can't ground, even when this is selected; there
+ *    is no keyless/keyed app-side fallback.
  *  Search only fires when the ask actually needs fresh info, so ordinary turns cost nothing. */
 export type SearchMode = 'off' | 'realtime';
 
@@ -356,7 +357,8 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
         status,
         message: providerReason
           ? `${label} returned ${status}: ${providerReason}. Mavéa already retried with backoff.`
-          : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
+          : `${label} returned ${status} after Mavéa retried with backoff — ` +
+            'wait a moment, then try again.',
       };
     }
     const timedOut = status === 408 || status === 504 || status === 524;

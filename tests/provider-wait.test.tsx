@@ -1,5 +1,5 @@
-// A provider backoff is always shown to the reader, exactly once: inline by a caller that passes its
-// own `onWait` (the Live turn, the world), otherwise by the app shell's shared status line.
+// A provider backoff is always shown to the reader, exactly once: inline by a caller that passes
+// its own `onWait` (the Live turn, the world), otherwise by the app shell's shared status line.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { geminiAdapter } from '../src/live/providers/gemini';
@@ -153,7 +153,7 @@ describe('ProviderWaitStatus', () => {
     }
   });
 
-  it('speaks from inside an open modal, which hides everything outside it from a reader', async () => {
+  it('speaks from inside an open modal, which hides everything outside it', async () => {
     vi.useFakeTimers();
     const report = waitReporter();
     const { unmount } = render(<ProviderWaitStatus />);
