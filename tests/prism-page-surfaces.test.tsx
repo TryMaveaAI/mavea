@@ -749,18 +749,19 @@ describe('usePanZoom — camera-intent arbitration', () => {
     it('re-fits on resize while the camera is on the whole-content fit', () => {
       const fireResize = stubResizeObserver();
       const viewportRef = createRef<HTMLDivElement | null>();
-      (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
+      // Big enough that both fits land above FIT_FLOOR, where the camera stops fitting.
+      (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(2000, 1600);
 
       const { world } = mountPanZoom(viewportRef);
       const fittedScale = cameraOf(world).scale;
 
       // Shrink the viewport (as the source panel opening would) and fire the resize tick.
-      (viewportRef.current as unknown as { clientWidth: number }).clientWidth = 500;
+      (viewportRef.current as unknown as { clientWidth: number }).clientWidth = 1700;
       act(() => fireResize());
 
       // Still tracking the whole world — the scale changed to match the new, narrower viewport.
       expect(cameraOf(world).scale).not.toBeCloseTo(fittedScale, 4);
-      const expectedScale = Math.min(1.35, (500 - 64) / 2000, (800 - 64) / 1600);
+      const expectedScale = Math.min(1.35, (1700 - 64) / 2000, (1600 - 64) / 1600);
       expect(cameraOf(world).scale).toBeCloseTo(expectedScale, 4);
     });
 

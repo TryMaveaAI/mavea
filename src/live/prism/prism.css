@@ -1726,7 +1726,9 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  /* Wrapped rows start at the same edge, like lines of text. Pushed to the end, rows of different
+     widths left a ragged left edge that read as a layout accident on every laptop that wraps. */
+  justify-content: flex-start;
   gap: 9px;
   flex: 2 1 auto;
 }
