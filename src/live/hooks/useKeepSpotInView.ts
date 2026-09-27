@@ -1,5 +1,13 @@
 import { useEffect, type RefObject } from 'react';
 
+/** How far to scroll so a spotlit card sits in view: centred when it fits, and when it is taller
+ *  than the scroller, its TOP at the scroller's top — centring a tall card put its title (the
+ *  first thing the narration reads) above the scroller, under the bar and the replay banner. */
+export function spotScrollDelta(card: DOMRect, scroller: DOMRect, clientHeight: number): number {
+  const offset = card.top - scroller.top;
+  return card.height <= clientHeight ? offset - (clientHeight - card.height) / 2 : offset;
+}
+
 /** How long the scroller's size must hold still before the spotlit card is brought back. A drag
  *  or a rotation fires a burst of resizes; one glide at the end is what the reader wants. */
 export const SPOT_RESIZE_SETTLE_MS = 180;
@@ -28,11 +36,7 @@ export function useKeepSpotInView(scrollRef: RefObject<HTMLElement | null>, acti
       const c = cont.getBoundingClientRect();
       const e = el.getBoundingClientRect();
       if (e.top >= c.top && e.bottom <= c.bottom) return;
-      // Centred when it fits; a card taller than the scroller shows its top, where it starts.
-      const delta =
-        e.height <= cont.clientHeight
-          ? e.top - c.top - (cont.clientHeight - e.height) / 2
-          : e.top - c.top;
+      const delta = spotScrollDelta(e, c, cont.clientHeight);
       cont.scrollTo({ top: Math.max(0, cont.scrollTop + delta) });
     };
     const ro = new ResizeObserver(() => {

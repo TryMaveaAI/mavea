@@ -304,7 +304,7 @@ import {
 // this keeps its surface minimal. See index.ts.
 import { pendingCard } from './turnstate/pendingCard';
 import { anyOverlayOpen } from './hooks/overlayGuard';
-import { useKeepSpotInView } from './hooks/useKeepSpotInView';
+import { spotScrollDelta, useKeepSpotInView } from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
 import {
   MIC_AUDIO_MSG,
@@ -2971,9 +2971,9 @@ export function LiveApp(): ReactElement {
         const target = spot ? host?.querySelector(`[data-spot-id="${CSS.escape(spot)}"]`) : null;
         if (host && target && !target.closest('.study-stage')) {
           const bounds = target.getBoundingClientRect();
-          const top = bounds.top - host.getBoundingClientRect().top;
+          const delta = spotScrollDelta(bounds, host.getBoundingClientRect(), host.clientHeight);
           host.scrollTo({
-            top: Math.max(0, host.scrollTop + top - (host.clientHeight - bounds.height) / 2),
+            top: Math.max(0, host.scrollTop + delta),
             behavior: 'instant',
           });
           await awaitFirstPaint(
@@ -3215,7 +3215,7 @@ export function LiveApp(): ReactElement {
       }
       const cRect = cont.getBoundingClientRect();
       const eRect = el.getBoundingClientRect();
-      let delta = eRect.top - cRect.top - (cont.clientHeight - eRect.height) / 2;
+      let delta = spotScrollDelta(eRect, cRect, cont.clientHeight);
       // A "connect" stop points at a DIFFERENT card — bias the scroll toward both cards'
       // midpoint so the arrow's far end has a chance of landing on screen, rather than always
       // dead-centering just the near one and leaving the connector pointing off-page.

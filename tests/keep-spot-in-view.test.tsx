@@ -1,6 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SPOT_RESIZE_SETTLE_MS, useKeepSpotInView } from '../src/live/hooks/useKeepSpotInView';
+import {
+  SPOT_RESIZE_SETTLE_MS,
+  spotScrollDelta,
+  useKeepSpotInView,
+} from '../src/live/hooks/useKeepSpotInView';
 
 // A ResizeObserver the test drives by hand: jsdom has none, and the hook's whole job is what it
 // does when one reports.
@@ -80,5 +84,17 @@ describe('useKeepSpotInView', () => {
     expect(observers[0].disconnected).toBe(true);
     vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS * 2);
     expect(cont.scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('spotScrollDelta', () => {
+  const scroller = box(127, 578);
+  it('centres a card that fits', () => {
+    expect(spotScrollDelta(box(527, 200), scroller, 578)).toBe(527 - 127 - (578 - 200) / 2);
+  });
+  it('puts a card taller than the scroller at its top, never its title under the chrome', () => {
+    // 1440×789 with a replay up: a 595px card in a 578px scroller. Centring it put the title 9px
+    // above the scroller, under the bar and the persona banner.
+    expect(spotScrollDelta(box(900, 595), scroller, 578)).toBe(900 - 127);
   });
 });
