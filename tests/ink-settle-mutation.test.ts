@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isInMotion, pollUntilSettled } from '../src/live/annotate/settle';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { isInMotion, pollUntilSettled, SPOTLIGHT_LIFT_MS } from '../src/live/annotate/settle';
 
 // The stale-mark bug: a block that re-sorts its rows or expands inside its own capped scroller
 // changes NOTHING the old triggers could see — the outer box is unchanged (no ResizeObserver),
@@ -257,5 +259,13 @@ describe('isInMotion — the card can sit below a wrapper', () => {
     expect(isInMotion(host)).toBe(true);
     entering = false;
     expect(isInMotion(host)).toBe(false);
+  });
+});
+
+describe('INK_SETTLE_MS — follows the spotlight it waits out', () => {
+  it('matches the lift transition the stylesheet actually runs', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/visualizations-extra.css'), 'utf8');
+    const rule = /\n\.card-grid > div \{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(Number(/transform (\d+)ms/.exec(rule)?.[1])).toBe(SPOTLIGHT_LIFT_MS);
   });
 });
