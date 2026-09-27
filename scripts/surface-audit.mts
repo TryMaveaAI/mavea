@@ -250,7 +250,11 @@ const MEASURE_SCRIPT = (
   // A declared fade: a mask that runs to transparent hides the overflow on purpose, the way a
   // line clamp does — the reader is shown an edge, not a cut.
   const fades = (style) => /gradient/.test(style.maskImage || '') || /gradient/.test(style.webkitMaskImage || '');
-  const modal = Array.from(document.querySelectorAll('[aria-modal="true"]')).find((d) => d.getBoundingClientRect().width > 0) ?? null;
+  // The topmost open modal: the last shown one in document order, since a nested sheet mounts after
+  // the dialog it opens from. A dialog kept mounted but faded out or hidden is not open.
+  const modal = Array.from(document.querySelectorAll('[aria-modal="true"]'))
+    .filter((d) => d.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+    .at(-1) ?? null;
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
@@ -606,6 +610,7 @@ const MEASURE_SCRIPT = (
     small: uniq(small, 12),
     crowded: uniq(crowded, 8),
     typeSizes: { h1: [...typeSizes.h1], p: [...typeSizes.p], button: [...typeSizes.button] },
+    typeScope: modal ? name(modal) : null,
     readingH: readingEl ? Math.round(readingEl.clientHeight) : null,
     viewportH: vh,
     scrollWidth: document.documentElement.scrollWidth,
@@ -624,6 +629,8 @@ interface Measured {
   small: string[];
   crowded: string[];
   typeSizes: { h1: number[]; p: number[]; button: number[] };
+  /** The open modal the type tally was confined to, when one was open. */
+  typeScope: string | null;
   readingH: number | null;
   viewportH: number;
   scrollWidth: number;
@@ -738,17 +745,18 @@ export async function sweepSurfaces(opts: SweepOptions): Promise<Finding[]> {
               // control, a dock button; body, a caption, a pull-quote — the Study sets its notes
               // in a hand and its takeaway large on purpose), but a sixth size is a control or a
               // paragraph that missed the ramp, which is what this is here to catch.
+              const scope = m.typeScope ? ` (within ${m.typeScope})` : '';
               if (m.typeSizes.h1.length > 1)
                 issues.push(
-                  `h1 set in ${m.typeSizes.h1.length} sizes: ${m.typeSizes.h1.join('/')}px`,
+                  `h1 set in ${m.typeSizes.h1.length} sizes: ${m.typeSizes.h1.join('/')}px${scope}`,
                 );
               if (m.typeSizes.button.length > 5)
                 issues.push(
-                  `buttons set in ${m.typeSizes.button.length} sizes: ${m.typeSizes.button.join('/')}px`,
+                  `buttons set in ${m.typeSizes.button.length} sizes: ${m.typeSizes.button.join('/')}px${scope}`,
                 );
               if (m.typeSizes.p.length > 5)
                 issues.push(
-                  `body text set in ${m.typeSizes.p.length} sizes: ${m.typeSizes.p.join('/')}px`,
+                  `body text set in ${m.typeSizes.p.length} sizes: ${m.typeSizes.p.join('/')}px${scope}`,
                 );
             }
             if (m.readingH !== null) {
