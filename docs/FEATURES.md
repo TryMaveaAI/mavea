@@ -74,8 +74,9 @@ index, or open the **Explore** menu in Live's top bar.
 - 🩹 **Self-healing history** — when an answer genuinely reverses an earlier claim it says so, and the
   earlier moment is visibly marked _corrected_ (was → now) instead of history silently disagreeing
   with itself.
-- 🗺️ **Your Atlas** — kept conversations and remembered topics as a flyable map, clustered into
-  neighborhoods named by topic.
+- 🗺️ **Your Atlas** — the conversations your Library has saved, as a flyable map clustered into
+  neighborhoods named by topic. It is drawn from saved conversations only, so with the Library off
+  there is nothing for it to map.
 
 ## It keeps living
 
@@ -134,7 +135,8 @@ index, or open the **Explore** menu in Live's top bar.
   point, make it **check its own numbers** for arithmetic that doesn't add up, **cross-examine** the
   load-bearing claims to see which objections the document answers and which it never does, or pull
   **levers** on the model implied underneath it and watch the conclusion recompute. Opened from a
-  conversation with search on, those load-bearing claims can also be checked against live sources.
+  conversation with web search on, those load-bearing claims are also checked against live sources
+  through the configured search provider — Wikipedia, which Settings has no control to change.
 - 🧩 **Synthesis** — the same machinery over a pile instead of a page: a folder or a zip, up to 200
   sources, fused into one map with four lenses — everything, contradictions, gaps, consensus. A
   contradiction survives only when both sides quote their own source verbatim; anything weaker is

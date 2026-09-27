@@ -926,7 +926,7 @@ export function PrismOverlay({
     [panelView, penAudioOn, recordStep],
   );
 
-  // ── The Briefing — a silent, captioned flight along the argument's spine ──
+  // ── The Briefing — a captioned flight along the argument's spine, narrated unless muted ──
   const briefingOn = !!briefing;
 
   // Frame the camera on a set of claim cards (one claim → zoom in; two → frame both passages).
@@ -1018,7 +1018,7 @@ export function PrismOverlay({
     if (!placed || !spec) return;
     const beats = buildBriefing(placed.claims, spec.threads, verdictById);
     if (beats.length === 0) return;
-    cancelKokoro(); // a pen narration may be mid-sentence; the briefing is silent by default
+    cancelKokoro(); // a pen narration may be mid-sentence; the briefing brings its own voice
     cancelOtherRuns('none'); // a briefing supersedes any in-flight analysis
     setOpenId(null);
     setAskFocus(null);
@@ -1947,7 +1947,7 @@ export function PrismOverlay({
               </AsyncSurface>
             )}
 
-            {/* The Briefing — a silent, captioned, camera-led flight through the document's argument */}
+            {/* The Briefing — a captioned, camera-led flight through the document's argument */}
             {settled && briefing && (
               <AsyncSurface label="Briefing">
                 <PrismBriefingPlayer

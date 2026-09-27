@@ -921,8 +921,9 @@ Mavéa is local-first, but some data does cross the network when the user intera
 - **Memory facts** — when memory is enabled, the stored facts are injected into the prompt
   as a compact prepend block before the question is sent to the provider.
 - **Search queries** — when search mode is `'realtime'`, the model provider runs its own web
-  search for a turn that needs one. A dashboard's data refresh and Prism's live-source check send a
-  derived query to the selected search provider (Wikipedia, Brave, or Tavily).
+  search for a turn that needs one; a dashboard's data refresh is grounded the same way. Prism's
+  live-source check sends a derived query through the config's `searchProvider` instead — Wikipedia
+  by default, and Settings has no control to change it.
 - **Attachments** — file bytes/text selected for a Live turn are included in that provider request;
   opening remote images, maps, or links also contacts their allow-listed origin.
 - **Voice** — the configured Whisper and Kokoro endpoints receive mic audio or TTS text through the
