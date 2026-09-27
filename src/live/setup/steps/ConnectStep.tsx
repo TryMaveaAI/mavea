@@ -20,6 +20,7 @@ import { looksLikeBadKey } from '../../providers/http';
 import { ToggleRow, EyeInput } from '../controls';
 import { ModelSelect } from '../ModelSelect';
 import { ProviderResponsibilityNotice } from '../ProviderResponsibilityNotice';
+import { revealAboveKeyboard } from '../revealAboveKeyboard';
 
 /** How each provider presents as a tile: a one-letter badge, a short name, and the company. */
 const TILE: Record<ProviderId, { badge: string; name: string; sub: string }> = {
@@ -173,7 +174,7 @@ export function ConnectStep(): ReactElement {
         </div>
 
         {info.needsKey && (
-          <label className="field-col" htmlFor={keyFieldId}>
+          <label className="field-col" htmlFor={keyFieldId} ref={revealAboveKeyboard}>
             <span className="field-head">
               <span className="card-eyebrow">API key</span>
             </span>

@@ -316,18 +316,38 @@
   gap: var(--s-lg);
 }
 
-/* card footer (non-Go steps) */
+/* The step's way forward, pinned under the scrolling stage (non-Go steps). A sibling of
+   .setup-stage in the column, exactly like .go-composer, so it never scrolls away with a long step
+   and a phone keyboard pushes it up rather than covering it. */
 .setup-foot {
-  align-items: center;
   border-top: 1px solid var(--line-soft);
+  background: var(--bg);
+  padding: var(--s-sm) var(--s-xl) max(var(--s-sm), env(safe-area-inset-bottom));
+  width: 100%;
+}
+.setup-foot-inner {
+  align-items: center;
   display: flex;
+  gap: var(--s-md);
   justify-content: space-between;
-  margin-top: var(--s-md);
-  padding-top: var(--s-md);
+  margin: 0 auto;
+  max-width: 560px;
 }
 .setup-foot-note {
-  color: var(--text-faint);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+}
+.setup-foot-step {
+  color: var(--text-secondary);
   font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.setup-foot-save {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
 }
 .setup-done {
   align-items: center;
@@ -338,9 +358,12 @@
   color: #fff;
   cursor: pointer;
   display: flex;
+  flex-shrink: 0;
   font: 600 var(--fs-md)/1 var(--font);
   gap: var(--s-xs);
-  padding: 9px var(--s-lg);
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--s-lg);
   transition:
     opacity var(--m-fast),
     transform var(--m-fast);
@@ -459,7 +482,7 @@
   background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
   border-color: var(--presence);
 }
-.tile-badge {
+.provider-badge {
   background: var(--surface-glass-strong);
   border-radius: var(--r-sm);
   color: var(--text-secondary);
@@ -470,18 +493,18 @@
   text-align: center;
   width: 26px;
 }
-.provider-tile.is-selected .tile-badge {
+.provider-tile.is-selected .provider-badge {
   background: color-mix(in oklab, var(--presence) 22%, transparent);
   color: var(--presence-soft);
 }
-.tile-name {
+.provider-name {
   color: var(--text-primary);
   font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-.tile-sub {
+.provider-sub {
   color: var(--text-muted);
   font-size: var(--fs-xs);
   line-height: 1.2;
@@ -1030,7 +1053,9 @@
 .go-composer-inner {
   align-items: center;
   background: var(--surface-elevated);
-  border: 1px solid var(--line-strong);
+  /* The hub's way in, so it carries the accent at rest — not only once it has focus. */
+  border: 1px solid color-mix(in oklab, var(--presence) 55%, var(--line-strong));
+  min-height: 56px;
   border-radius: var(--r-full);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -1042,11 +1067,12 @@
   border-color: var(--presence);
 }
 .go-composer-input {
+  align-self: stretch;
   background: transparent;
   border: none;
   color: var(--text-primary);
   flex: 1;
-  font: var(--fs-md)/1.4 var(--font);
+  font: var(--fs-lg)/1.4 var(--font);
   min-width: 0;
   outline: none;
 }
@@ -1065,12 +1091,12 @@
   cursor: pointer;
   display: flex;
   flex-shrink: 0;
-  height: 34px;
+  height: 42px;
   justify-content: center;
   transition:
     opacity var(--m-fast),
     background var(--m-fast);
-  width: 34px;
+  width: 42px;
 }
 .go-composer-attach:hover,
 .go-composer-mic:hover,
@@ -1089,6 +1115,23 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-xs);
+}
+/* Voice, offered beside the composer rather than as the hub's hero: a quiet pill with the mic. */
+.go-talk {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  gap: 6px;
+}
+.go-talk svg {
+  height: 14px;
+  width: 14px;
+}
+@media (pointer: coarse) {
+  .go-ghosts .ghost-btn {
+    min-height: var(--tap-min);
+    padding-inline: var(--s-md);
+  }
 }
 
 /* try-one prompts */
@@ -1207,6 +1250,39 @@
   .go-left,
   .go-right {
     grid-column: 1;
+  }
+}
+
+/* A phone: the provider choice is one compact, wrapping row of pills (badge + name) instead of two
+   rows of tall tiles — measured, the tiles alone took 380px of a 844px screen before the model
+   field began. The company line stays in the accessible name, only its paint goes. */
+@media (width <= 560px) {
+  .provider-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-xs);
+  }
+  .provider-tile {
+    border-radius: var(--r-full);
+    flex: 1 1 auto;
+    flex-direction: row;
+    gap: var(--s-xs);
+    justify-content: center;
+    min-height: var(--tap-min);
+    padding: 4px var(--s-md) 4px 6px;
+  }
+  .provider-badge {
+    border-radius: var(--r-full);
+  }
+  .provider-sub {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
+  }
+  .setup-foot {
+    padding-inline: var(--s-md);
   }
 }
 

@@ -73,8 +73,8 @@ describe('SetupWizard — first-run', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
-    // Click Done three times to walk Connect -> Think -> Remember -> Go.
-    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    // Click Continue three times to walk Connect -> Think -> Remember -> Go.
+    const doneButtons = () => screen.getAllByRole('button', { name: /^Continue$/i });
 
     await act(async () => {
       fireEvent.click(doneButtons()[0]);
@@ -98,7 +98,7 @@ describe('SetupWizard — first-run', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
-    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    const doneButtons = () => screen.getAllByRole('button', { name: /^Continue$/i });
 
     await act(async () => {
       fireEvent.click(doneButtons()[0]);
@@ -277,6 +277,46 @@ describe('SetupWizard — returning user', () => {
   });
 });
 
+describe('SetupWizard — the pinned step footer', () => {
+  // The primary action used to sit at the foot of the step's card, 2.2 screens down a phone on
+  // Connect, and it said "Done" on steps that only moved on. It is pinned under the stage now,
+  // names the step it belongs to (the discs are unlabelled on a phone), and says what it does.
+  it('says Continue while the ritual walks on, and names the step', async () => {
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    const foot = document.querySelector('.setup-foot') as HTMLElement;
+    // A sibling of the scrolling stage, not inside it — so a long step cannot scroll it away.
+    expect(foot.parentElement).toBe(document.querySelector('.setup.stage'));
+    expect(document.querySelector('.setup-stage')?.contains(foot)).toBe(false);
+
+    expect(screen.getByText('Step 1 of 4 · Connect')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    });
+    expect(screen.getByText('Step 2 of 4 · Think')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    });
+    expect(screen.getByText('Step 3 of 4 · Remember')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Done$/i })).toBeNull();
+  });
+
+  it('says Done only where the press truly finishes — a step reopened from the hub', async () => {
+    localStorage.setItem(SETUP_KEY, '1');
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    // The hub has the composer, not a step footer.
+    expect(document.querySelector('.setup-foot')).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Think/i }));
+    });
+    expect(screen.queryByRole('button', { name: /^Continue$/i })).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Done$/i }));
+    });
+    expect(screen.getByRole('textbox', { name: /Ask Mavéa/i })).toBeInTheDocument();
+  });
+});
+
 describe('SetupWizard — landing seed', () => {
   it('a first-run user has the seed forwarded as their first turn once Go is reached', async () => {
     setLiveConfigV2({
@@ -292,7 +332,7 @@ describe('SetupWizard — landing seed', () => {
 
     // Walk Connect -> Think -> Remember -> Go. The seed must survive each step's `setTyped('')`
     // and fire exactly once on arrival at Go.
-    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    const doneButtons = () => screen.getAllByRole('button', { name: /^Continue$/i });
     for (let i = 0; i < 3; i++) {
       await act(async () => {
         fireEvent.click(doneButtons()[0]);
@@ -324,7 +364,7 @@ describe('SetupWizard — landing seed', () => {
       />,
     );
 
-    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    const doneButtons = () => screen.getAllByRole('button', { name: /^Continue$/i });
     for (let i = 0; i < 3; i++) {
       await act(async () => {
         fireEvent.click(doneButtons()[0]);
@@ -348,7 +388,7 @@ describe('SetupWizard — landing seed', () => {
       <SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} seed="Why did Q3 dip?" />,
     );
 
-    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    const doneButtons = () => screen.getAllByRole('button', { name: /^Continue$/i });
     for (let i = 0; i < 3; i++) {
       await act(async () => {
         fireEvent.click(doneButtons()[0]);
