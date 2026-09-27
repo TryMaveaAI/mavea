@@ -15,9 +15,7 @@ import { cachedImport } from '../../lib/cachedImport';
 import { usePrismWorld } from './usePrismWorld';
 import { usePanZoom } from './usePanZoom';
 import { layout, CARD_W, CARD_H, type LayoutResult, type Placed } from './layout';
-
-/** How far a consensus ring's count badge rises above the rim (synthesis.css `.syn-consensus-badge`). */
-const CONSENSUS_BADGE_H = 24;
+import { CONSENSUS_BADGE_RISE, mapContentBox } from './mapFrame';
 import { layoutPrismOffMain } from './layoutOffMain';
 import { DocPageView } from './DocPageView';
 import { destroyRenderDoc } from './extractPdf';
@@ -443,35 +441,23 @@ export function PrismOverlay({
   const stageRef = useRef<HTMLDivElement>(null);
   // The tight bounding box of the actual content (cards, region labels and, on a fused map, the
   // corpus objects), so the camera frames THAT and fills the viewport — a 5-claim map shouldn't sit
-  // tiny inside the whole (much larger) world. Cards and objects are CENTRED on their point
-  // (`translate(-50%, -50%)`), and a consensus ring carries its count badge above its rim, so a box
-  // built from top-left corners or from the cards alone let the fit slide the top cluster under the
-  // toolbar.
+  // tiny inside the whole (much larger) world.
   const corpusContradictions = corpusChrome?.contradictions;
   const corpusGaps = corpusChrome?.gaps;
   const corpusConsensus = corpusChrome?.consensus;
-  const contentBox = useMemo(() => {
-    if (!placed || placed.claims.length === 0) return undefined;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    const cover = (x: number, y: number, hw: number, top: number, bottom = top): void => {
-      minX = Math.min(minX, x - hw);
-      minY = Math.min(minY, y - top);
-      maxX = Math.max(maxX, x + hw);
-      maxY = Math.max(maxY, y + bottom);
-    };
-    for (const c of placed.claims) cover(c.x, c.y, CARD_W / 2, CARD_H / 2);
-    for (const r of placed.regions) cover(r.cx, r.cy, 0, 0);
-    for (const o of [...(corpusContradictions ?? []), ...(corpusGaps ?? [])]) {
-      cover(o.x, o.y, CARD_W / 2, CARD_H / 2);
-    }
-    for (const c of corpusConsensus ?? []) cover(c.x, c.y, c.r, c.r + CONSENSUS_BADGE_H, c.r);
-    const pad = 56;
-    return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
+  const contentBox = useMemo(
+    () =>
+      placed
+        ? mapContentBox({
+            claims: placed.claims,
+            regions: placed.regions,
+            objects: [...(corpusContradictions ?? []), ...(corpusGaps ?? [])],
+            consensus: corpusConsensus,
+          })
+        : undefined,
     // The chrome object is rebuilt every render; its placed arrays are what is stable.
-  }, [placed, corpusContradictions, corpusGaps, corpusConsensus]);
+    [placed, corpusContradictions, corpusGaps, corpusConsensus],
+  );
   const pan = usePanZoom(stageRef, placed?.width ?? 1, placed?.height ?? 1, contentBox, {
     wheelZoom: settled,
   });
@@ -653,7 +639,7 @@ export function PrismOverlay({
     for (const c of corpusConsensus ?? []) {
       if (!c.memberClaimIds.some((id) => keyIds.has(id))) continue;
       minX = Math.min(minX, c.x - c.r);
-      minY = Math.min(minY, c.y - c.r - CONSENSUS_BADGE_H);
+      minY = Math.min(minY, c.y - c.r - CONSENSUS_BADGE_RISE);
       maxX = Math.max(maxX, c.x + c.r);
       maxY = Math.max(maxY, c.y + c.r);
     }

@@ -70,6 +70,7 @@
   /* A label is the object's whole claim ("Sources disagree on annual treatment cost"), so it wraps
      inside the measure rather than ellipsising the part that says what disagrees. */
   width: max-content;
+  /* OBJECT_MAX_W in mapFrame.ts frames this width; tests/synthesis-map-labels holds them together. */
   max-width: 300px;
   padding: 6px 12px;
   border-radius: var(--r-md);
@@ -133,6 +134,7 @@
 }
 .syn-consensus-badge {
   position: absolute;
+  /* CONSENSUS_BADGE_RISE in mapFrame.ts */
   top: -11px;
   left: 50%;
   transform: translateX(-50%);
