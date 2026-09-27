@@ -331,7 +331,7 @@ export const FEATURES: Feature[] = [
     blurb: 'Share a moment, a topic, or the whole conversation',
     group: 'This session',
     surface: 'live',
-    tourChapter: 'share',
+    tourChapter: 'video',
     keywords: ['share', 'video', 'reel', 'conversation', 'export', 'publish'],
   },
   {
