@@ -154,7 +154,7 @@ export function FocusStage({
 
   // The muted walk's written trail — newest first, the way notes stack in a margin. Clicking a
   // note brings its card back on stage (the same take-the-wheel path as a filmstrip tap). The
-  // full spatial handout lives in Everything view; this column is the Focus-sized cut of it.
+  // full spatial handout lives on the board; this column is the Focus-sized cut of it.
   const trailNotes =
     !presenting && walkNotes && walkNotes.length > 0 ? [...walkNotes].reverse() : null;
 

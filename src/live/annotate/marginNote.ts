@@ -1,5 +1,5 @@
 // marginNote.ts — the pure text + layout math behind Mavéa's margin notes: the persistent
-// asides a muted walk writes beside the cards it visits (the gutter rail in Everything view,
+// asides a muted walk writes beside the cards it visits (the gutter rail on the board,
 // the trail column in Focus). Rendering lives in MarginNoteRail / FocusStage; this module is
 // DOM-free and unit-tested.
 //

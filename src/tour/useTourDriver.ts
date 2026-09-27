@@ -1,6 +1,6 @@
 // useTourDriver — the CHAPTER player for the first-run feature walkthrough. Each chapter teaches
 // one thing on the REAL Live surface: it speaks a coach line (or stays silent with captions),
-// spotlights a real control, and can trigger a real feature (Focus, Present, Share, ⌘K, the pen)
+// spotlights a real control, and can trigger a real feature (the Lens, Present, export, ⌘K, the pen)
 // or show a real baked answer. It's fully navigable — play/pause, step back/forward, jump to any
 // chapter, replay — because every chapter is self-contained: entering one first RESETS any feature
 // a prior chapter opened (so skipping around never leaves a modal stuck), then applies its own.
@@ -38,7 +38,7 @@ export interface TourOps {
   setMuted: (muted: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   setInkArmed: (armed: boolean) => void;
-  /** Spotlight one card by id (drives the Focus hero + the Canvas fly-to). */
+  /** Spotlight one card by id (drives the Study's front card + the Canvas fly-to). */
   setSpot: (id: string | null) => void;
   /** Draw a scripted highlighter mark across the first canvas card, then spotlight it. */
   scriptedMark: () => void;
@@ -465,7 +465,7 @@ export function useTourDriver(opts: {
     } else if (a.kind === 'course') {
       // Seed + open a real course lesson: the CourseRail ("Lesson 1 of 5" + objectives + Prev/Next)
       // rises over the lesson's baked canvas. The reveal is silent (the op strips narration) so the
-      // chapter's coach line stays the only voice — the same treatment canvas/focusWalk give a seed.
+      // chapter's coach line stays the only voice — the same treatment the canvas and Lens chapters give a seed.
       after(500, () => o.openTourCourse());
     } else if (a.kind === 'connect') {
       // Show the real connection UI without selecting a provider or typing into the key field.

@@ -67,7 +67,7 @@ export interface TourChapter {
 
 // The FAST core — the eleven chapters a first-time visitor sees, in order. It's built to be amazing
 // but quick: about two minutes end to end. It tells four stories — the answer experience
-// (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and Share.
+// (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and publishing.
 // Everything else the product does lives in TOUR_EXTRAS below, one tap away from the end card, so
 // nothing is lost by keeping the first run short. Coach lines are deliberately terse: the
 // auto-advance waits for speech, so short lines are what keep the clock honest.

@@ -1,5 +1,5 @@
 // useElementRect — track a chrome element's on-screen rect by CSS selector, so the walkthrough can
-// ring a real control (the mic, the pen, the Focus toggle…) that may mount/animate in after the
+// ring a real control (the mic, the pen, Guide me…) that may mount/animate in after the
 // chapter starts. rAF-coalesced resize/scroll listeners plus a slow fallback poll; returns null when the target isn't
 // present, is hidden, or sits outside the viewport (so the caller never rings an empty patch of
 // screen). A target below the fold — an answer's footer chips, a card's Ask pill — is scrolled

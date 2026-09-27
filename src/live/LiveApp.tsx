@@ -2261,7 +2261,7 @@ export function LiveApp(): ReactElement {
 
   // Everything a scripted driver needs to drive THIS real surface — the closures behind the
   // first-run walkthrough AND the demo replay (only one is ever active per boot). Declared
-  // here, below every setter it exposes, so a driver can fire Focus / Present / Share / the
+  // here, below every setter it exposes, so a driver can fire the Lens / Present / export / the
   // palette / the pen / mute / voice for real.
   const liveOps: TourOps = {
     isBusy: () => turn.busy || walkActive.current,

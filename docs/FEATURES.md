@@ -29,7 +29,7 @@ index, or open the **Explore** menu in Live's top bar.
   **Walk me through** steps it object by object, narrating each one; the session notes keep a line
   for every beat you visited.
 - 🎯 **Board, Lens, and Guide me** — the whole board rests in view by default. Click a card to open
-  its Lens: a silent close-up with navigation through the other cards. Choose **Guide me** to open
+  its Lens: a close-up with Mavéa's notes beside it and navigation through the other cards. Choose **Guide me** to open
   the Study desk above and walk through the answer with notes in the margin. Canvas view (also an
   answer's **View as canvas** button) and Focus remain available through the ⌘K palette.
 - 📽️ **Present mode** — go full theater: the chrome drops entirely, the answer becomes a full-screen

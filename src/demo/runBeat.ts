@@ -7,7 +7,7 @@ import type { StepTimers } from '../tour/driverKit';
 import type { TurnFrame } from '../live/history';
 import type { DemoBeat } from './beats';
 
-/** Camera-glide pacing for the focus/canvas card walks (per card, ms). */
+/** Camera-glide pacing for the canvas card walk (per card, ms). */
 const FLY_STEP_MS = 1300;
 const FLY_SETTLE_MS = 900;
 /** How long each card holds on the Lens stage before the next — long enough to read its notes. */

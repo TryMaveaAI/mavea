@@ -332,8 +332,8 @@ interface Props {
   studyStreaming?: boolean;
   /** Live's stable per-answer identity. Standalone consumers fall back to a content digest. */
   studyAnswerEpoch?: number;
-  /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
-   *  remembered preference). Absent → the classic full grid, exactly as before — clips and
+  /** When set, the canvas offers its view doors (Guide me, View as canvas) and renders the view
+   *  the surface names. Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
   viewMode?: ViewMode;
   onViewMode?: (mode: ViewMode) => void;
@@ -368,8 +368,8 @@ interface Props {
   onAddToFlashcard?: (b: Block) => void;
   /** Ids captured to the flashcard deck this session, so the chip reads "Added". */
   flashedIds?: ReadonlySet<string>;
-  /** Optional node rendered at the trailing edge of the canvas header, next to the
-   *  Focus/Everything toggle. Used by Live to inject the persistent pen toggle. */
+  /** Optional node rendered at the trailing edge of the canvas header, next to Guide
+   *  me. Used by Live to inject the persistent pen toggle. */
   headerSlot?: ReactNode;
   /** Optional node rendered beside "View as canvas", at the very end of the header's action row.
    *  For controls that are that button's PEER — another way of looking at this same answer — so
@@ -442,8 +442,8 @@ export function TopicCanvas({
   // Reading mode: expand every "Go deeper" drawer at once (find-in-page + screen reader access).
   // Offered only when the current answer has section-tagged blocks.
   const [readingMode, setReadingMode] = useState(false);
-  // Zoom: the "magnify" pill on a card's action cluster opens that ONE block full-screen, re-using
-  // the same renderBlock path so the zoomed view is pixel-identical to the card, just larger.
+  // The Lens: a card's "Look closer" pill (or a click on the card) opens that ONE block on a
+  // stage, re-using the same renderBlock path so the view is pixel-identical to the card.
   const [zoomedBlock, setZoomedBlock] = useState<Block | null>(null);
   // How far the zoomed sheet's content is magnified, adjustable via the sheet's +/- controls.
   // Uses the CSS `zoom` property (not `transform: scale`) so the enlarged content participates in
