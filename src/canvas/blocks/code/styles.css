@@ -475,7 +475,11 @@
 }
 .term-cmd {
   display: flex;
-  gap: 8px;
+  /* The command sits beside its prompt while it has a usable measure, and drops beneath it at
+     full width when it does not: a long prompt on a phone card left the command a ~20-character
+     column, a URL wrapping every few letters down the right half of the terminal. */
+  flex-wrap: wrap;
+  gap: 0 8px;
   color: var(--text-primary);
 }
 .term-cmd + .term-out,
@@ -494,6 +498,7 @@
   user-select: none;
 }
 .term-cmd-text {
+  flex: 1 1 28ch;
   min-width: 0;
 }
 .term-cmd-head {

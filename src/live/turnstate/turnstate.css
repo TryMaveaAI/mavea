@@ -375,7 +375,7 @@
   }
 }
 
-@media (width <= 768px) {
+@media (width <= 768px) or (height <= 500px) {
   .live-voice .speak-strip .speak-ribbon {
     display: none;
   }

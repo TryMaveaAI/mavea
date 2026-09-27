@@ -6,7 +6,7 @@
    charts already use viewBox + width:100% so they scale within the padded box. */
 .c1 .card-eyebrow {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word; /* whole words; only a word wider than the card splits */
   min-width: 0;
 }
 .c1 .insight-summary {

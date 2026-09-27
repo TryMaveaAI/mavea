@@ -51,7 +51,7 @@
                640 phablet / narrow window · 720 small tablet · 768 tablet portrait ·
                900 laptop compact · 1024 tablet landscape · 1200 small laptop ·
                1280 laptop · 1600 desktop · 1920 wide
-       height: 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
+       height: 500 phone on its side · 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
      1200, not 1280, is where a "compact" treatment must stop: a 1280px window resolves to ~1265
      CSS px once the scrollbar is counted, so `width <= 1280px` would hand the most common laptop
      the phone layout. Rules meant for tablets end at 1200.

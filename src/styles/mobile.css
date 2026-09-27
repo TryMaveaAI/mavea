@@ -1,5 +1,5 @@
 /* ============================================================
-   MOBILE — phones and small tablets (≤768px). The canvas becomes the
+   MOBILE — phones and small tablets (≤768px, or ≤500px tall). The canvas becomes the
    full-width stage; the conversation rail collapses into a bottom dock
    (composer always reachable) with the transcript behind a toggle that
    opens it as a bottom sheet. Desktop (>768px) is untouched.
@@ -18,7 +18,10 @@
   }
 }
 
-@media (width <= 768px) {
+/* A phone on its side is still a phone: 844×390 is wider than the tablet line, and on width alone it
+   kept the desktop rail and the full menu bar and left the answer ~330px of a 390px-tall screen.
+   The short-height arm hands it the same compact shell as the phone held upright. */
+@media (width <= 768px) or (height <= 500px) {
   /* every `left: var(--rail-w)` offset (topbar, stages, presence, scrubber,
      center caption) collapses to full width in one move */
   .mavea-app.with-rail {
@@ -130,9 +133,10 @@
   }
 }
 
-/* Smallest phones (≤430px): the topbar must never force the page to scroll sideways. Tighten its
-   padding/gap so a long model name can't push the row past the viewport. */
-@media (width <= 430px) {
+/* Smallest phones (≤430px), and any phone on its side: the topbar must never force the page to
+   scroll sideways. Tighten its padding/gap so a long model name can't push the row past the
+   viewport. Landscape has the width for the menus but not the height for what they open. */
+@media (width <= 430px) or (height <= 500px) {
   .topbar {
     gap: 8px;
     padding: 0 12px;

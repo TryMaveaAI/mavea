@@ -10,5 +10,6 @@ export const BREAKPOINT_WIDTHS = [
   360, 430, 480, 560, 640, 720, 768, 900, 1024, 1200, 1280, 1600, 1920,
 ];
 
-/** Window heights, in px, a media query may name. */
-export const BREAKPOINT_HEIGHTS = [650, 700, 820, 900];
+/** Window heights, in px, a media query may name. 500 is a phone on its side (844×390,
+ *  932×430): a wide-enough window that is still a phone, so it takes the compact layout. */
+export const BREAKPOINT_HEIGHTS = [500, 650, 700, 820, 900];

@@ -1128,7 +1128,7 @@
 }
 
 /* The desktop collapse toggle never shows in the mobile bottom-sheet. */
-@media (width <= 768px) {
+@media (width <= 768px) or (height <= 500px) {
   .rail-collapse {
     display: none;
   }
@@ -1248,7 +1248,7 @@
   color: var(--text-faint);
 }
 
-@media (width <= 768px) {
+@media (width <= 768px) or (height <= 500px) {
   /* the base sheet rules collapse --rail-w to 0; restate at this specificity so the
      244px desktop width above doesn't outrank them */
   .mavea-app.live-voice.with-rail {

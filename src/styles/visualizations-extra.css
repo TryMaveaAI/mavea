@@ -1248,7 +1248,12 @@
      long one straight out of the card on a narrow screen; it wraps to a second line instead. */
   flex-wrap: wrap;
   min-width: 0;
-  overflow-wrap: anywhere;
+  /* Wrap at spaces, never inside a word: `anywhere` also shrank the title's min-content to one
+     letter, so a squeezed eyebrow broke "CHECKLIST" into "CHECKLIS / T". `break-word` keeps the
+     whole-word minimum and only splits a single word wider than the card itself. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
   font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   text-transform: uppercase;

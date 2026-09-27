@@ -10,7 +10,7 @@
    .card-eyebrow is white-space:nowrap, so relax it only for our cards. */
 .c2 .card-eyebrow {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word; /* whole words; only a word wider than the card splits */
   min-width: 0;
 }
 .c2 .insight-summary {

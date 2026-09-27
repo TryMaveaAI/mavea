@@ -822,7 +822,25 @@
    second selector re-establishes the same sibling relationship one level up. */
 .card:has(~ .block-actions):has(> .card-eyebrow:first-child),
 .fit-box:has(~ .block-actions) .card:has(> .card-eyebrow:first-child) {
-  padding-top: 40px;
+  padding-top: var(--chrome-band);
+}
+/* The band is the row's own depth: its 10px inset plus the buttons. A mouse row is ~24px tall;
+   under a thumb every pill grows to the tap floor, so the band grows with it. */
+.card {
+  --chrome-band: 40px;
+}
+@media (pointer: coarse) {
+  .card {
+    --chrome-band: calc(var(--tap-min) + 18px);
+  }
+}
+/* Once the band has moved the eyebrow BELOW the buttons, the corner corridor beside it reserves
+   nothing — and it is the cluster's whole width (218px under a thumb), which left a phone's title
+   a ~70px column and broke "CHECKLIST" into "CHECKLIS / T". The corridor stays for an eyebrow the
+   band does not clear (one nested in a table head, say). */
+.card:has(~ .block-actions) > .card-eyebrow:first-child,
+.fit-box:has(~ .block-actions) .card > .card-eyebrow:first-child {
+  padding-right: 0;
 }
 
 /* Zoom — blows a single card up full-screen over a dim scrim, mirroring .app-scrim/.app-launch. */
@@ -843,6 +861,11 @@
      the dock only shortened the stage: on a 620px window it was 150px of empty band under the
      sheet while the card and the notes both scrolled. */
   padding: 28px;
+  /* …except under a replay's transport. The replay's banner stands down while the Lens is up
+     (DemoOverlay's data-covered), but its transport stays — it is the visitor's way out — and
+     at z-index 400 it painted over the strip's tiles. It publishes its band as --demo-h (unset
+     outside a replay), so the stage ends above it. */
+  padding-bottom: calc(28px + var(--demo-h, 0px));
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
   backdrop-filter: var(--glass-blur, blur(2px));
 }
@@ -1196,7 +1219,7 @@
      toolbar's gap, the breath under the card and the notes' margins summed to more than the
      card was short by at the legibility floor. */
   .zoom-scrim {
-    padding: 16px;
+    padding: 16px 16px calc(16px + var(--demo-h, 0px));
   }
   .zoom-sheet-toolbar {
     margin-bottom: 10px;
