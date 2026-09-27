@@ -241,7 +241,11 @@ export function SetupWizard({
 
         <section
           key={step}
-          className={'card reveal setup-card' + (onGo ? ' setup-card--wide' : '')}
+          // Connect is two fields side by side under five tiles; at 560px each field's helper
+          // wrapped to seven lines. It takes the hub's width.
+          className={
+            'card reveal setup-card' + (onGo || step === 'connect' ? ' setup-card--wide' : '')
+          }
           aria-label={meta.label}
         >
           {step === 'connect' && <ConnectStep />}

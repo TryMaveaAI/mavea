@@ -482,25 +482,10 @@
   background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
   border-color: var(--presence);
 }
-.provider-badge {
-  background: var(--surface-glass-strong);
-  border-radius: var(--r-sm);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  height: 26px;
-  line-height: 26px;
-  text-align: center;
-  width: 26px;
-}
-.provider-tile.is-selected .provider-badge {
-  background: color-mix(in oklab, var(--presence) 22%, transparent);
-  color: var(--presence-soft);
-}
 .provider-name {
   color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: 650;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -1238,7 +1223,7 @@
   .voice-grid {
     max-width: none;
   }
-  /* Five fixed columns get too narrow to hold a badge + two lines of label text on a phone-
+  /* Five fixed columns get too narrow to hold two lines of label text on a phone-
      width screen — wrap normally here instead; three-then-two reads as ordinary responsive
      wrap, not the lonely-orphan layout bug the fixed 5-column grid fixes at desktop width. */
   .provider-tiles {
@@ -1253,7 +1238,7 @@
   }
 }
 
-/* A phone: the provider choice is one compact, wrapping row of pills (badge + name) instead of two
+/* A phone: the provider choice is one compact, wrapping row of name pills instead of two
    rows of tall tiles — measured, the tiles alone took 380px of a 844px screen before the model
    field began. The company line stays in the accessible name, only its paint goes. */
 @media (width <= 560px) {
@@ -1269,10 +1254,7 @@
     gap: var(--s-xs);
     justify-content: center;
     min-height: var(--tap-min);
-    padding: 4px var(--s-md) 4px 6px;
-  }
-  .provider-badge {
-    border-radius: var(--r-full);
+    padding: 4px var(--s-md);
   }
   .provider-sub {
     clip-path: inset(50%);
