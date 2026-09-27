@@ -302,9 +302,9 @@ function WorldShell({
                 type="button"
                 className="wo-btn wo-btn-close"
                 onClick={onClose}
-                aria-label="Back to the answer"
+                aria-label="Back to the board"
               >
-                ← Back to the answer
+                ← Back to the board
               </button>
             </div>
           )}
@@ -1048,9 +1048,9 @@ function WorldSurface({
                   type="button"
                   className="wo-btn wo-btn-close"
                   onClick={onClose}
-                  aria-label="Back to the answer"
+                  aria-label="Back to the board"
                 >
-                  ← Back to the answer
+                  ← Back to the board
                 </button>
               )}
             </div>

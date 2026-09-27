@@ -7064,7 +7064,7 @@ export function LiveApp(): ReactElement {
               </div>
             </div>
             <button type="button" className="cv-takeover-close" onClick={() => setTourDashId(null)}>
-              <span aria-hidden="true">←</span> Back to answer
+              <span aria-hidden="true">←</span> Back to the board
             </button>
           </header>
           <div className="tour-dash-body">

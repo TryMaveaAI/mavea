@@ -205,7 +205,7 @@ export function CanvasTakeover(props: Props) {
                 <>Ask about {selectedCount} →</>
               ) : (
                 <>
-                  <span aria-hidden="true">←</span> Back to answer
+                  <span aria-hidden="true">←</span> Back to the board
                 </>
               )}
               <kbd aria-hidden="true">esc</kbd>

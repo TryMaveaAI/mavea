@@ -250,7 +250,7 @@ describe('the world control in the answer header', () => {
     expect(getViewMode()).toBe('world');
 
     // …and leaving lands back in the answer, in the mode the reader actually chose.
-    fireEvent.click(screen.getByRole('button', { name: 'Back to the answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the board' }));
     await waitFor(() => expect(screen.queryByLabelText(`Living answer: ${question}`)).toBeNull());
     expect(getViewMode()).toBe(savedViewMode());
   });
@@ -303,7 +303,7 @@ describe('what entering the view costs', () => {
     await waitFor(() => expect(document.querySelector('.wo-stage')).toBeTruthy());
     expect(document.querySelector('.wo-shell')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to the answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the board' }));
     await waitFor(() => expect(screen.queryByLabelText(`Living answer: ${question}`)).toBeNull());
 
     // Re-entering re-renders what the card now carries — no second call, by any route.

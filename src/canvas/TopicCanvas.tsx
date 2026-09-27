@@ -928,7 +928,7 @@ export function TopicCanvas({
               className="canvas-exit"
               onClick={() => onViewMode?.(savedViewMode())}
             >
-              <span aria-hidden>←</span> Back to answer
+              <span aria-hidden>←</span> Back to the board
             </button>
           ) : (
             <>
