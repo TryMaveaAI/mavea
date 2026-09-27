@@ -28,9 +28,11 @@ const PDF_MAX_BYTES = 30 * 1024 * 1024;
 // spend a reader's key, or act through their connectors, with a blind cross-site POST to
 // localhost. Only this app's own pages may use them, the same proof bin/mavea.mjs demands: a
 // matching Origin or Referer, else Fetch Metadata saying same-origin. A raw curl carries none of
-// these and is refused too. `/actions` is matched as a bare prefix because that is how its proxy
-// entry matches.
-const GUARDED_PROXY = /^\/(?:llm\/|search\/|actions)/;
+// these and is refused too. The local voice services sit behind the same door: another site
+// could otherwise run a reader's Kokoro or whisper for its own ends, or read what they return.
+// `/actions`, `/tts` and `/stt` are matched as bare prefixes because that is how their proxy
+// entries match.
+const GUARDED_PROXY = /^\/(?:llm\/|search\/|actions|tts|stt)/;
 
 export function proxyRequestAllowed(req: Pick<IncomingMessage, 'url' | 'headers'>): boolean {
   if (!GUARDED_PROXY.test(req.url ?? '')) return true;
