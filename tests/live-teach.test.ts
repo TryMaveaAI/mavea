@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { isTeachAsk } from '../src/live/annotate/teach';
-import { getLiveConfigV2 } from '../src/live/useLiveConfig';
+import { getLiveConfigV2, importConfig, resetLiveConfig } from '../src/live/useLiveConfig';
 
 describe('isTeachAsk — asks that request the whiteboard treatment', () => {
   it('catches explicit teaching language', () => {
@@ -18,8 +18,40 @@ describe('isTeachAsk — asks that request the whiteboard treatment', () => {
   });
 });
 
+// Pen mode is one toggle over two fields. Teach mode used to default off under a toggle that
+// defaulted on, so the switch said "on" while the generous pen stayed off.
 describe('teach mode config', () => {
-  it('defaults off — the pen is purposeful unless asked for', () => {
-    expect(getLiveConfigV2().teachMode).toBe(false);
+  afterEach(() => {
+    localStorage.clear();
+    resetLiveConfig();
+  });
+
+  async function freshFrom(stored: Record<string, unknown>) {
+    vi.resetModules();
+    localStorage.setItem('mavea-live-v2', JSON.stringify(stored));
+    return (await import('../src/live/useLiveConfig')).getLiveConfigV2();
+  }
+
+  it('defaults on, agreeing with the Pen mode toggle', () => {
+    const cfg = getLiveConfigV2();
+    expect(cfg.annotationsEnabled).toBe(true);
+    expect(cfg.teachMode).toBe(true);
+  });
+
+  it('reads a stored pair from before the change as on', async () => {
+    const cfg = await freshFrom({ annotationsEnabled: true, teachMode: false });
+    expect(cfg.teachMode).toBe(true);
+  });
+
+  it('keeps a reader who turned the pen off, off', async () => {
+    const cfg = await freshFrom({ annotationsEnabled: false, teachMode: false });
+    expect(cfg.annotationsEnabled).toBe(false);
+    expect(cfg.teachMode).toBe(false);
+  });
+
+  it('imports a settings file exported before the change as on', () => {
+    const cfg = importConfig(JSON.stringify({ annotationsEnabled: true, teachMode: false }));
+    expect(cfg.teachMode).toBe(true);
+    expect(importConfig(JSON.stringify({ annotationsEnabled: false })).teachMode).toBe(false);
   });
 });

@@ -41,9 +41,9 @@ index, or open the **Explore** menu in Live's top bar.
 - 🎙️ **It talks — and points while it talks.** The face speaks the headline as soon as the first
   card is on the canvas, its mouth and body tracking the real audio. As it walks the answer, it
   **draws**: hand-style circles, underlines, and arrows land on the exact figure each spoken line is
-  about (the model names its target; no reason, no ink). Ask it to teach ("walk me through it",
-  "step by step") — or turn on **Pen mode** in Settings — and it draws more generously. Turn off the
-  **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
+  about (the model names its target; no reason, no ink). With **Pen mode** on (the default) it
+  marks every stop it walks, not just the one figure a line calls out; turn it off in Settings and
+  the pen stays quiet. Turn off the **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
   microphone.
 - ✏️ **Edit its mind** — generated answers can state their read of the constraints as chips
   ("Tokyo trip" · "late April" · "~$2,500 each"). Tap one, fix it, and a correction turn
