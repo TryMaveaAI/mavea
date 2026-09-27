@@ -24,9 +24,10 @@ import { safePdfUrl } from './src/live/doc/safeUrl.js';
 // needs an equivalent same-origin forwarder, else pdfreader gracefully shows the "Open" link.
 const PDF_MAX_BYTES = 30 * 1024 * 1024;
 // The provider proxies forward whatever key a request carries, so any page open in the same
-// browser could otherwise spend a reader's key with a blind cross-site POST to localhost. Only this app's own pages may use them, the same
-// proof bin/mavea.mjs demands: a matching Origin or Referer, else Fetch Metadata saying
-// same-origin. A raw curl carries none of these and is refused too.
+// browser could otherwise spend a reader's key with a blind cross-site POST to localhost. Only
+// this app's own pages may use them, the same proof bin/mavea.mjs demands: a matching Origin or
+// Referer, else Fetch Metadata saying same-origin. A raw curl carries none of these and is
+// refused too.
 function sameOriginProxyGuardPlugin(): Plugin {
   const hostOf = (value: string | undefined) => {
     if (!value) return null;
