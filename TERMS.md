@@ -82,6 +82,7 @@ You may not use the Service to:
 - gain unauthorized access to systems, credentials, accounts, or data;
 - distribute malware, exploit vulnerabilities, or interfere with services;
 - impersonate others or deceptively present AI output as verified fact;
+- share AI-generated voice or video without saying it is AI-generated, or present it as a real person speaking;
 - make fully automated high-impact decisions about people without lawful authority, qualified review, and appropriate safeguards; or
 - use the Service in an emergency, weapons system, life-support system, or other environment where failure could foreseeably cause death, personal injury, or severe property or environmental harm.
 

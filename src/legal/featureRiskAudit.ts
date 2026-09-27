@@ -170,7 +170,7 @@ export const FEATURE_NOTICE_COPY: Record<
   },
   publishing: {
     title: 'Review before sharing',
-    body: 'Check facts, citations, confidential information, permissions, copyright, and accessibility before presenting, publishing, or sending an export.',
+    body: 'Check facts, citations, confidential information, permissions, copyright, and accessibility before presenting, publishing, or sending an export. Voice and video exports are AI-generated. Say so when you share them, and never present one as a real person speaking.',
   },
   'voice-data': VOICE_DATA_NOTICE,
   credentials: {
