@@ -941,9 +941,13 @@ export function StudyStage({
       data-assembling={assembling || undefined}
     >
       <div className="study-desk">
+        {/* Its own 3-D context under the scene, so the floor's tilted plane never splits the cards
+            standing on it (study.css, .study-floor-plane). */}
+        <div className="study-canvas study-floor-plane" aria-hidden="true">
+          <div className="study-floor" />
+        </div>
         <div className="study-canvas">
           <div className="study-scene">
-            <div className="study-floor" aria-hidden="true" />
             <div className="study-pool" aria-hidden="true" />
 
             {cast.map((block) => {

@@ -256,6 +256,16 @@
      depth comes from the arc's own perspective, which costs nothing after first paint. */
 }
 
+/* The floor gets its own 3-D context, painted before the scene, rather than sharing the scene's.
+   Its plane tilts up toward the reader and crosses the front card's depth, and a plane that
+   crosses another makes the compositor split that one along it and draw each piece clipped to its
+   own box: the pen's scrawls, written in the card's margin outside that box, were cut off at the
+   card's edge ("one / ard" at 1920 and 2560). Under the scene, the floor is still the same plane
+   in the same perspective; it just never sorts against the objects standing on it. */
+.study-floor-plane {
+  pointer-events: none;
+}
+
 /* The floor: a perspective grid receding from under the cards. Decorative; the first thing to
    go on a shallow stage. */
 .study-floor {
@@ -1967,6 +1977,7 @@
 
 .study-stage[data-compact]
   :is(
+    .study-floor-plane,
     .study-floor,
     .study-pool,
     .study-vignette,

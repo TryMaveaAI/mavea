@@ -105,6 +105,20 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(shallow).toMatch(/display:\s*none/);
   });
 
+  it('keeps the tilted floor out of the scene the cards stand in', () => {
+    // Sharing the scene's 3-D context, the floor's plane crossed the front card's depth; the
+    // compositor split the card along it and clipped each piece to the card's box, which cut the
+    // pen's margin scrawls off at the card's edge. The floor gets its own context under the scene.
+    const stage = read('src/canvas/study/StudyStage.tsx');
+    const scene = stage.slice(stage.indexOf('<div className="study-scene">'));
+    expect(scene).not.toMatch(/className="study-floor"/);
+    expect(stage).toMatch(
+      /<div className="study-canvas study-floor-plane"[^>]*>\s*<div className="study-floor" \/>/,
+    );
+    // …and it stands down with the rest of the desk in the flat column.
+    expect(css).toMatch(/\.study-stage\[data-compact\]\s*:is\(\s*\.study-floor-plane,/);
+  });
+
   it('derives the scale floor from the legibility floor rather than choosing it', () => {
     // 9px rendered ÷ the ramp's 10px floor: if either number moves, the floor must be recomputed.
     // The constant lives beside the slots so the CSS and the arithmetic cannot drift apart.
