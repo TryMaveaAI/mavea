@@ -1,6 +1,6 @@
 import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react';
-import { LegalPageShell, LegalSection, legalSectionId, type LegalPageKind } from './LegalPageShell';
-import { parseLegalMarkdown, type MarkdownBlock } from './legalMarkdown';
+import { LegalPageShell, LegalSection, type LegalPageKind } from './LegalPageShell';
+import { legalSectionId, parseLegalMarkdown, type MarkdownBlock } from './legalMarkdown';
 import { legalDocumentHref, type PackagedLegalDocument } from './links';
 
 const PACKAGED_DOCS: Record<string, PackagedLegalDocument> = {

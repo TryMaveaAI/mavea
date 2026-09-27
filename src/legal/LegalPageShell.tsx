@@ -1,5 +1,6 @@
 import { useLayoutEffect, type ReactElement, type ReactNode } from 'react';
 import { legalDocumentHref } from './links';
+import { legalSectionId } from './legalMarkdown';
 import './legal.css';
 
 export type LegalPageKind = 'important' | 'terms' | 'privacy';
@@ -96,11 +97,6 @@ export function LegalPageShell({
       </article>
     </main>
   );
-}
-
-/** The in-page anchor for a numbered section, shared by the section and the contents list. */
-export function legalSectionId(number: number): string {
-  return `legal-section-${number}`;
 }
 
 export function LegalSection({

@@ -86,3 +86,8 @@ export function parseLegalMarkdown(markdown: string): ParsedLegalDocument {
 
   return { title, effectiveDate, intro: blocks(introLines), sections };
 }
+
+/** The in-page anchor for a numbered section, shared by the section and the contents list. */
+export function legalSectionId(number: number): string {
+  return `legal-section-${number}`;
+}
