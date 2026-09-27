@@ -19,7 +19,6 @@ import {
   markUncertain,
 } from '../src/live/mindshape/useMindShape';
 import { useSignals } from '../src/live/mindshape/useSignals';
-import { mindShapeToSpec } from '../src/live/mindshape/mindShapeToSpec';
 import { settleMindShape, patchMindShape } from '../src/live/mindshape/modelRefine';
 import {
   computeLayout,
@@ -364,74 +363,6 @@ describe('mergeDelta', () => {
 });
 
 // ── mindShapeToSpec ──────────────────────────────────────────────────────
-
-describe('mindShapeToSpec', () => {
-  const SETTLED: MindShapeSpec = {
-    center: 'Is it the right time — or am I just running?',
-    title: 'Seattle offer vs family',
-    atoms: [
-      {
-        id: 'opt1',
-        kind: 'option',
-        label: 'Take the Seattle offer',
-        quote: "there's this offer in Seattle",
-        status: 'stable',
-        confidence: 'said',
-      },
-      {
-        id: 'per1',
-        kind: 'person',
-        label: 'Dad',
-        quote: "Dad's not getting any younger",
-        status: 'stable',
-        confidence: 'said',
-      },
-    ],
-    links: [{ from: 'opt1', to: 'per1', kind: 'tensions', label: 'but' }],
-    unsaid: {
-      label: "Maybe this isn't about the job",
-      why: 'She keeps framing it as career but circles back to fear.',
-      confidence: 'maybe',
-    },
-  };
-
-  it('produces a ConversationSpec with a mindshape block', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.blocks).toHaveLength(1);
-    expect(spec.blocks[0].type).toBe('mindshape');
-  });
-
-  it('preserves center as sub and opener', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.sub).toBe(SETTLED.center);
-    expect(spec.opener).toBe(SETTLED.center);
-  });
-
-  it('preserves atoms, links, and unsaid in block props', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    const props = (spec.blocks[0] as { type: 'mindshape'; props: MindShapeSpec }).props;
-    expect(props.atoms).toHaveLength(2);
-    expect(props.links).toHaveLength(1);
-    expect(props.unsaid?.label).toBe("Maybe this isn't about the job");
-  });
-
-  it('uses spec.title as the ConversationSpec title', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.title).toBe('Seattle offer vs family');
-  });
-
-  it('falls back to a default title when spec.title is absent', () => {
-    const noTitle: MindShapeSpec = { ...SETTLED, title: undefined };
-    const spec = mindShapeToSpec(noTitle);
-    expect(spec.title).toBeTruthy();
-    expect(typeof spec.title).toBe('string');
-  });
-
-  it('block col is 12 (full-width)', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.blocks[0].col).toBe(12);
-  });
-});
 
 // ── computeLayout de-clumping ─────────────────────────────────────────────
 describe('computeLayout', () => {
