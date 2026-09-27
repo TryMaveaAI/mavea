@@ -126,8 +126,7 @@
   .ob-page .fl-reveal.in > .ob-hero-layout,
   .ob-page .fl-reveal.in > .ob-world-art,
   .ob-page .fl-reveal.in > .ob-guide-art,
-  .ob-page .fl-reveal.in > .fl-demo-grid,
-  .ob-page .fl-reveal.in > .ff-film {
+  .ob-page .fl-reveal.in > .fl-demo-grid {
     animation: ob-art-arrive 900ms 150ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .ob-hero-copy .fl-hero-title {
@@ -359,10 +358,6 @@
   stroke-dashoffset: 0;
   animation: ob-draw 2.4s ease both;
 }
-.ob-thread-dashed {
-  stroke-dasharray: 3 6;
-  opacity: 0.45;
-}
 .ob-core-lines {
   stroke: var(--ob-sun-edge);
   fill: none;
@@ -481,20 +476,6 @@
 .ob-note-hand {
   font: italic clamp(0.75rem, 1.1vw, 1rem)/1.3 var(--font-serif, 'Newsreader', Georgia, serif);
 }
-.ob-orbit-caption {
-  position: absolute;
-  bottom: 1%;
-  left: 9%;
-  max-width: 55%;
-  font: 400 var(--fs-2xs)/1.5 var(--font-data, monospace);
-}
-.ob-orbit-mark {
-  position: absolute;
-  top: 13%;
-  right: 11%;
-  font-size: clamp(2rem, 4vw, 4rem);
-  color: var(--ob-green);
-}
 .ob-observatory-bottom {
   padding: 1.5rem 1.5rem 1.6rem;
   text-align: center;
@@ -527,12 +508,6 @@
 .ob-view-controls button[aria-pressed='true'] {
   border-color: var(--ob-map-dot);
   background: var(--ob-card);
-}
-.ob-route-scene,
-.ob-detail-scene {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 .ob-map-water {
   fill: color-mix(in oklab, var(--ob-green) 13%, var(--ob-art));
@@ -608,23 +583,6 @@
   fill: var(--ob-ink);
   font: 600 var(--fs-lg) var(--font);
 }
-.ob-map-stop .ob-map-place {
-  font: 500 var(--fs-md) var(--font);
-}
-.ob-map-compass {
-  stroke: var(--ob-green);
-  stroke-width: 1.5;
-  fill: none;
-}
-.ob-map-compass text {
-  fill: var(--ob-green);
-  stroke: none;
-  font: 500 var(--fs-md) var(--font-data, monospace);
-}
-.ob-scene-note {
-  fill: var(--ob-green);
-  font: italic 400 var(--fs-xl) var(--font-voice);
-}
 .ob-detail-paper {
   fill: var(--ob-card);
   stroke: var(--ob-line);
@@ -655,17 +613,6 @@
 }
 .ob-detail-dot {
   fill: var(--ob-sun-edge);
-}
-.ob-detail-pointer {
-  fill: none;
-  stroke: var(--ob-green);
-  stroke-width: 2;
-  stroke-dasharray: 1;
-  animation: ob-draw 0.6s 1.5s ease both;
-}
-.ob-detail-caption {
-  fill: var(--ob-green);
-  font: 400 var(--fs-sm) var(--font);
 }
 .ob-observatory[data-paused='true'] * {
   animation-play-state: paused !important;
