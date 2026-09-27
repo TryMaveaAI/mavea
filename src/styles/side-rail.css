@@ -112,8 +112,9 @@
    empty either side. From the 2560 rung its sections go two abreast, in reading order — left to
    right, then down — which is also DOM, tab and walk order, so the narration and the spotlight
    step through them in the order the eye does. Each half is about the desktop measure the blocks
-   are built for, so the column holds two of it plus the gutter; a last section with no partner
-   sits centred. Only the board's own sectioned grid widens — the dock, the Study and every other
+   are built for, so the column holds two of it plus the gutter. Pairing needs a partner: a
+   one-section answer keeps its single column, and a trailing odd section stays in the left cell,
+   so a section streaming in never makes the one before it jump. Only the board's own sectioned grid widens — the dock, the Study and every other
    surface keep --canvas-col-max — and it lives in Live's sheet so no other route carries it. */
 @media (width >= 2560px) {
   .with-rail {
@@ -121,22 +122,18 @@
     --board-wide-max: calc(2 * 1640px + var(--board-col-gap));
   }
 
-  .with-rail .canvas-scroll:has(.card-grid > .depth-section) {
+  .with-rail .canvas-scroll:has(.card-grid > .depth-section ~ .depth-section) {
     max-width: calc(var(--board-wide-max) + 52px * var(--vp-scale));
   }
 
-  .with-rail .card-grid:has(> .depth-section) {
+  .with-rail .card-grid:has(> .depth-section ~ .depth-section) {
     max-width: var(--board-wide-max);
     column-gap: var(--board-col-gap);
     align-items: start;
   }
 
-  .with-rail .card-grid > .depth-section {
+  .with-rail .card-grid:has(> .depth-section ~ .depth-section) > .depth-section {
     grid-column: span 6;
-  }
-
-  .with-rail .card-grid > .depth-section:nth-child(odd):not(:has(~ .depth-section)) {
-    grid-column: 4 / span 6;
   }
 }
 .with-rail .presence-stage {

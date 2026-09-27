@@ -1088,7 +1088,12 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
 
   it('pairs sections only from the 2560 rung, as grid cells in DOM order', () => {
     expect(BREAKPOINT_WIDTHS).toContain(2560);
-    expect(wide).toMatch(/\.with-rail \.card-grid > \.depth-section\s*\{\s*grid-column:\s*span 6;/);
+    expect(wide).toMatch(
+      /\.with-rail \.card-grid:has\(> \.depth-section ~ \.depth-section\) > \.depth-section\s*\{\s*grid-column:\s*span 6;/,
+    );
+    // A lone or trailing section is never re-placed: centring it made the last section jump from
+    // the middle to the left cell the moment its partner streamed in.
+    expect(wide).not.toMatch(/nth-child|grid-column:\s*\d+ \//);
     // Row-major grid placement keeps reading order; a multi-column flow would read DOWN each
     // column and walk the spotlight out of the order the narration speaks it.
     expect(wide).not.toMatch(/column-count|columns:/);
@@ -1100,9 +1105,11 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
 
   it('widens only the sectioned board, never the shared answer measure', () => {
     expect(wide).toMatch(
-      /\.with-rail \.card-grid:has\(> \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
+      /\.with-rail \.card-grid:has\(> \.depth-section ~ \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
     );
-    expect(wide).toMatch(/\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section\)/);
+    expect(wide).toMatch(
+      /\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section ~ \.depth-section\)/,
+    );
     expect(read('src/styles/tokens-base.css')).toMatch(
       /--canvas-col-max: clamp\(1280px, 84vw, 1640px\)/,
     );
