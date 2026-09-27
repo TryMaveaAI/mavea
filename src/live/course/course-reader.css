@@ -287,6 +287,12 @@
   background: color-mix(in oklab, var(--presence) 88%, #000);
   border-color: color-mix(in oklab, var(--presence) 88%, #000);
 }
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red l c h)) {
+  .clr-btn-primary:hover {
+    color: oklch(from color-mix(in oklab, var(--presence) 88%, #000) var(--ink-on-fill));
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .clr-lens span {

@@ -856,6 +856,12 @@
 .ms-action-primary:hover {
   background: color-mix(in oklab, var(--insight, #5b63e8) 85%, #000);
 }
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red l c h)) {
+  .ms-action-primary:hover {
+    color: oklch(from color-mix(in oklab, var(--insight, #5b63e8) 85%, #000) var(--ink-on-fill));
+  }
+}
 /* the plan's "Make it real" waits while no step is wanted — quiet, not gone */
 .ms-action-btn:disabled {
   opacity: 0.45;
