@@ -268,6 +268,22 @@ html:has(.legal-app) body {
   font-size: var(--fs-sm);
 }
 
+/* The key-handling primer sits above the numbered notices, not in the warranty's amber, and its
+   four short answers need air between them or they read as one paragraph. */
+.legal-key-handling {
+  margin-top: 0;
+  margin-bottom: 32px;
+  background: var(--surface-elevated);
+}
+
+.legal-key-handling p + p {
+  margin-top: 0.7em;
+}
+
+.legal-key-handling b {
+  color: var(--text-primary);
+}
+
 .legal-fineprint {
   margin-top: 24px;
   color: var(--text-muted);

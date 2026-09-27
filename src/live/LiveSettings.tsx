@@ -1025,7 +1025,7 @@ export function LiveSettings({
                 note={
                   cfg.rememberKey
                     ? 'Encrypted on this device when supported; otherwise session-only — never saved as plaintext.'
-                    : 'Kept in memory only — cleared on reload.'
+                    : 'Kept in memory only — still readable on this device until you reload.'
                 }
               />
             )}

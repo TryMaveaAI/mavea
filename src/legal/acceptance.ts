@@ -13,8 +13,11 @@
    never said is the part someone would want to be asked about.
    v10: the feedback terms bind whoever SENDS feedback, not only whoever ran the app — posting an
    issue, a discussion or an email is now itself an acceptance, because §9's grant was worth nothing
-   against a person who had never installed Mavéa and so had never agreed to anything. */
-export const LEGAL_ACCEPTANCE_VERSION = '2026-09-03-upload-training-terms-v11';
+   against a person who had never installed Mavéa and so had never agreed to anything.
+   v12: the key's exposure named outright — held unencrypted in the page while in use, readable by
+   any extension or software with access to the browser, and Remember off keeps it until reload —
+   with a Forget everything on this device control that also destroys the vault key. */
+export const LEGAL_ACCEPTANCE_VERSION = '2026-09-27-device-key-handling-v12';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

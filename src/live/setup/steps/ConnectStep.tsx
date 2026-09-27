@@ -196,12 +196,20 @@ export function ConnectStep(): ReactElement {
                 Get a key&#x2197;
               </a>
             )}
-            {/* Least-privilege nudge: the key never leaves this device unencrypted, but the surest
-                protection is a key that can't do much harm if it ever leaks — a spend cap and, where
-                the provider allows, a scoped/restricted key bound the blast radius to near zero. */}
+            {/* Least-privilege nudge: the surest protection is a key that can't do much harm if it
+                ever leaks — a spend cap and, where the provider allows, a scoped/restricted key
+                bound the blast radius to near zero. */}
             <span className="field-helper">
-              Tip: use a restricted, spend-capped key — if it's ever exposed, the cost and access
-              stay bounded.
+              Saved encrypted on this device only if you turn on Remember. While in use, anything
+              running in this browser can read it — use a restricted, spend-capped key.{' '}
+              <a
+                className="field-helper-link"
+                href="#/legal?from=live"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                How your key is handled&#x2197;
+              </a>
             </span>
           </label>
         )}
@@ -231,7 +239,7 @@ export function ConnectStep(): ReactElement {
           note={
             cfg.rememberKey
               ? 'Saved encrypted in this browser; use only on a trusted device.'
-              : 'Kept in memory only, cleared when you reload.'
+              : 'Kept in memory only — still readable on this device until you reload.'
           }
         />
       )}

@@ -29,15 +29,12 @@ export function ProviderResponsibilityNotice(): ReactElement {
         third parties.
       </p>
       <p>
-        Choosing Remember stores an encrypted copy of provider and search keys in this browser,
-        sealed with a device-bound key when browser cryptography is available; otherwise they remain
-        session-only. Encryption at rest is a convenience, not a security guarantee: an unlocked,
-        shared, lost, or compromised device, browser profile, or extension can still expose or
-        misuse keys, and Mavéa is not responsible for key theft, unauthorized use, or resulting
-        charges. Keeping keys secure is your responsibility — use restricted, revocable keys with
-        spending caps on trusted devices you control, revoke a key with its provider immediately if
-        you suspect exposure, and monitor your provider account. Keys pass through this deployment’s
-        request proxy when used; settings exports exclude them.
+        Encryption at rest is a convenience, not a security guarantee: an unlocked, shared, lost, or
+        compromised device, browser profile, or extension can still expose or misuse keys, and Mavéa
+        is not responsible for key theft, unauthorized use, or resulting charges. Keeping keys
+        secure is your responsibility — use restricted, revocable keys with spending caps on trusted
+        devices you control, revoke a key with its provider immediately if you suspect exposure, and
+        monitor your provider account. Keys pass through this deployment’s request proxy when used.
       </p>
       <nav className="provider-responsibility-links" aria-label="Terms and privacy documents">
         <a className="provider-responsibility-link" href="#/terms?from=live">

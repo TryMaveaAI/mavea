@@ -33,12 +33,15 @@ describe('app-wide important information', () => {
       screen.getByText(/not an emergency, crisis, or monitoring service/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/prompts, attachments, conversation context/i)).toBeInTheDocument();
-    expect(screen.getByText(/Remember off.*memory only until reload/i)).toBeInTheDocument();
-    expect(screen.getByText(/encrypted ciphertext in this browser/i)).toBeInTheDocument();
-    expect(screen.getByText(/same-origin request proxy/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Settings exports exclude provider and search keys/i),
-    ).toBeInTheDocument();
+    // The key primer: what is kept, where, who can read it, how to remove it.
+    expect(screen.getByRole('heading', { name: 'Important information' })).toBeInTheDocument();
+    expect(screen.getByText(/people who publish Mavéa never receive it/i)).toBeInTheDocument();
+    expect(screen.getByText(/key the browser will not export/i)).toBeInTheDocument();
+    expect(screen.getByText(/whoever runs this deployment/i)).toBeInTheDocument();
+    expect(screen.getByText(/extension with access to this site/i)).toBeInTheDocument();
+    expect(screen.getByText(/reload the tab to clear it from memory/i)).toBeInTheDocument();
+    expect(screen.getByText(/destroys the encryption key/i)).toBeInTheDocument();
+    expect(screen.getByText(/never in a settings export or backup/i)).toBeInTheDocument();
     expect(screen.getByText(/anything you type, paste, attach, or upload/i)).toBeInTheDocument();
     expect(screen.getByText(/work-related or personal material/i)).toBeInTheDocument();
     expect(screen.getByText(/rights and permission to use/i)).toBeInTheDocument();

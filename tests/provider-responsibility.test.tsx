@@ -28,7 +28,6 @@ describe('provider pricing and responsibility disclosure', () => {
     expect(notice).toHaveTextContent('may be sent to the model, search, or connected provider');
     expect(notice).toHaveTextContent('authorized to share it');
     expect(notice).toHaveTextContent('processing and retention practices');
-    expect(notice).toHaveTextContent('Choosing Remember stores an encrypted copy');
     expect(notice).toHaveTextContent('not a security guarantee');
     expect(notice).toHaveTextContent('compromised device, browser profile, or extension');
     expect(notice).toHaveTextContent(
@@ -39,7 +38,6 @@ describe('provider pricing and responsibility disclosure', () => {
       'restricted, revocable keys with spending caps on trusted devices you control',
     );
     expect(notice).toHaveTextContent('pass through this deployment’s request proxy');
-    expect(notice).toHaveTextContent('settings exports exclude them');
     expect(screen.getByRole('link', { name: /Read all important information/i })).toHaveAttribute(
       'href',
       '#/legal?from=live',
