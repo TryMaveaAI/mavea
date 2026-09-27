@@ -310,7 +310,12 @@ import {
 import { pendingCard } from './turnstate/pendingCard';
 import { BoardCuePill } from './turnstate/BoardCuePill';
 import { anyOverlayOpen } from './hooks/overlayGuard';
-import { glideScroll, spotScrollDelta, useKeepSpotInView } from './hooks/useKeepSpotInView';
+import {
+  glideScroll,
+  revealTop,
+  spotScrollDelta,
+  useKeepSpotInView,
+} from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
 import {
   MIC_AUDIO_MSG,
@@ -334,6 +339,24 @@ import { sentenceCase } from '../lib/sentenceCase';
 // What the lazy-canvas Suspense fallback sketches while the TopicCanvas chunk downloads: two
 // half-width cards over a full-width one — the generic shape of an answer, no catalog reach.
 const CANVAS_LOADING_SHAPE = [{ col: 6 }, { col: 6 }, { col: 12 }];
+
+/** The innermost element of a card that shows each of `texts`: the spots a scripted mark will be
+ *  drawn on. A text the card does not show is skipped, so a missing one only keeps less in view. */
+function cardText(spotId: string, texts: readonly string[]): Element[] {
+  const card = document.querySelector(`[data-spot-id="${CSS.escape(spotId)}"]`);
+  if (!card) return [];
+  const found: Element[] = [];
+  for (const text of texts) {
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.parentElement && n.textContent?.includes(text)) {
+        found.push(n.parentElement);
+        break;
+      }
+    }
+  }
+  return found;
+}
 
 const RAIL_COLLAPSED_STORAGE_KEY = 'mavea-live-rail-collapsed-v1';
 
@@ -2254,13 +2277,28 @@ export function LiveApp(): ReactElement {
   }, []);
 
   /** Glide the canvas to its top, then run `then` — so a scripted mark lands on a page at rest.
-   *  `signal` is the driver step's: a step left (dismissed, skipped, unmounted) mid-glide draws
-   *  nothing. */
-  const toTopThen = (then: () => void, signal?: AbortSignal): Promise<void> => {
+   *  `keep` names what the marks will be drawn on: when that sits below the fold at the top (a
+   *  phone, where the caption and the dock leave a short band), the canvas stops as little below
+   *  its top as shows it whole, rather than drawing where nobody can see. `signal` is the driver
+   *  step's: a step left (dismissed, skipped, unmounted) mid-glide draws nothing. */
+  const toTopThen = (
+    then: () => void,
+    signal?: AbortSignal,
+    keep?: () => readonly Element[],
+  ): Promise<void> => {
     if (signal?.aborted) return Promise.resolve();
     const scroller = scrollRef.current;
+    const top =
+      scroller && keep
+        ? revealTop(
+            keep().map((el) => el.getBoundingClientRect()),
+            scroller.getBoundingClientRect(),
+            scroller.scrollTop,
+            scroller.clientHeight,
+          )
+        : 0;
     const glide = scroller
-      ? glideScroll(scroller, 0, { instant: prefersReducedMotion(), signal })
+      ? glideScroll(scroller, top, { instant: prefersReducedMotion(), signal })
       : Promise.resolve();
     return glide.then(() => {
       if (!signal?.aborted) then();
@@ -2442,6 +2480,7 @@ export function LiveApp(): ReactElement {
               1,
             ),
           signal,
+          () => cardText('live-1', ['$76,123', '7.6x']),
         );
       } else {
         ink(

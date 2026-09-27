@@ -8,6 +8,24 @@ export function spotScrollDelta(card: DOMRect, scroller: DOMRect, clientHeight: 
   return card.height <= clientHeight ? offset - (clientHeight - card.height) / 2 : offset;
 }
 
+/** Where to rest a scroller so every `target` shows whole: its top when they already do there,
+ *  so a page whose marks fit at rest never moves, else the least scroll that brings the lowest
+ *  one clear of the bottom edge. When they cannot all fit, the topmost wins, since a reader
+ *  starts at the top. Rects are read at the scroller's current `scrollTop`. */
+export function revealTop(
+  targets: readonly DOMRect[],
+  scroller: DOMRect,
+  scrollTop: number,
+  clientHeight: number,
+  margin = 16,
+): number {
+  if (!targets.length) return 0;
+  const toContent = (y: number): number => y - scroller.top + scrollTop;
+  const first = Math.min(...targets.map((r) => toContent(r.top)));
+  const last = Math.max(...targets.map((r) => toContent(r.bottom)));
+  return Math.max(0, Math.min(last + margin - clientHeight, first - margin));
+}
+
 /** The house ease-out (`--ease-out`: cubic-bezier(0.16, 1, 0.3, 1)) as a function of progress.
  *  Solved by Newton's method on x(t), which converges in a handful of steps for this curve. */
 function easeOut(p: number): number {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { glideScroll } from '../src/live/hooks/useKeepSpotInView';
+import { glideScroll, revealTop } from '../src/live/hooks/useKeepSpotInView';
 
 // The walk's camera. A voiced stop glides its card into view under the line's first syllables and
 // only draws once the glide has resolved, so it has to be awaitable, finish on the motion token's
@@ -68,5 +68,38 @@ describe('glideScroll', () => {
     const el = scroller();
     await glideScroll(el, 99_999, { instant: true });
     expect(el.scrollTop).toBe(3200);
+  });
+});
+
+// Where a scripted pen stroke rests the canvas. On a phone the caption and the dock leave a short
+// band, and a mark drawn below it is drawn where nobody can see (the tour's circled total was).
+describe('revealTop', () => {
+  const band = new DOMRect(0, 74, 360, 313);
+  const at = (top: number, height: number): DOMRect => new DOMRect(0, top, 100, height);
+
+  it('keeps the top when the marks already show there', () => {
+    expect(revealTop([at(200, 30), at(240, 30)], band, 0, 313)).toBe(0);
+  });
+
+  it('moves only as far as brings the lowest mark clear of the bottom edge', () => {
+    // Marks at 570..649 on a page at its top: the last needs 649 + 16 - (74 + 313) of scroll.
+    const top = revealTop([at(570, 29), at(611, 38)], band, 0, 313);
+    expect(top).toBe(649 + 16 - 74 - 313);
+    expect(611 + 38 - top).toBeLessThanOrEqual(74 + 313 - 16);
+    expect(570 - top).toBeGreaterThanOrEqual(74 + 16);
+  });
+
+  it('reads rects at the current scroll, wherever the page sits now', () => {
+    expect(revealTop([at(382, 29), at(423, 38)], band, 188, 313)).toBe(
+      revealTop([at(570, 29), at(611, 38)], band, 0, 313),
+    );
+  });
+
+  it('keeps the first mark in view when they cannot all fit', () => {
+    expect(revealTop([at(500, 20), at(1200, 20)], band, 0, 313)).toBe(500 - 74 - 16);
+  });
+
+  it('stays at the top with nothing to keep', () => {
+    expect(revealTop([], band, 300, 313)).toBe(0);
   });
 });
