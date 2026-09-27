@@ -3,7 +3,7 @@
 // the Dashboards bar has none of that, but should still read as the same menu bar. So this mirrors
 // Live's exact categories, labels, order, and wording, and resolves each item the off-Live way:
 // a feature with its own surface navigates straight there; a feature that only exists inside a
-// conversation (Present / Export / Share a conversation, Atlas, Rehearse…) hands off to Live.
+// conversation (Present / Export / Video, Atlas, Rehearse…) hands off to Live.
 // A category with nothing to show hides itself (TopbarMenu drops empty menus).
 import type { TopbarMenuItem } from '../live/TopbarMenu';
 import { preloadRoute } from '../routes';
@@ -60,7 +60,7 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
     share: [
       inLive('Present', 'Fill the room — the chrome falls away and the answer takes the stage'),
       inLive('Export', 'Turn this answer into a presentation deck or a designed document'),
-      inLive('Share', 'Share this conversation as a story'),
+      inLive('Video', 'Share a moment, a topic, or the whole conversation'),
     ],
     explore: [
       {
