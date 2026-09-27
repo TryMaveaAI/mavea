@@ -129,6 +129,9 @@ export interface LiveProbe {
    *  400, which the setup wizard could only report as "Error 400." on the one screen whose whole
    *  job is getting a key working. */
   detail?: string;
+  /** What the check itself was billed, when it had to generate to reach a verdict (Anthropic's
+   *  one-token messages call). The registry records it in the usage ledger like any other call. */
+  usage?: TokenUsage;
 }
 
 /** Optional per-delta metadata. `reasoning` marks a model "thinking" token (e.g. OpenRouter's

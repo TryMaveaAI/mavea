@@ -85,6 +85,41 @@ const noStructuredOutput = new Set<string>();
 const noExtendedCacheTtl = new Set<string>();
 const noCacheControl = new Set<string>();
 
+/** Fingerprints of endpoint + model + key combinations whose paid readiness check already passed
+ *  this session. Settings and the Connect step re-check every time they open, and each paid pass
+ *  is a real messages call on the reader's key, so a combination is billed once per session: after
+ *  that the free models check alone confirms the key still works. Hashed so this set never holds a
+ *  second copy of the key. */
+const verifiedGeneration = new Set<string>();
+
+async function generationFingerprint(base: string, cfg: ModelConfig): Promise<string | null> {
+  try {
+    const bytes = new TextEncoder().encode(`${base}\n${cfg.model}\n${cfg.apiKey ?? ''}`);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null; // no WebCrypto: check every time rather than trust an unverified pairing
+  }
+}
+
+/** The billed tokens a non-streamed messages reply reports, or nothing if it names none. */
+function probeUsage(body: string): { usage?: TokenUsage } {
+  try {
+    const u = obj(obj(JSON.parse(body) as unknown).usage);
+    if (u.input_tokens === undefined && u.output_tokens === undefined) return {};
+    return {
+      usage: { input: num(u.input_tokens), output: num(u.output_tokens), cachedInput: 0 },
+    };
+  } catch {
+    return {};
+  }
+}
+
+/** Test-only: forget which combinations were verified, so each case starts cold. */
+export function _resetVerifiedGenerationForTest(): void {
+  verifiedGeneration.clear();
+}
+
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
 const MIN_THINKING_BUDGET = 1024;
 
@@ -156,9 +191,12 @@ export const anthropicAdapter: ProviderAdapter = {
         };
       // Pass 2 (paid, ~1 token): a minimal POST /v1/messages. /v1/models can return 200 while
       // the REAL generation endpoint 401s (Anthropic's browser detection blocks /v1/messages
-      // only) — so "Ready" must come from the endpoint a turn actually uses. Probes only fire
-      // on settled key/model changes and explicit Recheck, never per keystroke, so the cost is
-      // a one-token call per probe.
+      // only) — so "Ready" must come from the endpoint a turn actually uses. It runs once per
+      // endpoint + model + key per session; its tokens are reported so they reach the ledger.
+      const fingerprint = await generationFingerprint(base, cfg);
+      if (fingerprint && verifiedGeneration.has(fingerprint)) {
+        return { ok: true, model: true, statusCode: res.status };
+      }
       const gen = await fetchWithTimeout(
         `${base}${MESSAGES}`,
         {
@@ -179,7 +217,9 @@ export const anthropicAdapter: ProviderAdapter = {
           statusCode: gen.status,
           detail: await providerErrorDetail(gen),
         };
-      return { ok: true, model: true, statusCode: gen.status };
+      const billed = probeUsage(await gen.text());
+      if (fingerprint) verifiedGeneration.add(fingerprint);
+      return { ok: true, model: true, statusCode: gen.status, ...billed };
     } catch {
       return { ok: false, model: false };
     }

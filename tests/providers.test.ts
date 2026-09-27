@@ -1,5 +1,5 @@
-import { afterEach, vi } from 'vitest';
-import { anthropicAdapter } from '../src/live/providers/anthropic';
+import { afterEach, beforeEach, vi } from 'vitest';
+import { _resetVerifiedGenerationForTest, anthropicAdapter } from '../src/live/providers/anthropic';
 import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
@@ -281,6 +281,8 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
   // only the latter) — so "Ready" must be earned by the endpoint a turn actually hits.
   const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
 
+  beforeEach(() => _resetVerifiedGenerationForTest());
+
   /** Mocks fetch per-endpoint and records every call so tests can assert what was hit. */
   function mockProbeFetch(
     modelsStatus: number,
@@ -309,6 +311,34 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     const body = JSON.parse(String(gen!.init?.body)) as { max_tokens: number; messages: unknown[] };
     expect(body.max_tokens).toBe(1); // the paid check costs ~one token, never a real turn
     expect(body.messages).toHaveLength(1);
+  });
+
+  it('bills the paid pass once per model and key, and reports what it cost', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        calls.push(String(url));
+        return String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response(JSON.stringify({ usage: { input_tokens: 8, output_tokens: 1 } }), {
+              status: 200,
+            });
+      }),
+    );
+    const messages = (): number => calls.filter((u) => u.includes('/v1/messages')).length;
+
+    // Through the registry, as Settings and the Connect step call it.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(getUsageLedger().some((e) => e.label === 'readiness-check')).toBe(true);
+    // Re-opening the panel re-checks reachability for free, without a second billed call.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(messages()).toBe(1);
+    expect(calls.filter((u) => u.includes('/v1/models'))).toHaveLength(2);
+    // A different model or key has not been verified yet, so it earns its own check.
+    await getAdapter('anthropic').probe({ ...cfg, model: 'claude-sonnet-5' });
+    await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
+    expect(messages()).toBe(3);
   });
 
   it('reports NOT ready when models is 200 but messages 401s (the production trap)', async () => {

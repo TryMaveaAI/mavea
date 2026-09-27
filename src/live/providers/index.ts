@@ -18,7 +18,9 @@ function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
     ...adapter,
     async probe(cfg) {
       if (!providerGenerationAllowed(cfg)) return { ok: false, model: false };
-      return ADAPTERS[id].probe(cfg);
+      const verdict = await ADAPTERS[id].probe(cfg);
+      if (verdict.usage) recordUsage('readiness-check', verdict.usage);
+      return verdict;
     },
     async generate(req, cfg, onDelta) {
       assertProviderGenerationAllowed(cfg);
