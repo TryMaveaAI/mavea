@@ -69,8 +69,10 @@ import line to `src/canvas/blocks/loader.ts` + `familyMap.ts`, and a labelled en
   once you've confirmed nothing else already handles it; don't double up on a component with its own
   working responsive logic.
 - **Untrusted text is escaped.** Model/user strings render through React text nodes (auto-escaped).
-  Only render HTML with `dangerouslySetInnerHTML` for fields that are sanitised (see
-  `src/lib/richText.ts`); never inject raw model output as HTML.
+  Only render HTML with `dangerouslySetInnerHTML` for fields that are sanitised: pass
+  `richInnerHtml(value)` (`src/lib/richText.ts`), which returns the Trusted Types value the CSP
+  requires. A raw string there is refused in Chromium. Never inject raw model output as HTML, and
+  never render a `<style>` element: put fixed styles in the family `styles.css`.
 - **No leaks:** every timer/listener/observer/animation is cleaned up on unmount. Use
   `useTimeout` / `useInterval` from `src/hooks/` so timers auto-cancel.
 

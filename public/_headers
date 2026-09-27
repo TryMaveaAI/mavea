@@ -1,9 +1,13 @@
 # Security response headers for the built app.
 #
-# The Content-Security-Policy travels in index.html's <meta> tag, so it applies on any host. These
-# five cannot be expressed in a meta tag at all — they only exist as response headers — so they have
-# to come from whatever actually serves dist/. This file is the format Cloudflare Pages and Netlify
-# read directly out of the publish directory; Vite copies it verbatim from public/.
+# The Content-Security-Policy is written once, in index.html's <meta> tag, so it applies on any
+# host. It is repeated here as a real header because a header is enforced before the first byte of
+# the page is parsed, and because it can carry `frame-ancestors`, which a meta tag cannot. The line
+# below is that meta policy plus `frame-ancestors 'none'`, byte for byte — tests/csp-parity.test.ts
+# fails if the two drift, so edit index.html first and copy the policy here. The other headers cannot
+# be expressed in a meta tag at all, so they have to come from whatever actually serves dist/. This
+# file is the format Cloudflare Pages and Netlify read directly out of the publish directory; Vite
+# copies it verbatim from public/.
 #
 # If you deploy somewhere else, these are the headers to carry across (nginx `add_header`, an S3 +
 # CloudFront response-headers policy, a Vercel `headers` block, and so on). Do not drop
@@ -13,7 +17,7 @@
 /*
   # No one frames Mavéa. Clickjacking a voice app means clickjacking a mic prompt.
   X-Frame-Options: DENY
-  Content-Security-Policy: frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-Xdp7H/Cx6wyDBvyCtY9Ez7J+ZzYww0aA6H6TGHNRcCg=' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.github.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; trusted-types mavea mavea-inert default; require-trusted-types-for 'script'; frame-ancestors 'none'
   # The mic is ours and same-origin only. The camera and location are things we never use, so they
   # are denied outright rather than left to the default.
   Permissions-Policy: microphone=(self), display-capture=(self), camera=(), geolocation=()

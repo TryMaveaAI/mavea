@@ -70,11 +70,16 @@ exploitable _given_ an existing XSS — which the input pipeline is designed to 
 web-search output is tag-neutralized before render, and the few fields that carry markup pass a
 strict DOMParser allow-list (rich text) or an SVG sanitizer.
 
-- **`style-src 'unsafe-inline'`** is retained because the design system applies dynamic values and
-  CSS custom properties through React `style` attributes throughout (chart geometry, theme tokens,
-  the live `--voice-energy`/aura variables, focus/tour transforms). CSP nonces and hashes do not
-  apply to inline `style` _attributes_, so dropping `'unsafe-inline'` would break theming with no
-  equivalent. The residual exposure is CSS-only (no script execution).
+- **`style-src-attr 'unsafe-inline'`** is retained for `style="…"` attributes inside sanitized
+  markup (SVG illustrations, KaTeX MathML, Shiki's token colors). React's `style` prop goes through
+  the CSSOM and needs no allowance. Inline `<style>` _elements_ are refused: `style-src` admits only
+  same-origin stylesheets plus two hashes (the boot splash and an empty element the raster export
+  fills through the CSSOM), so injected markup cannot bring its own stylesheet. The residual
+  exposure is CSS-only (no script execution).
+- **Trusted Types is enforced** (`require-trusted-types-for 'script'`, Chromium only). Sanitized
+  markup reaches the DOM through the `mavea` policy; a `default` policy lets third-party code
+  (MapLibre, modern-screenshot, Vite's worker loaders) write only markup with no active content and
+  load only same-origin script URLs.
 - **Dynamic visual runtimes are bundled and code-split**, including Shiki, KaTeX, Leaflet, jsPDF,
   pdfjs-dist, openchemlib, mediabunny, and modern-screenshot; the application does not import
   executable JavaScript from a CDN. Generated JavaScript/TypeScript runs only after an explicit

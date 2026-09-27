@@ -37,7 +37,9 @@ introduces a seam, a dependency, or a new module.
 - [ ] No secrets in code or logs; provider keys are session-only by default (optional encrypted
       local store) and transit only through the documented same-origin proxy to the provider
 - [ ] All external input (LLM output, user text, uploaded files) is treated as untrusted and validated/escaped — no injection, no unsanitized HTML
-- [ ] `dangerouslySetInnerHTML` only on content we control and sanitize
+- [ ] `dangerouslySetInnerHTML` only on content we control and sanitize, passed through
+      `trustedHtml` (`src/lib/trustedTypes.ts`); the CSP enforces Trusted Types and refuses inline
+      `<style>` elements
 - [ ] No new network egress or data collection; dependencies are trusted and minimal
 
 ### Scalability & performance

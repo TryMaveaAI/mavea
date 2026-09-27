@@ -27,7 +27,8 @@ the repository owners the operator of someone else's deployment.
   handles them, while a second cache risks stale deploys and duplicate storage. `/sw.js` is a
   temporary retirement worker for older installations and intentionally has no fetch handler.
 - Preserve every security header in `public/_headers`, including the header-level
-  `Content-Security-Policy: frame-ancestors 'none'`; a meta CSP cannot express `frame-ancestors`.
+  `Content-Security-Policy`: it is index.html's meta policy plus `frame-ancestors 'none'`, which a
+  meta CSP cannot express. Copy the line verbatim; `tests/csp-parity.test.ts` holds it to the page.
 - Put the same-origin `/llm`, `/search`, `/actions`, `/tts`, `/stt`, and `/pdf` forwarders behind
   bounded request sizes, timeouts, concurrency/rate limits, and origin/authentication checks. A
   static host without these forwarders is not a complete Live deployment.

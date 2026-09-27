@@ -318,6 +318,19 @@ function dropDeadOpenchemlibResourcesPlugin(): Plugin {
 // package weight for a code path this app structurally cannot reach. If a future export feature
 // ever calls jsPDF's `.html()`, tests/jspdf-html-guard.test.ts fails loudly (grep-based) instead of
 // this silently producing a 404 dynamic import at runtime.
+// The dev server delivers every stylesheet as an injected <style> element (that is how CSS
+// hot-reloads), which the shipped policy's style-src refuses on purpose: inline style elements are
+// the injected-markup route to CSS exfiltration. Serve relaxes exactly that one directive; the
+// built index.html, the one every host ships, keeps the strict policy.
+function devInlineStylesPlugin(): Plugin {
+  return {
+    name: 'mavea-dev-inline-styles',
+    apply: 'serve',
+    transformIndexHtml: (html) =>
+      html.replace(/style-src 'self'[^;"]*/, "style-src 'self' 'unsafe-inline'"),
+  };
+}
+
 function dropDeadHtml2canvasChunkPlugin(): Plugin {
   return {
     name: 'mavea-drop-html2canvas-chunk',
@@ -398,6 +411,7 @@ export default defineConfig({
     // workflow all exercise the compiled output, so nothing ships untested by it.
     ...(process.env.VITEST ? [] : [babel({ presets: [reactCompilerPreset({ target: '19' })] })]),
     sameOriginProxyGuardPlugin(),
+    devInlineStylesPlugin(),
     pdfProxyPlugin(),
     runtimeAssetsPlugin(),
     legalDocsPlugin(),

@@ -10,7 +10,15 @@
         script-src   self + wasm-unsafe-eval (Silero VAD / onnx WASM). Shiki, jsPDF,
                      modern-screenshot, mediabunny, and pdf.js are ordinary bundled dependencies
                      (self-hosted, code-split, dynamic import()) — they need no CDN allowance.
-        style-src    'unsafe-inline' is required — React inline styles + the design-system CSS vars
+        style-src    self + two hashes: the boot splash's <style> below (edit it and its hash moves;
+                     tests/csp-parity.test.ts names the new one) and the EMPTY <style> the raster
+                     export creates and fills through the CSSOM. No other inline <style> element
+                     applies, so injected markup cannot bring its own stylesheet.
+        style-src-attr  'unsafe-inline' — style="" attributes stay (sanitized SVG, KaTeX, Shiki
+                     and chart markup carry them). React's style prop goes through the CSSOM,
+                     which no CSP directive governs.
+        trusted-types  every DOM-XSS sink takes a Trusted Type, minted only by the policies in
+                     src/lib/trustedTypes.ts (enforced in Chromium; other engines ignore it).
         connect-src  self covers the same-origin /llm·/tts·/stt·/search·/pdf·/actions proxies and
                      VAD's same-origin assets. No model or search provider is listed: every
                      adapter goes through those proxies, and a write-capable API host here would
@@ -28,12 +36,14 @@
         frame-src    self — the PDF reader may frame a same-origin PDF/proxy URL; its render
                      boundary rejects every external or active-scheme frame source
       This meta tag is the ONE place the policy is defined, so it travels with the app to any static
-      host. `frame-ancestors` is the one directive a meta tag cannot carry — send it as a response
-      header (X-Frame-Options / CSP frame-ancestors) from whatever actually serves dist/.
+      host. It is also sent as a response header, plus the `frame-ancestors 'none'` a meta tag
+      cannot carry: bin/mavea.mjs reads it back out of the built page, and public/_headers repeats
+      it verbatim under a test that fails on any drift. A host without header support still gets
+      everything but frame-ancestors from this tag.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.github.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-Xdp7H/Cx6wyDBvyCtY9Ez7J+ZzYww0aA6H6TGHNRcCg=' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.github.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; trusted-types mavea mavea-inert default; require-trusted-types-for 'script'"
     />
     <title>Mavéa · Talk to AI. See what it means.</title>
     <meta
