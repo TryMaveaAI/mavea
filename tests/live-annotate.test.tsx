@@ -481,9 +481,11 @@ describe('AnnotationLayer', () => {
       // said-target passes, one gather of its content boxes for clear space (a different question).
       act(() => vi.advanceTimersByTime(100)); // the first measurement
       expect(textWalks()).toBe(2);
-      expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
+      // Nothing is drawn off a single read: a mark appears once, where the card has come to rest.
+      expect(wrap.querySelector('.ink-stroke')).toBeNull();
       act(() => vi.advanceTimersByTime(100)); // the read that confirms the geometry
       expect(textWalks()).toBe(4);
+      expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
     } finally {
       walker.mockRestore();
       restore();
