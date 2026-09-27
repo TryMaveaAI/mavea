@@ -20,7 +20,34 @@ export const READER_INPUT_MS = 500;
  *  keeps firing long after the input that started it. */
 export const SCROLL_GESTURE_GAP_MS = 150;
 
-const READER_INPUTS = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'keydown'] as const;
+const READER_INPUTS = ['wheel', 'touchstart', 'touchmove', 'pointerdown'] as const;
+
+/** The keys that scroll a page. Typing is not scrolling: a reader writing their next question in
+ *  the dock while the scroller settles has not scrolled anywhere. */
+const SCROLL_KEYS: ReadonlySet<string> = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+  ' ',
+]);
+
+/** A key pressed in a field edits it; arrows, Home/End and Space move the caret or type there. */
+function isEditable(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.matches('input, textarea, select'))
+  );
+}
+
+/** A key that scrolls the page rather than editing a field. */
+function isScrollKey(e: Pick<KeyboardEvent, 'key' | 'target'>): boolean {
+  return SCROLL_KEYS.has(e.key) && !isEditable(e.target);
+}
 
 /**
  * Keeps the spotlit card in view across a resize. The walk centres a card when the spotlight
@@ -31,8 +58,9 @@ const READER_INPUTS = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'keydo
  *
  * - the card MOVED within the scroller (a reflow above it) and is no longer wholly on screen —
  *   a dock that grew a few pixels and clipped its bottom edge moved nothing;
- * - the reader has not scrolled away since the spotlight landed on it, with their wheel, touch
- *   or keys, or a control that scrolled for them ("Adding below");
+ * - the reader has not scrolled away from it, with their wheel, touch or scrolling keys, or a
+ *   control that scrolled for them ("Adding below") — scrolling back until it is wholly in view
+ *   again, or the spotlight moving on, clears that;
  * - no scroll is in flight: an instant re-pin mid-glide cancels the glide.
  *
  * The Study choreographs its own camera, so a card on the desk is never scrolled.
@@ -66,6 +94,14 @@ export function useKeepSpotInView(scrollRef: RefObject<HTMLElement | null>, acti
     const onInput = (): void => {
       inputAt = performance.now();
     };
+    const onKey = (e: KeyboardEvent): void => {
+      if (isScrollKey(e)) onInput();
+    };
+    const whollyInView = (el: HTMLElement): boolean => {
+      const c = cont.getBoundingClientRect();
+      const e = el.getBoundingClientRect();
+      return e.top >= c.top && e.bottom <= c.bottom;
+    };
     const onScroll = (): void => {
       const now = performance.now();
       const el = spotlit();
@@ -81,7 +117,10 @@ export function useKeepSpotInView(scrollRef: RefObject<HTMLElement | null>, acti
       }
       lastScrollAt = now;
       note(el);
-      if (readerScrolling) readerAway = true;
+      // Scrolled back to the card, the reader is with it again: a later reflow that pushes it out
+      // brings it back.
+      if (el && whollyInView(el)) readerAway = false;
+      else if (readerScrolling) readerAway = true;
     };
 
     const settle = (): void => {
@@ -90,10 +129,9 @@ export function useKeepSpotInView(scrollRef: RefObject<HTMLElement | null>, acti
       if (performance.now() - lastScrollAt < SCROLL_GESTURE_GAP_MS) return;
       const before = seen;
       note(el);
-      if (readerAway) return;
+      if (readerAway || whollyInView(el)) return;
       const c = cont.getBoundingClientRect();
       const e = el.getBoundingClientRect();
-      if (e.top >= c.top && e.bottom <= c.bottom) return;
       if (before?.el === el && Math.abs(e.top - c.top - before.top) < 1) return;
       const delta = spotScrollDelta(e, c, cont.clientHeight);
       cont.scrollTo({ top: Math.max(0, cont.scrollTop + delta) });
@@ -109,11 +147,13 @@ export function useKeepSpotInView(scrollRef: RefObject<HTMLElement | null>, acti
     ro.observe(cont);
     const opts = { capture: true, passive: true } as const;
     for (const type of READER_INPUTS) document.addEventListener(type, onInput, opts);
+    document.addEventListener('keydown', onKey, opts);
     cont.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       ro.disconnect();
       window.clearTimeout(timer);
       for (const type of READER_INPUTS) document.removeEventListener(type, onInput, opts);
+      document.removeEventListener('keydown', onKey, opts);
       cont.removeEventListener('scroll', onScroll);
     };
   }, [scrollRef, active]);

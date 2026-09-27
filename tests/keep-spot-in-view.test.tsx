@@ -42,14 +42,35 @@ function setup(cardTop: number) {
   return { cont, card, at, ref: { current: cont } };
 }
 
-/** The reader scrolls the card to `top` over a few frames, the way a wheel or a glide does. */
-function readerScrolls(cont: HTMLElement, at: { card: number }, top: number, input = 'wheel') {
-  document.dispatchEvent(new Event(input));
+/** How a scroll started: a wheel, a touch, a press, or a key pressed on some element. */
+type Input = string | { key: string; on?: Element };
+
+const fire = (input: Input): void => {
+  if (typeof input === 'string') document.dispatchEvent(new Event(input));
+  else
+    (input.on ?? document.body).dispatchEvent(
+      new KeyboardEvent('keydown', { key: input.key, bubbles: true }),
+    );
+};
+
+/** The card moves to `top` over a few frames, the way a wheel or a glide scrolls it. */
+function scrolls(cont: HTMLElement, at: { card: number }, top: number) {
   for (const step of [0.25, 0.5, 0.75, 1]) {
     vi.advanceTimersByTime(16);
     at.card = at.card + (top - at.card) * step;
     cont.dispatchEvent(new Event('scroll'));
   }
+}
+
+/** The reader scrolls the card to `top`: their input, then the scroll it sets off. */
+function readerScrolls(
+  cont: HTMLElement,
+  at: { card: number },
+  top: number,
+  input: Input = 'wheel',
+) {
+  fire(input);
+  scrolls(cont, at, top);
 }
 
 describe('useKeepSpotInView', () => {
@@ -89,9 +110,14 @@ describe('useKeepSpotInView', () => {
     expect(cont.scrollTo).not.toHaveBeenCalled();
   });
 
-  it.each(['wheel', 'touchmove', 'keydown'])(
-    'never undoes a %s scroll when the dock grows a few pixels',
-    (input) => {
+  it.each<[string, Input]>([
+    ['wheel', 'wheel'],
+    ['touch', 'touchmove'],
+    ['Page Down', { key: 'PageDown' }],
+    ['arrow key', { key: 'ArrowDown' }],
+    ['Space', { key: ' ' }],
+  ])('never undoes a %s scroll when the dock grows a few pixels', (_name, input) => {
+    {
       const { cont, at, ref } = setup(100);
       renderHook(() => useKeepSpotInView(ref, true));
       observers[0].cb();
@@ -100,8 +126,43 @@ describe('useKeepSpotInView', () => {
       observers[0].cb();
       vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS * 2);
       expect(cont.scrollTo).not.toHaveBeenCalled();
-    },
-  );
+    }
+  });
+
+  it.each([
+    ['a letter', 'a'],
+    ['Space', ' '],
+    ['an arrow', 'ArrowDown'],
+  ])('typing %s in the dock is not the reader scrolling away', (_name, key) => {
+    // The page shifts under the reader as they type their next question (a card growing above
+    // it, the browser's scroll anchoring following), then a reflow pushes the card out.
+    const { cont, at, ref } = setup(100);
+    const field = document.createElement('textarea');
+    document.body.appendChild(field);
+    renderHook(() => useKeepSpotInView(ref, true));
+    observers[0].cb();
+    fire({ key, on: field });
+    scrolls(cont, at, -100);
+    vi.advanceTimersByTime(SCROLL_GESTURE_GAP_MS);
+    at.card = -400;
+    observers[0].cb();
+    vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS);
+    expect(cont.scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('is with the card again once the reader scrolls back to it', () => {
+    const { cont, at, ref } = setup(100);
+    renderHook(() => useKeepSpotInView(ref, true));
+    observers[0].cb();
+    readerScrolls(cont, at, -900);
+    vi.advanceTimersByTime(SCROLL_GESTURE_GAP_MS + 1);
+    readerScrolls(cont, at, 120); // back, wholly in view
+    vi.advanceTimersByTime(SCROLL_GESTURE_GAP_MS);
+    at.card = -400; // then a reflow above it pushes it out
+    observers[0].cb();
+    vi.advanceTimersByTime(SPOT_RESIZE_SETTLE_MS);
+    expect(cont.scrollTo).toHaveBeenCalledTimes(1);
+  });
 
   it('leaves a glide a control started for the reader to finish', () => {
     // "Adding below": a press, then a smooth scroll the page runs on the reader's behalf.
