@@ -158,7 +158,10 @@ describe('production build and package-manager policy', () => {
 
     const release = read('.github/workflows/release.yml');
     expect(release).toContain('id-token: write');
-    expect(release).toContain('run: npm publish --access public');
+    // npm publishes the exact tarball check:package verified; a directory publish would ignore
+    // publishConfig.engines and ship the build-time Node floor.
+    expect(release).toContain('run: pnpm check:package --keep "$RUNNER_TEMP/mavea.tgz"');
+    expect(release).toContain('run: npm publish "$RUNNER_TEMP/mavea.tgz" --access public');
     expect(release).not.toContain('NODE_AUTH_TOKEN');
     expect(release).not.toContain('NPM_TOKEN');
   });
