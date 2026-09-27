@@ -659,7 +659,9 @@
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
-  overflow: hidden;
+  /* Clip the glow's paint, not the layout: overflow would also hide any control that outgrows
+     the band, while clip-path trims only what is drawn past the rounded edge. */
+  clip-path: inset(0 round var(--r-md));
   border: 1px solid color-mix(in oklab, var(--presence) 24%, var(--line));
   border-radius: var(--r-md);
   background:
@@ -708,7 +710,7 @@
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(128px, 1fr));
-  gap: 4px;
+  gap: var(--s-sm);
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -856,7 +858,7 @@
 }
 .ripple-causal-facts {
   display: flex;
-  gap: 5px;
+  gap: var(--s-sm);
   max-width: 66%;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -1168,6 +1170,10 @@
 @media (width <= 720px) {
   .ripple-direction {
     grid-template-columns: 1fr;
+  }
+  .ripple-alt button {
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
   }
   .ripple-impact-totals {
     grid-template-columns: repeat(2, auto);
