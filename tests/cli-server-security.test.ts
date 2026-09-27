@@ -250,6 +250,35 @@ describe('mavea CLI server security boundary', () => {
     expect(receivedOrigin).toBeUndefined();
   });
 
+  it('forwards a Gemini request with only the key the page sent, never one from the environment', async () => {
+    const seen: (string | string[] | undefined)[] = [];
+    const upstream = createServer((req, res) => {
+      seen.push(req.headers['x-goog-api-key']);
+      res.end('ok');
+    });
+    const upstreamPort = await start(upstream);
+    const gemini = PROXIES.find((route: { prefix: string }) => route.prefix === '/llm/gemini');
+    const route = { ...gemini, target: `http://${LOOPBACK_HOST}:${upstreamPort}` };
+    const port = await start(createMaveaServer({ distDir, proxies: [route] }));
+    const origin = `http://${LOOPBACK_HOST}:${port}`;
+
+    const previous = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'operator-key';
+    try {
+      const keyless = await request(port, '/llm/gemini/v1beta/models', {
+        headers: { Origin: origin },
+      });
+      const keyed = await request(port, '/llm/gemini/v1beta/models', {
+        headers: { Origin: origin, 'x-goog-api-key': 'reader-key' },
+      });
+      expect([keyless.status, keyed.status]).toEqual([200, 200]);
+    } finally {
+      if (previous === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = previous;
+    }
+    expect(seen).toEqual([undefined, 'reader-key']);
+  });
+
   it('enforces route boundaries, methods, body limits, and per-client rate limits', async () => {
     let upstreamCalls = 0;
     const upstream = createServer((_req, res) => {

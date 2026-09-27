@@ -356,7 +356,6 @@ export const PROXIES = [
     requestsPerMinute: 60,
     maxConcurrent: 8,
     timeoutMs: 120_000,
-    injectGeminiKey: true,
   },
   {
     prefix: '/llm/grok',
@@ -568,9 +567,6 @@ function requestHeadersForUpstream(req, route, targetUrl, body) {
   }
   headers.host = targetUrl.host;
   if (body.byteLength > 0) headers['content-length'] = String(body.byteLength);
-  if (route.injectGeminiKey && process.env.GEMINI_API_KEY && !headers['x-goog-api-key']) {
-    headers['x-goog-api-key'] = process.env.GEMINI_API_KEY;
-  }
   if (route.injectGatewaySecret && process.env.GATEWAY_SECRET) {
     headers['x-gateway-secret'] = process.env.GATEWAY_SECRET;
   }
