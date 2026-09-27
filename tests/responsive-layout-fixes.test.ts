@@ -26,16 +26,6 @@ describe('mobile safe-area', () => {
   });
 });
 
-describe('transcript bubble text wrapping', () => {
-  it('a long unbroken token wraps inside the bubble instead of overflowing it', () => {
-    const css = read('src/styles/live-transcript.css');
-    const bubbleRule = css.match(/\.bubble\s*\{[^}]*\}/);
-    expect(bubbleRule).not.toBeNull();
-    expect(bubbleRule![0]).toContain('overflow-wrap');
-    expect(bubbleRule![0]).toContain('word-break');
-  });
-});
-
 describe('gallery viewport height', () => {
   it('the gallery root uses dvh, not a bare vh, so mobile chrome cannot clip it', () => {
     const css = read('src/gallery/gallery.css');

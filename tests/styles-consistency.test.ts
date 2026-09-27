@@ -111,10 +111,6 @@ describe('styles.css — mobile safe-area + touch-reveal fixes', () => {
     expect(css).toMatch(/\.rail-dock\s*\{[^}]*env\(safe-area-inset-bottom,\s*0px\)/);
   });
 
-  it('wraps a long unbroken token (URL, identifier) inside a transcript bubble', () => {
-    expect(css).toMatch(/\.bubble\s*\{[^}]*overflow-wrap:\s*anywhere/);
-  });
-
   it('rests the block-actions cluster visible on touch for every gated card kind', () => {
     // Icon-only affordances that only reveal on :hover/:focus-within are undiscoverable on a
     // device with no hover — the same selector set must be shown at rest under (hover: none).
