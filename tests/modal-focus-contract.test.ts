@@ -13,7 +13,7 @@ const MODAL = /(?<!\[)aria-modal=(?:"true"|\{true\}|\{[^}]*\?[^}]*true)/;
 
 // Modals that predate the contract and do not trap yet. The list may only shrink: a file that
 // gains the hook must leave it, and nothing new may join.
-const NOT_YET_TRAPPED = new Set(['src/canvas/TopicCanvas.tsx']);
+const NOT_YET_TRAPPED = new Set<string>();
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
