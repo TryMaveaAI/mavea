@@ -311,6 +311,7 @@
   border-radius: 50%;
   background: transparent;
   color: inherit;
+  font: inherit;
   cursor: pointer;
 }
 .ob-universe {
@@ -387,7 +388,11 @@
 }
 .ob-node text {
   fill: var(--ob-art-ink);
+  /* Sized to its node (r=20) in viewBox units, so the numeral scales with the drawing: a type
+     token here is read as user units and fell to ~4px once the map shrank on a phone. */
   font: 400 var(--fs-xs) var(--font-data, monospace);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
+  font-size: 22px;
 }
 .ob-node {
   transform-origin: center;
