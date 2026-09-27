@@ -1829,7 +1829,7 @@
   border: 0;
   border-radius: var(--r-sm);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-weight: 600;
   font-size: var(--fs-sm);
   cursor: pointer;

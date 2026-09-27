@@ -1785,8 +1785,14 @@
   background: var(--presence-deep);
   color: #fff;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .prism-foot-btn--primary {
+    color: oklch(from var(--presence-deep) var(--ink-on-fill));
+  }
+}
 .prism-foot-btn--primary:hover:not(:disabled) {
-  color: #fff;
   opacity: 0.88;
 }
 .prism-foot-btn.is-active {

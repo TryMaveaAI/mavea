@@ -42,8 +42,27 @@
   font-weight: 700;
   font-size: var(--fs-md);
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #000));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+  );
   flex: none;
+}
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .demox-avatar {
+    color: oklch(
+      from
+        color-mix(
+          in oklab,
+          var(--accent),
+          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+        )
+        var(--ink-on-fill)
+    );
+  }
 }
 .demox-avatar.emoji {
   font-size: var(--fs-lg);
@@ -279,6 +298,13 @@
   white-space: nowrap;
   transition: filter 140ms ease;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .demox-skip {
+    color: oklch(from color-mix(in oklab, var(--accent) 58%, #0b0f14) var(--ink-on-fill));
+  }
+}
 .demox-skip:hover {
   filter: brightness(1.08);
 }
@@ -412,6 +438,13 @@
   cursor: pointer;
   transition: filter 140ms ease;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .demox-primary {
+    color: oklch(from color-mix(in oklab, var(--accent) 58%, #0b0f14) var(--ink-on-fill));
+  }
+}
 .demox-primary:hover {
   filter: brightness(1.08);
 }
@@ -470,7 +503,26 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #000));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+  );
+}
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .demox-other-avatar {
+    color: oklch(
+      from
+        color-mix(
+          in oklab,
+          var(--accent),
+          oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--avatar-shade-l)) c h)
+        )
+        var(--ink-on-fill)
+    );
+  }
 }
 .demox-other-avatar.emoji {
   font-size: var(--fs-sm);

@@ -564,7 +564,7 @@
 .ripple-course-done {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: #fff;
+  color: var(--on-presence);
   background: var(--presence);
   border: none;
   border-radius: var(--r-sm);

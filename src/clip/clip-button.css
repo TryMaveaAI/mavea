@@ -10,7 +10,7 @@
   border: none;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font: 650 var(--fs-md)/1 var(--font);
   cursor: pointer;
   box-shadow: 0 8px 24px -10px var(--presence);

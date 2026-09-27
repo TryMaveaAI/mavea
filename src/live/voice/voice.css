@@ -407,7 +407,7 @@
   padding: 0 4px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;

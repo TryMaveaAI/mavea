@@ -187,7 +187,7 @@
   border-radius: var(--r-full);
   border: none;
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -743,7 +743,7 @@
   padding: 10px 14px;
   border-radius: 14px 14px 4px 14px;
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-md);
   line-height: 1.5;
 }
@@ -819,7 +819,7 @@
   border-radius: 10px;
   border: none;
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 600;

@@ -54,7 +54,7 @@
   place-items: center;
   border-radius: var(--r-full, 999px);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-family: var(--font-data, monospace);
   font-size: var(--fs-xs);
   font-weight: 700;

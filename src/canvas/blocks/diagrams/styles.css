@@ -2802,7 +2802,7 @@
 .gt2-start {
   background: var(--presence);
   border-color: color-mix(in oklab, var(--presence) 60%, transparent);
-  color: #fff;
+  color: var(--on-presence);
 }
 .gt2-end {
   background: var(--insight);

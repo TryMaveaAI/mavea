@@ -797,6 +797,13 @@
   background: var(--tone, var(--presence));
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
+/* A pin is filled in its tone: its ink is derived from
+   that fill as --on-presence is from the accent (white without relative colour). */
+@supports (color: oklch(from red l c h)) {
+  .fl-pin {
+    color: oklch(from var(--tone, var(--presence)) var(--ink-on-fill));
+  }
+}
 .fl-map-attr {
   position: absolute;
   right: 6px;
@@ -2110,6 +2117,21 @@
     color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
   );
 }
+/* The initial sits mid-gradient: its ink is derived from the gradient's midpoint as
+   --on-presence is from the accent (white without relative colour). */
+@supports (color: oklch(from red l c h)) {
+  .fl-demo-avatar {
+    color: oklch(
+      from
+        color-mix(
+          in oklab,
+          var(--accent, var(--presence)),
+          color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
+        )
+        var(--ink-on-fill)
+    );
+  }
+}
 .fl-demo-avatar.emoji {
   font-size: var(--fs-xl);
   color: var(--text-primary);
@@ -2280,7 +2302,7 @@
   border: none;
   cursor: pointer;
   font: 700 var(--fs-lg) var(--font);
-  color: #fff;
+  color: var(--on-presence);
   /* Same lit-from-above ramp as .fl-nav-cta — the two "Open Mavéa" buttons must read as one. */
   background: linear-gradient(
     180deg,
@@ -2357,7 +2379,7 @@
   border: none;
   cursor: pointer;
   font: 700 var(--fs-sm) var(--font);
-  color: #fff;
+  color: var(--on-presence);
   background: linear-gradient(
     180deg,
     var(--presence-soft),

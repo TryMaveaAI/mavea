@@ -802,7 +802,7 @@
 }
 .wp-tab.active {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   border-color: var(--presence);
 }
 .wp-focus {
@@ -1379,7 +1379,7 @@
   height: 24px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-xs, 12px);
   font-weight: 800;
   display: flex;

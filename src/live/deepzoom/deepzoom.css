@@ -971,7 +971,7 @@
   padding: 11px 22px;
   border-radius: var(--r-md);
   background: linear-gradient(120deg, var(--presence-deep), var(--presence));
-  color: var(--text-on-accent, #fff);
+  color: var(--on-presence);
   font-size: var(--fs-md);
   font-weight: 600;
   border: none;

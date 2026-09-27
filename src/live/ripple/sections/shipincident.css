@@ -155,6 +155,15 @@
   justify-content: center;
   flex: none;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .ripple-inc-avatar {
+    color: oklch(
+      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    );
+  }
+}
 .ripple-inc-person-name {
   font-size: var(--fs-md);
   font-weight: 700;

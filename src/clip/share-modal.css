@@ -202,7 +202,7 @@
 .shm-btn-primary {
   border: none;
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   box-shadow: 0 8px 24px -10px var(--presence);
 }
 .shm-btn-primary:hover:not(:disabled) {

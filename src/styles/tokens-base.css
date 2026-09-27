@@ -155,6 +155,19 @@
   --presence: #6e8cff; /* the face / actions */
   --presence-soft: #8aa0ff;
   --presence-deep: #4458c9;
+  /* Text on a --presence fill. White where relative colour is unsupported; everywhere else
+     derived (the @supports block after this rule) rather than chosen. */
+  --on-presence: #fff;
+  /* The relative-colour channels of an ink derived from a fill: near-black on a light fill, white
+     on a deep one, each clearing 4.5:1. Read as oklch(from <fill> var(--ink-on-fill)); the one
+     place the cut (0.585, between the nearest accents either side of the inks' crossing) and the
+     dark ink's lightness live. The tint is capped so the white side stays white. */
+  --ink-on-fill: clamp(0.16, (0.585 - l) * 1000, 1) min(c * 0.25, 0.02) h;
+  /* The least lightness of an avatar gradient's shaded stop, which keeps the stop's own hue and
+     chroma. A persona accent is light, so its initial takes the dark ink, and a shade darker than
+     this dropped that ink to 2.3:1 at the gradient's far end; at 0.59 it clears 4.5:1 at both
+     stops for every persona accent. */
+  --avatar-shade-l: 0.59;
   --insight: #3ed8a6; /* findings / verified */
   --insight-soft: #6fe8c0;
   --warning: #f5b95c; /* risk / inferred / uncertainty */
@@ -275,6 +288,18 @@
   --slide-bg: linear-gradient(150deg, #11182a, #0a0e15);
   --replay-bg: linear-gradient(165deg, #15122a, #0a0e15);
   --replay-stage-bg: radial-gradient(80% 80% at 50% 30%, #1a2342, #0a0e15);
+}
+
+/* Every template x theme restates --presence on this same element, so ONE derived declaration
+   serves them all: a light accent (every dark theme's) takes a near-black ink and a deep one (the
+   light templates') takes white, each clearing 4.5:1 — plain white on the dark themes' accents
+   measured 1.85-3.1:1. The 0.585 cut sits between the two nearest accents on either side of the
+   crossing (the Study's #b06018 wants white, a template's #c75b39 the ink). A scope that rebinds
+   --presence below the root (the Study desk) must restate this, or it keeps the root's ink. */
+@supports (color: oklch(from red l c h)) {
+  :root {
+    --on-presence: oklch(from var(--presence) var(--ink-on-fill));
+  }
 }
 
 /* Query containers. A block answers to the box it is drawn in, never to the window: the same

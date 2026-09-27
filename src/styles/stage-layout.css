@@ -274,6 +274,15 @@
   box-shadow: 0 6px 18px -10px var(--glow-presence);
   color: #fff;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .entry-action.primary {
+    color: oklch(
+      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    );
+  }
+}
 .entry-action.primary.is-active {
   outline: 2px solid var(--presence-soft);
   outline-offset: 2px;
@@ -376,7 +385,7 @@
   padding: 0 14px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   border: none;
   font-weight: 600;
   font-size: var(--fs-sm);

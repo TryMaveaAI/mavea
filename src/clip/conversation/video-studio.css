@@ -153,6 +153,13 @@
   color: #fff;
   font: 700 var(--fs-xs)/1 var(--font-data);
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .cvs-thumb {
+    color: oklch(from color-mix(in oklab, var(--presence), var(--insight)) var(--ink-on-fill));
+  }
+}
 .cvs-turn-copy {
   min-width: 0;
   display: flex;

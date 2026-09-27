@@ -75,7 +75,7 @@
 .tourx-welcome-start {
   border: 1px solid transparent;
   background: var(--presence);
-  color: var(--on-accent, #fff);
+  color: var(--on-presence);
 }
 
 .tourx-welcome-skip {
@@ -263,7 +263,7 @@
 .tourx-play {
   background: var(--presence);
   border-color: transparent;
-  color: var(--on-accent, #fff);
+  color: var(--on-presence);
 }
 .tourx-auto {
   width: auto;
@@ -550,7 +550,7 @@ body[data-tour-chapter='highlight'] .block-actions {
 
 .tour-end-start {
   border: 1px solid transparent;
-  color: var(--on-accent, #fff);
+  color: var(--on-presence);
   background: var(--presence);
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
 }

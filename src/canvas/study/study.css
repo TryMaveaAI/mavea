@@ -223,6 +223,14 @@
 
 /* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
 
+/* The desk rebinds --presence to its amber, and a custom property is resolved where it is
+   declared: the root's --on-presence was derived from the root's accent, not this one. */
+@supports (color: oklch(from red l c h)) {
+  .study-stage {
+    --on-presence: oklch(from var(--presence) var(--ink-on-fill));
+  }
+}
+
 .study-desk {
   position: absolute;
   inset: 0;

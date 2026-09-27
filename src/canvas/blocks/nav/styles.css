@@ -65,6 +65,13 @@
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
   box-shadow: 0 4px 14px -4px color-mix(in oklab, var(--nav-c) 70%, transparent);
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .nv-brand-glyph {
+    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+  }
+}
 .nv-brand-glyph .ic {
   width: 16px;
   height: 16px;
@@ -282,7 +289,7 @@
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #fff;
+  color: var(--on-presence);
   background: linear-gradient(150deg, var(--insight), var(--presence));
   letter-spacing: 0.02em;
 }
@@ -319,6 +326,13 @@
   border-radius: var(--r-sm);
   color: #fff;
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
+}
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .sn-brand-glyph {
+    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+  }
 }
 .sn-brand-glyph .ic {
   width: 15px;
@@ -729,6 +743,13 @@
   background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
   box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--nav-c) 65%, transparent);
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .pg-num.on {
+    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+  }
+}
 .pg-ellipsis {
   min-width: 24px;
   text-align: center;
@@ -1081,6 +1102,13 @@
   background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
   margin-bottom: 2px;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .mm-promo-glyph {
+    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+  }
+}
 .mm-promo-glyph .ic {
   width: 17px;
   height: 17px;
@@ -1328,6 +1356,13 @@
   font-weight: 700;
   color: #fff;
   background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
+}
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .cb-count-num {
+    color: oklch(from color-mix(in oklab, var(--nav-c), var(--presence-deep)) var(--ink-on-fill));
+  }
 }
 .cb-count-noun {
   font-size: var(--fs-sm);

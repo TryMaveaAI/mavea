@@ -1171,6 +1171,13 @@
   border: 2px solid #fff;
   box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
 }
+/* A marker is filled in its own colour: its ink is derived from
+   that fill as --on-presence is from the accent (white without relative colour). */
+@supports (color: oklch(from red l c h)) {
+  .geo-pin {
+    color: oklch(from var(--geo-c, var(--presence)) var(--ink-on-fill));
+  }
+}
 /* themed popups (MapLibre defaults are white) */
 .geo-map .maplibregl-popup-content {
   background: var(--surface-elevated);
@@ -2170,7 +2177,7 @@
 }
 .an-row.on .an-rownum {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .an-rowbody {
   display: flex;

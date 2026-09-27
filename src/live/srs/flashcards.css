@@ -106,7 +106,7 @@
 .fc-btn-primary {
   background: var(--presence);
   border-color: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .fc-btn-primary:hover {
   background: color-mix(in oklab, var(--presence) 88%, #000);

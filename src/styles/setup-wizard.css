@@ -198,6 +198,15 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
   color: #fff;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .const-step.is-current .const-disc {
+    color: oklch(
+      from color-mix(in oklab, var(--presence-soft), var(--presence-deep)) var(--ink-on-fill)
+    );
+  }
+}
 /* A bright, softly-breathing core turns "you are here" from a flat blob into a live, ready pulse.
    The halo animates transform/opacity only (compositor-cheap on weak hardware, see [[feedback-runs-on-all-hardware]]). */
 .const-step.is-current .const-disc::after {
@@ -372,6 +381,15 @@
   transition:
     opacity var(--m-fast),
     transform var(--m-fast);
+}
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .setup-done {
+    color: oklch(
+      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    );
+  }
 }
 .setup-done:hover {
   opacity: 0.88;
@@ -682,7 +700,7 @@
 }
 .seg-opt.is-active {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .seg-title {
   display: block;
@@ -1024,6 +1042,15 @@
     transform var(--m-fast);
   width: 100%;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red l c h)) {
+  .go-start {
+    color: oklch(
+      from color-mix(in oklab, var(--presence), var(--presence-deep)) var(--ink-on-fill)
+    );
+  }
+}
 .go-start:hover {
   opacity: 0.88;
   transform: translateY(-1px);
@@ -1088,7 +1115,7 @@
   background: var(--presence);
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
   flex-shrink: 0;

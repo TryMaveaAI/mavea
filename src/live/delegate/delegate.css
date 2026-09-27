@@ -321,7 +321,7 @@
   font: inherit;
   font-weight: 600;
   font-size: var(--fs-md);
-  color: var(--text-on-accent, #fff);
+  color: var(--on-presence);
   background: var(--presence);
   border: none;
   border-radius: var(--r-full);
@@ -1365,7 +1365,7 @@
   border: none;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   font: inherit;
   font-size: var(--fs-sm);
