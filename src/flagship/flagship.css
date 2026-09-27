@@ -784,26 +784,6 @@
 .fl-map-zoom span:first-child {
   border-bottom: 1px solid var(--line-soft);
 }
-.fl-pin {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: #fff;
-  background: var(--tone, var(--presence));
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-/* A pin is filled in its tone: its ink is derived from
-   that fill as --on-presence is from the accent (white without relative colour). */
-@supports (color: oklch(from red l c h)) {
-  .fl-pin {
-    color: oklch(from var(--tone, var(--presence)) var(--ink-on-fill));
-  }
-}
 .fl-map-attr {
   position: absolute;
   right: 6px;
@@ -854,24 +834,6 @@
 .fl-reveal.in .fl-canvas .fl-dock {
   transition-delay: 1.2s;
 }
-.fl-map .fl-pin {
-  opacity: 0;
-}
-.fl-reveal.in .fl-map .fl-pin {
-  animation: fl-pindrop 480ms var(--ease-out) forwards;
-  animation-delay: calc(0.75s + var(--pin-i, 0) * 0.12s);
-}
-.fl-pin.ring::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid var(--tone, var(--presence));
-  opacity: 0;
-}
-.fl-reveal.in .fl-pin.ring::after {
-  animation: fl-pinring 1s var(--ease-out) 1.35s;
-}
 .fl-canvas .fl-bar-fill {
   width: 0;
   transition: width 0.7s var(--ease-out);
@@ -900,26 +862,6 @@
 .fl-reveal.in .fl-canvas .fl-tip svg path {
   stroke-dashoffset: 0;
   transition-delay: calc(1.55s + var(--tip-i, 0) * 0.15s);
-}
-@keyframes fl-pindrop {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes fl-pinring {
-  0% {
-    opacity: 0.8;
-    transform: scale(0.6);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.8);
-  }
 }
 
 /* mini cards inside the canvas */
@@ -1010,30 +952,6 @@
   backdrop-filter: var(--glass-blur-soft);
   -webkit-backdrop-filter: var(--glass-blur-soft);
   box-shadow: var(--shadow-floating);
-}
-.fl-dock-mic,
-.fl-dock-send {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--on-presence);
-}
-.fl-dock-mic {
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-}
-.fl-dock-send {
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue) 80%);
-}
-.fl-dock-mic svg,
-.fl-dock-send svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
 }
 .fl-dock-text {
   flex: 1;
@@ -2304,56 +2222,6 @@
 .fl-cta-title em {
   font-style: italic;
 }
-.fl-cta-btn {
-  margin-top: 36px;
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  padding: 19px 34px;
-  border-radius: var(--r-full);
-  border: none;
-  cursor: pointer;
-  font: 700 var(--fs-lg) var(--font);
-  color: var(--on-presence);
-  /* Same lit-from-above ramp as .fl-nav-cta — the two "Open Mavéa" buttons must read as one. */
-  background: linear-gradient(
-    180deg,
-    var(--presence-soft),
-    var(--presence) 52%,
-    var(--presence-deep)
-  );
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
-    0 18px 44px -10px var(--glow-presence);
-  transition:
-    transform var(--m-normal),
-    box-shadow var(--m-normal);
-}
-/* The deep end is held on the accent's side of the ink bounds (--accent-side), so the accent's own
-   ink reads at every stop. Without relative colour the plain gradient keeps white. */
-@supports (color: oklch(from red l c h)) {
-  .fl-cta-btn {
-    background: linear-gradient(
-      180deg,
-      oklch(from var(--presence-soft) var(--accent-side)),
-      var(--presence) 52%,
-      oklch(from var(--presence-deep) var(--accent-side))
-    );
-  }
-}
-.fl-cta-btn svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.3;
-}
-.fl-cta-btn:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
-    0 26px 58px -10px var(--glow-presence);
-}
 .fl-cta-note {
   margin-top: 88px;
   font: var(--fs-xs)/1.5 var(--font);
@@ -2707,8 +2575,7 @@
     animation: none !important;
   }
   /* the signature-window choreography rests at its finished frame */
-  .fl-canvas :is(.fl-finding, .fl-fig, .fl-mini, .fl-dock, .fl-tip),
-  .fl-map .fl-pin {
+  .fl-canvas :is(.fl-finding, .fl-fig, .fl-mini, .fl-dock, .fl-tip) {
     opacity: 1;
     transform: none;
     transition: none;
@@ -2721,9 +2588,6 @@
   .fl-canvas .fl-tip svg path {
     stroke-dashoffset: 0;
     transition: none;
-  }
-  .fl-pin.ring::after {
-    display: none;
   }
   /* the see-don't-read transformation rests at its finished frame — wall receded and marked,
      chart grown — which is itself the argument, statically */

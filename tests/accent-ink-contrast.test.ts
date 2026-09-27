@@ -24,7 +24,7 @@ const ACCENT = /var\(--(presence|accent|insight|nav-c|tone|geo-c)\b/;
 /** The states a control is restyled in, stripped to find the control itself. */
 const STATE = /((:hover|:focus|:focus-visible|:focus-within|:active|:disabled)|:not\([^)]*\))+$/;
 /** Controls whose only content is an icon: WCAG's 3:1 for graphical objects applies. */
-const ICON_ONLY = new Set(['.mic-btn', '.send-btn', '.fl-dock-send', '.fl-dock-mic']);
+const ICON_ONLY = new Set(['.mic-btn', '.send-btn']);
 /** What the markup sets inline: the persona accent a replay or gallery card carries, and the
  *  per-card colours the nav, map and landing blocks default to the accent. */
 const personas = [
