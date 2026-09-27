@@ -1,9 +1,7 @@
 // PlanReview — the shared "review a planned tracker before it goes live" sheet: toggle which
 // metrics/cards survive, rename the dashboard, see the cadence and an honest search-volume
-// estimate, then create — or fold into a dashboard relate.ts flags as a plausible match. Lifted
-// out of NewFromTemplate so the home composer's plan step and the older template modal's plan step
-// render from one place instead of drifting apart. Pure UI + assembly glue: the actual plan→
-// Dashboard shape comes from templates/instantiate.ts, unchanged.
+// estimate, then create — or fold into a dashboard relate.ts flags as a plausible match. Pure UI +
+// assembly glue: the actual plan→Dashboard shape comes from templates/instantiate.ts, unchanged.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { relatedDashboard } from './relate';
 import {

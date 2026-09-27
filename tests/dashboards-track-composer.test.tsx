@@ -1,4 +1,4 @@
-// NewFromTemplate — the "track anything" path onto a dashboard. Mirrors
+// TrackComposer — the home page's "track anything" path onto a dashboard. Mirrors
 // dashboards-extraction-preview-race.test.tsx's own build() coverage for this sibling flow: a
 // create runs the add-time reality gate (confirmAdd's grounded probe) before closing, and a
 // related-dashboard match must always surface as an explicit choice, never a silent fold. The
@@ -66,7 +66,7 @@ vi.mock('../src/live/dashboards/templates/instantiate', async (importOriginal) =
   };
 });
 
-import { NewFromTemplate } from '../src/live/dashboards/NewFromTemplate';
+import { TrackComposer } from '../src/live/dashboards/TrackComposer';
 
 /** A minimal-but-real Dashboard for relate.ts's own (unmocked) matching logic to chew on — only
  *  the fields relatedDashboard actually reads. */
@@ -94,13 +94,15 @@ function stubDashboard(over: Partial<Dashboard>): Dashboard {
 
 /** Type an ask and run the planner through to the review step. */
 async function planIt(ask: string): Promise<void> {
-  fireEvent.change(screen.getByPlaceholderText('What do you want to track?'), {
+  fireEvent.change(screen.getByRole('textbox', { name: 'Track anything' }), {
     target: { value: ask },
   });
   await act(async () => {
-    fireEvent.click(screen.getByText('Plan it →'));
+    fireEvent.click(screen.getByRole('button', { name: 'Track' }));
     await Promise.resolve();
   });
+  // The review step is lazy-loaded behind the plan.
+  await screen.findByText('Create dashboard →');
 }
 
 beforeEach(() => {
@@ -116,7 +118,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('NewFromTemplate — plan → review → create', () => {
+describe('TrackComposer — plan → review → create', () => {
   it('plans the ask, persists the board, and probes it for real data through the reality gate', async () => {
     newDashboardFromTemplate.mockReturnValue({
       id: 'new-dash-id',
@@ -130,7 +132,7 @@ describe('NewFromTemplate — plan → review → create', () => {
       widgets: [],
     } as unknown as Dashboard);
 
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     expect(planTracker).toHaveBeenCalled();
@@ -149,7 +151,7 @@ describe('NewFromTemplate — plan → review → create', () => {
   });
 
   it('a chip toggled off is excluded and create disables when nothing is left', async () => {
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     fireEvent.click(screen.getByText('AAPL price')); // metric off
@@ -158,7 +160,7 @@ describe('NewFromTemplate — plan → review → create', () => {
   });
 });
 
-describe('NewFromTemplate — a related dashboard is always an explicit choice, never a silent fold', () => {
+describe('TrackComposer — a related dashboard is always an explicit choice, never a silent fold', () => {
   it('shows the fold-suggestion interstitial when an existing dashboard plausibly matches', async () => {
     dashboardsList = [
       stubDashboard({
@@ -168,7 +170,7 @@ describe('NewFromTemplate — a related dashboard is always an explicit choice, 
       }),
     ];
 
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
     fireEvent.click(screen.getByText('Create dashboard →'));
 
@@ -191,7 +193,7 @@ describe('NewFromTemplate — a related dashboard is always an explicit choice, 
       question: 'AAPL stock price',
     } as Dashboard);
 
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
     await act(async () => {
       fireEvent.click(screen.getByText('Create dashboard →'));

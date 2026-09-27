@@ -1,7 +1,6 @@
 // TrackComposer — the home page's "track anything" bar: type what you want to follow, Mavéa plans
 // it, and a sheet opens with either the live plan to review or — for a settled fact that isn't
-// worth a standing check — a one-time answer. Shares its post-plan UI with the older template
-// modal (NewFromTemplate) via PlanReview, so the two entry points never drift apart.
+// worth a standing check — a one-time answer. The post-plan review lives in PlanReview.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { AsyncSurface } from '../../components/AsyncSurface';
 import { cachedImport } from '../../lib/cachedImport';

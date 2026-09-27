@@ -1,7 +1,7 @@
 // PlanReview's cadence ask — manual is the default everywhere now (Q&A decision), and the plan's
 // own suggestion (from planTracker) is offered as a labeled option, never applied silently.
-// Rendered through NewFromTemplate (same harness dashboards-new-from-template.test.tsx uses) since
-// PlanReview has no standalone mount point of its own outside a creation flow.
+// Rendered through TrackComposer, the home page's "track anything" bar, since PlanReview has no
+// standalone mount point of its own outside that creation flow.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, screen, act } from '@testing-library/react';
 import type { Dashboard } from '../src/live/dashboards/types';
@@ -62,16 +62,18 @@ vi.mock('../src/live/dashboards/templates/instantiate', async (importOriginal) =
   };
 });
 
-import { NewFromTemplate } from '../src/live/dashboards/NewFromTemplate';
+import { TrackComposer } from '../src/live/dashboards/TrackComposer';
 
 async function planIt(ask: string): Promise<void> {
-  fireEvent.change(screen.getByPlaceholderText('What do you want to track?'), {
+  fireEvent.change(screen.getByRole('textbox', { name: 'Track anything' }), {
     target: { value: ask },
   });
   await act(async () => {
-    fireEvent.click(screen.getByText('Plan it →'));
+    fireEvent.click(screen.getByRole('button', { name: 'Track' }));
     await Promise.resolve();
   });
+  // The review step is lazy-loaded behind the plan.
+  await screen.findByText('Create dashboard →');
 }
 
 beforeEach(() => {
@@ -89,7 +91,7 @@ afterEach(() => cleanup());
 
 describe('PlanReview cadence picker', () => {
   it('defaults to Manual, and Create passes manual cadence even though the plan suggested hourly', async () => {
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     const manualChip = screen.getByRole('button', { name: 'Manual — only when you ask' });
@@ -106,7 +108,7 @@ describe('PlanReview cadence picker', () => {
   });
 
   it('picking the suggested chip drives the cadence actually passed to the builder', async () => {
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     fireEvent.click(screen.getByRole('button', { name: /Suggested/ }));
@@ -125,7 +127,7 @@ describe('PlanReview cadence picker', () => {
   });
 
   it('the searches/mo estimate tracks the selected cadence, not the plan suggestion', async () => {
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     expect(screen.getByText(/No standing searches/)).toBeTruthy();
@@ -145,7 +147,7 @@ describe('PlanReview — creating is instant, the check runs behind it', () => {
   it('hands the board over without waiting for the probe to resolve', async () => {
     // A probe that never settles: if creation awaited it, onDone could never fire.
     refreshDashboardNow.mockReturnValue(new Promise(() => {}));
-    render(<NewFromTemplate onClose={() => {}} />);
+    render(<TrackComposer />);
     await planIt('AAPL stock price');
 
     fireEvent.click(screen.getByText(/Create dashboard/));
