@@ -35,7 +35,7 @@ import {
   rowOf,
   type SaidText,
 } from './saidTarget';
-import { pollUntilSettled, lastVisible } from './settle';
+import { pollUntilSettled, lastVisible, holdInkPending } from './settle';
 import { MarginNoteRail } from './MarginNoteRail';
 import './annotate.css';
 
@@ -554,6 +554,7 @@ function SpotInk({
   stepNumber?: number;
 }): ReactElement | null {
   const [placed, setPlaced] = useState<Placed | null>(null);
+  const placedOnceRef = useRef(false);
   useEffect(() => {
     // Deliberately NOT `setPlaced(null)` here: a dependency change (a revision bump from a view
     // swap, a late-arriving `line`) means the current placement might be stale, but it might also
@@ -561,7 +562,11 @@ function SpotInk({
     // back on together. Keep showing whatever's already placed and only replace it once a fresh
     // measurement actually succeeds; if the old host turns out to be gone, its portal simply
     // renders into a detached node (invisible, harmless) until the new one resolves.
-    return pollUntilSettled(
+    // Until this mark first lands, it is pending: the walk and a replay step wait on that rather
+    // than guess how long a card's entrance will hold it back. A re-measure of a mark already on
+    // screen is not pending — its stroke is drawn.
+    const release = placedOnceRef.current ? () => {} : holdInkPending(spot);
+    const stop = pollUntilSettled(
       () => measure(spot, line, mark, generous, within, stepNumber),
       // The chip joins the fingerprint: a chip that dodged an earlier mark's ink on a later
       // read must count as movement, so the dodge gets its own confirming read before settling.
@@ -570,9 +575,18 @@ function SpotInk({
       // A re-read that lands within a pixel of the drawn mark keeps the drawn one: sub-pixel
       // reflow (a transition ending, a font's metrics settling) would otherwise redraw a finished
       // stroke a hair away from itself.
-      (p) => setPlaced((prev) => (prev && sameSpot(prev, p) ? prev : p)),
+      (p) => {
+        placedOnceRef.current = true;
+        release();
+        setPlaced((prev) => (prev && sameSpot(prev, p) ? prev : p));
+      },
       () => setPlaced(null),
+      release,
     );
+    return () => {
+      stop();
+      release();
+    };
     // `residue` flips exactly when the walk's live spot arrives on (or leaves) this block —
     // which on the Study is the moment its card travels to the desk. Re-measuring then is what
     // lets a mark whose earlier poll gave up (its card was scenery) finally land.
@@ -795,16 +809,27 @@ function ConnectInk({
   onPlaced?: () => void;
 }): ReactElement | null {
   const [placed, setPlaced] = useState<{ grid: HTMLElement; stroke: InkStroke } | null>(null);
+  const placedOnceRef = useRef(false);
   useEffect(() => {
     // See SpotInk's identical effect above: never null the current placement on a dependency
     // change alone — only a fresh, successful measurement ever replaces it.
-    return pollUntilSettled(
+    const release = placedOnceRef.current ? () => {} : holdInkPending(spot);
+    const stop = pollUntilSettled(
       () => measureConnect(spot, toSpot, mark, within),
       (p) => p.stroke.d,
       (p) => p.grid,
-      setPlaced,
+      (p) => {
+        placedOnceRef.current = true;
+        release();
+        setPlaced(p);
+      },
       () => setPlaced(null),
+      release,
     );
+    return () => {
+      stop();
+      release();
+    };
   }, [spot, toSpot, mark, within, revision]);
 
   // Report the first landing, once — see SpotInk's twin.

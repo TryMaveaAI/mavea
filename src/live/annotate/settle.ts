@@ -57,6 +57,43 @@ export function isInMotion(host: HTMLElement): boolean {
   return path.some((el) => el.getAnimations().some(movesGeometry));
 }
 
+/** Marks asked for but not yet on their card, by spot — the pen's intent before its first stroke.
+ *  A card still entering can hold a mark back for longer than any fixed guess, so anything that
+ *  must not cut the pen off (the walk, a replay step) waits on THIS, not on a timer. */
+const pendingInk = new Map<string, number>();
+let pendingWaiters: (() => void)[] = [];
+
+function notifyPending(): void {
+  const waiters = pendingWaiters;
+  pendingWaiters = [];
+  for (const w of waiters) w();
+}
+
+/** Records a mark on `spot` as pending until the returned release runs (once: it placed, or its
+ *  poll gave up, or it unmounted). */
+export function holdInkPending(spot: string): () => void {
+  pendingInk.set(spot, (pendingInk.get(spot) ?? 0) + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const n = (pendingInk.get(spot) ?? 1) - 1;
+    if (n > 0) pendingInk.set(spot, n);
+    else pendingInk.delete(spot);
+    notifyPending();
+  };
+}
+
+/** Whether a mark on `spot` — or on any card, with no spot — is still waiting to be placed. */
+export function inkPending(spot?: string): boolean {
+  return spot ? (pendingInk.get(spot) ?? 0) > 0 : pendingInk.size > 0;
+}
+
+/** Resolves the next time any pending mark is placed or given up on. */
+export function pendingInkChanged(): Promise<void> {
+  return new Promise((resolve) => pendingWaiters.push(resolve));
+}
+
 /** The pen's strokes on `spot`'s card — or on any card, with no spot — that have not finished
  *  drawing yet (a stroke waiting out its `--ink-delay` counts: it is scheduled, and cutting it off
  *  is the same fault). */
@@ -101,6 +138,8 @@ export function inkStillDrawing(spot?: string, root: ParentNode = document): Ani
  *  finally stops chaining, after which each event buys exactly one read rather than a new burst.
  *  Settling refills the budget, so a card that comes to rest is back on the fast path.
  *
+ *  `onGiveUp` runs when the poll stops chaining without ever having reported a placement.
+ *
  *  Returns a cleanup that stops every timer/observer it started. */
 export function pollUntilSettled<T>(
   measure: () => T | null,
@@ -108,6 +147,7 @@ export function pollUntilSettled<T>(
   hostOf: (result: T) => HTMLElement,
   onResult: (result: T) => void,
   onMissing?: () => void,
+  onGiveUp?: () => void,
 ): () => void {
   let cancelled = false;
   let timer: number | undefined;
@@ -214,6 +254,8 @@ export function pollUntilSettled<T>(
       if (pending) {
         reportedKey = fingerprint(pending);
         onResult(pending);
+      } else if (reportedKey === null) {
+        onGiveUp?.(); // nothing ever landed, and the poll will not chain again on its own
       }
       return; // stop polling; an armed observer can still re-measure later
     }

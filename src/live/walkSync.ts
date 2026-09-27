@@ -96,27 +96,27 @@ export function finishOnceInked(
 }
 
 /**
- * Resolves when a stop's pen has lifted: every stroke still drawing on its card has finished, and
- * a mark asked for less than `settleMs` ago has had time to settle onto the card and start. The
- * walk chains the NEXT stop's glide onto this — never the next line, which speaks on time — so a
- * stroke is never scrolled or replaced mid-draw and the voice never waits on the pen.
+ * Resolves when a stop's pen has lifted: no mark on its card is still waiting to be placed, and
+ * every stroke drawing there has finished. Both are real signals — a card whose entrance holds a
+ * mark back for a second is waited out, and a stop whose strokes are done ends at once. The walk
+ * chains the NEXT stop's glide onto this — never the next line, which speaks on time — so a stroke
+ * is never scrolled or replaced mid-draw and the voice never waits on the pen.
  *
- * `ceilingAt` (performance.now() time) bounds the wait whatever the page does; `drawing` lists
- * the strokes still running. With reduced motion the strokes do not animate and nothing needs to
- * settle, so it resolves at once.
+ * `ceilingAt` (performance.now() time) is the only time bound. With reduced motion the strokes do
+ * not animate, so it resolves at once.
  */
 export async function awaitPenLift({
   drawing,
-  askedAt,
+  pending,
+  pendingChanged,
   ceilingAt,
-  settleMs,
   reducedMotion = false,
   signal,
 }: {
   drawing: () => Animation[];
-  askedAt: number;
+  pending: () => boolean;
+  pendingChanged: () => Promise<void>;
   ceilingAt: number;
-  settleMs: number;
   reducedMotion?: boolean;
   signal?: AbortSignal;
 }): Promise<void> {
@@ -124,19 +124,17 @@ export async function awaitPenLift({
   for (;;) {
     const left = ceilingAt - performance.now();
     if (left <= 0 || signal?.aborted) return;
-    const running = drawing();
-    const settling = settleMs - (performance.now() - askedAt);
-    if (running.length) {
-      await untilOrAbort(
-        Promise.all(running.map((a) => a.finished.catch(() => undefined))),
-        left,
-        signal,
-      );
-    } else if (settling > 0) {
-      await delay(Math.min(left, settling), signal);
-    } else {
-      return;
+    if (pending()) {
+      await untilOrAbort(pendingChanged(), left, signal);
+      continue;
     }
+    const running = drawing();
+    if (!running.length) return;
+    await untilOrAbort(
+      Promise.all(running.map((a) => a.finished.catch(() => undefined))),
+      left,
+      signal,
+    );
   }
 }
 

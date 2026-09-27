@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { gestureOf, labelPlacements, relativeRect, strokeFor } from '../src/live/annotate/gesture';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
+import { inkPending } from '../src/live/annotate/settle';
 import { BarChart } from '../src/canvas/BarChart';
 import { KpiGrid } from '../src/canvas/KpiGrid';
 import { InsightCard } from '../src/canvas/InsightCard';
@@ -488,6 +489,39 @@ describe('AnnotationLayer', () => {
       expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
     } finally {
       walker.mockRestore();
+      restore();
+    }
+  });
+
+  it('publishes a mark as pending until it lands, or until its poll gives up', () => {
+    const restore = mockRangeRects({ 'Order Book': domRect(20, 30, 60, 16) });
+    try {
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-spot-id', 'pending-card');
+      const label = document.createElement('span');
+      label.textContent = 'Order Book';
+      wrap.appendChild(label);
+      document.body.appendChild(wrap);
+      wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+      render(
+        <AnnotationLayer
+          spots={[
+            { spot: 'pending-card', mark: { kind: 'underline', at: 'Order Book' } },
+            { spot: 'never-there', mark: { kind: 'circle', at: 'Nothing like this' } },
+          ]}
+        />,
+      );
+      expect(inkPending('pending-card')).toBe(true);
+      expect(inkPending('never-there')).toBe(true);
+      act(() => vi.advanceTimersByTime(300));
+      expect(wrap.querySelector('.ink-stroke')).toBeTruthy();
+      expect(inkPending('pending-card')).toBe(false);
+      // A target that never resolves stops holding anyone once its poll gives up.
+      expect(inkPending('never-there')).toBe(true);
+      act(() => vi.advanceTimersByTime(2000));
+      expect(inkPending('never-there')).toBe(false);
+      expect(inkPending()).toBe(false);
+    } finally {
       restore();
     }
   });

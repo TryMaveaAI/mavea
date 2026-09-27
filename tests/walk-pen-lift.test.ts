@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { awaitPenLift, finishOnceInked } from '../src/live/walkSync';
+import { holdInkPending, inkPending, pendingInkChanged } from '../src/live/annotate/settle';
 
 // The next stop's camera waits on this, so it has to end the moment the pen is really up — a
 // worst-case hold is dead air on screen — and never before a stroke has finished drawing.
@@ -20,12 +21,11 @@ describe('awaitPenLift', () => {
     void p.then(() => (done = true));
     return () => done;
   };
+  const idle = { pending: () => false, pendingChanged: () => new Promise<void>(() => {}) };
 
-  it('ends at once when nothing is drawing and the mark has had time to land', async () => {
+  it('ends at once when nothing is pending and nothing is drawing', async () => {
     const now = performance.now();
-    const done = settled(
-      awaitPenLift({ drawing: () => [], askedAt: now - 800, ceilingAt: now + 5000, settleMs: 720 }),
-    );
+    const done = settled(awaitPenLift({ ...idle, drawing: () => [], ceilingAt: now + 5000 }));
     await vi.advanceTimersByTimeAsync(0);
     expect(done()).toBe(true);
   });
@@ -36,12 +36,7 @@ describe('awaitPenLift', () => {
     let drawn = false;
     void a.finished.then(() => (drawn = true));
     const done = settled(
-      awaitPenLift({
-        drawing: () => (drawn ? [] : [a]),
-        askedAt: now - 800,
-        ceilingAt: now + 5000,
-        settleMs: 720,
-      }),
+      awaitPenLift({ ...idle, drawing: () => (drawn ? [] : [a]), ceilingAt: now + 5000 }),
     );
     await vi.advanceTimersByTimeAsync(850);
     expect(done()).toBe(false);
@@ -49,14 +44,30 @@ describe('awaitPenLift', () => {
     expect(done()).toBe(true);
   });
 
-  it('gives a mark still settling onto its card time to start', async () => {
+  it('waits out a mark held back by an entrance longer than the spotlight lift', async () => {
+    // The card takes 1.2s to arrive; no fixed settle guess (the lift is 520ms) may end the wait.
     const now = performance.now();
+    const release = holdInkPending('slow-card');
+    let strokeRunning: Animation | null = null;
     const done = settled(
-      awaitPenLift({ drawing: () => [], askedAt: now, ceilingAt: now + 5000, settleMs: 720 }),
+      awaitPenLift({
+        drawing: () => (strokeRunning ? [strokeRunning] : []),
+        pending: () => inkPending('slow-card'),
+        pendingChanged: pendingInkChanged,
+        ceilingAt: now + 10_000,
+      }),
     );
-    await vi.advanceTimersByTimeAsync(700);
+    await vi.advanceTimersByTimeAsync(1200);
     expect(done()).toBe(false);
-    await vi.advanceTimersByTimeAsync(30);
+    // The card lands: the mark places and its stroke starts drawing.
+    strokeRunning = stroke(1000);
+    let finished = false;
+    void strokeRunning.finished.then(() => ((finished = true), (strokeRunning = null)));
+    release();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(done()).toBe(false);
+    await vi.advanceTimersByTimeAsync(520);
+    expect(finished).toBe(true);
     expect(done()).toBe(true);
   });
 
@@ -64,12 +75,7 @@ describe('awaitPenLift', () => {
     const now = performance.now();
     const endless = stroke(60_000);
     const done = settled(
-      awaitPenLift({
-        drawing: () => [endless],
-        askedAt: now - 800,
-        ceilingAt: now + 1000,
-        settleMs: 720,
-      }),
+      awaitPenLift({ ...idle, drawing: () => [endless], ceilingAt: now + 1000 }),
     );
     await vi.advanceTimersByTimeAsync(1010);
     expect(done()).toBe(true);
@@ -79,10 +85,10 @@ describe('awaitPenLift', () => {
     const now = performance.now();
     const done = settled(
       awaitPenLift({
+        ...idle,
+        pending: () => true,
         drawing: () => [stroke(900)],
-        askedAt: now,
         ceilingAt: now + 5000,
-        settleMs: 720,
         reducedMotion: true,
       }),
     );

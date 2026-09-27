@@ -185,7 +185,7 @@ import {
 import { useTurnLatency, formatLatency } from './voice/useTurnLatency';
 import type { HeroContent } from './voice/heroSource';
 import { AnnotationLayer, BADGE_MS, MARK_DRAW_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
-import { INK_SETTLE_MS, inkStillDrawing } from './annotate/settle';
+import { INK_SETTLE_MS, inkPending, inkStillDrawing, pendingInkChanged } from './annotate/settle';
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
@@ -2981,21 +2981,19 @@ export function LiveApp(): ReactElement {
       // When this stop's last stroke finishes drawing — the stop stays open until then, so the
       // next stop's glide (or the next answer) never scrolls or replaces a card mid-stroke.
       let penLiftsAt = 0;
-      let inkAskedAt = 0;
       const penLifted = (): Promise<void> =>
         spot
           ? awaitPenLift({
               drawing: () => inkStillDrawing(spot),
-              askedAt: inkAskedAt,
+              pending: () => inkPending(spot),
+              pendingChanged: pendingInkChanged,
               ceilingAt: penLiftsAt,
-              settleMs: INK_SETTLE_MS,
               reducedMotion: prefersReducedMotion(),
               signal: walkController.signal,
             })
           : Promise.resolve();
-      /** Lights the stop and starts its pen, remembering when so `penLifted` can judge it. */
+      /** Lights the stop and starts its pen, remembering the pen's ceiling for `penLifted`. */
       const lightStop = (shownLine: string | undefined): void => {
-        inkAskedAt = performance.now();
         penLiftsAt = applyStop(spot, shownLine, idx);
       };
       // The line is primed first so its synthesis runs while the card settles.
