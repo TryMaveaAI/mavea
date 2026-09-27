@@ -505,7 +505,7 @@ export default defineConfig({
           });
         },
       },
-      // Keyed web-search providers (BYOK, free tiers available). Browser-origin calls
+      // Keyed web-search providers (BYOK). Browser-origin calls
       // to these are CORS-blocked, so the search adapter sends the user's key in the
       // request header and the proxy forwards it to the real API.
       '/search/brave': {
@@ -552,7 +552,7 @@ export default defineConfig({
     // NOTE: these /llm/* proxies are DEV-ONLY (Vite dev server). A deployed build
     // serves static files and has no proxy — a production deployment must provide an
     // equivalent same-origin forwarder (e.g. a serverless rewrite) for each /llm/<provider>
-    // path, or the BYOK browser calls will hit CORS. The keyless free paths
+    // path, or the BYOK browser calls will hit CORS. The keyless paths
     // (Wikipedia, Pollinations) need no proxy.
   },
   build: {

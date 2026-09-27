@@ -1,6 +1,6 @@
 // tavily.ts — the Tavily Search provider (an LLM-tuned search API with clean,
-// answer-ready snippets). BYOK: the user pastes their own Tavily key (free tier
-// available). Tavily expects a server-side call, so it rides the same-origin
+// answer-ready snippets). BYOK: the user pastes their own Tavily key.
+// Tavily expects a server-side call, so it rides the same-origin
 // /search/tavily proxy, which forwards the Bearer key. Feeds retrieve-then-read.
 import type { SearchProvider, SearchResult, SearchOpts } from './types';
 import { timedFetch } from './net';

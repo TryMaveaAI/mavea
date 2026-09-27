@@ -116,8 +116,7 @@ export type { ChatMessage };
 /** How the user wants answers grounded in the live web (their choice, with cost in mind):
  *  - 'off'      — never search. No extra cost beyond the base model call.
  *  - 'realtime' — grounds through the provider's OWN native search (Gemini google_search,
- *    OpenRouter's web tool: cited + current; free up to the provider's monthly quota, then
- *    per-query). Native-only — a provider without built-in search simply can't ground, even
+ *    OpenRouter's web tool: cited + current; billed on the provider's own terms). Native-only — a provider without built-in search simply can't ground, even
  *    when this is selected; there is no keyless/keyed app-side fallback.
  *  Search only fires when the ask actually needs fresh info, so ordinary turns cost nothing. */
 export type SearchMode = 'off' | 'realtime';
@@ -310,7 +309,7 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       message:
         'Request blocked — your API key may lack permission for this model, or the request was rejected by the provider safety filters.',
     };
-  // 429 is usually a transient per-minute rate limit on the free tier, not a plan
+  // 429 is usually a transient per-minute rate limit, not a plan
   // exhaustion — "check your plan" is wrong and alarming. Distinguish by the provider's own
   // wording (RESOURCE_EXHAUSTED, "exceeded your current quota") vs a plain 429 (rate limited).
   if (status === 429) {
@@ -1457,8 +1456,7 @@ export async function generateLive(
   // Real-time grounding uses the provider's OWN search (Gemini google_search). We PRE-GATE so
   // obvious no-search turns (a poem, arithmetic) never even offer the tool — then the model's
   // Dynamic Retrieval makes the final call, only actually searching (and only then billing)
-  // when its own confidence says it needs live data. Cost stays proportional to need, and the
-  // monthly free grounding quota covers normal use.
+  // when its own confidence says it needs live data. Cost stays proportional to need.
   const useNativeSearch =
     searchMode === 'realtime' &&
     !!adapter.capabilities.nativeWebSearch &&
