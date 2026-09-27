@@ -40,10 +40,11 @@ let providerPressureUntil = 0;
 let providerPressureObservedAt = 0;
 
 /**
- * Whether a provider rate-limited us inside the given window. Speculative work (chip prefetch,
- * background enrichment) checks this before spending: quotas are per-minute, so a speculative
- * call made in the shadow of a 429 doesn't just fail — it eats the budget the user's NEXT
- * interactive turn needs, which is how one question came to retry three times before landing.
+ * Whether a provider rate-limited us inside the given window. Speculative work (the Study's
+ * prefetched notes, background enrichment) checks this before spending: quotas are per-minute,
+ * so a speculative call made in the shadow of a 429 doesn't just fail — it eats the budget the
+ * user's NEXT interactive turn needs, which is how one question came to retry three times before
+ * landing.
  */
 export function recentlyRateLimited(windowMs = 60_000): boolean {
   if (windowMs <= 0) return false;

@@ -385,10 +385,10 @@ describe('mavea CLI server security boundary', () => {
   });
 
   it('lets the page fan out as far as the app itself does before answering busy', () => {
-    // A turn at the Thorough dial runs the answer, two chip prefetches and the desk's notes at
-    // once (src/live/useLiveTurn.ts CHIP_PREFETCH + the study annotate), and the forecast autopsy
-    // searches up to ten claims in parallel (src/live/prism/autopsy/run.ts). The cap used to sit
-    // at two for model routes: the third call got a 503 and the adapter slept a second per retry,
+    // A settled answer can be followed at once by the desk's notes (the study annotate) and a
+    // world or a node breakdown the reader opens, and the forecast autopsy searches up to ten
+    // claims in parallel (src/live/prism/autopsy/run.ts). The cap used to sit at two for model
+    // routes: the third call got a 503 and the adapter slept a second per retry,
     // so an install felt slower than the dev server for no reason the reader could see.
     const byPrefix = new Map<string, { maxConcurrent: number; requestsPerMinute: number }>(
       PROXIES.map((route: { prefix: string; maxConcurrent: number; requestsPerMinute: number }) => [

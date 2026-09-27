@@ -1968,9 +1968,9 @@ export function LiveApp(): ReactElement {
     if (viewMode !== 'study' && !studyOpenedRef.current) return;
     if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) return;
     if (!studySpec || !studySpecId) return;
-    // Speculative work checks the guard before spending, like every other prefetch. This is a
-    // second request behind every settled answer, and on a key that has just answered 429 it
-    // was the request that kept it there. The desk loses nothing: it derives its notes locally
+    // Speculative work checks the guard before spending. This is a second request behind every
+    // settled answer, and on a key that has just answered 429 it was the request that kept it
+    // there. The desk loses nothing: it derives its notes locally
     // until a later answer buys them.
     if (recentlyRateLimited()) return;
     // Never buy notes for an answer still streaming: every partial would be its own "answer"
@@ -3323,7 +3323,7 @@ export function LiveApp(): ReactElement {
   // A new turn also closes the evidence panel (it belongs to the answer that opened it).
   useEffect(() => setProofOpen(false), [turn.turn]);
   // Pinned elements belong to the answer they came from — a new turn replaces that canvas, so
-  // clear them (submit already clears on send; this covers chip/prefetch-driven turns too).
+  // clear them (submit already clears on send; this covers chip-driven turns too).
   useEffect(() => setPinned([]), [turn.turn]);
   // Mobile: a new answer should take the stage — fold the conversation sheet back down.
   useEffect(() => setChatOpen(false), [turn.turn]);

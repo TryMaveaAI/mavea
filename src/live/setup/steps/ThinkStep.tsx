@@ -52,7 +52,7 @@ export function ThinkStep(): ReactElement {
           ]}
         />
         <p className="field-helper">
-          Fast keeps replies snappy. Thorough buys two speculative turns per answer.
+          Fast keeps replies snappy; Thorough takes longer to reason through hard questions.
         </p>
       </div>
     </div>
