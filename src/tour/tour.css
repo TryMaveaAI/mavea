@@ -337,7 +337,6 @@
 
 @media (width <= 640px) {
   .tourx-panel {
-    bottom: calc(var(--dock-h) + var(--tour-gap));
     left: 50%;
     width: min(359px, calc(100vw - 32px));
     padding-inline: 16px;
