@@ -86,7 +86,10 @@ describe('LegalGate', () => {
     expect(
       screen.getByText(/possibly a remote one\), and the resulting transcript may be sent/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/I have read and agree to the Terms of Use/i)).toBeInTheDocument();
+    // The box covers what the reader was just shown, not only the documents behind the links.
+    expect(
+      screen.getByText(/I have read and understand the points above, I agree to the Terms of Use/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/responsible for avoiding sensitive conversations/i),
     ).toBeInTheDocument();
@@ -222,5 +225,25 @@ describe('legal-gate route policy', () => {
     expect(isLegalGateBypassed('#/live')).toBe(false);
     expect(isLegalGateBypassed('#/courses')).toBe(false);
     expect(isLegalGateBypassed('#/ripple')).toBe(false);
+  });
+});
+
+describe('the gate says what kind of visit this is', () => {
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it('welcomes a first visit, and says the terms changed only to someone who accepted before', () => {
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Welcome to Mavéa')).toBeInTheDocument();
+    cleanup();
+
+    localStorage.setItem(
+      LEGAL_ACCEPTANCE_STORAGE_KEY,
+      JSON.stringify({ version: '2026-01-01-older', acceptedAt: '2026-01-01T00:00:00.000Z' }),
+    );
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Our terms have changed')).toBeInTheDocument();
   });
 });

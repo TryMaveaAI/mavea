@@ -6,7 +6,12 @@ import {
   type ReactNode,
   type RefCallback,
 } from 'react';
-import { acceptLegalTerms, hasLegalAcceptance, subscribeLegalAcceptance } from './acceptance';
+import {
+  acceptLegalTerms,
+  hasEarlierAcceptance,
+  hasLegalAcceptance,
+  subscribeLegalAcceptance,
+} from './acceptance';
 import { legalDocumentHref } from './links';
 import { VOICE_DATA_NOTICE } from './voiceNotice';
 import './legal-gate.css';
@@ -40,6 +45,8 @@ export function LegalGate({
   // already on screen here (the 'storage' event notifies) — no stale gate demanding a reload.
   const accepted = useSyncExternalStore(subscribeLegalAcceptance, hasLegalAcceptance);
   const [checked, setChecked] = useState(false);
+  // "Changed" only to someone who accepted an earlier version; a first visit has nothing to update.
+  const [returning] = useState(hasEarlierAcceptance);
   // Listening is confirmed on its own rather than folded into the general acknowledgement: it can
   // pick up people who never opened Mavéa, so it deserves its own deliberate tick.
   const [speechChecked, setSpeechChecked] = useState(false);
@@ -82,7 +89,9 @@ export function LegalGate({
         aria-describedby="legal-gate-summary"
       >
         <div className="legal-gate-body">
-          <span className="legal-gate-kicker">Updated legal acknowledgement</span>
+          <span className="legal-gate-kicker">
+            {returning ? 'Our terms have changed' : 'Welcome to Mavéa'}
+          </span>
           <h1 id="legal-gate-title">Before using connected features</h1>
           <p id="legal-gate-summary">
             Mavéa uses AI and third-party services you choose. It cannot guarantee output, privacy,
@@ -91,8 +100,8 @@ export function LegalGate({
 
           <ul className="legal-gate-points">
             <li>
-              AI can be wrong. Verify important information and do not use it as professional or
-              emergency help.
+              <strong>AI can be wrong.</strong> Verify important information and do not use it as
+              professional or emergency help.
             </li>
             <li>
               <strong>{VOICE_DATA_NOTICE.title}.</strong> {VOICE_DATA_NOTICE.body}
@@ -120,14 +129,17 @@ export function LegalGate({
               restricted, spend-capped key you can revoke.
             </li>
             <li>
-              All provider charges are your sole responsibility. Mavéa does not charge you or pay
-              providers on your behalf — use of your API keys and accounts is billed to you under
-              each provider's own pricing and terms. Set a spending cap in your provider's dashboard
-              before you start — it is the one limit that holds even if a key is ever misused.
+              <strong>All provider charges are your sole responsibility.</strong> Mavéa does not
+              charge you or pay providers on your behalf — use of your API keys and accounts is
+              billed to you under each provider's own pricing and terms. Set a spending cap in your
+              provider's dashboard before you start — it is the one limit that holds even if a key
+              is ever misused.
             </li>
             <li>
-              You are responsible for credentials, permission to submit content, connected actions,
-              and what you share.
+              <strong>
+                You are responsible for credentials, permission to submit content, connected
+                actions, and what you share.
+              </strong>
             </li>
           </ul>
 
@@ -158,9 +170,9 @@ export function LegalGate({
                 onChange={(event) => setChecked(event.target.checked)}
               />
               <span>
-                I am at least 18 years old. I have read and agree to the Terms of Use and PolyForm
-                Noncommercial License 1.0.0, and I have read and acknowledge the Privacy Notice,
-                Disclaimer, and Important Information notice.
+                I am at least 18 years old. I have read and understand the points above, I agree to
+                the Terms of Use and PolyForm Noncommercial License 1.0.0, and I have read and
+                acknowledge the Privacy Notice, Disclaimer, and Important Information notice.
               </span>
             </label>
 

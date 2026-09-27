@@ -319,3 +319,25 @@ html:has(.legal-gate) {
     margin: 14px 0;
   }
 }
+
+/* The points read as separate items, not one run of bullets: each sits behind a quiet accent rule,
+   so the eye finds the start of the next one without a marker competing with the bold lead. */
+.legal-gate-points {
+  list-style: none;
+  padding-left: 0;
+}
+
+.legal-gate-points li {
+  padding-left: var(--s-sm);
+  border-left: 2px solid color-mix(in oklab, var(--presence) 35%, transparent);
+}
+
+.legal-gate-points strong {
+  color: var(--text-primary);
+}
+
+/* Each acknowledgement box is as tall as its own words; stretching the short one to match the long
+   one left a block of empty card beside the text. */
+.legal-gate-consents {
+  align-items: start;
+}

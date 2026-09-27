@@ -46,6 +46,24 @@ export function hasLegalAcceptance(): boolean {
   }
 }
 
+/** Whether this browser accepted an EARLIER version — the gate is then showing a change, not a
+ *  first visit. Read once for a label; it has no reason to be a live store. */
+export function hasEarlierAcceptance(): boolean {
+  try {
+    const raw = localStorage.getItem(LEGAL_ACCEPTANCE_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed: unknown = JSON.parse(raw);
+    return (
+      !!parsed &&
+      typeof parsed === 'object' &&
+      typeof (parsed as Partial<LegalAcceptance>).version === 'string' &&
+      (parsed as Partial<LegalAcceptance>).version !== LEGAL_ACCEPTANCE_VERSION
+    );
+  } catch {
+    return false;
+  }
+}
+
 /* Acceptance is read like an external store (LegalGate consumes it via useSyncExternalStore), not a
    one-shot mount check. This matters for two real cases the one-shot check got wrong: a tab that was
    already open when the user accepted in ANOTHER tab kept showing a stale gate until a hard reload,
