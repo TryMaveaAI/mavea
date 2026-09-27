@@ -15,7 +15,10 @@
   overflow-y: auto;
 }
 
-.dash-risk-note {
+/* Compound for the same reason as .mavea-app.dash-app above: the notice's own sheet sets
+   `width: 100%`, and a bare class would win or lose that tie on bundle order — at a desktop width
+   losing it ran the banner edge to edge while the board sat in its column. */
+.feature-use-notice.dash-risk-note {
   flex: none;
   width: min(calc(100% - 40px), var(--canvas-col-max));
   margin: 12px auto 0;

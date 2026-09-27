@@ -101,6 +101,26 @@
   border-color: color-mix(in oklab, var(--presence) 40%, var(--line-soft));
   background: color-mix(in oklab, var(--presence) 8%, transparent);
 }
+/* A phone cannot fit the brand, search, both actions and the appearance control on one row — at
+   320px "Present" ran off the edge. The actions keep their glyph and their accessible name and
+   become square, thumb-sized targets instead. */
+@media (width <= 430px) {
+  .dash-topbar-action {
+    justify-content: center;
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    padding: 0;
+  }
+  .dash-topbar-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
+    white-space: nowrap;
+  }
+}
 
 /* ── "N on watch" pill ───────────────────────────────────────────────────────────────────── */
 .dash-watch-pill {
