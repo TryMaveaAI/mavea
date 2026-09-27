@@ -23,6 +23,7 @@ import type { TurnFrame } from '../live/history';
 import { naturalGuidedCopy, naturalizeGuidedFrame } from '../tour/guidedCopy';
 import { savedViewMode } from '../canvas/focus/useFocusMode';
 import { DemoNarration } from './narration';
+import { inkStillDrawing } from '../live/annotate/settle';
 
 /** Default breath a turn step holds after its walk + beats before auto-advance. */
 const STEP_HOLD_MS = 3000;
@@ -266,6 +267,9 @@ export function useDemoDriver(opts: {
       const readyAt = stepReadyAtRef.current;
       if (!readyAt || Date.now() < readyAt) return;
       if (o.isSpeaking() || o.isBusy() || narration.isPlaying()) return;
+      // A stroke still drawing holds the step: the next ask clears the pen, and a mark wiped
+      // mid-stroke reads as the hand giving up. Strokes are finite, so this always ends.
+      if (inkStillDrawing().length) return;
       window.clearInterval(id);
       if (index + 1 >= total) {
         resetTriggers();

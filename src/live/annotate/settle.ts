@@ -57,13 +57,13 @@ export function isInMotion(host: HTMLElement): boolean {
   return path.some((el) => el.getAnimations().some(movesGeometry));
 }
 
-/** The pen's strokes on `spot`'s card that have not finished drawing yet (a stroke waiting out its
- *  `--ink-delay` counts: it is scheduled, and cutting it off is the same fault). */
-export function inkStillDrawing(spot: string, root: ParentNode = document): Animation[] {
+/** The pen's strokes on `spot`'s card — or on any card, with no spot — that have not finished
+ *  drawing yet (a stroke waiting out its `--ink-delay` counts: it is scheduled, and cutting it off
+ *  is the same fault). */
+export function inkStillDrawing(spot?: string, root: ParentNode = document): Animation[] {
   const out: Animation[] = [];
-  for (const layer of Array.from(
-    root.querySelectorAll(`[data-spot-id="${CSS.escape(spot)}"] .ink-layer`),
-  )) {
+  const selector = spot ? `[data-spot-id="${CSS.escape(spot)}"] .ink-layer` : '.ink-layer';
+  for (const layer of Array.from(root.querySelectorAll(selector))) {
     if (typeof layer.getAnimations !== 'function') continue;
     for (const a of layer.getAnimations({ subtree: true })) {
       if (a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity) {

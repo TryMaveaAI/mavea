@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { isInMotion, pollUntilSettled, SPOTLIGHT_LIFT_MS } from '../src/live/annotate/settle';
+import {
+  inkStillDrawing,
+  isInMotion,
+  pollUntilSettled,
+  SPOTLIGHT_LIFT_MS,
+} from '../src/live/annotate/settle';
 
 // The stale-mark bug: a block that re-sorts its rows or expands inside its own capped scroller
 // changes NOTHING the old triggers could see — the outer box is unchanged (no ResizeObserver),
@@ -267,5 +272,32 @@ describe('INK_SETTLE_MS — follows the spotlight it waits out', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/visualizations-extra.css'), 'utf8');
     const rule = /\n\.card-grid > div \{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(Number(/transform (\d+)ms/.exec(rule)?.[1])).toBe(SPOTLIGHT_LIFT_MS);
+  });
+});
+
+describe('inkStillDrawing — what holds a walk or a replay step open', () => {
+  it('lists running strokes on one card, or on any card, and ignores endless loops', () => {
+    const card = document.createElement('div');
+    card.setAttribute('data-spot-id', 'live-1');
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    layer.setAttribute('class', 'ink-layer');
+    card.appendChild(layer);
+    document.body.appendChild(card);
+    const drawing = {
+      playState: 'running',
+      effect: { getComputedTiming: () => ({ endTime: 1000 }) },
+    } as unknown as Animation;
+    const pulse = {
+      playState: 'running',
+      effect: { getComputedTiming: () => ({ endTime: Infinity }) },
+    } as unknown as Animation;
+    let anims = [drawing, pulse];
+    layer.getAnimations = () => anims;
+    expect(inkStillDrawing('live-1')).toEqual([drawing]);
+    expect(inkStillDrawing()).toEqual([drawing]);
+    expect(inkStillDrawing('live-2')).toEqual([]);
+    anims = [pulse];
+    expect(inkStillDrawing()).toEqual([]);
+    card.remove();
   });
 });
