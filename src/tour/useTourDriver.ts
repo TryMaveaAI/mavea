@@ -54,10 +54,6 @@ export interface TourOps {
   openModelSettings: () => void;
   /** Open the export-to-document overlay (the ten print templates). */
   openExport: () => void;
-  /** Remix the share reel — the director recuts with a new seed. */
-  shareRemix: () => void;
-  /** Pick a reel palette chip by its label (Aurora, Ember, …). */
-  sharePalette: (label: string) => void;
   /** Flip the export studio's format (its own segmented buttons). */
   exportSetFormat: (f: 'presentation' | 'document') => void;
   /** Pick the i-th template swatch in the export studio's gallery. */
@@ -72,7 +68,6 @@ export interface TourOps {
    *  CourseRail ("Lesson 1 of 5") over its baked canvas, replayed with no model call. */
   openTourCourse: () => void;
   setPresenting: (on: boolean) => void;
-  setShareOpen: (on: boolean) => void;
   setPaletteOpen: (on: boolean) => void;
   /** Visually press the Keep-going chip with this label (the tap the chapter then acts on). */
   pressKeepGoing: (label: string) => void;
@@ -96,7 +91,6 @@ export interface TourOps {
   /** Seed (where needed) + open a feature on the real surface, so every feature has a "See how"
    *  walkthrough — not just the ones with a bespoke chapter. Keyed by the registry feature id. */
   showcaseFeature: (featureId: string) => void;
-  fireMemoryGlow: () => void;
   /** Stop the live surface's own reveal-tour narration/spotlight walk (so an answer chapter's
    *  narration doesn't bleed into the next chapter when navigating). */
   stopRevealWalk: () => void;
@@ -386,11 +380,6 @@ export function useTourDriver(opts: {
       >[];
       const schedule = montageSchedule(frames.length, ch.durationMs);
       frames.forEach((f, i) => after(schedule[i], () => showSilent(f)));
-    } else if (a.kind === 'ask') {
-      // Perform the gesture, not just the pointer: pin the first card via its Ask affordance (the
-      // pin chip + card ring appear for real), then type the follow-up a person would ask.
-      after(1300, () => o.pinFirstBlock());
-      scheduleTypewriter(after, o.typeInto, 'Why does it grow faster after year 20?', 1700);
     } else if (a.kind === 'askMulti') {
       // A direct jump must still show the exact two-card grounding gesture this scene promises.
       const f = tourFrame('money');
@@ -484,12 +473,6 @@ export function useTourDriver(opts: {
       after(400, () => o.openModelSettings());
     } else if (a.kind === 'present') {
       after(500, () => o.setPresenting(true));
-    } else if (a.kind === 'share') {
-      after(500, () => o.setShareOpen(true));
-      // Let the first cut play, then REMIX — a genuinely different recut of the same session —
-      // and warm the palette so the reel's range shows, not just one look.
-      after(3100, () => o.shareRemix());
-      after(4900, () => o.sharePalette('Ember'));
     } else if (a.kind === 'palette') {
       after(500, () => o.setPaletteOpen(true));
     } else if (a.kind === 'atlas') {
@@ -499,8 +482,6 @@ export function useTourDriver(opts: {
       // briefing flying claim to claim over the real PDF page. (A second flip to a data file read
       // as a glitch — the PDF is the story.)
       after(400, () => o.openPrism(0));
-    } else if (a.kind === 'memory') {
-      after(700, () => o.fireMemoryGlow());
     } else if (a.kind === 'showcase') {
       // Session-context features (recap, chapter view) summarize a conversation, so seed a few turns
       // silently first — otherwise they'd open on an empty session. Everything else just opens.
@@ -531,7 +512,7 @@ export function useTourDriver(opts: {
         after(5200, () => o.showFrame(filled, filled.question));
       }
     }
-    // 'mic' / 'ask' / 'none' teach via the coach line + spotlight only.
+    // 'mic' teaches via the coach line + spotlight only.
 
     // 5) The coach voice. A short delay lets the mute state settle before we speak.
     if (ch.mode !== 'silent' && !userMutedRef.current) {

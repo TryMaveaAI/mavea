@@ -26,10 +26,8 @@ export type TourAction =
   | { kind: 'export' } // open the export-to-document overlay
   | { kind: 'mark' } // arm the pen (setInkArmed)
   | { kind: 'penDemo' } // draw with Mavéa's real answer-annotation Pen
-  | { kind: 'ask' } // point at a card's Ask affordance (needs a canvas)
   | { kind: 'askMulti' } // select two cards and compose one grounded follow-up across both
   | { kind: 'listen' } // Watch-me-think (spotlight/explain)
-  | { kind: 'memory' } // fire the "saved to memory" face glow
   | { kind: 'atlas' } // seed + open Atlas (explored topics as a wanderable place)
   | { kind: 'prism' } // open a baked Prism analysis of a real public document
   | { kind: 'canvas'; convoId: string } // seed a board answer, then flip it into the spatial Canvas
@@ -38,11 +36,9 @@ export type TourAction =
   | { kind: 'course' } // seed + open a real course lesson in-place (the CourseRail over its canvas)
   | { kind: 'connect' } // open the real Model settings with all five providers + the BYOK field
   | { kind: 'present' } // setPresenting(true)
-  | { kind: 'share' } // setShareOpen(true) → Reel
   | { kind: 'palette' } // openPalette (⌘K)
   | { kind: 'showcase'; featureId: string } // seed + open a feature on the real surface (generic demo)
-  | { kind: 'blanksDemo' } // show a hand-authored answer with holes, then its completed twin
-  | { kind: 'none' };
+  | { kind: 'blanksDemo' }; // show a hand-authored answer with holes, then its completed twin
 
 export interface TourChapter {
   id: string;

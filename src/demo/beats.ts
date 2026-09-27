@@ -32,8 +32,6 @@ export type DemoBeat =
   | { kind: 'flashcards'; atMs: number }
   /** Present the answer full screen. */
   | { kind: 'present'; atMs: number }
-  /** Open the share reel. */
-  | { kind: 'share'; atMs: number }
   /** Open the ⌘K command palette. */
   | { kind: 'palette'; atMs: number };
 

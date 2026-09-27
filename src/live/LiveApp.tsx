@@ -2298,7 +2298,6 @@ export function LiveApp(): ReactElement {
     },
     setInkArmed,
     setPresenting,
-    setShareOpen,
     // The driver toggles the palette (its ⌘K chapter); compose the boolean setter from the hook.
     setPaletteOpen: (on: boolean) => (on ? openPalette() : closePalette()),
     // Press the named Keep-going chip for real (the .kg-tour-press class plays the tap), so the
@@ -2462,16 +2461,6 @@ export function LiveApp(): ReactElement {
       setShowSettings(true);
     },
     openExport: () => setExportOpen(true),
-    // The reel's Remix — a genuinely different cut of the same conversation.
-    shareRemix: () => {
-      document.querySelector<HTMLButtonElement>('.shm-remix')?.click();
-    },
-    sharePalette: (label) => {
-      const chip = Array.from(document.querySelectorAll<HTMLButtonElement>('.shm-chip')).find(
-        (b) => b.textContent?.trim().toLowerCase() === label.toLowerCase(),
-      );
-      chip?.click();
-    },
     // Walk the export studio for real: flip formats and templates via their own buttons.
     exportSetFormat: (f) => {
       document.querySelector<HTMLButtonElement>(`[data-export-format="${f}"]`)?.click();
@@ -2486,10 +2475,6 @@ export function LiveApp(): ReactElement {
       if (b) addToFlashcard(b);
     },
     openTourCourse: () => openTourCourseRef.current(),
-    fireMemoryGlow: () => {
-      setMemorySaved(true);
-      window.setTimeout(() => setMemorySaved(false), 2600);
-    },
     stopRevealWalk: () => {
       tourDismissed.current = true;
     },

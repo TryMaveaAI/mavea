@@ -87,9 +87,6 @@ export function runBeat(
     case 'present':
       after(b.atMs, () => o.setPresenting(true));
       break;
-    case 'share':
-      after(b.atMs, () => o.setShareOpen(true));
-      break;
     case 'palette':
       after(b.atMs, () => o.setPaletteOpen(true));
       break;
