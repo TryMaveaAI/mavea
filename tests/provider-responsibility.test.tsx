@@ -1,11 +1,23 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ProviderResponsibilityNotice } from '../src/live/setup/ProviderResponsibilityNotice';
 import { VISIBLE_PROVIDERS } from '../src/live/providers/info';
 
 describe('provider pricing and responsibility disclosure', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('can be closed, and stays closed on this device', () => {
+    const { unmount } = render(<ProviderResponsibilityNotice />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
+    expect(screen.queryByLabelText(/Provider billing/)).toBeNull();
+    expect(localStorage.getItem('mavea-provider-notice-dismissed-v1')).toBe('1');
+    unmount();
+    render(<ProviderResponsibilityNotice />);
+    expect(screen.queryByLabelText(/Provider billing/)).toBeNull();
+  });
+
   it('shows the essential billing, reliability, professional-advice, and user-responsibility terms', () => {
     render(<ProviderResponsibilityNotice />);
     const notice = screen.getByLabelText(

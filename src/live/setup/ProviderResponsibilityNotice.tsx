@@ -1,13 +1,47 @@
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
+
+/** Closing the notice is remembered on this device. The reader has already accepted the gate
+ *  that says the same, and the links it carries stay one step away in the key field and the
+ *  Important information page; a box that comes back on every visit teaches people to skip it. */
+const DISMISSED_KEY = 'mavea-provider-notice-dismissed-v1';
+
+function readDismissed(): boolean {
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissed(): void {
+  try {
+    localStorage.setItem(DISMISSED_KEY, '1');
+  } catch {
+    // Private mode: the notice returns next visit, which is the honest outcome.
+  }
+}
 
 /** Conspicuous, plain-language responsibility notice shared by first-run Connect and Settings.
  * This is product disclosure, not a substitute for jurisdiction-specific Terms reviewed by counsel. */
-export function ProviderResponsibilityNotice(): ReactElement {
+export function ProviderResponsibilityNotice(): ReactElement | null {
+  const [dismissed, setDismissed] = useState(readDismissed);
+  if (dismissed) return null;
   return (
     <aside
       className="provider-responsibility"
       aria-label="Provider billing, data sharing, and AI output responsibility"
     >
+      <button
+        type="button"
+        className="provider-responsibility-dismiss"
+        aria-label="Close this notice"
+        onClick={() => {
+          setDismissed(true);
+          rememberDismissed();
+        }}
+      >
+        <span aria-hidden>×</span>
+      </button>
       <strong>Before you connect</strong>
       <p>
         You provide the API keys or connected accounts, and those providers bill you directly under
