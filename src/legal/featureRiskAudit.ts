@@ -102,7 +102,6 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
     ],
   },
   board: { notice: 'generated', reviewed: ['AI output presentation'] },
-  focus: { notice: 'generated', reviewed: ['AI output presentation'] },
   ink: { notice: 'generated', reviewed: ['AI follow-up output'] },
   blanks: { notice: 'generated', reviewed: ['user-supplied values', 'AI calculations'] },
   'watch-me-think': { notice: 'voice-data', reviewed: ['speech transcription', 'nearby speakers'] },
