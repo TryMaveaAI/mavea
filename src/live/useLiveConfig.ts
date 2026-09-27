@@ -16,6 +16,7 @@ import {
   encryptSecret,
   decryptSecret,
   forgetVaultKeys,
+  vaultForgotten,
   DEVICE_FORGOTTEN_CHANNEL,
 } from './keyVault';
 import type { ModelConfig, ProviderId } from '../types/mavea';
@@ -264,10 +265,12 @@ export function getLiveConfigV2(): LiveConfigV2 {
   return memory;
 }
 
-function broadcast(cfg: LiveConfigV2): void {
+function broadcast(): void {
   try {
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-      window.dispatchEvent(new CustomEvent(STORAGE_KEY, { detail: cfg }));
+      // A bare signal, not the config: every listener re-reads getLiveConfigV2(), and an event
+      // carrying the keys is readable by any extension with access to this site.
+      window.dispatchEvent(new CustomEvent(STORAGE_KEY));
     }
   } catch {
     /* no window (test/SSR) */
@@ -413,7 +416,7 @@ async function hydrateSecrets(): Promise<void> {
         keys: { ...cur.keys, ...coerceMap(data.keys) },
         searchKeys: { ...cur.searchKeys, ...coerceSearchKeys(data.searchKeys) },
       };
-      broadcast(memory);
+      broadcast();
       reportSecretPersistence('persisted');
     }
   } catch {
@@ -445,7 +448,7 @@ export function setLiveConfigV2(patch: Partial<LiveConfigV2>): LiveConfigV2 {
       !next.rememberKey ? 'not-requested' : hasSecrets(next) ? 'session-only' : 'unavailable',
     );
   }
-  broadcast(next);
+  broadcast();
   return next;
 }
 
@@ -705,6 +708,10 @@ export function useLiveConfig(): [LiveConfigV2, (patch: Partial<LiveConfigV2>) =
         : new BroadcastChannel(DEVICE_FORGOTTEN_CHANNEL);
     if (forgotten) {
       forgotten.onmessage = () => {
+        // A BroadcastChannel also delivers to this tab's other channel objects, so the tab that
+        // ran the sweep hears its own announcement — and resetting here would write the default
+        // config back after the storage sweep. That tab is already leaving for the landing.
+        if (vaultForgotten()) return;
         forgetVaultKeys();
         resetLiveConfig();
         window.location.replace(window.location.pathname);
