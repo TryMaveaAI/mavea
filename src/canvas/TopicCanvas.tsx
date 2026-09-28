@@ -1476,6 +1476,7 @@ export function TopicCanvas({
                       fitHeight={fitted}
                       hold={!fitted}
                       governs
+                      onStage
                       minScale={boardScale}
                       diagramFloorPx={boardDiagramPx}
                       readingPx={

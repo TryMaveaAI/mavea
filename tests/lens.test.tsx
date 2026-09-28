@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
+import { FitBox } from '../src/canvas/layout/FitBox';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
 import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
@@ -164,6 +165,25 @@ describe('the Lens gesture', () => {
     Object.defineProperty(button, 'scrollWidth', { configurable: true, value: 140 });
     fireEvent.keyDown(button, { key: 'ArrowRight' });
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+  });
+
+  it('lays the card on stage out on its first frame, not a placeholder the sheet then outgrows', () => {
+    const { container } = mount();
+    // On the board a scrolled-away block may skip layout behind a 200px placeholder; the one
+    // card on the stage is never scrolled away, and a first frame at the placeholder grew the
+    // centred sheet a frame later and moved it on every open.
+    const board = render(
+      <FitBox>
+        <p>x</p>
+      </FitBox>,
+    );
+    expect(board.container.querySelector('.fit-box')!.getAttribute('style')).toMatch(
+      /content-visibility: auto/,
+    );
+    board.unmount();
+    cleanClick(cell0(container, 'a'));
+    const onStage = document.querySelector('.zoom-sheet .fit-box')!;
+    expect(onStage.getAttribute('style') ?? '').not.toMatch(/content-visibility/);
   });
 
   it('keeps magnification as a control ON the stage, not a second pill beside it', () => {

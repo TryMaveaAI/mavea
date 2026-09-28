@@ -173,6 +173,9 @@ export interface FitBoxProps {
   /** This box answers for the whole block's scale, so any FitBox nested inside it stands down.
    *  Two fits compounding is a picture drawn at a size no readout can state. */
   governs?: boolean;
+  /** The box is the one thing on a stage and never scrolled away (the Lens), so it is laid out
+   *  on its first frame rather than behind the off-screen placeholder. */
+  onStage?: boolean;
   /** Told the scale the fit settled on, whenever it changes — for a host that states it (the
    *  Lens's zoom readout) or carries it on (a magnification that starts where the fit left off). */
   onScale?: (k: number, fit: FitFacts) => void;
@@ -227,6 +230,7 @@ export function FitBox({
   minScale = 0,
   hold = false,
   governs = false,
+  onStage = false,
   onScale,
   diagramFloorPx,
   className,
@@ -481,8 +485,12 @@ export function FitBox({
       ref={host}
       className={'fit-box' + (className ? ' ' + className : '')}
       // content-visibility lets the browser skip a scrolled-away block entirely; the size
-      // hint keeps the scrollbar honest before the block has been laid out once.
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }}
+      // hint keeps the scrollbar honest before the block has been laid out once. A block on a
+      // stage is never scrolled away, and its first frame would paint at the 200px hint: a
+      // centred sheet around it grew a frame later and moved on every open.
+      style={
+        onStage ? undefined : { contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }
+      }
     >
       <div
         ref={inner}
