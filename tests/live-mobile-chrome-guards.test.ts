@@ -80,3 +80,32 @@ describe('the replay chrome makes room', () => {
     expect(rule(code, '.term-cmd-text')).toMatch(/flex:\s*1 1 \d+ch/);
   });
 });
+
+// A coarse-pointer block that comes BEFORE the base rule it overrides loses to it at equal
+// specificity, so each guard below also pins the override's position.
+const coarseAfter = (css: string, base: string, body: RegExp): boolean => {
+  const at = css.indexOf(`${base} {`);
+  const blocks = css.split('@media (pointer: coarse)').slice(1);
+  let offset = css.indexOf('@media (pointer: coarse)');
+  for (const block of blocks) {
+    if (offset > at && body.test(block.slice(0, block.indexOf('\n}') + 2))) return true;
+    offset = css.indexOf('@media (pointer: coarse)', offset + 1);
+  }
+  return false;
+};
+
+describe('legend rows are thumb-sized under a coarse pointer', () => {
+  it('gives each row the tap floor and spaces the rows apart', () => {
+    const css = read('src/canvas/blocks/charts1/styles.css');
+    expect(
+      coarseAfter(css, '.c1-legend-row', /\.c1-legend-row\s*\{\s*min-height:\s*var\(--tap-min\)/),
+    ).toBe(true);
+    expect(
+      coarseAfter(
+        css,
+        '.c1-radar-legend',
+        /\.c1-sun-legend,\s*\.c1-radar-legend\s*\{\s*gap:\s*6px/,
+      ),
+    ).toBe(true);
+  });
+});

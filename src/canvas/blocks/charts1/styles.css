@@ -165,6 +165,11 @@
     min-width: 44px;
     min-height: 44px;
   }
+  /* A legend row is a button (drill in, highlight, toggle a series): under a thumb it takes the
+     tap floor, and its list spaces the rows apart (below) so a thumb can choose between them. */
+  .c1-legend-row {
+    min-height: var(--tap-min);
+  }
 }
 .c1-crumb-sep {
   width: 13px;
@@ -243,6 +248,12 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+@media (pointer: coarse) {
+  .c1-sun-legend,
+  .c1-radar-legend {
+    gap: 6px;
+  }
 }
 
 /* responsive: stack legends under the chart on narrow cards */
