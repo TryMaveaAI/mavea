@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { niceDomain, scaleLinear } from '../../lib/scale';
-import { fitText } from '../../lib/fitText';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import { formatValue } from '../../lib/format';
 import { hasData } from '../../lib/empty';
 import { BlockEmpty } from '../../lib/BlockEmpty';
@@ -11,9 +11,21 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = LineBalanceProps & { delay?: number };
 
+function formatTakt(v: number, unit: string): string {
+  return formatValue(v, { unit: unit || undefined, decimals: 1 });
+}
+
 const W = 360;
 const H = 230;
-const PAD = { top: 16, right: 54, bottom: 34, left: 40 };
+const PAD = { top: 16, bottom: 34, left: 40 };
+// The right gutter holds the takt line's label. It is sized from that label, since a unit makes
+// it several times longer than a bare number ("Takt · 2.5 hours"), within these bounds.
+const PAD_R_MIN = 24;
+const PAD_R_MAX = W * 0.3;
+// .c2-lb-takt-lbl, in user units. It already sits at the library's floor, so a label too long
+// for the widest gutter wraps rather than shrinks.
+const TAKT_FS = 9;
+const TAKT_GAP = 4;
 // .cx-tick's clamp ceiling, in user units — the size the labels would like to be.
 const LABEL_FS = 9.5;
 // Gap between the axis line and the first line of station type.
@@ -51,7 +63,23 @@ export function LineBalance({
       };
     });
 
-    const innerW = W - PAD.left - PAD.right;
+    const taktText = taktValid ? `Takt · ${formatTakt(takt as number, unit)}` : '';
+    const padR = taktText
+      ? Math.min(
+          PAD_R_MAX,
+          Math.max(PAD_R_MIN, estimateTextWidth(taktText, TAKT_FS, true) + TAKT_GAP + 2),
+        )
+      : PAD_R_MIN;
+    const taktFit = taktText
+      ? fitText(taktText, {
+          maxWidth: padR - TAKT_GAP - 2,
+          fontSize: TAKT_FS,
+          minFontSize: TAKT_FS,
+          maxLines: 3,
+          bold: true,
+        })
+      : null;
+    const innerW = W - PAD.left - padR;
     const n = Math.max(1, list.length);
     const bandW = innerW / n;
 
@@ -73,8 +101,19 @@ export function LineBalance({
     const sy = scaleLinear([0, top], [innerH, 0]);
     const sx = (i: number) => i * bandW + bandW / 2;
 
-    return { list, labels, padB, innerW, innerH, sy, sx, bandW, yTicks: sy.ticks(4) };
-  }, [stations, takt, taktValid]);
+    return {
+      list,
+      labels,
+      taktLabel: taktFit,
+      padB,
+      innerW,
+      innerH,
+      sy,
+      sx,
+      bandW,
+      yTicks: sy.ticks(4),
+    };
+  }, [stations, takt, taktValid, unit]);
 
   if (!hasData(geom.list.map((s) => s.cycleTime))) {
     return (
@@ -91,7 +130,8 @@ export function LineBalance({
   }
 
   const yTakt = taktValid ? geom.sy(takt as number) : null;
-  const fmt = (v: number) => formatValue(v, { unit: unit || undefined, decimals: 1 });
+  const fmt = (v: number) => formatTakt(v, unit);
+  const { taktLabel } = geom;
 
   return (
     <div
@@ -176,9 +216,24 @@ export function LineBalance({
             {yTakt !== null && (
               <>
                 <line x1={0} y1={yTakt} x2={geom.innerW} y2={yTakt} className="c2-lb-takt" />
-                <text x={geom.innerW + 4} y={yTakt + 3} className="c2-lb-takt-lbl">
-                  Takt · {fmt(takt as number)}
-                </text>
+                {taktLabel && (
+                  <text
+                    x={geom.innerW + TAKT_GAP}
+                    y={yTakt + 3}
+                    className="c2-lb-takt-lbl"
+                    style={{ fontSize: taktLabel.fontSize }}
+                  >
+                    {taktLabel.lines.map((line, k) => (
+                      <tspan
+                        key={k}
+                        x={geom.innerW + TAKT_GAP}
+                        dy={k === 0 ? 0 : taktLabel.lineHeightPx}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                )}
               </>
             )}
 

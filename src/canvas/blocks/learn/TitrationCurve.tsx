@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { estimateTextWidth } from '../../lib/fitText';
 import { scaleLinear } from '../../lib/scale';
 import type { TitrationCurveProps, TitrationPoint } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -11,6 +12,9 @@ const W = 340;
 const H = 236;
 const PAD_L = 34;
 const PAD_R = 16;
+// .lr-tc-veq-label, in user units, and the gap between that label and its line.
+const VEQ_FS = 9;
+const VEQ_GAP = 4;
 const PAD_T = 16;
 const PAD_B = 30;
 
@@ -161,9 +165,7 @@ export function TitrationCurve({
                 y2={H - PAD_B}
                 className="lr-tc-veq-line"
               />
-              <text x={sx(veq) + 4} y={PAD_T + 10} className="lr-tc-veq-label">
-                Veq {veq} mL
-              </text>
+              <VeqLabel x={sx(veq)} text={`Veq ${veq} mL`} />
             </g>
           )}
 
@@ -224,5 +226,21 @@ export function TitrationCurve({
         />
       )}
     </div>
+  );
+}
+
+/** The equivalence-volume label reads to the right of its line, unless that would run it past
+ *  the viewBox (an equivalence point near the last reading): then it reads to the left. */
+function VeqLabel({ x, text }: { x: number; text: string }) {
+  const fitsRight = x + VEQ_GAP + estimateTextWidth(text, VEQ_FS, true) <= W;
+  return (
+    <text
+      x={fitsRight ? x + VEQ_GAP : x - VEQ_GAP}
+      y={PAD_T + 10}
+      className="lr-tc-veq-label"
+      textAnchor={fitsRight ? 'start' : 'end'}
+    >
+      {text}
+    </text>
   );
 }

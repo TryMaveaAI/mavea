@@ -1,10 +1,18 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import type { BumpChartProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = BumpChartProps & { delay?: number };
+
+// .c2-bump-name, in user units, and the floor a name may shrink to before it wraps.
+const NAME_FS = 10;
+const NAME_MIN_FS = 9;
+// Space between the last dot and its name, and kept clear at the viewBox edge.
+const NAME_GAP = 8;
+const EDGE_GAP = 2;
 
 const PALETTE = [
   'var(--presence)',
@@ -64,7 +72,20 @@ export function BumpChart({
     return last < bestLast ? i : best;
   }, 0);
   const padL = 16;
-  const padR = 96; // room for the right-hand name labels
+  // The right gutter holds the series names, so it is sized from the longest one (within a share
+  // of the chart that still leaves the ranks room to cross); a name longer than that wraps.
+  const longestName = Math.max(0, ...series.map((s) => estimateTextWidth(s.label, NAME_FS, true)));
+  const padR = Math.min(W * 0.4, Math.max(40, longestName + NAME_GAP + EDGE_GAP));
+  const names = series.map((s) =>
+    fitText(s.label, {
+      maxWidth: padR - NAME_GAP - EDGE_GAP,
+      fontSize: NAME_FS,
+      minFontSize: NAME_MIN_FS,
+      maxLines: 2,
+      bold: true,
+    }),
+  );
+  const nameBlockH = Math.max(0, ...names.map((f) => f.lines.length * f.lineHeightPx));
   const padY = 16;
   const rowH = 30;
   const H = padY * 2 + (maxRank - 1) * rowH;
@@ -74,7 +95,7 @@ export function BumpChart({
   // enough) at that rank, spread the label text apart instead of stacking it on one line.
   const labelY = spreadLabels(
     series.map((s) => y(s.ranks[s.ranks.length - 1] ?? 1)),
-    14,
+    Math.max(14, nameBlockH + 2),
     H - padY,
   );
 
@@ -133,13 +154,21 @@ export function BumpChart({
                   />
                 ))}
                 <text
-                  x={x(cols - 1) + 8}
-                  y={labelY[si] + 3.5}
+                  x={x(cols - 1) + NAME_GAP}
+                  y={labelY[si] + 3.5 - ((names[si].lines.length - 1) * names[si].lineHeightPx) / 2}
                   className="c2-bump-name"
                   fill={col}
-                  style={{ fontWeight: active ? 700 : 600 }}
+                  style={{ fontWeight: active ? 700 : 600, fontSize: names[si].fontSize }}
                 >
-                  {s.label}
+                  {names[si].lines.map((line, k) => (
+                    <tspan
+                      key={k}
+                      x={x(cols - 1) + NAME_GAP}
+                      dy={k === 0 ? 0 : names[si].lineHeightPx}
+                    >
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               </g>
             );
