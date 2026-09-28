@@ -1252,3 +1252,22 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
     );
   });
 });
+
+// A card can be as wide as the board — ~2,600px on an ultrawide window — and a one-card section's
+// takeaway was one ~2,000px line. The measure is set once, where every block's headline and
+// takeaway take their type, so no component has to remember it.
+describe('card prose — a reading measure however wide the card', () => {
+  const shared = read('src/styles/visualizations-extra.css');
+
+  it('caps the headline and the takeaway at one token, in ch', () => {
+    expect(read('src/styles/tokens-base.css')).toMatch(/--card-prose-measure:\s*\d+ch;/);
+    for (const sel of ['.insight-title', '.insight-summary']) {
+      const rule = new RegExp(`\\n\\${sel}\\s*\\{[^}]*\\}`).exec(shared)?.[0] ?? '';
+      expect(rule, sel).toMatch(/max-inline-size:\s*var\(--card-prose-measure\)/);
+    }
+  });
+
+  it('leaves the card itself, and the figures in it, the full width', () => {
+    expect(shared.match(/--card-prose-measure/g)).toHaveLength(2);
+  });
+});

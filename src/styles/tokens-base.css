@@ -282,6 +282,11 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
+  /* The longest line a card's prose may run: its headline and its takeaway. A card can be as wide
+     as the board, which on an ultrawide window is ~2,600px, and a sentence set across that is lost
+     between one line and the next. Charts, tables and figures keep the card's full width. It is in
+     ch, so it resolves against each line's own type size. */
+  --card-prose-measure: 80ch;
 
   /* --- motion --- */
   --m-instant: 80ms;
