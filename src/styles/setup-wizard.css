@@ -469,14 +469,14 @@
   text-transform: uppercase;
 }
 
-/* provider tiles — a fixed 5-column grid (one per VISIBLE_PROVIDERS entry) so every tile sits
+/* provider tiles — a fixed 4-column grid (one per VISIBLE_PROVIDERS entry) so every tile sits
    in a single uniform row instead of auto-fit wrapping the 5th into a lonely second row with
    three empty cells beside it. Narrow viewports fall back to wrapping (setup-wizard.css media
    query below) where an orphaned last tile reads as normal responsive wrap, not a layout bug. */
 .provider-tiles {
   display: grid;
   gap: var(--s-sm);
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .provider-tile {
   align-items: center;
@@ -1276,9 +1276,9 @@
   .voice-grid {
     max-width: none;
   }
-  /* Five fixed columns get too narrow to hold two lines of label text on a phone-
-     width screen — wrap normally here instead; three-then-two reads as ordinary responsive
-     wrap, not the lonely-orphan layout bug the fixed 5-column grid fixes at desktop width. */
+  /* Fixed columns get too narrow to hold two lines of label text on a phone-width screen —
+     wrap normally here instead; it reads as ordinary responsive wrap, not the lonely-orphan
+     layout bug the fixed grid fixes at desktop width. */
   .provider-tiles {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   }

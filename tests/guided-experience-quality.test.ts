@@ -18,9 +18,11 @@ describe('guided experience quality', () => {
     const connect = TOUR.find((chapter) => chapter.id === 'connect');
     expect(connect?.action.kind).toBe('connect');
     expect(connect?.spotlight).toBe('.settings-model-connect');
-    for (const provider of ['Gemini', 'Claude', 'GPT', 'Grok', 'OpenRouter']) {
+    for (const provider of ['Gemini', 'Claude', 'GPT', 'Grok']) {
       expect(connect?.coach).toContain(provider);
     }
+    // The tour names only what the Connect step offers.
+    expect(connect?.coach).not.toContain('OpenRouter');
     expect(connect?.coach).toContain('your own API key');
     expect(connect?.coach).toContain('fast, lower cost model');
     expect(connect?.coach).toContain('key stays in memory unless you choose Remember');

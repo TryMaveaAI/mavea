@@ -31,7 +31,7 @@ npx @mavea/mavea@latest
 
 Opens `http://localhost:4173` — no install, no account, no model key required.
 
-<sub>Runs locally · Your own API key · OpenAI, Claude, Gemini, Grok, OpenRouter</sub>
+<sub>Runs locally · Your own API key · OpenAI, Claude, Gemini, Grok</sub>
 
 <!-- The images above the fold use the published CDN copy like the mascot does: npm's registry page
      cannot resolve a repo-relative path, and a stranger meeting Mavéa on npm has to see the thing
@@ -64,7 +64,7 @@ than fetching a newer one, so asking for `latest` is what reliably gets you the 
 Prefer a pinned local copy? `npm install -g @mavea/mavea`, then run `mavea`.
 
 **To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
-Gemini / Grok / OpenRouter key. Model usage is billed by that provider under your key, at its
+Gemini / Grok key. Model usage is billed by that provider under your key, at its
 rates — the model call is the part of a turn that costs money; the app and the speech services
 run on your machine. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that

@@ -18,7 +18,7 @@ export function ThinkStep(): ReactElement {
       ? "Answers from the model's own knowledge — no web calls."
       : caps.nativeWebSearch
         ? 'Grounds fresh asks in live web results with citations, only when a question needs it.'
-        : "This model has no built-in search, so Real-time won't ground anything right now. The four direct providers support it; on OpenRouter it depends on the selected model. Pick a search-capable model or leave this off.";
+        : "This model has no built-in search, so Real-time won't ground anything right now. Pick a search-capable model or leave this off.";
 
   return (
     <div className="step-body">

@@ -48,13 +48,12 @@ quotas, and charges apply.
 Live is bring-your-own-key across five hosted providers. Defaults are deliberately the fast,
 low-cost tier — the model field accepts any id, so stronger models are always one paste away:
 
-| Provider   | Default model             | Notes                                                                                         |
-| ---------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; the only suggestion — type any other id                               |
-| Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; the only suggestion — type any other id                               |
-| OpenAI     | `gpt-5.6-luna`            | Cheapest tier OpenAI sells, with a 1M window; the only suggestion                             |
-| Grok       | `grok-4.3`                | Fast, low-cost default; the only suggestion — type any other id                               |
-| OpenRouter | _(none — paste your own)_ | One key, hundreds of models; Mavéa suggests none — paste a `vendor/model` id from the catalog |
+| Provider  | Default model           | Notes                                                             |
+| --------- | ----------------------- | ----------------------------------------------------------------- |
+| Anthropic | `claude-haiku-4-5`      | Fast, low-cost default; the only suggestion — type any other id   |
+| Gemini    | `gemini-3.1-flash-lite` | Fast, low-cost default; the only suggestion — type any other id   |
+| OpenAI    | `gpt-5.6-luna`          | Cheapest tier OpenAI sells, with a 1M window; the only suggestion |
+| Grok      | `grok-4.3`              | Fast, low-cost default; the only suggestion — type any other id   |
 
 Each provider tile in the Connect step links to where you get a key, and the readiness strip
 verifies the key + model before you commit.
@@ -65,14 +64,6 @@ timeout. Some preview and reasoning models do exactly that: they reply with a pl
 plain prose, or spend their whole completion budget thinking and emit nothing at all. When that
 happens Mavéa says so on the card rather than blaming the moment, because retrying the same model
 gets the same result. Pick one that supports JSON mode.
-
-**A note on OpenRouter's `:free`-suffixed routes.** A route carrying that suffix is a separate,
-heavily rate-limited pool that queues behind everyone else on it — it is not the model of the same
-name without the suffix. Mavéa recognises the suffix and adapts rather than pretending otherwise:
-it asks for a smaller canvas and a shorter menu so the answer fits in the time the route actually
-has, waits longer before giving up, and if the stream is still cut off it keeps the blocks that
-arrived and labels the answer as cut short instead of discarding it. Expect a slower turn and fewer
-blocks than the same question on the unsuffixed route; the model picker says so when you type one.
 
 ---
 
@@ -133,7 +124,7 @@ flowchart TD
         WH["Whisper STT :8100\n(started by dev/preview)"]
     end
     subgraph hosted ["Hosted providers (BYOK)"]
-        AN["Anthropic · OpenAI\nGemini · Grok · OpenRouter"]
+        AN["Anthropic · OpenAI\nGemini · Grok"]
     end
     APP -->|/tts| KO
     APP -->|/stt| WH
