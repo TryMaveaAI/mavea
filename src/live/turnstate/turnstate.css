@@ -130,7 +130,7 @@
 /* The working state shares the answer canvas's centered column so skeletons + the streaming cue
    line up with the cards above, never orphaned against the viewport edge. */
 .live-voice .working-col {
-  max-width: var(--canvas-col-max);
+  max-width: var(--live-content-max);
   margin-inline: auto;
 }
 /* The skeleton vocabulary itself (.skel-grid/.skel-card/.skel-eyebrow/.skel-line + the

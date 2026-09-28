@@ -9,6 +9,9 @@
 .mavea-app.live-voice {
   /* the ink-tinted hairline the boards use between sections (theme-correct via tokens) */
   --hairline-ink: color-mix(in oklab, var(--text-primary) 12%, transparent);
+  /* The ONE width of the Live page: the board, its chrome and the dock rows all centre on it.
+     side-rail.css widens it to two reading columns on an ultrawide window; read it, never
+     --canvas-col-max, for anything that has to line up with the board. */
   --live-content-max: var(--canvas-col-max);
 }
 
@@ -639,7 +642,7 @@
   min-height: var(--dock-min-h);
   /* Horizontal padding matches the content column's inset (canvas-stage 26px, which rides
      --vp-scale, + canvas-scroll 6px, which does not) so the capsule's edges line up with the cards
-     at EVERY width — not just the wide screens where the shared --canvas-col-max cap binds. Below
+     at EVERY width — not just the wide screens where the shared --live-content-max cap binds. Below
      that cap both fall back to their parent's width, and only equal insets keep them aligned. Keep
      this expression in sync with the stage/scroll pads. */
   padding: 10px calc(26px * var(--vp-scale) + 6px);
@@ -672,7 +675,7 @@
     gap: 5px;
   }
 }
-/* Every dock row shares ONE centered column — the same --canvas-col-max the answer grid and the
+/* Every dock row shares ONE centered column — the same --live-content-max the answer grid and the
    composer capsule use — so the pinned-element chips, the attach strip, the listening badges, and
    the quick-follow-up buttons all line up under the composer instead of stranding at the far-left
    edge on wide screens. One shared rule = the rows can never drift out of alignment with each other
@@ -682,7 +685,7 @@
 .live-voice .dock-main > *,
 .live-voice .dock-main > .composer-passthrough > .composer {
   width: 100%;
-  max-width: var(--canvas-col-max);
+  max-width: var(--live-content-max);
   margin-inline: auto;
 }
 .live-voice .dock-hint {
@@ -1329,13 +1332,15 @@
 /* ── One alignment axis for the answer page ──────────────────────────────────
    The scroll viewport is slightly wider than the card grid. Keep every primary
    answer surface on the same centered measure as the cards, so the hero, voice
-   scrubber, canvas controls, and footer read as one column. */
+   scrubber, canvas controls, the understood chips, the finish bar and the footer
+   read as one column. */
 .mavea-app.live-voice .answer-hero,
 .mavea-app.live-voice .voice-scrub,
 .mavea-app.live-voice .canvas-header,
 .mavea-app.live-voice .context-row,
 .mavea-app.live-voice .answer-footer,
 .mavea-app.live-voice .understood,
+.mavea-app.live-voice .blank-complete-bar,
 .mavea-app.live-voice .ask-hint {
   box-sizing: border-box;
   width: 100%;

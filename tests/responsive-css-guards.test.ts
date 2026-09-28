@@ -1176,15 +1176,71 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
     );
   });
 
-  it('widens only the sectioned board, never the shared answer measure', () => {
-    expect(wide).toMatch(
-      /\.with-rail \.card-grid:has\(> \.depth-section ~ \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
+  it('gives the page ONE width, widened on the window alone and capped at two columns', () => {
+    // The width may not switch on the answer's shape: a width keyed on the section count widened
+    // the board alone, and would change the page's width from one turn to the next.
+    expect(rail).not.toMatch(/:has\([^{]*\{[^}]*--live-content-max\s*:/);
+    const token = /\.mavea-app\.live-voice\.with-rail\s*\{([^}]*)\}/.exec(wide)?.[1] ?? '';
+    expect(token).toMatch(/--board-col-max:\s*1280px/);
+    expect(token).toMatch(
+      /--live-content-max:\s*calc\(2 \* var\(--board-col-max\) \+ var\(--board-col-gap\)\)/,
     );
-    expect(wide).toMatch(
-      /\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section ~ \.depth-section\)/,
-    );
+    // Nothing in the rung states a width of its own: the board reaches it only through the token.
+    expect(wide).not.toMatch(/max-width/);
+    // Below the rung the token is the single column the rest of the app uses.
     expect(read('src/styles/tokens-base.css')).toMatch(
       /--canvas-col-max: clamp\(1280px, 84vw, 1640px\)/,
+    );
+  });
+
+  it('holds the board’s chrome on the same token, so the edges cannot part', () => {
+    // Measured at 2560x1305: the board ran 2247px wide while the scrubber, the view pills, the
+    // disclaimer and the composer stayed at 1640px, centred — 303px short of it on each side. On a
+    // ~3400px window the lone first section then sat in the board's left half while the chips,
+    // Keep going, the disclaimer and the composer hung centred beside it, half a column to the right.
+    const ruleFor = (css: string, sel: string): string =>
+      new RegExp(
+        `(?:^|\\n|,\\s*)${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^{]*\\{[^}]*\\}`,
+      ).exec(css)?.[0] ?? '';
+    const voice = read('src/live/voice/voice.css');
+    expect(voice).toMatch(
+      /\.mavea-app\.live-voice\s*\{[^}]*--live-content-max:\s*var\(--canvas-col-max\)/,
+    );
+    // The scroll viewport the board sits in, and the board itself — sectioned or not.
+    expect(ruleFor(rail, '.with-rail .canvas-scroll')).toMatch(
+      /max-width:\s*calc\(var\(--live-content-max\) \+ 52px \* var\(--vp-scale\)\)/,
+    );
+    expect(ruleFor(rail, '.with-rail .canvas-scroll .card-grid')).toMatch(
+      /max-width:\s*var\(--live-content-max\)/,
+    );
+    // Hero, voice scrubber, canvas controls (the view pills), the understood chips, and the footer
+    // (Keep going, See all N moments, the disclaimer).
+    const column =
+      /(?:\.mavea-app\.live-voice \.[\w-]+,\s*)+\.mavea-app\.live-voice \.[\w-]+\s*\{[^}]*\}/.exec(
+        voice.slice(voice.indexOf('One alignment axis')),
+      )?.[0] ?? '';
+    for (const sel of [
+      '.answer-hero',
+      '.voice-scrub',
+      '.canvas-header',
+      '.understood',
+      '.blank-complete-bar',
+      '.answer-footer',
+    ]) {
+      expect(column, `${sel} must share the answer column`).toContain(`.live-voice ${sel}`);
+    }
+    expect(column).toMatch(/max-width:\s*var\(--live-content-max\)/);
+    // Keep going and the moments chip ride the footer's box rather than a width of their own.
+    const footer = read('src/live/voice/AnswerFooter.tsx');
+    expect(footer).toMatch(/className=\{'answer-footer'/);
+    expect(footer).toContain('Keep going');
+    // Every dock row: the spoken-line strip and composer capsule, the ink bar, pins, attachments.
+    expect(ruleFor(voice, '.live-voice .dock-main > *')).toMatch(
+      /max-width:\s*var\(--live-content-max\)/,
+    );
+    // The skeletons a turn streams into stand where its board will.
+    expect(ruleFor(read('src/live/turnstate/turnstate.css'), '.live-voice .working-col')).toMatch(
+      /max-width:\s*var\(--live-content-max\)/,
     );
   });
 });
