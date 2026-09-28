@@ -53,17 +53,23 @@ describe('placeSections', () => {
 });
 
 describe('flushSections', () => {
-  it('grows each column’s last section so both columns end on one line', () => {
+  it('shares the short column’s slack across its sections so both columns end on one line', () => {
     const places = placeSections([900, 200, 300, 250], 40);
-    const grow = flushSections(places);
-    const bottom = (i: number) => places[i].row - 1 + places[i].span + grow[i];
-    // Left: 900. Right: 200 + 40 + 300 + 40 + 250 = 830, so its last section takes the 70.
-    expect(grow).toEqual([0, 0, 0, 70]);
+    const flush = flushSections(places);
+    const bottom = (i: number) => flush[i].row - 1 + places[i].span + flush[i].grow;
+    // Left: 900. Right: 200 + 40 + 300 + 40 + 250 = 830, so its three sections share the 70.
+    expect(flush.map((f) => f.grow)).toEqual([0, 18, 28, 24]);
     expect(bottom(0)).toBe(bottom(3));
+    // Each section moves down by what the ones above it grew, so the gutters stay 40.
+    expect(flush[2].row).toBe(bottom(1) + 40 + 1);
+    expect(flush[3].row).toBe(bottom(2) + 40 + 1);
   });
 
   it('leaves columns that already end together alone', () => {
-    expect(flushSections(placeSections([300, 300], 20))).toEqual([0, 0]);
+    expect(flushSections(placeSections([300, 300], 20))).toEqual([
+      { row: 1, grow: 0 },
+      { row: 1, grow: 0 },
+    ]);
   });
 });
 
@@ -227,9 +233,11 @@ describe('useSectionMasonry', () => {
     expect(placed(getByTestId('s0')).col).toBe('1');
     expect(placed(getByTestId('s1')).col).toBe('7');
     // The third drops under the short second, not into a new row under the tall first, and the
-    // right column's last section grows to end level with the left one.
+    // right column's two sections share the growth to end level with the left one: 400 of slack,
+    // 160 to the 200-tall second, which pushes the third down by that much.
     expect(placed(getByTestId('s2')).col).toBe('7');
-    expect(placed(getByTestId('s2')).row).toBe('201');
+    expect(placed(getByTestId('s1')).span).toBe('360');
+    expect(placed(getByTestId('s2')).row).toBe('361');
     expect(Number(placed(getByTestId('s2')).row) - 1 + Number(placed(getByTestId('s2')).span)).toBe(
       900,
     );

@@ -10,7 +10,8 @@
 // reading order, each at the highest spot that fits it.
 //
 // Placement first, stretch last: once every box is as high as it can go, what space is left under
-// a box (nothing below it in its columns could use it) goes to that box, so the board has no holes
+// a box (nothing below it in its columns could use it) goes to that box, and a short column's
+// slack is shared across its sections, so the board has no holes
 // and a card's content stays top-anchored in the taller cell, exactly as a row-mate is today.
 //
 // The hook writes custom properties per box and one attribute per grid; only Live's sheet reads
@@ -52,18 +53,40 @@ export function placeSections(heights: readonly number[], gap: number): SectionP
   });
 }
 
-/** How far each column's last section must grow for both columns to end on the same line. */
-export function flushSections(places: readonly SectionPlacement[]): number[] {
+/**
+ * How far each section grows, and how far down it moves, for both columns to end on the same line.
+ * The shorter column's slack is shared across its sections in proportion to their heights, so no
+ * single card ends up holding the whole difference as blank space. Pure, for the tests.
+ */
+export function flushSections(
+  places: readonly SectionPlacement[],
+): { row: number; grow: number }[] {
   const bottoms = [0, 0];
-  const last = [-1, -1];
-  places.forEach((p, i) => {
+  const heights = [0, 0];
+  places.forEach((p) => {
     bottoms[p.column] = Math.max(bottoms[p.column], p.row - 1 + p.span);
-    last[p.column] = i;
+    heights[p.column] += p.span;
   });
-  const grow = places.map(() => 0);
   const floor = Math.max(bottoms[0], bottoms[1]);
-  for (const c of [0, 1]) if (last[c] >= 0) grow[last[c]] = floor - bottoms[c];
-  return grow;
+  const given = [0, 0];
+  const shift = [0, 0];
+  const count = [0, 0];
+  places.forEach((p) => count[p.column]++);
+  const seen = [0, 0];
+  return places.map((p) => {
+    const c = p.column;
+    const slack = floor - bottoms[c];
+    seen[c]++;
+    // Whole pixels, since rows are 1px lines; the column's last section takes the rounding.
+    const grow =
+      seen[c] === count[c]
+        ? slack - given[c]
+        : Math.floor((slack * p.span) / Math.max(1, heights[c]));
+    const row = p.row + shift[c];
+    given[c] += grow;
+    shift[c] += grow;
+    return { row, grow };
+  });
 }
 
 export interface CellPlacement {
@@ -228,20 +251,21 @@ function layout(grid: HTMLElement): void {
     sections.map((s) => s.offsetHeight),
     gap,
   );
-  const grow = flushSections(places);
+  const flush = flushSections(places);
   sections.forEach((s, i) => {
     const p = places[i];
+    const { row, grow } = flush[i];
     s.style.setProperty('--masonry-col', p.column === 0 ? '1' : '7');
-    s.style.setProperty('--masonry-row', String(p.row));
-    s.style.setProperty('--masonry-span', String(p.span + grow[i]));
-    if (grow[i] <= 0) return;
-    // The column's last section takes up the difference, through its cards when it has them.
+    s.style.setProperty('--masonry-row', String(row));
+    s.style.setProperty('--masonry-span', String(p.span + grow));
+    if (grow <= 0) return;
+    // A section takes its share of the column's slack through its cards when it has them.
     const input = cellInput[i];
     const pack = packs[i];
     if (input && pack) {
-      writeCells(pack.grid, pack.cells, packCells(input.cells, input.gap, grow[i]));
+      writeCells(pack.grid, pack.cells, packCells(input.cells, input.gap, grow));
     } else {
-      s.style.setProperty(FILL, `${p.span + grow[i]}px`);
+      s.style.setProperty(FILL, `${p.span + grow}px`);
     }
   });
   grid.setAttribute('data-masonry', '');
