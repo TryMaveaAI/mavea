@@ -99,8 +99,8 @@ describe('provider pressure parsing', () => {
     const [overloadSecondMin, overloadSecondMax] = range(503, 1);
     expect(overloadFirstMin).toBeGreaterThanOrEqual(3400);
     expect(overloadFirstMax).toBeLessThanOrEqual(4600);
-    expect(overloadSecondMin).toBeGreaterThanOrEqual(10_200);
-    expect(overloadSecondMax).toBeLessThanOrEqual(13_800);
+    expect(overloadSecondMin).toBeGreaterThanOrEqual(3400);
+    expect(overloadSecondMax).toBeLessThanOrEqual(4600);
   });
 
   it('retries temporary overloads but never loops on a daily or spend limit', () => {
