@@ -23,8 +23,10 @@ export interface UseAttachments {
   setTurnHadFiles: Dispatch<SetStateAction<boolean>>;
   /** Encode picked files into staged attachments, enforcing the guards and surfacing rejections.
    *  Resolves to what was ACTUALLY staged, so a caller that picked files for a purpose can act on
-   *  them straight away rather than waiting a render for `attached` to catch up. */
-  onFiles: (files: File[]) => Promise<Attachment[]>;
+   *  them straight away rather than waiting a render for `attached` to catch up. `replace` swaps
+   *  them in for everything staged, for a control that says it chooses a different file; when
+   *  nothing is accepted the staged files stay, so a refused pick never empties the strip. */
+  onFiles: (files: File[], opts?: { replace?: boolean }) => Promise<Attachment[]>;
   /** Drop a staged attachment by index. */
   removeAttachment: (idx: number) => void;
 }
@@ -38,9 +40,10 @@ export function useAttachments(): UseAttachments {
   // Encode picked files into staged attachments, enforcing the count/size/type guards and
   // surfacing the first rejection reason so a too-large or unsupported file isn't silent.
   const onFiles = useCallback(
-    async (files: File[]): Promise<Attachment[]> => {
+    async (files: File[], opts?: { replace?: boolean }): Promise<Attachment[]> => {
       setAttachError(null);
-      const room = MAX_ATTACHMENTS - attached.length;
+      const replace = opts?.replace ?? false;
+      const room = MAX_ATTACHMENTS - (replace ? 0 : attached.length);
       if (room <= 0) {
         setAttachError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
         return [];
@@ -64,7 +67,7 @@ export function useAttachments(): UseAttachments {
         }
       }
       if (files.length > room) rejected = `Only the first ${room} file(s) were added.`;
-      if (next.length) setAttached((cur) => [...cur, ...next]);
+      if (next.length) setAttached((cur) => (replace ? next : [...cur, ...next]));
       if (rejected) setAttachError(rejected);
       return next;
     },

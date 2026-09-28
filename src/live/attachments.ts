@@ -125,6 +125,24 @@ export function explodeRoute(sources: number): ExplodeRoute {
   return sources === 3 ? 'choose' : 'prism';
 }
 
+/** The staged files a map can be made from on this model (`docs`: Office and text/data files are
+ *  read locally, a PDF or a picture only by a model that can see), and the ones Synthesis can read
+ *  (`readable`: no pictures), whose count picks the route. Every door counts through this, because
+ *  two doors counting different sets is how the same files opened a choice in one place and
+ *  nothing in the other. */
+export interface ExplodeSources {
+  docs: Attachment[];
+  readable: Attachment[];
+}
+export function explodeSources(files: readonly Attachment[], vision: boolean): ExplodeSources {
+  const docs = files.filter((a) => explodableOn(a, vision));
+  return { docs, readable: docs.filter((a) => !isImage(a)) };
+}
+/** One file's half of `explodeSources`, for the per-chip Explode. */
+export function explodableOn(a: Attachment, vision: boolean): boolean {
+  return isOffice(a) || isText(a) || (vision && (isPdf(a) || isImage(a)));
+}
+
 /** A coarse kind the SELECTOR reasons over — an attached spreadsheet/CSV is a tabular medium the
  *  answer should ground in a table, a PDF is a document, an image may be a receipt/screenshot. Used
  *  (via generateLive) to steer component selection toward the right base for what the user uploaded,

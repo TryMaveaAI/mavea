@@ -2,11 +2,11 @@
 // places (the dock's attach strip, and the setup wizard's staged strip, which stands in for the dock
 // the wizard hides), and both must follow the same count rule `#/synthesis` does, so it lives once.
 import { useEffect, useRef, type ReactElement } from 'react';
-import { explodeRoute } from '../attachments';
+import { explodeRoute, type ExplodeSources } from '../attachments';
 
 interface Props {
-  /** How many sources Synthesis could read — the count the route is decided on. */
-  count: number;
+  /** What Prism can compare and Synthesis can read, from `explodeSources`: the one count rule. */
+  sources: ExplodeSources;
   onCompare: () => void;
   onSynthesize: () => void;
   /** A door that asked the reader to choose (⌘K, the launcher) hands them straight to the
@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function ExplodeChoice({
-  count,
+  sources,
   onCompare,
   onSynthesize,
   focusRequested,
@@ -30,8 +30,10 @@ export function ExplodeChoice({
     onFocusHandled?.();
   }, [focusRequested, onFocusHandled]);
 
-  if (count <= 1) return null;
-  const route = explodeRoute(count);
+  const compare = sources.docs.length;
+  const synthesize = sources.readable.length;
+  if (compare <= 1) return null;
+  const route = explodeRoute(synthesize);
   return (
     <>
       {route !== 'synthesis' && (
@@ -39,11 +41,11 @@ export function ExplodeChoice({
           ref={first}
           type="button"
           className="attach-explode attach-compare"
-          aria-label={`Compare ${count} documents — map their claims and find where they agree and contradict`}
+          aria-label={`Compare ${compare} documents — map their claims and find where they agree and contradict`}
           title="Explode all documents together and compare them"
           onClick={onCompare}
         >
-          ⊹ Compare {count} documents
+          ⊹ Compare {compare} documents
         </button>
       )}
       {route !== 'prism' && (
@@ -51,11 +53,11 @@ export function ExplodeChoice({
           ref={route === 'synthesis' ? first : undefined}
           type="button"
           className="attach-explode attach-compare"
-          aria-label={`Synthesize ${count} sources — fuse them into one map of themes, contradictions, and gaps`}
+          aria-label={`Synthesize ${synthesize} sources — fuse them into one map of themes, contradictions, and gaps`}
           title="Fuse all sources into one navigable Synthesis World"
           onClick={onSynthesize}
         >
-          ⊹ Synthesize {count} sources
+          ⊹ Synthesize {synthesize} sources
         </button>
       )}
     </>

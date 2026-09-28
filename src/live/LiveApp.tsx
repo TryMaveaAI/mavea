@@ -154,11 +154,9 @@ import { providerInfo, getAdapter } from './providers';
 import {
   attachmentLabel,
   isImage,
-  isPdf,
-  isOffice,
-  isText,
-  isExplodable,
+  explodableOn,
   explodeRoute,
+  explodeSources,
   ACCEPTED_TYPES,
   type Attachment,
 } from './attachments';
@@ -810,16 +808,20 @@ export function LiveApp(): ReactElement {
   // no right answer to pick for the reader, so the Compare / Synthesize choice takes focus instead.
   const [explodeAsk, setExplodeAsk] = useState(false);
   const clearExplodeAsk = useCallback(() => setExplodeAsk(false), []);
-  const openExplode = useCallback((docs: Attachment[]) => {
-    // Prism reads a picture (mapClaims routes it down the vision path); a Synthesis corpus does not
-    // — mapCorpus extracts text and would hand a PNG to the PDF reader. So a pile counts only the
-    // sources Synthesis can actually read when deciding which surface opens.
-    const corpusReadable = docs.filter((d) => !isImage(d));
-    const route = explodeRoute(corpusReadable.length);
-    if (route === 'synthesis') setSynthesis(corpusReadable);
-    else if (route === 'choose') setExplodeAsk(true);
-    else if (docs.length > 0) setPrismDocs(docs);
-  }, []);
+  const visionCaps = getAdapter(cfg.provider).capabilities.vision;
+  // Every door (⌘K, the launcher card, the wizard's picker) hands over the files as staged and
+  // counts them through `explodeSources`, the same set both strips count, so a choice asked for
+  // here is always a choice a strip is showing.
+  const openExplode = useCallback(
+    (files: readonly Attachment[]) => {
+      const { docs, readable } = explodeSources(files, visionCaps);
+      const route = explodeRoute(readable.length);
+      if (route === 'synthesis') setSynthesis(readable);
+      else if (route === 'choose') setExplodeAsk(true);
+      else if (docs.length > 0) setPrismDocs(docs);
+    },
+    [visionCaps],
+  );
   // Ripple — the code/ship companion. Null = closed; a ShipModel = the open overlay. For now it
   // opens the worked example; real ingestion (paste a diff / connect a repo) lands in a later pass.
   const [ripple, setRipple] = useState<ShipModel | null>(null);
@@ -3902,8 +3904,6 @@ export function LiveApp(): ReactElement {
   // Whether the connected model can actually see a file. Images/PDFs only reach a
   // vision-capable provider as real parts; without it, attaching is disabled (the model
   // would only get a text note — surfaced honestly in the tooltip rather than silently).
-  const visionCaps = getAdapter(cfg.provider).capabilities.vision;
-
   // Share-to-Mavéa: paste or drop a link / screenshot ANYWHERE on the surface and it becomes
   // a fact-check intake — a shared link prefills the claim-check ask; an image stages as an
   // attachment with the same ask. Text fields are left completely alone (normal paste).
@@ -5075,15 +5075,14 @@ export function LiveApp(): ReactElement {
       preload: atlasViewLoad.preload,
     },
     'pdf-world': {
-      available: attached.some(isExplodable),
+      available: explodeSources(attached, visionCaps).docs.length > 0,
       reason:
         'Attach a PDF, Office doc, image, or data file (CSV, text, JSON) to split it into a map',
       run: () => {
         // Explode every attached document together — a few compare in Prism, a pile fuses into the
         // Synthesis World (openExplode routes by count).
-        const docs = attached.filter(isExplodable);
-        if (docs.length > 0) {
-          openExplode(docs);
+        if (explodeSources(attached, visionCaps).docs.length > 0) {
+          openExplode(attached);
           return;
         }
         // Invoked from the palette / Explore menu with nothing to split yet: don't no-op. Point the
@@ -5102,12 +5101,12 @@ export function LiveApp(): ReactElement {
       // The explicit-intent version of the attach-strip's own Synthesis button: fuse the attached
       // pile if there are ≥2, else open the upload-first standalone surface so it's never a no-op.
       run: () => {
-        const docs = attached.filter(isExplodable);
-        if (docs.length >= 2) setSynthesis(docs);
+        const { readable } = explodeSources(attached, visionCaps);
+        if (readable.length >= 2) setSynthesis(readable);
         else window.location.hash = '#/synthesis';
       },
       preload: () =>
-        attached.filter(isExplodable).length >= 2
+        explodeSources(attached, visionCaps).readable.length >= 2
           ? synthesisOverlayLoad.preload()
           : warmRoute('#/synthesis'),
     },
@@ -5329,6 +5328,12 @@ export function LiveApp(): ReactElement {
   // a document picked to be split should be replaced by another to split, and a file picked to be
   // asked about by another to ask about.
   const wizardPickedVia = useRef<'attach' | 'prism'>('prism');
+  // Whether the pick in flight replaces what is staged: "Choose a different file" says it does.
+  const wizardReplace = useRef(false);
+  const wizardPick = (via: 'attach' | 'prism', replace: boolean): void => {
+    wizardReplace.current = replace;
+    (via === 'attach' ? wizardAttachRef : wizardFileRef).current?.click();
+  };
 
   // The Go hub's "ways to begin". Built from paletteItems so availability, the "why not yet"
   // reason and the preload are the SAME resolution the ⌘K palette uses — the registry is meant to
@@ -5350,14 +5355,14 @@ export function LiveApp(): ReactElement {
         // Nothing staged: the card IS the picker, since its palette action points at the paperclip
         // — the one control the wizard hides. Something staged: it names that document and opens
         // it. See prismRow for why the naming is the fix, not a flourish.
-        const staged = attached.filter(isExplodable);
-        const row = prismRow(staged, staged.filter((d) => !isImage(d)).length);
+        const { docs, readable } = explodeSources(attached, visionCaps);
+        const row = prismRow(docs, readable.length);
         return {
           feature: it.feature,
           available: true,
           blurb: row.blurb,
           preload: it.preload,
-          run: row.opensPicker ? () => wizardFileRef.current?.click() : () => openExplode(staged),
+          run: row.opensPicker ? () => wizardPick('prism', false) : () => openExplode(attached),
         };
       }
       return {
@@ -6146,7 +6151,7 @@ export function LiveApp(): ReactElement {
                 {/* PDFs and pictures need a model that can see them; Word/PowerPoint/Excel and
                     plain-text/data files (CSV, TXT, Markdown, JSON, code) are extracted client-side
                     as text, so they explode on any model. */}
-                {(((isPdf(a) || isImage(a)) && visionCaps) || isOffice(a) || isText(a)) && (
+                {explodableOn(a, visionCaps) && (
                   <button
                     type="button"
                     className="attach-explode"
@@ -6168,16 +6173,14 @@ export function LiveApp(): ReactElement {
               </span>
             ))}
             {(() => {
-              // Explodable here = Office + text/data files (any model) + PDFs when the model reads docs.
-              const docs = attached.filter(
-                (a) => isOffice(a) || isText(a) || (isPdf(a) && visionCaps),
-              );
+              const sources = explodeSources(attached, visionCaps);
               return (
                 <ExplodeChoice
-                  count={docs.length}
-                  onCompare={() => setPrismDocs(docs)}
-                  onSynthesize={() => setSynthesis(docs)}
-                  focusRequested={explodeAsk}
+                  sources={sources}
+                  onCompare={() => setPrismDocs(sources.docs)}
+                  onSynthesize={() => setSynthesis(sources.readable)}
+                  // The wizard hides this strip, so its request belongs to the wizard's own strip.
+                  focusRequested={explodeAsk && !inWizard}
                   onFocusHandled={clearExplodeAsk}
                 />
               );
@@ -6869,7 +6872,7 @@ export function LiveApp(): ReactElement {
             // The composer's own paperclip. The Prism card's picker opens the map; this one stages
             // a file to ride the first question, for the reader who wants to ASK about a document
             // rather than split it — a door the wizard did not have, since it hides the dock.
-            onAttach={() => wizardAttachRef.current?.click()}
+            onAttach={() => wizardPick('attach', false)}
             attachTitle={
               visionCaps
                 ? 'Attach an image or PDF to ask about'
@@ -6902,7 +6905,7 @@ export function LiveApp(): ReactElement {
                     e.target.value = '';
                     if (!files.length) return;
                     wizardPickedVia.current = 'attach';
-                    void onFiles(files);
+                    void onFiles(files, { replace: wizardReplace.current });
                   }}
                 />
                 <input
@@ -6916,9 +6919,10 @@ export function LiveApp(): ReactElement {
                     e.target.value = ''; // re-picking the same file must fire again
                     if (!files.length) return;
                     wizardPickedVia.current = 'prism';
-                    void onFiles(files).then((staged) => {
-                      const docs = staged.filter(isExplodable);
-                      if (docs.length) openExplode(docs);
+                    const replace = wizardReplace.current;
+                    void onFiles(files, { replace }).then((staged) => {
+                      // Route on everything now staged, the set the strip below counts.
+                      if (staged.length) openExplode(replace ? staged : [...attached, ...staged]);
                     });
                   }}
                 />
@@ -6946,14 +6950,13 @@ export function LiveApp(): ReactElement {
                     {(() => {
                       // The wizard hides the dock's attach strip, so three staged documents need
                       // their choice here, or the launcher's Prism card would have nowhere to ask.
-                      const docs = attached.filter(isExplodable);
-                      const readable = docs.filter((d) => !isImage(d));
-                      if (explodeRoute(readable.length) !== 'choose') return null;
+                      const sources = explodeSources(attached, visionCaps);
+                      if (explodeRoute(sources.readable.length) !== 'choose') return null;
                       return (
                         <ExplodeChoice
-                          count={readable.length}
-                          onCompare={() => setPrismDocs(docs)}
-                          onSynthesize={() => setSynthesis(readable)}
+                          sources={sources}
+                          onCompare={() => setPrismDocs(sources.docs)}
+                          onSynthesize={() => setSynthesis(sources.readable)}
                           focusRequested={explodeAsk}
                           onFocusHandled={clearExplodeAsk}
                         />
@@ -6962,12 +6965,7 @@ export function LiveApp(): ReactElement {
                     <button
                       type="button"
                       className="start-with-another"
-                      onClick={() =>
-                        (wizardPickedVia.current === 'attach'
-                          ? wizardAttachRef
-                          : wizardFileRef
-                        ).current?.click()
-                      }
+                      onClick={() => wizardPick(wizardPickedVia.current, true)}
                     >
                       Choose a different file
                     </button>
