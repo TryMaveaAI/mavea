@@ -136,6 +136,8 @@ export const PROVIDERS: ProviderInfo[] = [
     keyUrl: 'https://openrouter.ai/keys',
     hint: 'One key, 100s of models — paste any model id.',
     search: 'native', // openrouter:web_search server tool (model-driven)
+    // Off the pickers for now; a saved OpenRouter config keeps working.
+    hidden: true,
   },
 ];
 

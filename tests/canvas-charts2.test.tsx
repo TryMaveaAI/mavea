@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, fireEvent } from '@testing-library/react';
@@ -14,6 +14,7 @@ import { DualAxis } from '../src/canvas/blocks/charts2/DualAxis';
 import { EcgStrip } from '../src/canvas/blocks/charts2/EcgStrip';
 import { ErrorBars } from '../src/canvas/blocks/charts2/ErrorBars';
 import { Gantt } from '../src/canvas/blocks/charts2/Gantt';
+import { LineBalance } from '../src/canvas/blocks/charts2/LineBalance';
 import { IndifferenceCurve } from '../src/canvas/blocks/charts2/IndifferenceCurve';
 import { PayoffDiagram } from '../src/canvas/blocks/charts2/PayoffDiagram';
 import { Plot } from '../src/canvas/blocks/charts2/Plot';
@@ -145,22 +146,38 @@ describe('AreaRange', () => {
     }));
   }
 
-  it('positions the tooltip per-point without spilling past the plot at high density', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Regression coverage: the read-out was centred on its point with translateX(-50%), so at the
+  // first and last points half of it hung past the plot and the card clipped it. jsdom has no
+  // layout, so the plot and tip widths are stubbed; the component measures and clamps from them.
+  it('keeps the tooltip inside the plot at every point, including both ends', () => {
+    const PLOT_W = 300;
+    const TIP_W = 120;
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(PLOT_W);
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(TIP_W);
     const n = 24; // well beyond the 7-day demo fixture
-    const { container } = render(<AreaRange title="Range" points={points(n)} />);
+    const { container } = render(<AreaRange title="Range" unit="hours" points={points(n)} />);
     const cols = Array.from(container.querySelectorAll('svg > g'));
     expect(cols).toHaveLength(n);
 
-    // Hover every point; the tooltip's `left` percentage must land inside [0, 100] so it never
-    // renders centered outside the plot's own coordinate space.
-    for (const col of cols) {
+    const lefts = cols.map((col) => {
       fireEvent.mouseEnter(col);
-      const tip = container.querySelector<HTMLElement>('.c2-ar-tip');
-      expect(tip).toBeTruthy();
-      const left = parseFloat(tip!.style.left);
+      const tip = container.querySelector<HTMLElement>('.c2-ar-tip')!;
+      expect(tip.style.left).toMatch(/px$/);
+      expect(tip.style.transform).toBe('none');
+      return parseFloat(tip.style.left);
+    });
+    for (const left of lefts) {
       expect(left).toBeGreaterThanOrEqual(0);
-      expect(left).toBeLessThanOrEqual(100);
+      expect(left + TIP_W).toBeLessThanOrEqual(PLOT_W);
     }
+    // Both ends are pinned to the plot's edges; the points between still track their x.
+    expect(lefts[0]).toBe(0);
+    expect(lefts[n - 1]).toBe(PLOT_W - TIP_W);
+    expect(lefts[n / 2]).toBeGreaterThan(lefts[n / 2 - 1]);
   });
 
   it('keeps the full label in the DOM (as text) even with a name far longer than the demo fixture', () => {
@@ -1431,12 +1448,39 @@ describe('Slopegraph', () => {
     }
   });
 
-  it('gives a long row label more room than the 46%-wide value column needs', () => {
-    const { container } = render(<Slopegraph title="Change" rows={rows(2, true)} />);
-    const label = container.querySelector<HTMLElement>('.c2-slope-lbl.l');
-    expect(label).toBeTruthy();
-    const maxWidthPct = Number.parseFloat(label!.style.maxWidth);
-    expect(maxWidthPct).toBeGreaterThan(46);
+  // The reported bug: the value gutters were a fixed 12.5% of a 320-unit viewBox, tuned for bare
+  // numbers, so "2.5 hours" drew over the end dots and ran off the card. The gutters are now grid
+  // columns that take their width from the labels themselves; the geometry is checked in a real
+  // browser by the UI audit, and this pins the structure that makes it hold.
+  it('gives each value its own content-sized gutter instead of drawing it over the plot', () => {
+    const { container } = render(
+      <Slopegraph
+        title="Nightly screen time"
+        unit="hours"
+        rows={[
+          { label: 'Weeknights', before: 4, after: 2.5 },
+          { label: 'Weekends', before: 3, after: 0.5 },
+        ]}
+      />,
+    );
+    const chart = container.querySelector<HTMLElement>('.c2-slope')!;
+    const right = Array.from(chart.querySelectorAll<HTMLElement>('.c2-slope-lbl.r'));
+    // The figure and its unit arrive whole and joined the way a person writes them.
+    expect(right.map((el) => el.textContent)).toEqual(['2.5\u00a0hours', '0.5\u00a0hours']);
+    // Labels, dots and the SVG are all siblings in the grid; none is positioned into the plot.
+    for (const el of chart.querySelectorAll<HTMLElement>('.c2-slope-lbl, .c2-slope-dot')) {
+      expect(el.parentElement).toBe(chart);
+      expect(el.style.left).toBe('');
+      expect(el.style.right).toBe('');
+    }
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/charts2/styles.css'), 'utf8');
+    const rule = (sel: string) => css.match(new RegExp(`\\${sel} \\{([^}]*)\\}`))?.[1] ?? '';
+    expect(rule('.c2-slope')).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+    expect(rule('.c2-slope-svg')).toMatch(/grid-area:\s*1 \/ 2/);
+    // Each gutter is capped against the chart's own width, so a long label cannot squeeze the
+    // slopes out; it ellipsises (names) or wraps between words (units) instead.
+    expect(rule('.c2-slope-lbl.l')).toMatch(/max-width:\s*\d+cqi/);
+    expect(rule('.c2-slope-lbl.r')).toMatch(/max-width:\s*\d+cqi/);
   });
 });
 
@@ -1526,6 +1570,156 @@ describe('TernaryPlot', () => {
         expect(x - half).toBeGreaterThanOrEqual(0);
         expect(x + half).toBeLessThanOrEqual(W);
       }
+    }
+  });
+});
+
+// Regression coverage for the fixed-gutter idiom: each of these charts reserved an edge gutter
+// sized for a bare number or a short name, so a unit-bearing value ("2.5 hours"), a large figure
+// ("2,000,000") or a real team name ran past the viewBox and was clipped at the card edge.
+describe('edge labels stay inside the viewBox', () => {
+  function viewWidth(svg: Element): number {
+    return Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+  }
+  /** The horizontal extent of a <text>/<tspan> run, from its anchor and estimated width. */
+  function span(el: Element, text: string, fs: number, bold: boolean) {
+    const x = Number(el.getAttribute('x'));
+    const w = estimateTextWidth(text, fs, bold);
+    const anchor = el.closest('text')?.getAttribute('text-anchor') ?? 'start';
+    const left = anchor === 'end' ? x - w : anchor === 'middle' ? x - w / 2 : x;
+    return { left, right: left + w };
+  }
+  const stations = [
+    { name: 'Panel cut + edge-band', cycleTime: 2.1 },
+    { name: 'Dowel + glue-up', cycleTime: 2.3 },
+    { name: 'Clamp + cure', cycleTime: 1.9 },
+    { name: 'Hardware install', cycleTime: 2.9 },
+    { name: 'Inspect + pack', cycleTime: 1.6 },
+  ];
+
+  it('LineBalance stacks a unit-bearing takt label inside its gutter', () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    const svg = container.querySelector('svg.c2-lb-svg')!;
+    // The plot is translated by its left padding, so read the offset off the group.
+    const dx = Number(
+      /translate\(([\d.]+)/.exec(svg.querySelector('g')!.getAttribute('transform')!)![1],
+    );
+    const lines = Array.from(svg.querySelectorAll('.c2-lb-takt-lbl tspan'));
+    expect(lines.map((t) => t.textContent)).toEqual([
+      'Takt',
+      expect.stringMatching(/^2\.5\shours$/),
+    ]);
+    for (const t of lines) {
+      const { right } = span(t, t.textContent ?? '', 9, true);
+      expect(dx + right).toBeLessThanOrEqual(viewWidth(svg));
+    }
+  });
+
+  it('LineBalance keeps station names whole beside a unit-bearing takt', () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    // A band squeezed by the takt gutter breaks names mid-word ("Hardwar" / "e"); every line
+    // must end on a word boundary, so rejoining the lines recovers the name exactly.
+    const names = Array.from(container.querySelectorAll('text.cx-tick'))
+      .map((el) => Array.from(el.querySelectorAll('tspan')).map((t) => t.textContent ?? ''))
+      .filter((ls) => ls.length > 0)
+      .map((ls) => ls.join(' '));
+    expect(names).toEqual(stations.map((s) => s.name));
+  });
+
+  it("LineBalance lifts a full-height bar's bottleneck flag above the bar", () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    const flag = container.querySelector('text.c2-lb-flag')!;
+    const bar = container.querySelector('rect.c2-lb-bar-warn')!;
+    expect(Number(flag.getAttribute('y'))).toBeLessThan(Number(bar.getAttribute('y')));
+  });
+
+  it('BumpChart sizes its name gutter for long names', () => {
+    const series: BumpSeries[] = [
+      { label: 'Oklahoma City Thunder', ranks: [2, 1, 1] },
+      { label: 'Denver Nuggets', ranks: [1, 2, 2] },
+      { label: 'Los Angeles Lakers', ranks: [3, 3, 3] },
+    ];
+    const { container } = render(
+      <BumpChart title="Standings" periods={['Jan', 'Feb', 'Mar']} series={series} />,
+    );
+    const svg = container.querySelector('svg.c2-bump-svg')!;
+    for (const name of container.querySelectorAll<SVGTextElement>('text.c2-bump-name')) {
+      const fs = Number.parseFloat(name.style.fontSize);
+      expect(fs).toBeGreaterThanOrEqual(9);
+      for (const t of name.querySelectorAll('tspan')) {
+        expect(span(t, t.textContent ?? '', fs, true).right).toBeLessThanOrEqual(viewWidth(svg));
+      }
+    }
+  });
+
+  it('DualAxis sizes both tick gutters for large figures', () => {
+    const { container } = render(
+      <DualAxis
+        title="Revenue vs. users"
+        categories={['Q1', 'Q2', 'Q3', 'Q4']}
+        bar={{ name: 'Revenue', data: [1250000, 1480000, 1720000, 1990000] }}
+        line={{ name: 'Users', data: [12500, 14100, 16800, 19950] }}
+      />,
+    );
+    const svg = container.querySelector('svg.c2-da-svg')!;
+    const ticks = Array.from(svg.querySelectorAll('text.cx-tick')).filter((t) =>
+      /\d,\d{3}/.test(t.textContent ?? ''),
+    );
+    expect(ticks.map((t) => t.textContent)).toContain('2,000,000');
+    for (const t of ticks) {
+      const { left, right } = span(t, t.textContent ?? '', 9.5, false);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(viewWidth(svg));
+    }
+  });
+});
+
+// Regression coverage: the line-balance read-out was a fixed 60-unit box pinned 30 units in from
+// the plot's edges, so a unit-bearing value ("2.9 hours") overflowed the box, and over a bar that
+// reached the top of the domain the box was pushed above the viewBox.
+describe('LineBalance hover read-out', () => {
+  it('sizes the read-out from its value and keeps it inside the viewBox over every bar', () => {
+    const { container } = render(
+      <LineBalance
+        title="Balance"
+        takt={2.5}
+        unit="hours"
+        stations={[
+          { name: 'Cut', cycleTime: 2.95 },
+          { name: 'Sand', cycleTime: 2.3 },
+          { name: 'Paint', cycleTime: 1.2 },
+          { name: 'Pack', cycleTime: 2.99 },
+        ]}
+      />,
+    );
+    const svg = container.querySelector('svg.c2-lb-svg')!;
+    const [, , vbW, vbH] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    const [dx, dy] = /translate\(([\d.]+),([\d.]+)\)/
+      .exec(svg.querySelector('g')!.getAttribute('transform')!)!
+      .slice(1)
+      .map(Number);
+    const bars = Array.from(container.querySelectorAll('rect.c2-lb-bar'));
+    expect(bars).toHaveLength(4);
+    for (const bar of bars) {
+      fireEvent.mouseEnter(bar);
+      const box = container.querySelector('rect.c2-lb-tip-bg')!;
+      const text = container.querySelector('text.c2-lb-tip-val')!.textContent ?? '';
+      expect(text).toMatch(/hours$/);
+      const x = Number(box.getAttribute('x')) + dx;
+      const y = Number(box.getAttribute('y')) + dy;
+      const w = Number(box.getAttribute('width'));
+      const h = Number(box.getAttribute('height'));
+      expect(w).toBeGreaterThanOrEqual(estimateTextWidth(text, 10.5, true));
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x + w).toBeLessThanOrEqual(vbW);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y + h).toBeLessThanOrEqual(vbH);
     }
   });
 });

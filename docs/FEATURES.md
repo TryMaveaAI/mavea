@@ -168,15 +168,14 @@ index, or open the **Explore** menu in Live's top bar.
 
 ## Reach & trust
 
-- 🔌 **Bring your own model** — Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok behind one
+- 🔌 **Bring your own model** — Anthropic, OpenAI, Gemini, or xAI Grok behind one
   adapter. Keys stay in memory by default; optional remembering encrypts them locally. Requests
   carry the key and prompt through your deployment's same-origin proxy to the chosen provider. The
   proxy operator can access them in transit; provider privacy, retention, and usage-charge terms
   apply. The Connect step offers fast, lower-cost defaults where available; step up only when a task
   needs it.
 - 🔎 **Search the web when it helps — your choice, your cost** — off, or **Real-time**: the
-  provider's own cited web search, fired only on asks that need fresh information (on OpenRouter it
-  depends on the model you pick).
+  provider's own cited web search, fired only on asks that need fresh information.
 - 🧾 **Share-to-Mavéa, the receipts machine** — paste or drop a link or screenshot onto the Live
   canvas (not into the composer) and the claim-check ask is ready: what's true, what's shaky, what's
   missing context, grounded in real sources.

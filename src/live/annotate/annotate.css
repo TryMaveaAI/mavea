@@ -397,7 +397,7 @@
   gap: 8px;
   flex-wrap: wrap;
   width: 100%;
-  max-width: var(--canvas-col-max);
+  max-width: var(--live-content-max);
   margin-inline: auto;
 }
 

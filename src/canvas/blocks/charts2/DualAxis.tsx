@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { extent, niceDomain, scaleLinear } from '../../lib/scale';
+import { estimateTextWidth } from '../../lib/fitText';
 import { formatValue } from '../../lib/format';
 import { Legend } from '../../lib/axis';
 import type { DualAxisProps } from './types';
@@ -11,10 +12,14 @@ type Props = DualAxisProps & { delay?: number };
 
 const W = 320;
 const H = 210;
-// Right padding is a touch wider than the left so a wide formatted right-axis tick (e.g. a
-// 3-digit percentage) never presses against the viewBox edge; bottom padding grows when
-// category labels rotate (see ROTATE_AT below) to keep the rotated text inside the frame.
-const PAD = { l: 32, r: 38, t: 14, b: 28 };
+// The side gutters hold the two axes' tick labels, so each is sized from its own widest label
+// (a revenue axis reads "1,500,000", not "15") within these bounds. TICK_FS is .cx-tick's
+// ceiling in user units, the largest the labels can render.
+const PAD = { t: 14, b: 28 };
+const PAD_X_MIN = 24;
+const PAD_X_MAX = W * 0.22;
+const TICK_FS = 9.5;
+const TICK_GAP = 4;
 const PAD_B_ROTATED = 40;
 // Past this many categories, the fixed-width band the demo fixture (4 items) was tuned for
 // gets too narrow for horizontal labels to avoid colliding with their neighbors — rotate them
@@ -55,15 +60,29 @@ export function DualAxis({
     const le = extent(line.data);
     const [, bTop] = niceDomain(0, be ? Math.max(be[1], 0) : 1);
     const [lLo, lHi] = niceDomain(le ? le[0] : 0, le ? le[1] : 1);
-    const sxBand = (i: number) =>
-      PAD.l + ((i + 0.5) / Math.max(1, categories.length)) * (W - PAD.l - PAD.r);
     const syL = scaleLinear([0, bTop], [H - padB, PAD.t]); // left (bars)
     const syR = scaleLinear([lLo, lHi], [H - padB, PAD.t]); // right (line)
-    return { sxBand, syL, syR, bTop, lTicks: syR.ticks(4), bTicks: syL.ticks(4) };
+    const bTicks = syL.ticks(4);
+    const lTicks = syR.ticks(4);
+    const gutter = (ticks: number[]) =>
+      Math.min(
+        PAD_X_MAX,
+        Math.max(
+          PAD_X_MIN,
+          TICK_GAP +
+            2 +
+            Math.max(0, ...ticks.map((t) => estimateTextWidth(formatValue(t), TICK_FS))),
+        ),
+      );
+    const padL = gutter(bTicks);
+    const padR = gutter(lTicks);
+    const plotW = W - padL - padR;
+    const sxBand = (i: number) => padL + ((i + 0.5) / Math.max(1, categories.length)) * plotW;
+    const bandW = (plotW / Math.max(1, categories.length)) * 0.5;
+    return { sxBand, syL, syR, bTicks, lTicks, padL, padR, bandW };
   }, [bar.data, line.data, categories.length, padB]);
 
-  const { sxBand, syL, syR, bTicks, lTicks } = geom;
-  const bandW = ((W - PAD.l - PAD.r) / Math.max(1, categories.length)) * 0.5;
+  const { sxBand, syL, syR, bTicks, lTicks, padL, padR, bandW } = geom;
   const linePts = line.data.map((v, i) => `${sxBand(i)},${syR(v)}`).join(' ');
 
   // The tallest bar is the most prominent shape.
@@ -82,8 +101,8 @@ export function DualAxis({
           {/* left-axis gridlines + ticks (bars) */}
           {bTicks.map((t, i) => (
             <g key={`l${i}`}>
-              <line x1={PAD.l} y1={syL(t)} x2={W - PAD.r} y2={syL(t)} className="cx-grid-l" />
-              <text x={PAD.l - 4} y={syL(t) + 3} className="cx-tick" textAnchor="end">
+              <line x1={padL} y1={syL(t)} x2={W - padR} y2={syL(t)} className="cx-grid-l" />
+              <text x={padL - TICK_GAP} y={syL(t) + 3} className="cx-tick" textAnchor="end">
                 {formatValue(t)}
               </text>
             </g>
@@ -92,7 +111,7 @@ export function DualAxis({
           {lTicks.map((t, i) => (
             <text
               key={`r${i}`}
-              x={W - PAD.r + 4}
+              x={W - padR + TICK_GAP}
               y={syR(t) + 3}
               className="cx-tick"
               textAnchor="start"

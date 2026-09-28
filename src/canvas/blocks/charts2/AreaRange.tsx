@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { extent, niceDomain } from '../../lib/scale';
@@ -20,6 +20,12 @@ export function AreaRange({
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
   const [hot, setHot] = useState<number | null>(null);
+  const plotRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  // Where the read-out actually sits, in px from the plot's left edge. Centring it on the point
+  // pushes half of it past the plot at either end, where the card clips it, so it is measured and
+  // slid back inside once it has laid out (before paint, so it never flashes at the edge).
+  const [tipLeft, setTipLeft] = useState<{ i: number; px: number } | null>(null);
   const fmt = (v: number) => formatValue(v, { unit: unit || undefined });
 
   // A nice y-domain (rounded out) so the band has headroom and the axis carries real labels,
@@ -50,6 +56,17 @@ export function AreaRange({
     .join(' ');
   const bandPath = `${top} ${bot}`;
   const line = points.map((p, i) => `${px(i)},${py(p.value)}`).join(' ');
+  const hotX = hot == null ? null : px(hot);
+
+  useLayoutEffect(() => {
+    const plot = plotRef.current;
+    const tip = tipRef.current;
+    if (hot == null || hotX == null || !plot || !tip) return;
+    const boxW = plot.clientWidth;
+    const tipW = tip.offsetWidth;
+    const centred = (hotX / W) * boxW - tipW / 2;
+    setTipLeft({ i: hot, px: Math.max(0, Math.min(boxW - tipW, centred)) });
+  }, [hot, hotX]);
 
   return (
     <div
@@ -70,7 +87,7 @@ export function AreaRange({
               </span>
             ))}
         </div>
-        <div className="c2-ar" onMouseLeave={() => setHot(null)}>
+        <div className="c2-ar" ref={plotRef} onMouseLeave={() => setHot(null)}>
           <svg
             role="img"
             aria-label={title}
@@ -134,7 +151,15 @@ export function AreaRange({
             })}
           </svg>
           {hot != null && (
-            <div className="c2-ar-tip" style={{ left: `${px(hot)}%` }}>
+            <div
+              ref={tipRef}
+              className="c2-ar-tip"
+              style={
+                tipLeft?.i === hot
+                  ? { left: `${tipLeft.px}px`, transform: 'none' }
+                  : { left: `${hotX}%` }
+              }
+            >
               <b>{points[hot].label}</b>
               <span className="tab-num mono" style={{ color }}>
                 {fmt(points[hot].value)}

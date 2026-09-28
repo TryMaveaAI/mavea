@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Icon } from '../../icons/icons';
+import './copy.css';
 
 interface Props {
   text: string;
@@ -14,12 +15,19 @@ interface Props {
  */
 export function CopyButton({ text, className = '', label = 'Copy' }: Props) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    // A refused write (no permission, insecure context) leaves the button as it was.
+    navigator.clipboard?.writeText(text).then(
+      () => {
+        setCopied(true);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 2000);
+      },
+      () => {},
+    );
   }, [text]);
 
   const Ic = copied ? Icon.check : Icon.copy;

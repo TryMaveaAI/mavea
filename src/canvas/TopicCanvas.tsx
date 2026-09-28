@@ -71,6 +71,7 @@ import {
   useState,
 } from 'react';
 import { useResponsiveGrid } from './hooks/useResponsiveGrid';
+import { useSectionMasonry } from './depth/useSectionMasonry';
 import { useAccessibleScrollRegions } from './hooks/useAccessibleScrollRegions';
 import { useTruncatedTextDisclosures } from './hooks/useTruncatedTextDisclosures';
 import './layout/hscroll.css';
@@ -785,10 +786,16 @@ export function TopicCanvas({
   // can drop out later (unrenderable) — and every flip re-parents each mounted card between
   // SectionGroup and the plain grid: a full remount that replays every entrance. Latch
   // sticky-true per answer instead: once an answer has shown sections it stays sectioned until
-  // a new data.id re-decides. Guarded render-phase set, so the latch lands in the same pass.
+  // the next answer re-decides. Keyed on the answer epoch too, because a live spec's id is the
+  // constant 'live' — on the id alone, one sectioned answer left every later one sectioned.
+  // Guarded render-phase set, so the latch lands in the same pass.
+  const sectionKey = `${data.id}#${studyAnswerEpoch ?? ''}`;
   const [sectionedAnswer, setSectionedAnswer] = useState<string | null>(null);
-  if (sectionedAnswer !== data.id && hasSections(displayBlocks)) setSectionedAnswer(data.id);
-  const useSections = sectionedAnswer === data.id;
+  if (sectionedAnswer !== sectionKey && hasSections(displayBlocks)) setSectionedAnswer(sectionKey);
+  const useSections = sectionedAnswer === sectionKey;
+  // The takeovers unmount the grid, so the flag includes them: coming back re-attaches the packing
+  // to the grid element that is mounted then.
+  useSectionMasonry(gridRef, useSections && sections.length >= 2 && !inStudy && !canvasView);
   // The "Expand/Collapse sections" toggle only does anything when a section actually has a "Go
   // deeper" drawer to open — otherwise it's a no-op that confuses. Show it only then.
   const hasDeeper = sections.some((s) => s.deeper.length > 0);
@@ -1257,8 +1264,10 @@ export function TopicCanvas({
           filled so far. It sticks to the bottom of the canvas (CSS) so it stays in view however far
           the user has scrolled — the finish action is never stranded below the fold. Lives here (not
           LiveApp) so the whole affordance ships in one place; present only in Live, where blankFill
-          + a complete handler are wired. */}
+          + a complete handler are wired. The Study walks an answer rather than finishing it, so
+          the bar stays on the board. */}
       {data.awaiting &&
+        !inStudy &&
         blankFill?.complete &&
         (() => {
           const filledCount = Object.keys(blankFill.values).length;

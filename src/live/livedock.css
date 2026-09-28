@@ -60,7 +60,7 @@
 .live-voice .voice-capsule {
   /* Width + centring now come from the shared `.dock-main > *` rule (voice.css), which aligns the
      capsule with the answer column AND with every other dock row (pin dock, attach strip, badges)
-     off the one --canvas-col-max token — so the input can never drift out of line with the cards
+     off the one --live-content-max token — so the input can never drift out of line with the cards
      above it or the chips beside it. Only the capsule's own chrome lives here. */
   border-radius: 22px;
   background: var(--surface-elevated);

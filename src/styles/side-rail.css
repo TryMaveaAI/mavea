@@ -102,32 +102,45 @@
 }
 /* Keep the canvas column a centered, bounded width within the post-rail stage. The allowance is
    the stage's own two 26px side pads, which ride --vp-scale, so the column still caps at exactly
-   --canvas-col-max. */
+   the answer column, --live-content-max. */
 .with-rail .canvas-scroll {
-  max-width: calc(var(--canvas-col-max) + 52px * var(--vp-scale));
+  max-width: calc(var(--live-content-max) + 52px * var(--vp-scale));
   margin-inline: auto;
   width: 100%;
 }
-/* On an ultrawide window a sectioned answer was one 1640px column with a third of the screen
-   empty either side. From the 2560 rung its sections go two abreast, in reading order — left to
-   right, then down — which is also DOM, tab and walk order, so the narration and the spotlight
-   step through them in the order the eye does. Each half is about the desktop measure the blocks
-   are built for, so the column holds two of it plus the gutter. Pairing needs a partner: a
-   one-section answer keeps its single column, and a trailing odd section stays in the left cell,
-   so a section streaming in never makes the one before it jump. Only the board's own sectioned grid widens — the dock, the Study and every other
-   surface keep --canvas-col-max — and it lives in Live's sheet so no other route carries it. */
+/* The Live page has ONE width. The board, the hero, the voice scrubber, the canvas controls, the
+   footer, the working skeletons and every dock row all read --live-content-max (voice.css), at
+   every window size and whatever the answer's shape, so no edge can part from another and the
+   page never changes width from one turn to the next. A width that switched on the answer's
+   section count once widened the board alone and left the chrome a narrower strip above and
+   below it. The shared grid rule caps a card-grid at --canvas-col-max, so the board says so here.
+   The Study and the Lens are takeovers with their own frames. */
+.with-rail .canvas-scroll .card-grid {
+  max-width: var(--live-content-max);
+}
+/* On an ultrawide window the single column left a third of the screen empty either side. From the
+   2560 rung the column is two reading columns of at most --board-col-max plus the gutter, and
+   past that the space goes to the margins: a line of sight much wider than ~2,600px is more
+   travel than reading. A sectioned answer sets its sections two abreast, in reading order — left
+   to right, then down — which is also DOM, tab and walk order, so the narration and the spotlight
+   step through them in the order the eye does. A trailing odd section stays in the left cell, so
+   a section streaming in never makes the one before it jump. It lives in Live's sheet so no other
+   route carries it. */
 @media (width >= 2560px) {
-  .with-rail {
+  .mavea-app.live-voice.with-rail {
     --board-col-gap: clamp(32px, 1.6vw, 64px);
-    --board-wide-max: calc(2 * var(--canvas-col-max) + var(--board-col-gap));
+    --board-col-max: 1280px;
+    --live-content-max: calc(2 * var(--board-col-max) + var(--board-col-gap));
   }
 
-  .with-rail .canvas-scroll:has(.card-grid > .depth-section ~ .depth-section) {
-    max-width: calc(var(--board-wide-max) + 52px * var(--vp-scale));
+  /* The Study is a desk at a reading size, not a board: while it is up the page takes the single
+     column again, so the hero, the controls, the footer and the dock line up with the desk. It is
+     a view the reader opens and closes, not a turn, so a new answer still never moves the page. */
+  .mavea-app.live-voice.with-rail:has(.study-stage) {
+    --live-content-max: var(--canvas-col-max);
   }
 
   .with-rail .card-grid:has(> .depth-section ~ .depth-section) {
-    max-width: var(--board-wide-max);
     column-gap: var(--board-col-gap);
     align-items: start;
   }
@@ -136,6 +149,33 @@
      second arrives — accepted: a one-time reflow, not a jump back and forth. */
   .with-rail .card-grid:has(> .depth-section ~ .depth-section) > .depth-section {
     grid-column: span 6;
+  }
+
+  /* Paired row by row, a tall section left a hole under the short one beside it. Once measured
+     (useSectionMasonry), the board and each section's own card grid become grids of 1px rows:
+     a section spans its own height in whichever column was shorter when its turn came, a card
+     takes the highest spot its width fits, and whatever space nothing else can use goes to the
+     box above it (--masonry-fill), so both columns end on one line with no hole in either. The
+     gap between boxes is left as empty rows. The selectors carry the app's classes because a
+     template's `:root[data-template] .card-grid` gap would otherwise outrank the zero row gap
+     and turn every 1px row into a gap-tall one. */
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] {
+    grid-auto-rows: 1px;
+    row-gap: 0;
+  }
+
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] > .depth-section {
+    grid-column: var(--masonry-col) / span 6;
+    grid-row: var(--masonry-row) / span var(--masonry-span);
+    align-self: start;
+    min-block-size: var(--masonry-fill, auto);
+  }
+
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] > [class*='col-'] {
+    grid-column: var(--masonry-col) / span var(--masonry-tracks);
+    grid-row: var(--masonry-row) / span var(--masonry-span);
+    align-self: start;
+    min-block-size: var(--masonry-fill, auto);
   }
 }
 .with-rail .presence-stage {

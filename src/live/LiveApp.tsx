@@ -6712,7 +6712,9 @@ export function LiveApp(): ReactElement {
                           fill: turn.fill,
                           unfill: turn.unfill,
                           activate: turn.setActiveBlank,
-                          complete: turn.complete,
+                          // Completing is a model call, so a replay (which never spends) offers
+                          // no finish; its blanks stay fillable as a demonstration.
+                          complete: modelCallsAllowed ? turn.complete : undefined,
                           busy: turn.busy,
                         }
                       : undefined

@@ -92,7 +92,7 @@ const CORE_TOUR: readonly TourChapter[] = [
     title: 'Bring your own model',
     mode: 'explain',
     coach:
-      "Choose Gemini, Claude, GPT, Grok, or OpenRouter, then paste your own API key. Start with a fast, lower cost model and move up only when a task needs it. The key stays in memory unless you choose Remember. Requests pass through this deployment, and your provider's usage charges, privacy, and retention terms apply.",
+      "Choose Gemini, Claude, GPT or Grok, then paste your own API key. Start with a fast, lower cost model and move up only when a task needs it. The key stays in memory unless you choose Remember. Requests pass through this deployment, and your provider's usage charges, privacy, and retention terms apply.",
     spotlight: '.settings-model-connect',
     action: { kind: 'connect' },
     durationMs: 12000,
