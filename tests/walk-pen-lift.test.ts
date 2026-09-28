@@ -81,7 +81,7 @@ describe('awaitPenLift', () => {
     expect(done()).toBe(true);
   });
 
-  it('withdraws its wait on a pending mark when the ceiling passes or the walk is cancelled', async () => {
+  it('withdraws its wait on a pending mark at the ceiling or on cancel', async () => {
     // A mark whose card never lands keeps its registration for ever; a wait left on it would pile
     // up one closure per stop until something unrelated happened to place.
     const waits: AbortSignal[] = [];
