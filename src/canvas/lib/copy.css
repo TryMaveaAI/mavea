@@ -1,0 +1,29 @@
+/* The shared copy button. It ships with CopyButton itself rather than with one family's sheet:
+ * families load lazily, so a card from any other family drew it as a bare, iconless browser box. */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.copy-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+}
+.copy-btn.copied {
+  color: var(--insight);
+  border-color: var(--insight);
+}
+.copy-btn .ic {
+  width: 14px;
+  height: 14px;
+}
