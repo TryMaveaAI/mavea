@@ -61,11 +61,11 @@ export function isInMotion(host: HTMLElement): boolean {
  *  A card still entering can hold a mark back for longer than any fixed guess, so anything that
  *  must not cut the pen off (the walk, a replay step) waits on THIS, not on a timer. */
 const pendingInk = new Map<string, number>();
-let pendingWaiters: (() => void)[] = [];
+const pendingWaiters = new Set<() => void>();
 
 function notifyPending(): void {
-  const waiters = pendingWaiters;
-  pendingWaiters = [];
+  const waiters = [...pendingWaiters];
+  pendingWaiters.clear();
   for (const w of waiters) w();
 }
 
@@ -89,9 +89,20 @@ export function inkPending(spot?: string): boolean {
   return spot ? (pendingInk.get(spot) ?? 0) > 0 : pendingInk.size > 0;
 }
 
-/** Resolves the next time any pending mark is placed or given up on. */
-export function pendingInkChanged(): Promise<void> {
-  return new Promise((resolve) => pendingWaiters.push(resolve));
+/** Resolves the next time any pending mark is placed or given up on, or when `signal` aborts —
+ *  which also drops the waiter, so a wait that timed out does not stay registered until the next
+ *  mark happens to place. */
+export function pendingInkChanged(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = (): void => {
+      pendingWaiters.delete(done);
+      signal?.removeEventListener('abort', done);
+      resolve();
+    };
+    pendingWaiters.add(done);
+    signal?.addEventListener('abort', done, { once: true });
+  });
 }
 
 /** The pen's strokes on `spot`'s card — or on any card, with no spot — that have not finished

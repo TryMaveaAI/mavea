@@ -115,7 +115,7 @@ export async function awaitPenLift({
 }: {
   drawing: () => Animation[];
   pending: () => boolean;
-  pendingChanged: () => Promise<void>;
+  pendingChanged: (signal: AbortSignal) => Promise<void>;
   ceilingAt: number;
   reducedMotion?: boolean;
   signal?: AbortSignal;
@@ -125,7 +125,10 @@ export async function awaitPenLift({
     const left = ceilingAt - performance.now();
     if (left <= 0 || signal?.aborted) return;
     if (pending()) {
-      await untilOrAbort(pendingChanged(), left, signal);
+      // A wait that times out or is cancelled withdraws its registration.
+      const done = new AbortController();
+      await untilOrAbort(pendingChanged(done.signal), left, signal);
+      done.abort();
       continue;
     }
     const running = drawing();

@@ -81,6 +81,29 @@ describe('awaitPenLift', () => {
     expect(done()).toBe(true);
   });
 
+  it('withdraws its wait on a pending mark when the ceiling passes or the walk is cancelled', async () => {
+    // A mark whose card never lands keeps its registration for ever; a wait left on it would pile
+    // up one closure per stop until something unrelated happened to place.
+    const waits: AbortSignal[] = [];
+    const pendingChanged = (s: AbortSignal): Promise<void> => {
+      waits.push(s);
+      return new Promise<void>(() => {});
+    };
+    const base = { drawing: () => [], pending: () => true, pendingChanged };
+    const timedOut = settled(awaitPenLift({ ...base, ceilingAt: performance.now() + 800 }));
+    await vi.advanceTimersByTimeAsync(810);
+    expect(timedOut()).toBe(true);
+    const walk = new AbortController();
+    const cancelled = settled(
+      awaitPenLift({ ...base, ceilingAt: performance.now() + 5000, signal: walk.signal }),
+    );
+    walk.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cancelled()).toBe(true);
+    expect(waits).toHaveLength(2);
+    expect(waits.every((s) => s.aborted)).toBe(true);
+  });
+
   it('does not wait at all under reduced motion, where strokes do not animate', async () => {
     const now = performance.now();
     const done = settled(
@@ -94,6 +117,24 @@ describe('awaitPenLift', () => {
     );
     await vi.advanceTimersByTimeAsync(0);
     expect(done()).toBe(true);
+  });
+});
+
+describe('pendingInkChanged', () => {
+  it('lets a withdrawn wait go, while a live one still hears the next placement', async () => {
+    const release = holdInkPending('never-lands');
+    const withdrawn = new AbortController();
+    let gone = false;
+    let heard = false;
+    void pendingInkChanged(withdrawn.signal).then(() => (gone = true));
+    void pendingInkChanged().then(() => (heard = true));
+    withdrawn.abort();
+    await Promise.resolve();
+    expect(gone).toBe(true);
+    expect(heard).toBe(false);
+    release();
+    await Promise.resolve();
+    expect(heard).toBe(true);
   });
 });
 
