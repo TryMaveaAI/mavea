@@ -13,6 +13,7 @@
 // hard rule the deterministic side enforces: you cannot AUGMENT a canvas about a
 // different topic — a real topic shift always REPLACES.
 import type { Block } from '../data/conversation';
+import { topicTokens } from './topicTokens';
 
 /** What this turn does to the canvas. */
 export type Mode = 'replace' | 'augment' | 'refine';
@@ -38,82 +39,6 @@ const TOPIC_SHIFT_BELOW = 0.1;
  *  canvas accreting unrelated answers. */
 const UNRELATED_FLOOR = 0.04;
 
-/** Common words that carry no topic signal — dropped before comparing turns. */
-const STOPWORDS: ReadonlySet<string> = new Set([
-  'the',
-  'a',
-  'an',
-  'of',
-  'to',
-  'and',
-  'or',
-  'is',
-  'are',
-  'was',
-  'were',
-  'be',
-  'in',
-  'on',
-  'at',
-  'for',
-  'my',
-  'me',
-  'i',
-  'you',
-  'it',
-  'this',
-  'that',
-  'these',
-  'those',
-  'how',
-  'what',
-  'why',
-  'when',
-  'where',
-  'which',
-  'who',
-  'should',
-  'do',
-  'does',
-  'did',
-  'can',
-  'could',
-  'would',
-  'will',
-  'with',
-  'about',
-  'please',
-  'show',
-  'tell',
-  'give',
-  'make',
-  'get',
-  'see',
-  'want',
-  'need',
-  'from',
-  'by',
-  'as',
-  'so',
-  'if',
-  'then',
-  'your',
-  'our',
-  'their',
-  'his',
-  'her',
-  'its',
-]);
-
-/** Lowercased, stopword-free, length≥2 word set — the topic fingerprint of some text. */
-export function topicTokens(text: string): Set<string> {
-  const out = new Set<string>();
-  for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
-    if (raw.length >= 2 && !STOPWORDS.has(raw)) out.add(raw);
-  }
-  return out;
-}
-
 /** Jaccard similarity of two token sets (0 = disjoint, 1 = identical). */
 function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 1;
@@ -129,12 +54,6 @@ const snapText = (s: TurnSnapshot): string => `${s.question} ${s.narration} ${s.
 export function topicOverlap(prior: TurnSnapshot, next: TurnSnapshot): number {
   return jaccard(topicTokens(snapText(prior)), topicTokens(snapText(next)));
 }
-
-/** Below this cohesion two consecutive turns are genuinely different SUBJECTS. Tuned against
- *  realistic pairs (see live-lifecycle tests): same-subject answers in different words land
- *  ~0.2–0.6 (the subject nouns recur even when everything else changes), a real pivot
- *  ~0.0–0.1 (only conversational filler survives the stopword strip) — the band holds. */
-export const SAME_SUBJECT_FLOOR = 0.15;
 
 /**
  * How much two turns share a SUBJECT: the fraction of the smaller turn's topic vocabulary

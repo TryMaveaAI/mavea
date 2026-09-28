@@ -8,9 +8,9 @@ import {
   blockSignature,
   mergeForMode,
   AUGMENT_CAP,
-  SAME_SUBJECT_FLOOR,
   type TurnSnapshot,
 } from '../src/live/lifecycle';
+import { SAME_SUBJECT_FLOOR } from '../src/live/topicTokens';
 import { validateLiveResponse } from '../src/engine/liveSchema';
 import type { Block } from '../src/data/conversation';
 

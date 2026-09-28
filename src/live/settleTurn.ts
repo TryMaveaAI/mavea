@@ -9,11 +9,11 @@ import {
   mergeForMode,
   AUGMENT_CAP,
   topicCohesion,
-  SAME_SUBJECT_FLOOR,
   type Mode,
   type MergeDelta,
   type TurnSnapshot,
 } from './lifecycle';
+import { SAME_SUBJECT_FLOOR } from './topicTokens';
 import { remapTour } from './tourRemap';
 import { classifyRevision } from './revise/classifyRevision';
 import { createTurnFrameId, type TurnFrame } from './history';
