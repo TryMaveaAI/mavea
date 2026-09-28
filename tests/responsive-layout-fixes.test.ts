@@ -34,6 +34,22 @@ describe('gallery viewport height', () => {
   });
 });
 
+describe('model provider picker', () => {
+  it('spreads providers evenly, then keeps two balanced columns on narrow screens', () => {
+    const css = read('src/styles/wow-polish.css');
+    const pickerRule = css.match(/\.settings-provider-picker\s*\{[^}]*\}/);
+    expect(pickerRule).not.toBeNull();
+    expect(pickerRule![0]).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
+
+    const phoneRules = [...css.matchAll(/@media \(width <= 560px\)\s*\{[\s\S]*?\n\}/g)].map(
+      ([rule]) => rule,
+    );
+    expect(
+      phoneRules.some((rule) => rule.includes('grid-template-columns: repeat(2, minmax(0, 1fr))')),
+    ).toBe(true);
+  });
+});
+
 describe('touch fallback for hover-revealed block actions', () => {
   it('the block-actions cluster stays visible on coarse-pointer devices', () => {
     const css = read('src/styles/wow-polish.css');
