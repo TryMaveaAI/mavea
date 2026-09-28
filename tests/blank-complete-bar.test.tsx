@@ -51,6 +51,26 @@ describe('TopicCanvas — the "Complete the answer" bar', () => {
     expect(container.querySelector('.blank-complete-bar')).toBeNull();
   });
 
+  it('is absent in the Study, which walks an answer rather than finishing it', () => {
+    const withBlock = spec({
+      blocks: [{ id: 'b1', type: 'insight', props: { title: 'A real answer' } }],
+    } as Partial<ConversationSpec>);
+    const bar = (viewMode: 'board' | 'study') =>
+      render(
+        <TopicCanvas
+          data={withBlock}
+          spot={null}
+          built={{}}
+          onProve={() => {}}
+          viewMode={viewMode}
+          onViewMode={() => {}}
+          blankFill={{ values: {}, activeKey: 'a', fill: vi.fn(), complete: vi.fn() }}
+        />,
+      ).container.querySelector('.blank-complete-bar');
+    expect(bar('board')).not.toBeNull();
+    expect(bar('study')).toBeNull();
+  });
+
   it('is absent when the answer is not awaiting input', () => {
     const { container } = render(
       <TopicCanvas

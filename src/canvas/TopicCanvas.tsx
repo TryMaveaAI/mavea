@@ -1257,8 +1257,10 @@ export function TopicCanvas({
           filled so far. It sticks to the bottom of the canvas (CSS) so it stays in view however far
           the user has scrolled — the finish action is never stranded below the fold. Lives here (not
           LiveApp) so the whole affordance ships in one place; present only in Live, where blankFill
-          + a complete handler are wired. */}
+          + a complete handler are wired. The Study walks an answer rather than finishing it, so
+          the bar stays on the board. */}
       {data.awaiting &&
+        !inStudy &&
         blankFill?.complete &&
         (() => {
           const filledCount = Object.keys(blankFill.values).length;
