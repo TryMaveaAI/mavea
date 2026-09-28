@@ -24,6 +24,8 @@ const GUARD_CLASS = /^canvas-(hscroll|svg-scroll)/;
 /** Held elements, marked so a release finds them without a registry that could outlive them. */
 const PIN = 'data-diagram-floor';
 const PAN = 'data-diagram-pan';
+/** A card's own text, held in place while the card pans a diagram drawn straight into it. */
+const STILL = 'data-diagram-still';
 
 /** A diagram's labels: every element that paints glyphs, outside the ones that only define. */
 function labelsOf(svg: SVGSVGElement): SVGTextContentElement[] {
@@ -150,7 +152,9 @@ function cue(pan: HTMLElement): void {
 
 /** Put every diagram under `root` back to its own layout. */
 export function releaseDiagrams(root: Element): void {
-  for (const el of root.querySelectorAll<HTMLElement | SVGElement>(`[${PIN}], [${PAN}]`)) {
+  for (const el of root.querySelectorAll<HTMLElement | SVGElement>(
+    `[${PIN}], [${PAN}], [${STILL}]`,
+  )) {
     restore(el);
   }
 }
@@ -187,6 +191,7 @@ export function holdDiagrams(root: Element, floors: DiagramFloors = new Map()): 
     const k = want / now;
     return [{ svg, w: Math.ceil(w * k), h: Math.ceil(h * k), pan: panOf(svg) }];
   });
+  const stills: HTMLElement[] = [];
   for (const { svg, w, h, pan } of plans) {
     setAttr(svg, PIN, '');
     // The guard's own rule (hscroll.css): the diagram keeps this width instead of shrinking to
@@ -198,14 +203,33 @@ export function holdDiagrams(root: Element, floors: DiagramFloors = new Map()): 
     setAttr(pan, PAN, '');
     setStyle(pan, 'overflow-x', 'auto');
     setStyle(pan, 'max-width', '100%');
-    // The diagram grows both ways, so a height cap on its box would make a second, nested scroll.
-    setStyle(pan, 'max-height', 'none');
+    if (pan.classList.contains('card')) {
+      // Drawn straight into its card, the diagram has no box of its own, and wrapping it would
+      // move a node React owns out from under the card. So the card pans, and everything else in
+      // it — heading, prose, legend — holds still, so only the figure moves. The card's own
+      // height cap is its layout's, and stays.
+      for (const child of pan.children) {
+        if (child instanceof HTMLElement && !child.querySelector(`[${PIN}]`)) stills.push(child);
+      }
+    } else {
+      // The diagram grows both ways, so a height cap on its box would make a second, nested
+      // scroll.
+      setStyle(pan, 'max-height', 'none');
+    }
     // A region that pans is reachable and named, like every pan region on the board.
     if (!pan.hasAttribute('tabindex')) setAttr(pan, 'tabindex', '0');
     if (!pan.hasAttribute('role')) setAttr(pan, 'role', 'region');
     if (!pan.hasAttribute('aria-label') && !pan.hasAttribute('aria-labelledby')) {
       setAttr(pan, 'aria-label', regionLabel(pan));
     }
+  }
+  // Only what sits in the card's flow is held: an overlay already placed against the card keeps
+  // its place. Read in one pass, then written.
+  const inFlow = stills.filter((el) => /^(static|relative)$/.test(getComputedStyle(el).position));
+  for (const el of inFlow) {
+    setAttr(el, STILL, '');
+    setStyle(el, 'position', 'sticky');
+    setStyle(el, 'left', '0');
   }
   // Read after every width is on the page, so the cue knows whether there is anything past the
   // edge.

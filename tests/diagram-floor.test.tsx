@@ -120,6 +120,36 @@ describe('a diagram held at the size a reader saw it', () => {
     expect(svgOf(lens, 'axis').style.minWidth).toBe(`${Math.ceil((280 * 10) / 9.5)}px`);
   });
 
+  it('pans a diagram drawn straight into its card with the rest of the card held still', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `<div class="card" style="max-height: 300px">
+      <div class="card-eyebrow">Spread</div>
+      <svg viewBox="0 0 720 300"><text style="font-size: 10px">Axis</text></svg>
+      <p class="legend">Each dot is one region</p>
+      <div class="tip" style="position: absolute">Hovered</div>
+    </div>`;
+    document.body.append(root);
+    const q = (sel: string) => root.querySelector(sel) as HTMLElement;
+    const svg = root.querySelector('svg') as SVGSVGElement;
+    drawn(svg, 0.39);
+    holdDiagrams(root);
+    // Wrapping the figure would move a node React owns out of the card, so the card pans it.
+    expect(svg.style.minWidth).toBe('654px');
+    expect(q('.card').style.overflowX).toBe('auto');
+    // The card's height cap is its layout's, and stays.
+    expect(q('.card').style.maxHeight).toBe('300px');
+    // Its heading and prose hold still while the figure moves; an overlay keeps its own place.
+    expect(q('.card-eyebrow').style.position).toBe('sticky');
+    expect(q('.legend').style.position).toBe('sticky');
+    expect(q('.tip').style.position).toBe('absolute');
+
+    releaseDiagrams(root);
+    expect(q('.card').style.overflowX).toBe('');
+    expect(q('.card-eyebrow').style.position).toBe('');
+    expect(q('.card-eyebrow').hasAttribute('data-diagram-still')).toBe(false);
+    expect(q('.tip').style.position).toBe('absolute');
+  });
+
   it('holds the floor with no board size to go on', () => {
     const root = card();
     const { svg } = parts(root);
