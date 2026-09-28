@@ -54,7 +54,7 @@ export function runBeat(
       break;
     case 'mark':
       after(b.atMs, () => o.setInkArmed(true));
-      after(b.atMs + 500, () => o.scriptedMark());
+      after(b.atMs + 500, () => o.scriptedMark(signal));
       break;
     case 'pen':
       after(b.atMs, () => o.drawPenOnFirstBlock(signal));

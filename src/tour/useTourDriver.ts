@@ -47,7 +47,7 @@ export interface TourOps {
   /** Spotlight one card by id (drives the Study's front card + the Canvas fly-to). */
   setSpot: (id: string | null) => void;
   /** Draw a scripted highlighter mark across the first canvas card, then spotlight it. */
-  scriptedMark: () => void;
+  scriptedMark: (signal?: AbortSignal) => void;
   /** Draw one step of the walkthrough with Mavéa's real answer-annotation Pen. */
   /** `signal` is the step's: once it aborts, no mark may be drawn. */
   drawPenTourStep: (step: 'result' | 'reason', signal?: AbortSignal) => void;
@@ -419,7 +419,7 @@ export function useTourDriver(opts: {
     } else if (a.kind === 'mark') {
       // Arm the pen, then physically draw a highlighter mark across the first card and spotlight it.
       after(400, () => o.setInkArmed(true));
-      after(900, () => o.scriptedMark());
+      after(900, () => o.scriptedMark(step.signal));
     } else if (a.kind === 'penDemo') {
       // This is Mavéa's answer-annotation Pen, not the user's Highlight tool. Reseed the worked
       // answer so a direct jump is deterministic, then visibly draw two real, persistent strokes.

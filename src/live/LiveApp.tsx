@@ -1381,7 +1381,7 @@ export function LiveApp(): ReactElement {
   const stageRef = useRef<HTMLDivElement>(null);
   // The tour's scripted-highlighter action, assigned once `userInk` exists below; the tour ops
   // (created earlier in render) call through this ref so they don't reference it before declaration.
-  const scriptedMarkRef = useRef<() => void>(() => {});
+  const scriptedMarkRef = useRef<(signal?: AbortSignal) => void>(() => {});
   // The tour's scripted bend: glide the answer's bend-it slider toward a higher value in small
   // steps, dispatching real input events so React recomputes every derived number live — the
   // exact gesture a person makes, minus the hand. Controlled input, so the native value setter.
@@ -2468,7 +2468,7 @@ export function LiveApp(): ReactElement {
       featureActionsRef.current[featureId]?.run();
     },
     setSpot: (id) => turn.setSpot(id),
-    scriptedMark: () => scriptedMarkRef.current(),
+    scriptedMark: (signal) => scriptedMarkRef.current(signal),
     drawPenTourStep: (step, signal) => {
       // The tour demonstrates Mavéa's own orange annotation layer. Keep this separate from the
       // user's Highlight tool, which creates a question target instead of explaining the answer.
@@ -3521,15 +3521,19 @@ export function LiveApp(): ReactElement {
   // gesture, minus a hand. No model; reuses the live ink resolver. The loop aims at the card's
   // biggest numeric line (its stat), not the card's geometric middle, which can fall on the
   // whitespace between lines and read as a miss ("nothing to grab there").
-  scriptedMarkRef.current = () => {
+  scriptedMarkRef.current = (signal) => {
     const stage = stageRef.current;
     const target = stage?.querySelector('[data-spot-id]') as HTMLElement | null;
     if (!stage || !target) return;
     // The viewport may be scrolled well past the first card by now (the ask chapter types into
     // the composer at the bottom) — bring the card on screen FIRST, then stroke where it lands;
-    // measuring before the scroll would draw the mark into empty off-screen space.
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    window.setTimeout(() => scriptedMarkStroke(stage, target), 560);
+    // measuring before the scroll would draw the mark into empty off-screen space. The glide is
+    // the step's, so a step left mid-glide draws nothing.
+    void toTopThen(
+      () => scriptedMarkStroke(stage, target),
+      signal,
+      () => [target],
+    );
   };
   const scriptedMarkStroke = (stage: HTMLElement, target: HTMLElement): void => {
     const svg = stage.querySelector('.ink-user-overlay') as SVGElement | null;
