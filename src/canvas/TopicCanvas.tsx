@@ -71,6 +71,7 @@ import {
   useState,
 } from 'react';
 import { useResponsiveGrid } from './hooks/useResponsiveGrid';
+import { useSectionMasonry } from './depth/useSectionMasonry';
 import { useAccessibleScrollRegions } from './hooks/useAccessibleScrollRegions';
 import { useTruncatedTextDisclosures } from './hooks/useTruncatedTextDisclosures';
 import './layout/hscroll.css';
@@ -789,6 +790,9 @@ export function TopicCanvas({
   const [sectionedAnswer, setSectionedAnswer] = useState<string | null>(null);
   if (sectionedAnswer !== data.id && hasSections(displayBlocks)) setSectionedAnswer(data.id);
   const useSections = sectionedAnswer === data.id;
+  // The takeovers unmount the grid, so the flag includes them: coming back re-attaches the packing
+  // to the grid element that is mounted then.
+  useSectionMasonry(gridRef, useSections && sections.length >= 2 && !inStudy && !canvasView);
   // The "Expand/Collapse sections" toggle only does anything when a section actually has a "Go
   // deeper" drawer to open — otherwise it's a no-op that confuses. Show it only then.
   const hasDeeper = sections.some((s) => s.deeper.length > 0);

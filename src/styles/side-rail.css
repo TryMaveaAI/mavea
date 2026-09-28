@@ -150,6 +150,33 @@
   .with-rail .card-grid:has(> .depth-section ~ .depth-section) > .depth-section {
     grid-column: span 6;
   }
+
+  /* Paired row by row, a tall section left a hole under the short one beside it. Once measured
+     (useSectionMasonry), the board and each section's own card grid become grids of 1px rows:
+     a section spans its own height in whichever column was shorter when its turn came, a card
+     takes the highest spot its width fits, and whatever space nothing else can use goes to the
+     box above it (--masonry-fill), so both columns end on one line with no hole in either. The
+     gap between boxes is left as empty rows. The selectors carry the app's classes because a
+     template's `:root[data-template] .card-grid` gap would otherwise outrank the zero row gap
+     and turn every 1px row into a gap-tall one. */
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] {
+    grid-auto-rows: 1px;
+    row-gap: 0;
+  }
+
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] > .depth-section {
+    grid-column: var(--masonry-col) / span 6;
+    grid-row: var(--masonry-row) / span var(--masonry-span);
+    align-self: start;
+    min-block-size: var(--masonry-fill, auto);
+  }
+
+  .mavea-app.live-voice.with-rail .card-grid[data-masonry] > [class*='col-'] {
+    grid-column: var(--masonry-col) / span var(--masonry-tracks);
+    grid-row: var(--masonry-row) / span var(--masonry-span);
+    align-self: start;
+    min-block-size: var(--masonry-fill, auto);
+  }
 }
 .with-rail .presence-stage {
   padding-bottom: 40px;
