@@ -301,7 +301,10 @@ const ROUTE_BUDGETS = [
     // 168 (was 167): measured at 167.5. The sectioned board packs its sections into filled
     // columns on an ultrawide window, and the chart gutters size from their measured labels —
     // TopicCanvas code the lesson shares.
-    gzip: 168,
+    // 169 (was 168): measured at 168.1. The Gemini adapter reads the quota a 429 names from its
+    // structured details, so a per-minute limit is retried and worded as one instead of reading as a
+    // spent day — ~200 bytes in the provider closure every canvas route shares.
+    gzip: 169,
     files: 59,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },

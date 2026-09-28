@@ -76,11 +76,26 @@ function keyHeader(cfg: ModelConfig): Record<string, string> {
   return { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.apiKey ?? '' };
 }
 
+/** What a 429 says about itself, from the structured details that sit past the message's cut: the
+ *  quota it names (`…PerMinute…` / `…PerDay…`, the one thing that tells a wait-a-moment limit from a
+ *  spent day) and, for a per-minute one, how long Google says to wait. */
+function quotaHint(details: unknown): string {
+  const list: Record<string, unknown>[] = Array.isArray(details) ? details : [];
+  const id = list
+    .flatMap((d) => (Array.isArray(d?.violations) ? d.violations : []))
+    .map((v) => v?.quotaId)
+    .find((q) => typeof q === 'string');
+  const wait = list
+    .map((d) => d?.retryDelay)
+    .find((t) => typeof t === 'string' && /^[\d.]+s$/.test(t));
+  return `${id ? ` [${id.slice(0, 80)}]` : ''}${wait && !/per.?day/i.test(id ?? '') ? ` retry in ${wait}` : ''}`;
+}
+
 /** Pull the short reason out of a Gemini error body so the thrown message can distinguish a
  *  transient per-minute rate limit from grounding-not-available-on-this-tier — both arrive as
  *  429 but warrant different user guidance. Returns " — <status/reason>" or '' (never throws,
  *  never leaks the full body or any key). */
-async function errorDetail(res: Response): Promise<string> {
+async function errorDetail(res: Response, grounded = false): Promise<string> {
   try {
     const body = (await res.json()) as {
       error?: { code?: unknown; status?: unknown; message?: unknown; details?: unknown };
@@ -118,7 +133,23 @@ async function errorDetail(res: Response): Promise<string> {
     // For auth/config failures (403 PERMISSION_DENIED, 400 INVALID_ARGUMENT), the STATUS alone
     // ("PERMISSION_DENIED") is opaque — Google's message says *why* ("API key not valid", "API not
     // enabled for project…"). Append a trimmed message so the cause is actionable, never the key.
-    const detail = status && msg ? `${status}: ${msg.slice(0, 160)}` : status || msg.slice(0, 160);
+    // A 429's message opens with "please check your plan and billing details" whichever quota was
+    // hit, and the part that says which one (or when to retry) comes after the 160-char cut. Read it
+    // from the structured details instead, and drop the boilerplate that reads as a spent account.
+    let quota = status === 'RESOURCE_EXHAUSTED' ? quotaHint(body.error?.details) : '';
+    // A grounded request refused with no quota named and no wait offered is Search grounding being
+    // withheld from this key: a bare 429 that no amount of waiting clears.
+    if (
+      grounded &&
+      status === 'RESOURCE_EXHAUSTED' &&
+      !quota &&
+      !/retry in|per.?(?:minute|day)/i.test(msg)
+    )
+      quota = ' [search grounding refused]';
+    const shown = msg.replace(/,?\s*please check your plan and billing details\.?/i, '');
+    const said =
+      status && shown ? `${status}: ${shown.slice(0, 160)}` : status || shown.slice(0, 160);
+    const detail = `${said}${quota}`;
     return detail ? ` — ${detail}` : '';
   } catch {
     return '';
@@ -389,7 +420,7 @@ export const geminiAdapter: ProviderAdapter = {
         // Even a retried-and-recovered 429 must reach the guard: speculative work checks
         // recentlyRateLimited() before spending, and quota contention is per-minute.
         noteRateLimited(res.status);
-        const detail = await errorDetail(res);
+        const detail = await errorDetail(res, !!req.tools?.webSearch);
         if (
           isTransientProviderFailure(res.status, detail) &&
           tries < (res.status === 429 ? TRANSIENT_RETRIES : OVERLOAD_RETRIES) &&
