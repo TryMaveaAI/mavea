@@ -342,8 +342,9 @@ export function PrismOverlay({
   const [veracity, setVeracity] = useState<Map<string, Veracity>>(() => new Map());
   const [verifying, setVerifying] = useState(false);
   // Annotate (pen) mode — an independent toggle (default off). When on, asking / clicking a claim /
-  // the Briefing each draw a hand-drawn mark over the cited passage. `penAudioOn` opts into spoken
-  // narration (silent by default — Prism never auto-talks). `askText` holds the last Ask readout so
+  // the Briefing each draw a hand-drawn mark over the cited passage. `penAudioOn` opts the pen's
+  // explanations into speech (silent by default; a Briefing the reader starts speaks through its
+  // own player, and is silent under the tour, which narrates its own flight). `askText` holds the last Ask readout so
   // the pen can explain an answer span. `reel` records the marks for the share reel.
   // The walkthrough's auto-briefing runs with the pen already in hand: each beat's page gets the
   // quote highlight PLUS the hand-drawn circles/underlines, animating in as the flight lands.
