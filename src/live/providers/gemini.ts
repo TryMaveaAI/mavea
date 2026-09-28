@@ -77,9 +77,36 @@ function keyHeader(cfg: ModelConfig): Record<string, string> {
  *  never leaks the full body or any key). */
 async function errorDetail(res: Response): Promise<string> {
   try {
-    const body = (await res.json()) as { error?: { status?: unknown; message?: unknown } };
+    const body = (await res.json()) as {
+      error?: { code?: unknown; status?: unknown; message?: unknown; details?: unknown };
+    };
     const status = typeof body.error?.status === 'string' ? body.error.status : '';
     const msg = typeof body.error?.message === 'string' ? body.error.message : '';
+    // Gemini's body can carry structured ErrorInfo / RetryInfo details that the short error string
+    // deliberately omits. In local development, retain a scrubbed diagnostic so an overload can be
+    // distinguished from a quota or routing problem without logging a prompt, API key, or response.
+    if (import.meta.env.DEV && res.status === 503 && (body.error?.code || status || msg)) {
+      const details = Array.isArray(body.error?.details)
+        ? body.error.details.map((detail) => {
+            if (!detail || typeof detail !== 'object')
+              return typeof detail === 'string' ? detail : '';
+            const record = detail as Record<string, unknown>;
+            return {
+              type: typeof record['@type'] === 'string' ? record['@type'] : undefined,
+              reason: typeof record.reason === 'string' ? record.reason : undefined,
+              domain: typeof record.domain === 'string' ? record.domain : undefined,
+            };
+          })
+        : [];
+      console.warn('[gemini] 503 diagnostic', {
+        code: body.error?.code,
+        status,
+        message: msg,
+        details,
+        retryAfter: res.headers.get('retry-after'),
+        retryAfterMs: res.headers.get('retry-after-ms'),
+      });
+    }
     // RESOURCE_EXHAUSTED on a grounded request = the separately-metered Search grounding quota;
     // surface that word so describeLiveError can tell the user grounding isn't available, not
     // that their whole key is dead.

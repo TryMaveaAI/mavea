@@ -937,7 +937,9 @@ describe('a stream that goes quiet is never re-sent', () => {
       expect(shown.status).toBe(status);
       expect(shown.message).not.toMatch(/retried/);
     }
-    expect(describeLiveError(new Error('gemini 503'), 'gemini').message).toMatch(/retried/);
+    expect(describeLiveError(new Error('gemini 503'), 'gemini').message).toBe(
+      'Google is busy right now. Please try again.',
+    );
   });
 
   it('gemini counts thinking as output and the search tool prompt as input', async () => {
