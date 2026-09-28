@@ -3,8 +3,11 @@
 // accumulator. Pinching past a small threshold fires once and resets, so one continuous
 // pinch is one level change, not a storm. Fingers closing reads as 'out' (the way ctrl+wheel's
 // positive delta does); spreading reads as 'in'. The surface decides what each direction means
-// at its current level. Both listeners are passive:false because we must preventDefault to keep
-// the browser's own page-zoom out of the way; a single finger is never touched, so it scrolls.
+// at its current level. The wheel listener is passive:false because ctrl+wheel must be kept from
+// page-zooming. Touch stays passive: a blocking touchmove on the conversation's scroller makes the
+// browser wait on the main thread before it scrolls, so a one-finger scroll stalls whenever a turn
+// is streaming. `touch-action: pan-x pan-y` hands the pinch to us without that wait, while one
+// finger still pans.
 import { useEffect, useRef } from 'react';
 
 /** Accumulated delta that counts as one deliberate pinch step: ctrl+wheel units, or CSS px
@@ -45,7 +48,6 @@ export function useZoomGesture(
     };
     const onTouchMove = (e: TouchEvent): void => {
       if (e.touches.length !== 2 || lastSpan.current === null) return;
-      e.preventDefault();
       const next = span(e.touches);
       step(lastSpan.current - next);
       lastSpan.current = next;
@@ -57,12 +59,15 @@ export function useZoomGesture(
       acc.current = 0;
       lastSpan.current = e.touches.length === 2 ? span(e.touches) : null;
     };
+    const touchAction = el.style.touchAction;
+    el.style.touchAction = 'pan-x pan-y';
     el.addEventListener('wheel', onWheel, { passive: false });
     el.addEventListener('touchstart', reseed, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', reseed);
-    el.addEventListener('touchcancel', reseed);
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', reseed, { passive: true });
+    el.addEventListener('touchcancel', reseed, { passive: true });
     return () => {
+      el.style.touchAction = touchAction;
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('touchstart', reseed);
       el.removeEventListener('touchmove', onTouchMove);

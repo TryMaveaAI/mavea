@@ -175,16 +175,38 @@ describe('useZoomGesture', () => {
     expect(onZoom).toHaveBeenLastCalledWith('in');
   });
 
-  it('keeps the browser from page-zooming on a pinch, and leaves a one-finger scroll alone', () => {
-    render(<Host onZoom={vi.fn()} />);
+  it('keeps the browser from page-zooming on a pinch without ever blocking a scroll', () => {
+    const { unmount } = render(<Host onZoom={vi.fn()} />);
     const zone = screen.getByTestId('zone');
+    // The pinch is the page's by CSS, so no touch listener has to hold the scroll to claim it.
+    expect(zone.style.touchAction).toBe('pan-x pan-y');
     fireEvent.touchStart(zone, { touches: fingers(300) });
-    // fireEvent returns false when the listener called preventDefault.
-    expect(fireEvent.touchMove(zone, { touches: fingers(280) })).toBe(false);
+    // fireEvent returns false only when a listener called preventDefault.
+    expect(fireEvent.touchMove(zone, { touches: fingers(280) })).toBe(true);
     fireEvent.touchEnd(zone, { touches: [fingers(280)[0]] });
     expect(
       fireEvent.touchMove(zone, { touches: [{ identifier: 0, clientX: 100, clientY: 200 }] }),
     ).toBe(true);
+    unmount();
+    expect(zone.style.touchAction).toBe('');
+  });
+
+  it('registers every touch listener as passive', () => {
+    const add = vi.spyOn(HTMLElement.prototype, 'addEventListener');
+    render(<Host onZoom={vi.fn()} />);
+    const zone = screen.getByTestId('zone');
+    // React's root listens for touch too; only the zone's own listeners are the hook's.
+    const touch = add.mock.calls.filter(
+      ([type], i) => add.mock.contexts[i] === zone && type.startsWith('touch'),
+    );
+    expect(touch.map(([type]) => type).sort()).toEqual([
+      'touchcancel',
+      'touchend',
+      'touchmove',
+      'touchstart',
+    ]);
+    for (const [, , opts] of touch) expect(opts).toEqual({ passive: true });
+    add.mockRestore();
   });
 
   it('drops a half-made pinch when a finger lifts, so the next pinch starts from zero', () => {
