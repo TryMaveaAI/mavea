@@ -464,12 +464,20 @@ const MEASURE_SCRIPT = (
         const r = el.getBoundingClientRect();
         return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 1 && r.height > 1;
       });
+    // The bar is one full-width row whose middle is a spacer with no height, and on a short window
+    // the replay banner is laid out in that gap on purpose. So the bar is judged by what it paints
+    // (its children), never by its band: a banner over the brand, the search or the theme toggle
+    // still collides, and one sitting in the empty middle does not.
+    const partsOf = (el) => el.matches('.topbar')
+      ? Array.from(el.children).map((c) => c.getBoundingClientRect())
+      : [el.getBoundingClientRect()];
+    const overlap = (ar, br) => Math.max(0, Math.min(ar.right, br.right) - Math.max(ar.left, br.left)) *
+      Math.max(0, Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top));
     for (let i = 0; i < fixed.length; i += 1) for (let j = i + 1; j < fixed.length; j += 1) {
       const a = fixed[i], b = fixed[j];
       if (a.contains(b) || b.contains(a)) continue;
-      const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
-      const area = Math.max(0, Math.min(ar.right, br.right) - Math.max(ar.left, br.left)) *
-        Math.max(0, Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top));
+      let area = 0;
+      for (const ar of partsOf(a)) for (const br of partsOf(b)) area += overlap(ar, br);
       if (area > 16) shellOverlaps.push(name(a) + ' overlaps ' + name(b) + ' by ' + Math.round(area) + 'px²');
     }
   }
