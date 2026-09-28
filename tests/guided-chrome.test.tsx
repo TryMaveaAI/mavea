@@ -305,3 +305,75 @@ describe('walkthrough corpus — an offline fetch must not dead-end the tour', (
     expect(window.location.hash).toBe('#/');
   });
 });
+
+describe('the board behind a modal holds still', () => {
+  it('keeps the banner claim while the replay is covered', () => {
+    // The Lens covers the replay, and the covered banner is display: none. Re-measured there, its
+    // claim dropped to nothing and the board behind the modal slid up 60px, and back on close.
+    let hidden = false;
+    const observers: ResizeObserverCallback[] = [];
+    const resize = () => act(() => observers.forEach((cb) => cb([], {} as ResizeObserver)));
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: ResizeObserverCallback) {
+          observers.push(cb);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const isBanner = (el: HTMLElement) => el.classList.contains('demox-banner');
+    const height = vi
+      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains('topbar')) return 60;
+        return isBanner(this) && !hidden ? 52 : 0;
+      });
+    const top = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return isBanner(this) && !hidden ? 60 : 0;
+    });
+    // jsdom lays nothing out, so every element reports no boxes unless told otherwise.
+    const rects = vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(() => {
+      const boxes = hidden ? [] : [new DOMRect()];
+      return Object.assign(boxes, {
+        item: (i: number) => boxes[i] ?? null,
+      }) as unknown as DOMRectList;
+    });
+    const app = document.createElement('div');
+    app.className = 'mavea-app';
+    app.innerHTML = '<div class="topbar"></div>';
+    document.body.append(app);
+    const host = app.appendChild(document.createElement('div'));
+    const tree = (covered: boolean) => (
+      <DemoOverlay
+        driver={demoDriver({ started: true })}
+        member={DEMO_CAST[0]}
+        onExit={vi.fn()}
+        covered={covered}
+      />
+    );
+    const { rerender, unmount } = render(tree(false), { container: host });
+    const claim = () => app.style.getPropertyValue('--demo-banner-h');
+    expect(claim()).toBe('60px');
+
+    rerender(tree(true));
+    hidden = true;
+    resize();
+    expect(claim()).toBe('60px');
+
+    rerender(tree(false));
+    hidden = false;
+    resize();
+    expect(claim()).toBe('60px');
+
+    unmount();
+    app.remove();
+    height.mockRestore();
+    top.mockRestore();
+    rects.mockRestore();
+    vi.unstubAllGlobals();
+  });
+});

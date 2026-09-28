@@ -78,6 +78,10 @@ export function DemoOverlay({
     // entrance is a transform, and a rect read mid-entrance would be off by its travel.
     const bar = app.querySelector<HTMLElement>('.topbar');
     const apply = (): void => {
+      // Hidden, the banner has no box and measures as nothing — which it is only while a modal
+      // covers the replay (data-covered). The board behind a modal must not move, so a hidden
+      // banner keeps the claim it last made, and gives the same room back when it returns.
+      if (banner.getClientRects().length === 0) return;
       const inBar = !!bar && banner.offsetTop + banner.offsetHeight <= bar.offsetHeight;
       app.style.setProperty(
         '--demo-banner-h',
