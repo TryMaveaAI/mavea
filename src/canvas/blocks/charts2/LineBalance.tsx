@@ -30,6 +30,13 @@ const TAKT_WORD = 'Takt';
 // Baseline floor for a bar's "bottleneck" flag, in viewBox units: a bar reaching the top of the
 // domain lifts its flag into the top padding rather than printing it over the bar.
 const FLAG_TOP = 9;
+// The hover read-out: .c2-lb-tip-val's size in user units, its box's padding and height, and the
+// room it leaves above a bar (more when the bar carries a "bottleneck" flag).
+const TIP_FS = 10.5;
+const TIP_PAD_X = 8;
+const TIP_H = 20;
+const TIP_GAP = 6;
+const TIP_FLAG_CLEAR = 16;
 // .cx-tick's clamp ceiling, in user units — the size the labels would like to be.
 const LABEL_FS = 9.5;
 // Gap between the axis line and the first line of station type.
@@ -148,6 +155,8 @@ export function LineBalance({
   const yTakt = taktValid ? geom.sy(takt as number) : null;
   const fmt = (v: number) => formatTakt(v, unit);
   const { taktLabel } = geom;
+  const hotStation = hot === null ? undefined : geom.list[hot];
+  const hotX = hot === null ? 0 : geom.sx(hot);
 
   return (
     <div
@@ -208,23 +217,6 @@ export function LineBalance({
                       bottleneck
                     </text>
                   )}
-                  {active && (
-                    <g
-                      transform={`translate(${Math.min(Math.max(geom.sx(i), 30), geom.innerW - 30)},${Math.max(y - (s.isBottleneck ? 20 : 8), 2)})`}
-                    >
-                      <rect
-                        className="c2-lb-tip-bg"
-                        x={-30}
-                        y={-24}
-                        width={60}
-                        height={20}
-                        rx={4}
-                      />
-                      <text className="c2-lb-tip-val" x={0} y={-10} textAnchor="middle">
-                        {fmt(s.cycleTime)}
-                      </text>
-                    </g>
-                  )}
                 </g>
               );
             })}
@@ -274,6 +266,16 @@ export function LineBalance({
                 </text>
               );
             })}
+
+            {/* Last, so the read-out paints over the takt line and the neighbouring bars. */}
+            {hotStation && (
+              <HoverTip
+                text={fmt(hotStation.cycleTime)}
+                x={hotX}
+                barTop={geom.sy(hotStation.cycleTime)}
+                clearance={hotStation.isBottleneck ? TIP_FLAG_CLEAR : TIP_GAP}
+              />
+            )}
           </g>
         </svg>
       </div>
@@ -285,5 +287,35 @@ export function LineBalance({
         />
       )}
     </div>
+  );
+}
+
+/** A bar's read-out, in the plot's translated frame. It is sized from its own text (a unit makes
+ *  "2.9 hours" far wider than "101"), kept inside the viewBox horizontally, and drops inside the
+ *  bar when there is no room above it. */
+function HoverTip({
+  text,
+  x,
+  barTop,
+  clearance,
+}: {
+  text: string;
+  x: number;
+  barTop: number;
+  clearance: number;
+}) {
+  const w = estimateTextWidth(text, TIP_FS, true) + TIP_PAD_X * 2;
+  const minX = -PAD.left + w / 2 + 1;
+  const maxX = W - PAD.left - w / 2 - 1;
+  const cx = minX > maxX ? W / 2 - PAD.left : Math.min(maxX, Math.max(minX, x));
+  const above = barTop - clearance - TIP_H;
+  const top = above >= -PAD.top + 1 ? above : barTop + TIP_GAP;
+  return (
+    <g className="c2-lb-tip">
+      <rect className="c2-lb-tip-bg" x={cx - w / 2} y={top} width={w} height={TIP_H} rx={4} />
+      <text className="c2-lb-tip-val" x={cx} y={top + 14} textAnchor="middle">
+        {text}
+      </text>
+    </g>
   );
 }

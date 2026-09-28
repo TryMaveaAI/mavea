@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, fireEvent } from '@testing-library/react';
@@ -146,22 +146,38 @@ describe('AreaRange', () => {
     }));
   }
 
-  it('positions the tooltip per-point without spilling past the plot at high density', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Regression coverage: the read-out was centred on its point with translateX(-50%), so at the
+  // first and last points half of it hung past the plot and the card clipped it. jsdom has no
+  // layout, so the plot and tip widths are stubbed; the component measures and clamps from them.
+  it('keeps the tooltip inside the plot at every point, including both ends', () => {
+    const PLOT_W = 300;
+    const TIP_W = 120;
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(PLOT_W);
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(TIP_W);
     const n = 24; // well beyond the 7-day demo fixture
-    const { container } = render(<AreaRange title="Range" points={points(n)} />);
+    const { container } = render(<AreaRange title="Range" unit="hours" points={points(n)} />);
     const cols = Array.from(container.querySelectorAll('svg > g'));
     expect(cols).toHaveLength(n);
 
-    // Hover every point; the tooltip's `left` percentage must land inside [0, 100] so it never
-    // renders centered outside the plot's own coordinate space.
-    for (const col of cols) {
+    const lefts = cols.map((col) => {
       fireEvent.mouseEnter(col);
-      const tip = container.querySelector<HTMLElement>('.c2-ar-tip');
-      expect(tip).toBeTruthy();
-      const left = parseFloat(tip!.style.left);
+      const tip = container.querySelector<HTMLElement>('.c2-ar-tip')!;
+      expect(tip.style.left).toMatch(/px$/);
+      expect(tip.style.transform).toBe('none');
+      return parseFloat(tip.style.left);
+    });
+    for (const left of lefts) {
       expect(left).toBeGreaterThanOrEqual(0);
-      expect(left).toBeLessThanOrEqual(100);
+      expect(left + TIP_W).toBeLessThanOrEqual(PLOT_W);
     }
+    // Both ends are pinned to the plot's edges; the points between still track their x.
+    expect(lefts[0]).toBe(0);
+    expect(lefts[n - 1]).toBe(PLOT_W - TIP_W);
+    expect(lefts[n / 2]).toBeGreaterThan(lefts[n / 2 - 1]);
   });
 
   it('keeps the full label in the DOM (as text) even with a name far longer than the demo fixture', () => {
@@ -1660,6 +1676,50 @@ describe('edge labels stay inside the viewBox', () => {
       const { left, right } = span(t, t.textContent ?? '', 9.5, false);
       expect(left).toBeGreaterThanOrEqual(0);
       expect(right).toBeLessThanOrEqual(viewWidth(svg));
+    }
+  });
+});
+
+// Regression coverage: the line-balance read-out was a fixed 60-unit box pinned 30 units in from
+// the plot's edges, so a unit-bearing value ("2.9 hours") overflowed the box, and over a bar that
+// reached the top of the domain the box was pushed above the viewBox.
+describe('LineBalance hover read-out', () => {
+  it('sizes the read-out from its value and keeps it inside the viewBox over every bar', () => {
+    const { container } = render(
+      <LineBalance
+        title="Balance"
+        takt={2.5}
+        unit="hours"
+        stations={[
+          { name: 'Cut', cycleTime: 2.95 },
+          { name: 'Sand', cycleTime: 2.3 },
+          { name: 'Paint', cycleTime: 1.2 },
+          { name: 'Pack', cycleTime: 2.99 },
+        ]}
+      />,
+    );
+    const svg = container.querySelector('svg.c2-lb-svg')!;
+    const [, , vbW, vbH] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    const [dx, dy] = /translate\(([\d.]+),([\d.]+)\)/
+      .exec(svg.querySelector('g')!.getAttribute('transform')!)!
+      .slice(1)
+      .map(Number);
+    const bars = Array.from(container.querySelectorAll('rect.c2-lb-bar'));
+    expect(bars).toHaveLength(4);
+    for (const bar of bars) {
+      fireEvent.mouseEnter(bar);
+      const box = container.querySelector('rect.c2-lb-tip-bg')!;
+      const text = container.querySelector('text.c2-lb-tip-val')!.textContent ?? '';
+      expect(text).toMatch(/hours$/);
+      const x = Number(box.getAttribute('x')) + dx;
+      const y = Number(box.getAttribute('y')) + dy;
+      const w = Number(box.getAttribute('width'));
+      const h = Number(box.getAttribute('height'));
+      expect(w).toBeGreaterThanOrEqual(estimateTextWidth(text, 10.5, true));
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x + w).toBeLessThanOrEqual(vbW);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y + h).toBeLessThanOrEqual(vbH);
     }
   });
 });
