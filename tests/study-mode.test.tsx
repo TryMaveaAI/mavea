@@ -306,12 +306,14 @@ describe('TopicCanvas — Live Study path', () => {
         onAskBlock={onAskBlock}
         viewMode="study"
         onViewMode={onViewMode}
+        studyNotesLoading
       />,
     );
 
     expect(screen.getByRole('region', { name: 'The Study' })).toBeTruthy();
     expect(container.querySelector('.study-stage')).not.toBeNull();
     expect(container.querySelector('.card-grid')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(/writing notes/i);
 
     // The desk object carries no button tray. A floating toolbar under it reads as chrome bolted
     // to a scene whose whole point is that there is nothing between the reader and the thing.

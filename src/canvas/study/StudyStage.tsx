@@ -88,6 +88,8 @@ interface Props {
   asides?: Readonly<Record<string, readonly StudyAside[]>>;
   /** Blocks whose current aside set includes model-authored notes. */
   asidesAuthored?: ReadonlySet<string>;
+  /** Authored notes are being fetched for the answer currently on the desk. */
+  notesLoading?: boolean;
   selectedBlockIds?: ReadonlySet<string>;
   onNarrate?: (block: Block) => void;
   narratingId?: string | null;
@@ -187,6 +189,7 @@ export function StudyStage({
   onAskBlock,
   asides,
   asidesAuthored,
+  notesLoading,
   selectedBlockIds,
   onNarrate,
   narratingId,
@@ -949,6 +952,14 @@ export function StudyStage({
         <div className="study-canvas">
           <div className="study-scene">
             <div className="study-pool" aria-hidden="true" />
+            {notesLoading && (
+              <span className="study-notes-loading" role="status">
+                WRITING NOTES
+                <i aria-hidden="true" />
+                <i aria-hidden="true" />
+                <i aria-hidden="true" />
+              </span>
+            )}
 
             {cast.map((block) => {
               const id = block.id as string;
@@ -1039,8 +1050,10 @@ export function StudyStage({
                   <path className="study-connect-head" d="M16,44 L23,55 M16,44 L29,46" />
                 </svg>
                 <div className="study-note-wrap">
-                  <div className="study-note-layer" aria-hidden="true">
-                    MAVÉA'S LAYER · {String(activeNotes.length).padStart(2, '0')} NOTES
+                  <div className="study-note-layer">
+                    <span aria-hidden="true">
+                      MAVÉA'S LAYER · {String(activeNotes.length).padStart(2, '0')} NOTES
+                    </span>
                   </div>
                   <div
                     key={`${active.id}-${pageIndex}`}

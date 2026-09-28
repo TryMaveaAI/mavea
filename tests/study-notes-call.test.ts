@@ -240,8 +240,8 @@ describe('the Study notes call', () => {
     const spec = specWith('watcher-release');
     const first = studyNotesFor(spec, 'why', cfg, 'standard', released, controller.signal);
     await vi.waitFor(() => expect(generate).toHaveBeenCalledOnce());
-    controller.abort();
     const second = studyNotesFor(spec, 'why', cfg, 'standard', active);
+    controller.abort();
     for (const chunk of REPLY) emit?.(chunk);
     finish?.({ raw: REPLY.join('') });
     await Promise.all([first, second]);
@@ -249,6 +249,34 @@ describe('the Study notes call', () => {
     expect(released).not.toHaveBeenCalled();
     expect(active).toHaveBeenCalledTimes(2);
     expect(generate).toHaveBeenCalledOnce();
+  });
+
+  it('cancels optional notes when their only visible subscriber leaves', async () => {
+    let providerSignal: AbortSignal | undefined;
+    generate.mockImplementation(
+      (req: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          providerSignal = req.signal;
+          req.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Superseded', 'AbortError')),
+          );
+        }),
+    );
+    const controller = new AbortController();
+    const pending = studyNotesFor(
+      specWith('yield-to-chat'),
+      'why',
+      cfg,
+      'standard',
+      vi.fn(),
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledOnce());
+
+    controller.abort();
+
+    await expect(pending).resolves.toBeNull();
+    expect(providerSignal?.aborted).toBe(true);
   });
 
   it('aborts a provider that exceeds the 30 second notes deadline', async () => {

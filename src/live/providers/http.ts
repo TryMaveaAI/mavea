@@ -147,10 +147,18 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
     const multiplier = unit === 'ms' ? 1 : unit === 'm' ? 60_000 : 1000;
     return Math.min(Number(bodyHint[1]) * multiplier, 30_000);
   }
-  // The second re-send waits a little longer than a plain doubling: a refusal that repeats after
-  // ~1s is usually a per-minute window still closing, and the extra second is cheaper than a
-  // third refusal the reader has to retry by hand.
-  const base = attempt === 0 ? 900 : Math.min(2_500 * 2 ** (attempt - 1), 12_000);
+  // An overload without provider guidance is a capacity wave, not a failed packet. Re-sending the
+  // same large request three times inside four seconds both lands in the same wave and turns one
+  // visible ask into an RPM burst. Give 503/529 enough distance to be a real retry; 429 retains a
+  // shorter first wait because its body commonly carries the precise reset when one is required.
+  const overloaded = res.status === 503 || res.status === 529;
+  const base = overloaded
+    ? attempt === 0
+      ? 4_000
+      : Math.min(12_000 * 2 ** (attempt - 1), 30_000)
+    : attempt === 0
+      ? 900
+      : Math.min(2_500 * 2 ** (attempt - 1), 12_000);
   return Math.round(base * (0.85 + Math.random() * 0.3));
 }
 

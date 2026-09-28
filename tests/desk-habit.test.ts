@@ -118,7 +118,7 @@ describe('the desk habit cannot silently revert to a view comparison', () => {
   // clicked a card would start buying an annotate call per settled answer, and nothing would fail.
   it('the paid notes fetch is still gated on the desk, not on the Lens', () => {
     const src = read('src/live/LiveApp.tsx');
-    const gate = /if \(viewMode !== 'study' && !studyOpenedRef\.current\) return;/;
+    const gate = /if \(viewMode !== 'study'\) \{/;
     expect(src).toMatch(gate);
     // The gate's own effect must not have grown a lens escape hatch.
     const effect = src.slice(src.search(gate), src.search(gate) + 1400);

@@ -81,17 +81,26 @@ describe('provider pressure parsing', () => {
     expect(retryAfterMs(new Response(null), 0, 'Please retry in 4.25s.')).toBe(4250);
   });
 
-  it('waits a little longer before the second busy re-send than before the first', () => {
-    const range = (attempt: number) => {
-      const waits = Array.from({ length: 200 }, () => retryAfterMs(new Response(null), attempt));
+  it('spaces overload retries across the capacity wave without slowing ordinary 429 recovery', () => {
+    const range = (status: number, attempt: number) => {
+      const waits = Array.from({ length: 200 }, () =>
+        retryAfterMs(new Response(null, { status }), attempt),
+      );
       return [Math.min(...waits), Math.max(...waits)];
     };
-    const [firstMin, firstMax] = range(0);
-    const [secondMin, secondMax] = range(1);
+    const [firstMin, firstMax] = range(429, 0);
+    const [secondMin, secondMax] = range(429, 1);
     expect(firstMin).toBeGreaterThanOrEqual(765);
     expect(firstMax).toBeLessThanOrEqual(1035);
     expect(secondMin).toBeGreaterThanOrEqual(2125);
     expect(secondMax).toBeLessThanOrEqual(2875);
+
+    const [overloadFirstMin, overloadFirstMax] = range(503, 0);
+    const [overloadSecondMin, overloadSecondMax] = range(503, 1);
+    expect(overloadFirstMin).toBeGreaterThanOrEqual(3400);
+    expect(overloadFirstMax).toBeLessThanOrEqual(4600);
+    expect(overloadSecondMin).toBeGreaterThanOrEqual(10_200);
+    expect(overloadSecondMax).toBeLessThanOrEqual(13_800);
   });
 
   it('retries temporary overloads but never loops on a daily or spend limit', () => {
@@ -1204,7 +1213,9 @@ describe('gemini answers with 200 OK and nothing in it', () => {
   it('retries a transient 503 rather than failing the turn on it', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response('{}', { status: 503, headers: { 'retry-after-ms': '1' } }),
+      )
       .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     const { raw } = await geminiAdapter.generate(req, {

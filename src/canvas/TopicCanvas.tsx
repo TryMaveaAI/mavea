@@ -353,6 +353,8 @@ interface Props {
   studyAsides?: Readonly<Record<string, readonly StudyAside[]>>;
   /** Block ids whose current Study aside set contains model-authored notes. */
   studyAsidesAuthored?: ReadonlySet<string>;
+  /** The active Study is fetching authored notes for this answer. */
+  studyNotesLoading?: boolean;
   /** The turn is still streaming blocks in — the Study holds its desk still and deals once. */
   studyStreaming?: boolean;
   /** Live's stable per-answer identity. Standalone consumers fall back to a content digest. */
@@ -429,6 +431,7 @@ export function TopicCanvas({
   selectedBlockIds,
   studyAsides,
   studyAsidesAuthored,
+  studyNotesLoading,
   studyStreaming,
   studyAnswerEpoch,
   viewMode,
@@ -1177,6 +1180,7 @@ export function TopicCanvas({
           onAskBlock={onAskBlock}
           asides={studyAsides}
           asidesAuthored={studyAsidesAuthored}
+          notesLoading={studyNotesLoading}
           selectedBlockIds={selectedBlockIds}
           onNarrate={onNarrate}
           narratingId={narratingId}

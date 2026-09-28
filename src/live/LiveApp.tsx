@@ -1972,6 +1972,7 @@ export function LiveApp(): ReactElement {
     level: typeof cfg.explainLevel;
     notes: Map<string, BlockStudy>;
   } | null>(null);
+  const [studyNotesLoading, setStudyNotesLoading] = useState(false);
   const studySpec = turn.viewSpec ?? turn.spec;
   // THE answer's identity, everywhere the Study needs one. A live spec's id is the constant
   // 'live' for the whole session (generateLive), so anything keyed on it alone is keyed on
@@ -1987,19 +1988,11 @@ export function LiveApp(): ReactElement {
         : null,
     [studySpecRawId, studySpecBlocks],
   );
-  // Whether this reader uses the desk. Opening it once is the signal — after that the notes are
-  // bought as soon as the answer settles, so the desk is already annotated when they arrive
-  // rather than starting a call at the moment they ask to read. A reader who never opens the
-  // Study never trips this and is never billed for it, which is the whole reason the notes left
-  // the answer turn in the first place.
-  const studyOpenedRef = useRef<boolean | null>(null);
-  if (studyOpenedRef.current === null) studyOpenedRef.current = deskFirst();
   // Opening the desk is the reader's own gesture, and the one thing that may ask again for notes
   // whose last call failed. Consumed by the next call the notes effect makes.
   const studyRetryRef = useRef(false);
   useEffect(() => {
     if (viewMode === 'study') {
-      studyOpenedRef.current = true;
       studyRetryRef.current = true;
       // Persist the habit: the desk is a takeover now, so nothing else remembers it was opened.
       markDeskFirst();
@@ -2007,23 +2000,45 @@ export function LiveApp(): ReactElement {
   }, [viewMode]);
 
   useEffect(() => {
-    // On the desk now, or known to be heading there: either way the notes are worth having ready.
-    if (viewMode !== 'study' && !studyOpenedRef.current) return;
-    if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) return;
-    if (!studySpec || !studySpecId) return;
-    // Speculative work checks the guard before spending. This is a second request behind every
-    // settled answer, and on a key that has just answered 429 it was the request that kept it
-    // there. The desk loses nothing: it derives its notes locally
-    // until a later answer buys them.
-    if (recentlyRateLimited()) return;
+    // Notes are optional work on the reader's key. Buy them only while the reader is actually on
+    // the desk; remembering that they used Study once made every later chat turn silently spend a
+    // second provider request, crowding low-RPM keys and competing with the next interactive turn.
+    if (viewMode !== 'study') {
+      setStudyNotesLoading(false);
+      return;
+    }
+    if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) {
+      setStudyNotesLoading(false);
+      return;
+    }
+    if (!studySpec || !studySpecId) {
+      setStudyNotesLoading(false);
+      return;
+    }
+    // Optional work checks the guard before spending. On a key that has just answered 429, an
+    // immediate annotation request prolongs the pressure. The desk keeps its locally derived
+    // notes until the reader explicitly reopens it and retries.
+    if (recentlyRateLimited()) {
+      setStudyNotesLoading(false);
+      return;
+    }
     // Never buy notes for an answer still streaming: every partial would be its own "answer"
     // (the signature grows per block) and each would bill a full annotate call — measured as
     // one paid generation per streamed block. The settled answer buys once.
-    if (turn.busy) return;
+    if (turn.busy) {
+      setStudyNotesLoading(false);
+      return;
+    }
     // Already have them, or the answer carries them inline (an older turn, a baked demo).
-    if (studyNotes?.specId === studySpecId && studyNotes.level === cfg.explainLevel) return;
+    if (studyNotes?.specId === studySpecId && studyNotes.level === cfg.explainLevel) {
+      setStudyNotesLoading(false);
+      return;
+    }
     const unannotatedBlocks = deskObjects(studySpec.blocks).filter((block) => !block.study);
-    if (!unannotatedBlocks.length) return;
+    if (!unannotatedBlocks.length) {
+      setStudyNotesLoading(false);
+      return;
+    }
     const annotationSpec = { ...studySpec, blocks: unannotatedBlocks };
     const retryFailed = studyRetryRef.current;
     studyRetryRef.current = false;
@@ -2031,6 +2046,7 @@ export function LiveApp(): ReactElement {
     const watcher = new AbortController();
     let pendingNotes: Map<string, BlockStudy> | null = null;
     let notesFrame = 0;
+    setStudyNotesLoading(true);
     // The reply streams, so take each note the moment it closes rather than waiting for the last
     // one. Measured before this: a six-block answer held the whole reply for ~11s and the margin
     // stayed in Mavéa's own hand for every second of it.
@@ -2068,12 +2084,12 @@ export function LiveApp(): ReactElement {
       })
       .catch(() => {
         /* the derived voices are already on the desk; nothing to say */
+      })
+      .finally(() => {
+        if (alive) setStudyNotesLoading(false);
       });
-    // Only stop LISTENING. The call is shared and content-addressed — this effect re-runs on
-    // any `cfg` identity change, and cancelling here aborted the request every render while the
-    // in-flight dedup handed each retry the same dead promise, so the notes never arrived at all.
-    // The call owns its own deadline (see annotate.ts); a reader who leaves still funds the cache
-    // entry their next open reads for free.
+    // Stop this subscriber. A shared call survives while another visible subscriber remains; when
+    // the last one leaves, annotate.ts cancels the optional provider work so chat gets the slot.
     return () => {
       alive = false;
       watcher.abort();
@@ -6666,6 +6682,7 @@ export function LiveApp(): ReactElement {
                   onToggleMute={() => setMuted((m) => !m)}
                   studyAsides={studyAsides}
                   studyAsidesAuthored={studyAsidesAuthored}
+                  studyNotesLoading={studyNotesLoading}
                   studyStreaming={turn.busy}
                   studyAnswerEpoch={turn.answerEpoch}
                   viewMode={viewMode}
