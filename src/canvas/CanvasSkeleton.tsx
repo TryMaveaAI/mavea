@@ -55,12 +55,20 @@ export function skeletonCell(b: SkeletonHint, i: number, budget?: number): React
   const span = budget != null && budget < 9 ? 12 : rawCol;
   return (
     <div key={b.id || i} className={'col-' + span} aria-hidden="true">
-      <div className="card skel-card skel-fade">
-        <span className="skel-eyebrow" />
-        {LINE_WIDTHS[i % LINE_WIDTHS.length].map((w, j) => (
-          <span key={j} className="skel-line" style={{ width: `${w}%` }} />
-        ))}
-      </div>
+      {skeletonCard(i)}
+    </div>
+  );
+}
+
+/** The placeholder card alone, for a cell already on the grid whose renderer is still loading. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function skeletonCard(i: number): ReactElement {
+  return (
+    <div className="card skel-card skel-fade">
+      <span className="skel-eyebrow" />
+      {LINE_WIDTHS[i % LINE_WIDTHS.length].map((w, j) => (
+        <span key={j} className="skel-line" style={{ width: `${w}%` }} />
+      ))}
     </div>
   );
 }

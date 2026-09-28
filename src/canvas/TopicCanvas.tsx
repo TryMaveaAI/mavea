@@ -6,8 +6,7 @@
 // card still mounts (and staggers) together.
 import '../styles/canvas-runtime.css';
 import '../live/print/print.css';
-import { extendedRender } from './blocks/loader';
-import { useBlockFamilies } from './blocks/useBlockFamilies';
+import { useBlockFamilies, useExtendedRender } from './blocks/useBlockFamilies';
 // Shared visual foundations used across families (axis/legend primitives, empty states,
 // entrance motion, exploration controls) — they ride the canvas, not any one family chunk.
 import './lib/axis.css';
@@ -81,7 +80,7 @@ import { BlockBoundary } from './BlockBoundary';
 import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
 import { LensStrip } from './lens/LensStrip';
-import { skeletonCell } from './CanvasSkeleton';
+import { skeletonCard, skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
 import { SectionGroup } from './depth/SectionGroup';
@@ -213,6 +212,8 @@ function BlockViewImpl({
   onUnrenderable,
 }: BlockViewProps): ReactNode {
   const common = { delay: b.delay };
+  // Read before any early return: a hook, and the cell's own subscription to its family's chunk.
+  const ext = useExtendedRender(b.type);
   // A composite is a model-arranged sub-grid of other blocks. Render it here (where the
   // full render path is in scope) so every region goes through the SAME vetted renderer.
   // A nesting cap stops a pathological self-nesting payload from recursing without bound.
@@ -305,11 +306,11 @@ function BlockViewImpl({
     return <ActionProposal {...p} {...common} />;
   }
   // Extended library (595 components, 24 families) — looked up through the per-family
-  // loader (null while that family's chunk is in flight; useBlockFamilies holds the grid
-  // back until every needed family has settled, so this is never null mid-render).
+  // loader. A family still in flight shows a placeholder card, which this cell swaps for the
+  // real one when the chunk lands.
   // Cast through unknown so this compiles whether the extended union is empty (never) or full.
   const bx = b as unknown as { type: string; props: unknown; delay?: number; id?: string };
-  const ext = extendedRender(bx.type);
+  if (ext === 'pending') return skeletonCard(0);
   if (ext) {
     const rendered = ext(bx.props, {
       delay: bx.delay,
@@ -682,10 +683,11 @@ export function TopicCanvas({
     [data.blocks, droppedIds],
   );
   const { displayBlocks = sourceBlocks, budget } = useResponsiveGrid(sourceBlocks, gridRef);
-  // Per-family chunk gate: hold the cards back until every family this answer uses has
-  // loaded, then mount the whole grid in one pass (preloading at the stream/intent stage
-  // means this is almost always already true — see blocks/loader.ts).
-  const familiesLoaded = useBlockFamilies(data.blocks, data.id);
+  // Per-family chunk gate: hold the first paint until every family it uses has loaded, then
+  // mount the whole grid in one pass (preloading at the stream/intent stage means this is
+  // almost always already true — see blocks/loader.ts). A family a later block brings is
+  // waited on by that card alone.
+  const familiesLoaded = useBlockFamilies(data.blocks);
   const contentRevision = `${data.id}:${familiesLoaded}:${budget}`;
   useAccessibleScrollRegions(gridRef, contentRevision);
   useTruncatedTextDisclosures(gridRef, contentRevision);
