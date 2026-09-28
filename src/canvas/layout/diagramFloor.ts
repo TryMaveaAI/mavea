@@ -17,6 +17,10 @@ const TARGET_PX = 9.1;
 const SLACK_PX = 0.05;
 const SCROLLY = new Set(['auto', 'scroll']);
 
+/** Classes the pan guards add (this file's and the board's), which a diagram's identity must
+ *  see through: the board wraps a diagram the Lens may not. */
+const GUARD_CLASS = /^canvas-(hscroll|svg-scroll)/;
+
 /** Held elements, marked so a release finds them without a registry that could outlive them. */
 const PIN = 'data-diagram-floor';
 const PAN = 'data-diagram-pan';
@@ -29,12 +33,36 @@ function labelsOf(svg: SVGSVGElement): SVGTextContentElement[] {
 }
 
 /** Every viewBox SVG under `root` that carries a label, in document order. An icon has a viewBox
- *  and no text, so it is never counted, and the order is the same wherever the block renders. */
+ *  and no text, so it is never counted. */
 function diagramsIn(root: Element): SVGSVGElement[] {
   return Array.from(root.querySelectorAll<SVGSVGElement>('svg[viewBox]')).filter(
     (svg) => labelsOf(svg).length > 0,
   );
 }
+
+/** Each diagram under `root` with a name that finds the same diagram wherever its block renders:
+ *  the element path from its card down to it, by tag and authored class. Document order alone is
+ *  not that — a block can draw a diagram at one width and not another, and every diagram after it
+ *  would take its neighbour's size. Diagrams on the same path are told apart by their order among
+ *  themselves only. */
+function namedDiagrams(root: Element): [string, SVGSVGElement][] {
+  const seen = new Map<string, number>();
+  return diagramsIn(root).map((svg) => {
+    const steps: string[] = [];
+    for (let el: Element | null = svg; el && el !== root; el = el.parentElement) {
+      const classes = Array.from(el.classList).filter((c) => !GUARD_CLASS.test(c));
+      steps.push([el.localName, ...classes.sort()].join('.'));
+      if (el.classList.contains('card')) break;
+    }
+    const path = steps.reverse().join('>');
+    const n = seen.get(path) ?? 0;
+    seen.set(path, n + 1);
+    return [`${path}#${n}`, svg];
+  });
+}
+
+/** A block's diagrams by name, each with the painted px its smallest label is to hold. */
+export type DiagramFloors = ReadonlyMap<string, number>;
 
 /** The painted px of the smallest label a reader can see in `svg`; 0 when none can be measured. */
 function smallestLabelPx(svg: SVGSVGElement): number {
@@ -52,10 +80,10 @@ function smallestLabelPx(svg: SVGSVGElement): number {
   return Number.isFinite(min) ? min : 0;
 }
 
-/** For each labelled diagram under `root`, in document order, the painted px of its smallest
- *  label — what a reader already saw it at, for a later rendering to hold. */
-export function diagramLabelPx(root: Element): number[] {
-  return diagramsIn(root).map(smallestLabelPx);
+/** For each labelled diagram under `root`, by name, the painted px of its smallest label — what
+ *  a reader already saw it at, for a later rendering to hold. */
+export function diagramLabelPx(root: Element): DiagramFloors {
+  return new Map(namedDiagrams(root).map(([name, svg]) => [name, smallestLabelPx(svg)]));
 }
 
 /** What was there before a hold, so a release puts back exactly that. `null` is "absent". */
@@ -137,18 +165,18 @@ function panOf(svg: SVGSVGElement): HTMLElement | null {
 }
 
 /**
- * Hold every labelled diagram under `root` so its smallest label paints at `floors[i]` (the i-th
- * diagram, in document order) and never under the 9px floor. A diagram short of that keeps a
+ * Hold every labelled diagram under `root` so its smallest label paints at its size in `floors`
+ * (matched by name) and never under the 9px floor. A diagram short of that keeps a
  * layout width and height grown by the same factor — its geometry stays proportional — and the
  * box around it pans. Starts from the diagrams' own layout, so it can be re-run on every fit.
  */
-export function holdDiagrams(root: Element, floors: readonly number[] = []): void {
+export function holdDiagrams(root: Element, floors: DiagramFloors = new Map()): void {
   releaseDiagrams(root);
   // Every read first, then every write: interleaved, each write would force the next read to
   // lay the whole card out again.
-  const plans = diagramsIn(root).flatMap((svg, i) => {
+  const plans = namedDiagrams(root).flatMap(([name, svg]) => {
     const now = smallestLabelPx(svg);
-    const want = Math.max(TARGET_PX, floors[i] ?? 0);
+    const want = Math.max(TARGET_PX, floors.get(name) ?? 0);
     if (!now || now >= want - SLACK_PX) return [];
     const box = svg.getBoundingClientRect();
     // An inline glyph is small in BOTH axes; a wide, short chart is still a chart.

@@ -48,7 +48,7 @@ describe('a diagram held at the size a reader saw it', () => {
   it('reads each labelled diagram by its smallest painted label, and skips icons', () => {
     const root = card();
     drawn(parts(root).svg, 1.09);
-    expect(diagramLabelPx(root)).toEqual([10.9]);
+    expect([...diagramLabelPx(root).values()]).toEqual([10.9]);
   });
 
   it('keeps a legible width and pans the rest, and gives the box back on release', () => {
@@ -56,7 +56,7 @@ describe('a diagram held at the size a reader saw it', () => {
     const { svg, wrap } = parts(root);
     // A phone-width stage: 10 units at 0.39 paints 3.9px.
     drawn(svg, 0.39);
-    holdDiagrams(root, [9.1]);
+    holdDiagrams(root);
     // Grown by 9.1 / 3.9 in both axes, so the geometry stays proportional.
     expect(svg.style.minWidth).toBe('654px');
     expect(svg.style.minHeight).toBe('280px');
@@ -80,14 +80,44 @@ describe('a diagram held at the size a reader saw it', () => {
   it('holds the size the board drew it at, not just the 9px floor', () => {
     const root = card();
     const { svg } = parts(root);
+    drawn(svg, 1.09);
+    const board = diagramLabelPx(root);
     // 9.5px clears the floor, but the board drew it at 10.9.
     drawn(svg, 0.95);
-    holdDiagrams(root, [10.9]);
+    holdDiagrams(root, board);
     expect(svg.style.minWidth).toBe(`${Math.ceil((280 * 10.9) / 9.5)}px`);
     // At the board's size already, nothing is held.
     drawn(svg, 1.1);
-    holdDiagrams(root, [10.9]);
+    holdDiagrams(root, board);
     expect(svg.style.minWidth).toBe('');
+  });
+
+  it('matches each diagram to its own board size, not to its place in the card', () => {
+    const twoDiagrams = (kinds: string[]): HTMLElement => {
+      const root = document.createElement('div');
+      root.innerHTML = `<div class="card">${kinds
+        .map(
+          (k) =>
+            `<div class="${k}"><svg viewBox="0 0 720 300"><text style="font-size: 10px">${k}</text></svg></div>`,
+        )
+        .join('')}</div>`;
+      document.body.append(root);
+      return root;
+    };
+    const svgOf = (root: HTMLElement, k: string) =>
+      root.querySelector(`.${k} svg`) as SVGSVGElement;
+    const board = twoDiagrams(['flow', 'axis']);
+    drawn(svgOf(board, 'flow'), 1.2);
+    drawn(svgOf(board, 'axis'), 1.0);
+    // The board wraps a diagram in its own pan, which a key must see through.
+    svgOf(board, 'axis').parentElement!.classList.add('canvas-svg-scroll', 'canvas-hscroll');
+    const floors = diagramLabelPx(board);
+    // At the Lens's width the flow drops out, so the axis is the first diagram in the card.
+    const lens = twoDiagrams(['axis']);
+    drawn(svgOf(lens, 'axis'), 0.95);
+    holdDiagrams(lens, floors);
+    // Held to the axis's 10px on the board, not the flow's 12.
+    expect(svgOf(lens, 'axis').style.minWidth).toBe(`${Math.ceil((280 * 10) / 9.5)}px`);
   });
 
   it('holds the floor with no board size to go on', () => {
@@ -102,7 +132,7 @@ describe('a diagram held at the size a reader saw it', () => {
 describe('FitBox — a held diagram', () => {
   it('holds it after the fit, and fits the block without counting the held width', () => {
     const tree = () => (
-      <FitBox diagramFloorPx={[9.1]}>
+      <FitBox diagramFloorPx={new Map()}>
         <div className="card">
           <svg viewBox="0 0 720 300">
             <text style={{ fontSize: 10 }}>Causes</text>

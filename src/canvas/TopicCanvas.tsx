@@ -15,7 +15,7 @@ import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
 import { FitBox, type FitFacts } from './layout/FitBox';
-import { diagramLabelPx } from './layout/diagramFloor';
+import { diagramLabelPx, type DiagramFloors } from './layout/diagramFloor';
 import { observeResize } from './layout/sharedResize';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useFocusTrap } from '../live/useFocusTrap';
@@ -484,7 +484,7 @@ export function TopicCanvas({
   // What the card's diagrams' smallest labels painted at on the board. A diagram draws its labels
   // at whatever width its box gives it, and the stage is often narrower than the board's card
   // (the notes sit beside it), so a scale alone cannot keep the promise above for them.
-  const [boardDiagramPx, setBoardDiagramPx] = useState<readonly number[]>([]);
+  const [boardDiagramPx, setBoardDiagramPx] = useState<DiagramFloors>(() => new Map());
   // A narrow sheet stacks the notes under the card in the one scroll. When the card already runs
   // past the stage, four notes under it are a long way down, so they start folded to one line;
   // the reader's own choice (null until they make one) outranks that, until the next card.
@@ -825,7 +825,7 @@ export function TopicCanvas({
     lensLastId.current = b.id;
     setBoardScale(boardScaleOf(b.id));
     const cell = boardCellOf(b.id);
-    setBoardDiagramPx(cell ? diagramLabelPx(cell) : []);
+    setBoardDiagramPx(cell ? diagramLabelPx(cell) : new Map());
     setNotesOpen(null);
     setZoomedBlock(b);
     setZoomLevel('fit');

@@ -24,7 +24,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { holdDiagrams, releaseDiagrams } from './diagramFloor';
+import { holdDiagrams, releaseDiagrams, type DiagramFloors } from './diagramFloor';
 import { observeResize } from './sharedResize';
 
 const CLIP = new Set(['hidden', 'clip', 'auto', 'scroll']);
@@ -176,12 +176,12 @@ export interface FitBoxProps {
   /** Told the scale the fit settled on, whenever it changes — for a host that states it (the
    *  Lens's zoom readout) or carries it on (a magnification that starts where the fit left off). */
   onScale?: (k: number, fit: FitFacts) => void;
-  /** Hold the block's labelled diagrams at the size a reader already saw them: the i-th one's
-   *  smallest label paints at no less than the i-th value here, and never under the 9px floor.
+  /** Hold the block's labelled diagrams at the size a reader already saw them: each one's
+   *  smallest label paints at no less than its value here, and never under the 9px floor.
    *  A diagram draws its labels at whatever its box gives it, so no uniform scale can promise
    *  this; a diagram short of it keeps a legible width and its box pans. Omit to leave diagrams
    *  to the block's own layout. */
-  diagramFloorPx?: readonly number[];
+  diagramFloorPx?: DiagramFloors;
   className?: string;
 }
 
