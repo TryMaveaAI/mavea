@@ -64,6 +64,11 @@ const STREAM_TOTAL_MS = 90_000;
  *  "model overloaded". Both clear on their own; failing the turn on them makes the user do by hand
  *  exactly what this loop does. */
 const TRANSIENT_RETRIES = 2;
+/** A 503 is refused before the model runs, so re-sending it costs nothing and, measured on a free
+ *  key (2026-09-28), Google shed roughly a quarter to a half of large requests, each call
+ *  independently. Three tries in all failed a turn about one ask in eight; six fail it about one in
+ *  sixty. 429 keeps the shorter budget above: it spends the very per-minute allowance a retry needs. */
+const OVERLOAD_RETRIES = 5;
 /** Finish reasons that mean the model refused, rather than ran out of room or simply finished. */
 const BLOCKED_FINISH = new Set(['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII']);
 
@@ -387,7 +392,7 @@ export const geminiAdapter: ProviderAdapter = {
         const detail = await errorDetail(res);
         if (
           isTransientProviderFailure(res.status, detail) &&
-          tries < TRANSIENT_RETRIES &&
+          tries < (res.status === 429 ? TRANSIENT_RETRIES : OVERLOAD_RETRIES) &&
           !signal.aborted
         ) {
           // Say so. This sleep can run to 10s per attempt, and it used to pass in silence

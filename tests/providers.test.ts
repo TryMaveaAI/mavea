@@ -1230,6 +1230,36 @@ describe('gemini answers with 200 OK and nothing in it', () => {
       expect(String(url)).toContain('/gemini-user-selected-flash:');
   });
 
+  it('rides out a run of 503s: six tries in all before the turn fails', async () => {
+    const refused = () => new Response('{}', { status: 503, headers: { 'retry-after-ms': '1' } });
+    const recovering = vi
+      .fn()
+      .mockImplementationOnce(async () => refused())
+      .mockImplementationOnce(async () => refused())
+      .mockImplementationOnce(async () => refused())
+      .mockImplementationOnce(async () => refused())
+      .mockImplementationOnce(async () => refused())
+      .mockImplementationOnce(async () => streamResponse([TEXT_FRAME], 'text/event-stream'));
+    vi.stubGlobal('fetch', recovering);
+    const { raw } = await geminiAdapter.generate(req, cfg);
+    expect(raw).toBe('{}');
+    expect(recovering).toHaveBeenCalledTimes(6);
+
+    const stuck = vi.fn(async () => refused());
+    vi.stubGlobal('fetch', stuck);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/gemini 503/);
+    expect(stuck).toHaveBeenCalledTimes(6);
+  });
+
+  it('keeps 429 on the short budget: a retry spends the per-minute allowance it is waiting on', async () => {
+    const limited = vi.fn(
+      async () => new Response('{}', { status: 429, headers: { 'retry-after-ms': '1' } }),
+    );
+    vi.stubGlobal('fetch', limited);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/gemini 429/);
+    expect(limited).toHaveBeenCalledTimes(3);
+  });
+
   it('surfaces a non-transient status without retrying', async () => {
     const fetchMock = vi.fn(async () => new Response('{}', { status: 400 }));
     vi.stubGlobal('fetch', fetchMock);
