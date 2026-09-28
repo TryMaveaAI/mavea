@@ -19,6 +19,7 @@ import { GeometryCanvas } from '../src/canvas/blocks/learn/GeometryCanvas';
 import { GridMatrix } from '../src/canvas/blocks/learn/GridMatrix';
 import { LetterForm } from '../src/canvas/blocks/learn/LetterForm';
 import { LineSpectrum } from '../src/canvas/blocks/learn/LineSpectrum';
+import { TitrationCurve } from '../src/canvas/blocks/learn/TitrationCurve';
 import { NumberLine } from '../src/canvas/blocks/learn/NumberLine';
 import { ParseTree } from '../src/canvas/blocks/learn/ParseTree';
 import { PhasePortrait } from '../src/canvas/blocks/learn/PhasePortrait';
@@ -2640,5 +2641,33 @@ describe('CrossSection — layers with nothing to size them', () => {
       />,
     );
     expect(container.querySelector('svg.lr-xs-svg')).not.toBeNull();
+  });
+});
+
+// Regression coverage: the equivalence-volume label always read to the right of its line, so an
+// equivalence point near the last reading printed "Veq 34.75 mL" past the viewBox edge.
+describe('TitrationCurve', () => {
+  const points = [0, 10, 20, 30, 34, 34.5, 35].map((volumeMl, i) => ({ volumeMl, pH: 3 + i }));
+
+  it('keeps the equivalence label inside the viewBox near the last reading', () => {
+    const { container } = render(
+      <TitrationCurve title="Titration" points={points} equivalenceVolumeMl={34.75} />,
+    );
+    const vbW = Number(
+      container.querySelector('svg.lr-tc-svg')!.getAttribute('viewBox')!.split(' ')[2],
+    );
+    const label = container.querySelector<SVGTextElement>('.lr-tc-veq-label')!;
+    const w = estimateTextWidth(label.textContent ?? '', 9, true);
+    const x = Number(label.getAttribute('x'));
+    const left = label.getAttribute('text-anchor') === 'end' ? x - w : x;
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(left + w).toBeLessThanOrEqual(vbW);
+  });
+
+  it('still reads to the right of the line when there is room', () => {
+    const { container } = render(
+      <TitrationCurve title="Titration" points={points} equivalenceVolumeMl={10} />,
+    );
+    expect(container.querySelector('.lr-tc-veq-label')!.getAttribute('text-anchor')).toBe('start');
   });
 });

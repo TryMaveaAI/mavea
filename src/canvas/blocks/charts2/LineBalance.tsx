@@ -18,14 +18,18 @@ function formatTakt(v: number, unit: string): string {
 const W = 360;
 const H = 230;
 const PAD = { top: 16, bottom: 34, left: 40 };
-// The right gutter holds the takt line's label. It is sized from that label, since a unit makes
-// it several times longer than a bare number ("Takt · 2.5 hours"), within these bounds.
+// The right gutter holds the takt line's label, sized from its value ("2.5 hours" is several
+// times wider than "90") within these bounds.
 const PAD_R_MIN = 24;
 const PAD_R_MAX = W * 0.3;
 // .c2-lb-takt-lbl, in user units. It already sits at the library's floor, so a label too long
 // for the widest gutter wraps rather than shrinks.
 const TAKT_FS = 9;
 const TAKT_GAP = 4;
+const TAKT_WORD = 'Takt';
+// Baseline floor for a bar's "bottleneck" flag, in viewBox units: a bar reaching the top of the
+// domain lifts its flag into the top padding rather than printing it over the bar.
+const FLAG_TOP = 9;
 // .cx-tick's clamp ceiling, in user units — the size the labels would like to be.
 const LABEL_FS = 9.5;
 // Gap between the axis line and the first line of station type.
@@ -63,22 +67,34 @@ export function LineBalance({
       };
     });
 
-    const taktText = taktValid ? `Takt · ${formatTakt(takt as number, unit)}` : '';
-    const padR = taktText
+    // The label stacks "Takt" over its value, so the gutter only has to be as wide as the value:
+    // on one line a unit makes it several times longer than a bare number, and every unit the
+    // gutter takes is a unit the station bands (and their names) lose.
+    const taktValue = taktValid ? formatTakt(takt as number, unit) : '';
+    const padR = taktValue
       ? Math.min(
           PAD_R_MAX,
-          Math.max(PAD_R_MIN, estimateTextWidth(taktText, TAKT_FS, true) + TAKT_GAP + 2),
+          Math.max(
+            PAD_R_MIN,
+            Math.max(
+              estimateTextWidth(TAKT_WORD, TAKT_FS, true),
+              estimateTextWidth(taktValue, TAKT_FS, true),
+            ) +
+              TAKT_GAP +
+              2,
+          ),
         )
       : PAD_R_MIN;
-    const taktFit = taktText
-      ? fitText(taktText, {
+    const valueFit = taktValue
+      ? fitText(taktValue, {
           maxWidth: padR - TAKT_GAP - 2,
           fontSize: TAKT_FS,
           minFontSize: TAKT_FS,
-          maxLines: 3,
+          maxLines: 2,
           bold: true,
         })
       : null;
+    const taktFit = valueFit ? { ...valueFit, lines: [TAKT_WORD, ...valueFit.lines] } : null;
     const innerW = W - PAD.left - padR;
     const n = Math.max(1, list.length);
     const bandW = innerW / n;
@@ -185,7 +201,7 @@ export function LineBalance({
                   {s.isBottleneck && (
                     <text
                       x={geom.sx(i)}
-                      y={Math.max(y - 5, 9)}
+                      y={Math.max(y - 5, FLAG_TOP - PAD.top)}
                       textAnchor="middle"
                       className="c2-lb-flag"
                     >
@@ -219,7 +235,8 @@ export function LineBalance({
                 {taktLabel && (
                   <text
                     x={geom.innerW + TAKT_GAP}
-                    y={yTakt + 3}
+                    // Centre the stack on the takt line, which it reads as the end of.
+                    y={yTakt + 3 - ((taktLabel.lines.length - 1) * taktLabel.lineHeightPx) / 2}
                     className="c2-lb-takt-lbl"
                     style={{ fontSize: taktLabel.fontSize }}
                   >

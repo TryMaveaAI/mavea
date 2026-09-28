@@ -14,6 +14,7 @@ import { DualAxis } from '../src/canvas/blocks/charts2/DualAxis';
 import { EcgStrip } from '../src/canvas/blocks/charts2/EcgStrip';
 import { ErrorBars } from '../src/canvas/blocks/charts2/ErrorBars';
 import { Gantt } from '../src/canvas/blocks/charts2/Gantt';
+import { LineBalance } from '../src/canvas/blocks/charts2/LineBalance';
 import { IndifferenceCurve } from '../src/canvas/blocks/charts2/IndifferenceCurve';
 import { PayoffDiagram } from '../src/canvas/blocks/charts2/PayoffDiagram';
 import { Plot } from '../src/canvas/blocks/charts2/Plot';
@@ -1553,6 +1554,112 @@ describe('TernaryPlot', () => {
         expect(x - half).toBeGreaterThanOrEqual(0);
         expect(x + half).toBeLessThanOrEqual(W);
       }
+    }
+  });
+});
+
+// Regression coverage for the fixed-gutter idiom: each of these charts reserved an edge gutter
+// sized for a bare number or a short name, so a unit-bearing value ("2.5 hours"), a large figure
+// ("2,000,000") or a real team name ran past the viewBox and was clipped at the card edge.
+describe('edge labels stay inside the viewBox', () => {
+  function viewWidth(svg: Element): number {
+    return Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+  }
+  /** The horizontal extent of a <text>/<tspan> run, from its anchor and estimated width. */
+  function span(el: Element, text: string, fs: number, bold: boolean) {
+    const x = Number(el.getAttribute('x'));
+    const w = estimateTextWidth(text, fs, bold);
+    const anchor = el.closest('text')?.getAttribute('text-anchor') ?? 'start';
+    const left = anchor === 'end' ? x - w : anchor === 'middle' ? x - w / 2 : x;
+    return { left, right: left + w };
+  }
+  const stations = [
+    { name: 'Panel cut + edge-band', cycleTime: 2.1 },
+    { name: 'Dowel + glue-up', cycleTime: 2.3 },
+    { name: 'Clamp + cure', cycleTime: 1.9 },
+    { name: 'Hardware install', cycleTime: 2.9 },
+    { name: 'Inspect + pack', cycleTime: 1.6 },
+  ];
+
+  it('LineBalance stacks a unit-bearing takt label inside its gutter', () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    const svg = container.querySelector('svg.c2-lb-svg')!;
+    // The plot is translated by its left padding, so read the offset off the group.
+    const dx = Number(
+      /translate\(([\d.]+)/.exec(svg.querySelector('g')!.getAttribute('transform')!)![1],
+    );
+    const lines = Array.from(svg.querySelectorAll('.c2-lb-takt-lbl tspan'));
+    expect(lines.map((t) => t.textContent)).toEqual([
+      'Takt',
+      expect.stringMatching(/^2\.5\shours$/),
+    ]);
+    for (const t of lines) {
+      const { right } = span(t, t.textContent ?? '', 9, true);
+      expect(dx + right).toBeLessThanOrEqual(viewWidth(svg));
+    }
+  });
+
+  it('LineBalance keeps station names whole beside a unit-bearing takt', () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    // A band squeezed by the takt gutter breaks names mid-word ("Hardwar" / "e"); every line
+    // must end on a word boundary, so rejoining the lines recovers the name exactly.
+    const names = Array.from(container.querySelectorAll('text.cx-tick'))
+      .map((el) => Array.from(el.querySelectorAll('tspan')).map((t) => t.textContent ?? ''))
+      .filter((ls) => ls.length > 0)
+      .map((ls) => ls.join(' '));
+    expect(names).toEqual(stations.map((s) => s.name));
+  });
+
+  it("LineBalance lifts a full-height bar's bottleneck flag above the bar", () => {
+    const { container } = render(
+      <LineBalance title="Balance" takt={2.5} unit="hours" stations={stations} />,
+    );
+    const flag = container.querySelector('text.c2-lb-flag')!;
+    const bar = container.querySelector('rect.c2-lb-bar-warn')!;
+    expect(Number(flag.getAttribute('y'))).toBeLessThan(Number(bar.getAttribute('y')));
+  });
+
+  it('BumpChart sizes its name gutter for long names', () => {
+    const series: BumpSeries[] = [
+      { label: 'Oklahoma City Thunder', ranks: [2, 1, 1] },
+      { label: 'Denver Nuggets', ranks: [1, 2, 2] },
+      { label: 'Los Angeles Lakers', ranks: [3, 3, 3] },
+    ];
+    const { container } = render(
+      <BumpChart title="Standings" periods={['Jan', 'Feb', 'Mar']} series={series} />,
+    );
+    const svg = container.querySelector('svg.c2-bump-svg')!;
+    for (const name of container.querySelectorAll<SVGTextElement>('text.c2-bump-name')) {
+      const fs = Number.parseFloat(name.style.fontSize);
+      expect(fs).toBeGreaterThanOrEqual(9);
+      for (const t of name.querySelectorAll('tspan')) {
+        expect(span(t, t.textContent ?? '', fs, true).right).toBeLessThanOrEqual(viewWidth(svg));
+      }
+    }
+  });
+
+  it('DualAxis sizes both tick gutters for large figures', () => {
+    const { container } = render(
+      <DualAxis
+        title="Revenue vs. users"
+        categories={['Q1', 'Q2', 'Q3', 'Q4']}
+        bar={{ name: 'Revenue', data: [1250000, 1480000, 1720000, 1990000] }}
+        line={{ name: 'Users', data: [12500, 14100, 16800, 19950] }}
+      />,
+    );
+    const svg = container.querySelector('svg.c2-da-svg')!;
+    const ticks = Array.from(svg.querySelectorAll('text.cx-tick')).filter((t) =>
+      /\d,\d{3}/.test(t.textContent ?? ''),
+    );
+    expect(ticks.map((t) => t.textContent)).toContain('2,000,000');
+    for (const t of ticks) {
+      const { left, right } = span(t, t.textContent ?? '', 9.5, false);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(viewWidth(svg));
     }
   });
 });
