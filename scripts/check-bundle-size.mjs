@@ -298,7 +298,10 @@ const ROUTE_BUDGETS = [
     // 167 (was 166): measured at 166.1. A card now waits on its own block family through a loader
     // subscription and a placeholder card, instead of a hold keyed on the answer id — the
     // lesson renders the same canvas, so it carries the same few hundred bytes.
-    gzip: 167,
+    // 168 (was 167): measured at 167.5. The sectioned board packs its sections into filled
+    // columns on an ultrawide window, and the chart gutters size from their measured labels —
+    // TopicCanvas code the lesson shares.
+    gzip: 168,
     files: 59,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
