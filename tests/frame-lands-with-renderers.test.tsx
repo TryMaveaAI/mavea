@@ -20,11 +20,18 @@ function Board({ spec }: { spec: ConversationSpec }) {
   return <TopicCanvas data={spec} spot={null} built={{}} onProve={() => {}} />;
 }
 
+// Each wait crosses a lazy family chunk, and under a full parallel run that chunk's first
+// transform alone can outlast the default 1s wait.
+const COLD_MS = 8000;
+
 async function expectEveryCardDrawn(container: HTMLElement, spec: ConversationSpec) {
-  await waitFor(() => {
-    expect(container.querySelectorAll('.skel-card')).toHaveLength(0);
-    expect(container.querySelectorAll('[data-spot-id]').length).toBe(spec.blocks.length);
-  });
+  await waitFor(
+    () => {
+      expect(container.querySelectorAll('.skel-card')).toHaveLength(0);
+      expect(container.querySelectorAll('[data-spot-id]').length).toBe(spec.blocks.length);
+    },
+    { timeout: COLD_MS },
+  );
   expect(container.querySelectorAll('.fb-card, .cx-empty')).toHaveLength(0);
 }
 
