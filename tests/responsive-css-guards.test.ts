@@ -1250,6 +1250,10 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
     expect(ruleFor(voice, '.live-voice .dock-main > *')).toMatch(
       /max-width:\s*var\(--live-content-max\)/,
     );
+    // The ink bar reads the token itself, not only through the dock rule that happens to outrank it.
+    const inkBar =
+      /\n\.ink-bar\s*\{[^}]*\}/.exec(read('src/live/annotate/annotate.css'))?.[0] ?? '';
+    expect(inkBar).toMatch(/max-width:\s*var\(--live-content-max\)/);
     // The skeletons a turn streams into stand where its board will.
     expect(ruleFor(read('src/live/turnstate/turnstate.css'), '.live-voice .working-col')).toMatch(
       /max-width:\s*var\(--live-content-max\)/,
