@@ -356,6 +356,18 @@ function renumber(blocks: Block[]): Block[] {
 }
 
 /**
+ * The cards a follow-up adds, with their section order continuing after the board they join.
+ * Every answer numbers its sections from 1, and the canvas sorts sections by that number, so a
+ * follow-up's first section would otherwise sort in beside the board's first and push everything
+ * the reader has scrolled down to further down the page. Cards joining a section the board
+ * already has keep that section's place, since a section takes its order from its first card.
+ */
+export function continueOrder(board: readonly Block[], added: readonly Block[]): Block[] {
+  const base = Math.max(0, ...board.map((b) => b.order ?? 0));
+  return added.map((b) => (base && b.order !== undefined ? { ...b, order: b.order + base } : b));
+}
+
+/**
  * Produce the next canvas from the `prior` blocks and this turn's `next` blocks.
  *  - replace: just this turn's blocks (also the path for the very first turn).
  *  - augment: keep the prior blocks, append the genuinely new ones (by content).
@@ -382,10 +394,12 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
       if (slot !== undefined) {
         // Compare before overwriting — afterwards there is nothing left to compare against.
         if (contentDiffers(merged[slot], nb)) changedSlots.push(slot);
-        merged[slot] = nb;
+        // Edited in place, so it keeps its place: its own answer's order hint would move it.
+        const order = merged[slot].order;
+        merged[slot] = nb.order === order ? nb : { ...nb, order };
       } else appended.push(nb);
     }
-    const blocks = renumber([...merged, ...appended]);
+    const blocks = renumber([...merged, ...continueOrder(merged, appended)]);
     const firstNewId = appended.length ? (blocks[merged.length]?.id ?? null) : null;
     // Read the ids off the RENUMBERED array by index, so the delta cannot drift from the blocks
     // it ships beside — it is the same list, addressed the same way.
@@ -402,7 +416,7 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
   // augment
   const seen = new Set(prior.map(blockSignature));
   const fresh = next.filter((b) => !seen.has(blockSignature(b)));
-  const blocks = renumber([...prior, ...fresh]);
+  const blocks = renumber([...prior, ...continueOrder(prior, fresh)]);
   const firstNewId = fresh.length ? (blocks[prior.length]?.id ?? null) : null;
   // An augment never touches what is already there — that is its whole promise.
   const delta: MergeDelta = {
