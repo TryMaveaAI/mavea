@@ -16,11 +16,11 @@ const geometry = (el: Element, values: Record<string, number>) => {
 };
 const scaleOf = (el: HTMLElement) => Number(/scale\(([\d.]+)\)/.exec(el.style.transform)?.[1] ?? 1);
 
-function flight(property: string) {
+function flight(property: string, playState: AnimationPlayState) {
   let land = () => {};
   const finished = new Promise<void>((r) => (land = r));
   const anim = {
-    playState: 'running',
+    playState,
     transitionProperty: property,
     effect: { getComputedTiming: () => ({ endTime: 900 }) },
     finished,
@@ -31,8 +31,8 @@ function flight(property: string) {
 /** A block 800 tall with 20px type in a box that leaves it 400, on a card mid-flight at 0.75 of
  *  its landed size: the type paints at 15px there, so the legibility floor holds the fit at 0.6;
  *  landed it paints at 20px and the free fit, 0.5, is legible. */
-function stage(property: string) {
-  const { anim, land } = flight(property);
+function stage(property: string, playState: AnimationPlayState = 'running') {
+  const { anim, land } = flight(property, playState);
   let flying = true;
   const tree = () => (
     <div className="box" style={{ overflowY: 'auto', maxHeight: '400px' }}>
@@ -77,6 +77,13 @@ describe('FitBox — a fit read in flight', () => {
     // An opacity fade is no flight: the read is taken during it, and nothing re-reads after.
     expect(scaleOf(inner)).toBe(0.6);
     await land();
+    expect(scaleOf(inner)).toBe(0.6);
+  });
+
+  it('does not wait on a flight the video export has paused', () => {
+    // The export pauses every animation and seeks it frame by frame, so a paused flight's
+    // `finished` never comes: waiting on it would leave the block unfitted for the whole clip.
+    const { inner } = stage('transform', 'paused');
     expect(scaleOf(inner)).toBe(0.6);
   });
 });
