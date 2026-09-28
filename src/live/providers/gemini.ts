@@ -64,6 +64,11 @@ const STREAM_TOTAL_MS = 90_000;
  *  "model overloaded". Both clear on their own; failing the turn on them makes the user do by hand
  *  exactly what this loop does. */
 const TRANSIENT_RETRIES = 2;
+/** A 503 is refused before the model runs, so re-sending it costs nothing and, measured on a free
+ *  key (2026-09-28), Google shed roughly a quarter to a half of large requests, each call
+ *  independently. Three tries in all failed a turn about one ask in eight; six fail it about one in
+ *  sixty. 429 keeps the shorter budget above: it spends the very per-minute allowance a retry needs. */
+const OVERLOAD_RETRIES = 5;
 /** Finish reasons that mean the model refused, rather than ran out of room or simply finished. */
 const BLOCKED_FINISH = new Set(['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII']);
 
@@ -77,9 +82,36 @@ function keyHeader(cfg: ModelConfig): Record<string, string> {
  *  never leaks the full body or any key). */
 async function errorDetail(res: Response): Promise<string> {
   try {
-    const body = (await res.json()) as { error?: { status?: unknown; message?: unknown } };
+    const body = (await res.json()) as {
+      error?: { code?: unknown; status?: unknown; message?: unknown; details?: unknown };
+    };
     const status = typeof body.error?.status === 'string' ? body.error.status : '';
     const msg = typeof body.error?.message === 'string' ? body.error.message : '';
+    // Gemini's body can carry structured ErrorInfo / RetryInfo details that the short error string
+    // deliberately omits. In local development, retain a scrubbed diagnostic so an overload can be
+    // distinguished from a quota or routing problem without logging a prompt, API key, or response.
+    if (import.meta.env.DEV && res.status === 503 && (body.error?.code || status || msg)) {
+      const details = Array.isArray(body.error?.details)
+        ? body.error.details.map((detail) => {
+            if (!detail || typeof detail !== 'object')
+              return typeof detail === 'string' ? detail : '';
+            const record = detail as Record<string, unknown>;
+            return {
+              type: typeof record['@type'] === 'string' ? record['@type'] : undefined,
+              reason: typeof record.reason === 'string' ? record.reason : undefined,
+              domain: typeof record.domain === 'string' ? record.domain : undefined,
+            };
+          })
+        : [];
+      console.warn('[gemini] 503 diagnostic', {
+        code: body.error?.code,
+        status,
+        message: msg,
+        details,
+        retryAfter: res.headers.get('retry-after'),
+        retryAfterMs: res.headers.get('retry-after-ms'),
+      });
+    }
     // RESOURCE_EXHAUSTED on a grounded request = the separately-metered Search grounding quota;
     // surface that word so describeLiveError can tell the user grounding isn't available, not
     // that their whole key is dead.
@@ -360,7 +392,7 @@ export const geminiAdapter: ProviderAdapter = {
         const detail = await errorDetail(res);
         if (
           isTransientProviderFailure(res.status, detail) &&
-          tries < TRANSIENT_RETRIES &&
+          tries < (res.status === 429 ? TRANSIENT_RETRIES : OVERLOAD_RETRIES) &&
           !signal.aborted
         ) {
           // Say so. This sleep can run to 10s per attempt, and it used to pass in silence

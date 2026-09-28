@@ -65,6 +65,9 @@ Reply with ONE JSON object: {"notes":[…]}, one entry per id above.`;
 }
 
 const inFlight = new Map<string, Promise<Map<string, BlockStudy> | null>>();
+/** Cancellation owned by an in-flight call. When its last visible subscriber leaves (most
+ * importantly because a new interactive turn started), optional notes yield the provider slot. */
+const aborters = new Map<string, AbortController>();
 /** Who is watching each in-flight call. A second opener (a remount, a Study→board→Study flip)
  *  joins the call already running rather than starting a second one, and still sees the notes
  *  arrive as they land — so dedup never costs a subscriber its progress. */
@@ -91,6 +94,7 @@ async function fetchNotes(
   ask: string,
   cfg: ModelConfig,
   level: ExplainLevel,
+  signal?: AbortSignal,
 ): Promise<Map<string, BlockStudy> | null> {
   const cached = await cacheGet<[string, BlockStudy][]>(key);
   if (cached) return new Map(cached);
@@ -123,6 +127,7 @@ async function fetchNotes(
   // any config change) and one leaving must not cancel a request the others are still watching.
   const deadline = new AbortController();
   const timer = setTimeout(() => deadline.abort(), STUDY_TIMEOUT_MS);
+  const providerSignal = signal ? AbortSignal.any([signal, deadline.signal]) : deadline.signal;
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
@@ -139,7 +144,7 @@ async function fetchNotes(
         maxTokens: MAX_TOKENS,
         thinkingLevel: 'minimal',
         complexity: 'brief',
-        signal: deadline.signal,
+        signal: providerSignal,
       },
       cfg,
       onDelta,
@@ -206,7 +211,10 @@ export function studyNotesFor(
     const set = watchers.get(key);
     if (!set) return;
     set.delete(onPartial);
-    if (!set.size) watchers.delete(key);
+    if (!set.size) {
+      watchers.delete(key);
+      aborters.get(key)?.abort();
+    }
   };
   const cleanup = (): void => {
     subscriberSignal?.removeEventListener('abort', release);
@@ -223,7 +231,13 @@ export function studyNotesFor(
     }
     failedKeys.delete(key);
   }
-  const started = fetchNotes(key, spec, ask, cfg, level);
+  if (subscriberSignal?.aborted) {
+    cleanup();
+    return Promise.resolve(null);
+  }
+  const aborter = new AbortController();
+  aborters.set(key, aborter);
+  const started = fetchNotes(key, spec, ask, cfg, level, aborter.signal);
   inFlight.set(key, started);
   while (inFlight.size > ANNOTATE_CAP) {
     const oldest = inFlight.keys().next().value;
@@ -234,9 +248,11 @@ export function studyNotesFor(
   // but the reader asks for the same notes again.
   const failed = (): void => {
     inFlight.delete(key);
+    aborters.delete(key);
     rememberFailure(key);
   };
   void started.then((notes) => {
+    aborters.delete(key);
     if (!notes) failed();
   }, failed);
   return started.finally(cleanup);

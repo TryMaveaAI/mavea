@@ -130,6 +130,8 @@ function penPath(pts: Pt[]): string {
 function circle(r: Rect, host: Rect, rnd: () => number, tight = false): string {
   const cx = r.left + r.width / 2;
   const cy = r.top + r.height / 2;
+  // TODO: Keep the lasso's wobble and smoothed curve outside the target's ink bounds. The current
+  // half-extent floor contains the sampled points, but the fitted curve can still graze tall text.
   // Hug the target with a small constant gap past its box — enough to read as "around this", not
   // so much that the loop swallows the words next to it. The cap keeps a roomy target from
   // ballooning; the final max() against the box's own half-extent means the cap can only shrink

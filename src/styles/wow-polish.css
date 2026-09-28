@@ -279,13 +279,14 @@
    at 70% opacity, which reads as disabled. Every chip is fully opaque; the pick is carried by the
    accent ring and fill. */
 .settings-provider-picker {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--s-xs);
 }
 .settings-provider-chip {
+  min-width: 0;
   min-height: 32px;
-  padding: 0 14px;
+  padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-full);
   background: transparent;
@@ -313,6 +314,11 @@
 .settings-provider-chip:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--presence) 65%, transparent);
   outline-offset: 2px;
+}
+@media (width <= 560px) {
+  .settings-provider-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (pointer: coarse) {
   .settings-provider-chip {

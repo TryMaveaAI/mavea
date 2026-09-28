@@ -130,9 +130,9 @@ describe('a rate-limit backoff is reported, not slept through in silence', () =>
     expect(waits[1]).toBeNull();
   });
 
-  it('shows the reader it is the provider, not the model', () => {
+  it('shows a plain provider-wait status', () => {
     const { container, rerender } = render(<ComposingStatus activity="rate-limited" />);
-    expect(container.textContent).toMatch(/rate-limited/i);
+    expect(container.textContent).toMatch(/waiting for your provider/i);
     rerender(<ComposingStatus activity={null} />);
     expect(container.textContent).toMatch(/Composing your answer/);
   });
@@ -161,10 +161,10 @@ describe('a hung stream fails fast enough to retry', () => {
   });
 });
 
-describe('the study-notes prefetch is speculative, and checks the guard', () => {
+describe('the on-demand study-notes call checks the provider-pressure guard', () => {
   it('skips when the key has just been rate-limited', () => {
     const src = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    const gate = src.indexOf("if (viewMode !== 'study' && !studyOpenedRef.current) return;");
+    const gate = src.indexOf("if (viewMode !== 'study') {");
     expect(gate).toBeGreaterThan(0);
     // Within the same effect, before the model is asked.
     expect(src.slice(gate, gate + 900)).toMatch(/recentlyRateLimited\(\)/);

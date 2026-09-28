@@ -340,11 +340,12 @@ function WorldShell({
                   ? 'The provider is busy — asking again shortly.'
                   : 'Building your living answer…'}
               </p>
-              <p className="wo-shell-note">
-                {slow
-                  ? 'This one is taking longer than usual. It keeps going for as long as the provider allows, and you can go back to the answer meanwhile — the world is kept on this card when it lands.'
-                  : 'One model call, grounded in what this answer already found. Once it is built it is kept — re-opening it, and replaying this turn, costs nothing.'}
-              </p>
+              {slow && (
+                <p className="wo-shell-note">
+                  This one is taking longer than usual. You can go back to the answer while the
+                  provider finishes.
+                </p>
+              )}
             </>
           )}
         </div>

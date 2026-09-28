@@ -264,10 +264,12 @@ describe('WorldOverlay breaking down a cause that has no authored parts', () => 
 });
 
 describe('WorldOverlay before there is a world', () => {
-  it('waits honestly, showing the reader’s own question and what the build costs', () => {
+  it('waits honestly without promising that the result is cached indefinitely', () => {
     const { container } = render(<WorldOverlay spec={null} question={WORLD_SEED.title} />);
     expect(screen.getByText(WORLD_SEED.title)).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toMatch(/building your living answer/i);
+    const status = screen.getByRole('status').textContent;
+    expect(status).toMatch(/building your living answer/i);
+    expect(status).not.toMatch(/kept|re-opening|costs nothing/i);
     // Nothing of a world is on screen — no stage, no levers, no evidence rail.
     expect(container.querySelector('.mv-node')).toBeNull();
     expect(screen.queryAllByRole('slider')).toHaveLength(0);
