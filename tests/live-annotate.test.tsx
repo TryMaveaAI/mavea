@@ -8,6 +8,7 @@ import { BarChart } from '../src/canvas/BarChart';
 import { KpiGrid } from '../src/canvas/KpiGrid';
 import { InsightCard } from '../src/canvas/InsightCard';
 import { PieDonut } from '../src/canvas/blocks/charts1/PieDonut';
+import { Slopegraph } from '../src/canvas/blocks/charts2/Slopegraph';
 import { Sunburst } from '../src/canvas/blocks/charts1/Sunburst';
 
 const rect = (left: number, top: number, width: number, height: number) => ({
@@ -939,5 +940,55 @@ describe('connect — both ends lie in the reading plane', () => {
       expect(liesFlat(host, grid), t).toBe(false);
       grid.remove();
     }
+  });
+});
+
+// The slopegraph's salient dot moved from an SVG <circle> to an HTML span when its values moved
+// into their own grid columns. The pen's stamped path reads whatever carries data-mark, so the
+// real component must still hand it that dot, and a stroke must land on it.
+describe('AnnotationLayer — the slopegraph stamp', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('draws the stamped point on the salient HTML dot', () => {
+    const wrap = document.createElement('div');
+    wrap.setAttribute('data-spot-id', 'slope');
+    document.body.appendChild(wrap);
+    render(
+      <Slopegraph
+        title="Nightly screen time"
+        unit="hours"
+        rows={[
+          { label: 'Weekdays', before: 2.5, after: 1.5 },
+          { label: 'Weekends', before: 3, after: 0.5 },
+          { label: 'Holidays', before: 2, after: 2 },
+        ]}
+      />,
+      { container: wrap },
+    );
+
+    const stamped = wrap.querySelector<HTMLElement>('[data-mark]')!;
+    expect(stamped.tagName).toBe('SPAN');
+    expect(stamped.classList.contains('c2-slope-dot')).toBe(true);
+    expect(stamped.getAttribute('data-mark')).toBe('point');
+
+    // jsdom lays nothing out, so give the card and the 7px dot their real on-screen boxes.
+    wrap.getBoundingClientRect = () => domRect(0, 0, 400, 240);
+    stamped.getBoundingClientRect = () => domRect(300, 180, 7, 7);
+    const placed: string[] = [];
+    render(
+      <AnnotationLayer
+        spots={[{ spot: 'slope', generous: true }]}
+        onPlaced={(request) => placed.push(request.spot)}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(wrap.querySelector('.ink-stroke')).toBeTruthy();
+    expect(placed).toEqual(['slope']);
   });
 });
