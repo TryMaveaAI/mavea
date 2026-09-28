@@ -588,9 +588,6 @@ export function TopicCanvas({
       ) {
         return;
       }
-      // A focused region inside the card that pans sideways (a diagram held at its legible
-      // width, a wide table) scrolls on the arrows; stepping the card there takes the pan away.
-      if (t instanceof HTMLElement && t.closest('.card') && t.scrollWidth > t.clientWidth) return;
       // Shift+0 actual size, Shift+1 the fit. Matched on the physical key, not the character:
       // Shift+0 types ")" on a US keyboard and "0" on AZERTY, and both are the same key. Any other
       // modifier held means the chord is someone else's.
@@ -602,6 +599,17 @@ export function TopicCanvas({
           } else setZoomLevel('fit');
           return;
         }
+      }
+      // A focused pan region inside the card (a diagram held at its legible width, a wide table)
+      // scrolls on the arrows; stepping the card there takes the pan away. Keyed to the region
+      // role every pan carries: a truncated button overflows its box too, and does not pan.
+      if (
+        t instanceof HTMLElement &&
+        t.matches('[role="region"]') &&
+        t.closest('.card') &&
+        t.scrollWidth > t.clientWidth
+      ) {
+        return;
       }
       if (e.key === 'ArrowRight') stepLens(1);
       else if (e.key === 'ArrowLeft') stepLens(-1);

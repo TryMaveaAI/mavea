@@ -140,14 +140,29 @@ describe('the Lens gesture', () => {
     const card = document.querySelector('.zoom-sheet .card')!;
     const pan = document.createElement('div');
     pan.tabIndex = 0;
+    pan.setAttribute('role', 'region');
     card.append(pan);
     Object.defineProperty(pan, 'clientWidth', { configurable: true, value: 300 });
     Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 650 });
     fireEvent.keyDown(pan, { key: 'ArrowRight' });
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+    // The zoom chords are not the pan's: Shift+1 still fits the card with the pan focused.
+    expect(fireEvent.keyDown(pan, { key: '!', code: 'Digit1', shiftKey: true })).toBe(false);
     // With nothing past its edge it is not a pan, and the arrows walk the board again.
     Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 300 });
     fireEvent.keyDown(pan, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+  });
+
+  it('walks the board from a control whose label is cut short', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    // A truncated button or link overflows its box too, and it does not pan.
+    const button = document.createElement('button');
+    document.querySelector('.zoom-sheet .card')!.append(button);
+    Object.defineProperty(button, 'clientWidth', { configurable: true, value: 80 });
+    Object.defineProperty(button, 'scrollWidth', { configurable: true, value: 140 });
+    fireEvent.keyDown(button, { key: 'ArrowRight' });
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
   });
 
