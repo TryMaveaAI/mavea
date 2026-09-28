@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -84,8 +83,10 @@ describe('style-src admits no inline stylesheet it has not hashed', () => {
   });
 
   it('hashes every <style> the page ships, so editing one names its new hash here', () => {
-    const markup = indexHtml.replace(/<!--[\s\S]*?-->/g, '');
-    const blocks = [...markup.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+    // A parser, not a regex: a commented-out <style> is no style, and a browser hashes the
+    // element's raw text exactly as the parser hands it over.
+    const document = new DOMParser().parseFromString(indexHtml, 'text/html');
+    const blocks = [...document.querySelectorAll('style')].map((el) => el.textContent ?? '');
     expect(blocks.length).toBeGreaterThan(0);
     for (const css of blocks) expect(styleSrc).toContain(hash(css));
   });

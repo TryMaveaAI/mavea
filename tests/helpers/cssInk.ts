@@ -242,9 +242,9 @@ export function readRules(root = 'src'): Rule[] {
 export function markupVars(root = 'src'): Set<string> {
   const out = new Set<string>();
   const walk = (dir: string) => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p);
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
       else if (/\.tsx?$/.test(p))
         for (const m of readFileSync(p, 'utf8').matchAll(
           /['"`](--[\w-]+)['"`](?:\s+as\s+\w+)?\s*[\]:,]/g,
