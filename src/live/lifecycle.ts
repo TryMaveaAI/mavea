@@ -361,10 +361,14 @@ function renumber(blocks: Block[]): Block[] {
  * follow-up's first section would otherwise sort in beside the board's first and push everything
  * the reader has scrolled down to further down the page. Cards joining a section the board
  * already has keep that section's place, since a section takes its order from its first card.
+ * Cards that already sit past the board are returned as they are, so continuing twice (a shard
+ * baked after this ran, then repaired again on load) cannot push them further out.
  */
 export function continueOrder(board: readonly Block[], added: readonly Block[]): Block[] {
   const base = Math.max(0, ...board.map((b) => b.order ?? 0));
-  return added.map((b) => (base && b.order !== undefined ? { ...b, order: b.order + base } : b));
+  const orders = added.flatMap((b) => (b.order === undefined ? [] : [b.order]));
+  if (!base || !orders.length || Math.min(...orders) > base) return [...added];
+  return added.map((b) => (b.order === undefined ? b : { ...b, order: b.order + base }));
 }
 
 /**
