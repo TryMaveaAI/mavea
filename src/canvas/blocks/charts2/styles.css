@@ -27,31 +27,75 @@
   text-transform: uppercase;
   margin-bottom: 4px;
 }
+/* The label gutters are grid columns sized by their own text, never a fixed share of a viewBox:
+   a value with a unit ("2.5 hours") is several times wider than a bare number, and a gutter tuned
+   for numbers drew those labels over the dots and past the card. `cqi` is this box's own width
+   (it is the container), so the caps bound each label column without a percentage cycle. */
 .c2-slope {
-  position: relative;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: 100%;
+  column-gap: 10px;
 }
 .c2-slope-svg {
+  grid-area: 1 / 2;
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
+}
+.c2-slope-rule {
+  stroke: var(--grid-line);
+  vector-effect: non-scaling-stroke;
+}
+/* Every label and dot shares the one grid row, placed down it by a `top` percentage of the row. */
+.c2-slope-lbl,
+.c2-slope-dot {
+  grid-row: 1;
+  align-self: start;
+  position: relative;
+}
+.c2-slope-dot {
+  grid-column: 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  translate: -50% -50%;
+  pointer-events: none;
+  transition:
+    opacity var(--m-fast),
+    scale var(--m-fast);
+}
+.c2-slope-dot.r {
+  justify-self: end;
+  translate: 50% -50%;
+}
+.c2-slope-dot.on {
+  scale: 1.4;
 }
 .c2-slope-lbl {
-  position: absolute;
   display: flex;
   align-items: center;
   gap: 7px;
   font-size: var(--fs-sm);
-  transform: translateY(-50%);
+  translate: 0 -50%;
   transition: opacity var(--m-fast);
   cursor: default;
+  min-width: 0;
 }
 .c2-slope-lbl.l {
-  left: 0;
-  max-width: 46%;
+  grid-column: 1;
+  /* Stretched to the column, so every start value sits in one column beside its dot. */
+  justify-content: space-between;
+  max-width: 46cqi;
 }
 .c2-slope-lbl.r {
-  right: 0;
+  grid-column: 3;
+  justify-self: end;
   justify-content: flex-end;
+  max-width: 28cqi;
+  text-align: end;
 }
 .c2-slope-name {
   color: var(--text-secondary);
@@ -64,6 +108,11 @@
 .c2-slope-lbl .mono {
   font-size: var(--fs-xs);
   color: var(--text-primary);
+}
+/* The name gives way (it ellipsises) before the figure does. */
+.c2-slope-lbl.l .mono {
+  flex-shrink: 0;
+  max-width: 100%;
 }
 
 /* ───────────────────────── Dumbbell ───────────────────────── */

@@ -1431,12 +1431,39 @@ describe('Slopegraph', () => {
     }
   });
 
-  it('gives a long row label more room than the 46%-wide value column needs', () => {
-    const { container } = render(<Slopegraph title="Change" rows={rows(2, true)} />);
-    const label = container.querySelector<HTMLElement>('.c2-slope-lbl.l');
-    expect(label).toBeTruthy();
-    const maxWidthPct = Number.parseFloat(label!.style.maxWidth);
-    expect(maxWidthPct).toBeGreaterThan(46);
+  // The reported bug: the value gutters were a fixed 12.5% of a 320-unit viewBox, tuned for bare
+  // numbers, so "2.5 hours" drew over the end dots and ran off the card. The gutters are now grid
+  // columns that take their width from the labels themselves; the geometry is checked in a real
+  // browser by the UI audit, and this pins the structure that makes it hold.
+  it('gives each value its own content-sized gutter instead of drawing it over the plot', () => {
+    const { container } = render(
+      <Slopegraph
+        title="Nightly screen time"
+        unit="hours"
+        rows={[
+          { label: 'Weeknights', before: 4, after: 2.5 },
+          { label: 'Weekends', before: 3, after: 0.5 },
+        ]}
+      />,
+    );
+    const chart = container.querySelector<HTMLElement>('.c2-slope')!;
+    const right = Array.from(chart.querySelectorAll<HTMLElement>('.c2-slope-lbl.r'));
+    // The figure and its unit arrive whole and joined the way a person writes them.
+    expect(right.map((el) => el.textContent)).toEqual(['2.5\u00a0hours', '0.5\u00a0hours']);
+    // Labels, dots and the SVG are all siblings in the grid; none is positioned into the plot.
+    for (const el of chart.querySelectorAll<HTMLElement>('.c2-slope-lbl, .c2-slope-dot')) {
+      expect(el.parentElement).toBe(chart);
+      expect(el.style.left).toBe('');
+      expect(el.style.right).toBe('');
+    }
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/charts2/styles.css'), 'utf8');
+    const rule = (sel: string) => css.match(new RegExp(`\\${sel} \\{([^}]*)\\}`))?.[1] ?? '';
+    expect(rule('.c2-slope')).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+    expect(rule('.c2-slope-svg')).toMatch(/grid-area:\s*1 \/ 2/);
+    // Each gutter is capped against the chart's own width, so a long label cannot squeeze the
+    // slopes out; it ellipsises (names) or wraps between words (units) instead.
+    expect(rule('.c2-slope-lbl.l')).toMatch(/max-width:\s*\d+cqi/);
+    expect(rule('.c2-slope-lbl.r')).toMatch(/max-width:\s*\d+cqi/);
   });
 });
 

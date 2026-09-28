@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { withUnit } from '../../lib/format';
 import type { SlopegraphProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = SlopegraphProps & { delay?: number };
+
+// The slopes' horizontal coordinate span. The SVG stretches to whatever width its column is left
+// (preserveAspectRatio="none"), so the number is arbitrary; the gutters live in the stylesheet.
+const VIEW_W = 100;
 
 // Nudge label positions apart so values that converge to nearly the same height don't overlap
 // (the dots stay on their true y — only the text is spread). Preserves order, stays within [0,hi].
@@ -64,6 +69,7 @@ export function Slopegraph({
     17,
     H,
   );
+  const pct = (v: number) => `${(v / H) * 100}%`;
   const rightLabelY = spreadLabels(
     rows.map((r) => y(r.after)),
     17,
@@ -82,78 +88,77 @@ export function Slopegraph({
         <span className="faint">{beforeLabel}</span>
         <span className="faint">{afterLabel}</span>
       </div>
+      {/* Three columns: row names + start values, the slopes, end values. The label columns are
+          sized by their own text (capped in the stylesheet), so a value carrying a unit, "2.5
+          hours" rather than "2.5", widens its gutter instead of running over the dots or past
+          the card. The dots are HTML so they stay round while the SVG stretches to its column. */}
       <div className="c2-slope" style={{ height: H }} onMouseLeave={() => setHot(null)}>
         <svg
           role="img"
           aria-label={title}
-          viewBox={`0 0 320 ${H}`}
+          viewBox={`0 0 ${VIEW_W} ${H}`}
           preserveAspectRatio="none"
           className="c2-slope-svg"
         >
-          <line x1="40" y1="0" x2="40" y2={H} stroke="var(--grid-line)" />
-          <line x1="280" y1="0" x2="280" y2={H} stroke="var(--grid-line)" />
+          <line x1="0" y1="0" x2="0" y2={H} className="c2-slope-rule" />
+          <line x1={VIEW_W} y1="0" x2={VIEW_W} y2={H} className="c2-slope-rule" />
           {rows.map((r, i) => {
-            const col = r.color || 'var(--presence)';
             const active = hot === i;
             const dim = hot !== null && !active;
             return (
-              <g key={i} style={{ opacity: dim ? 0.18 : 1, transition: 'opacity var(--m-fast)' }}>
-                <line
-                  x1="40"
-                  y1={y(r.before)}
-                  x2="280"
-                  y2={y(r.after)}
-                  stroke={col}
-                  strokeWidth={active ? 3 : 2}
-                />
-                <circle cx="40" cy={y(r.before)} r={active ? 5 : 3.5} fill={col} />
-                <circle
-                  cx="280"
-                  cy={y(r.after)}
-                  r={active ? 5 : 3.5}
-                  fill={col}
-                  data-mark={i === salient ? 'point' : undefined}
-                />
-              </g>
+              <line
+                key={i}
+                x1="0"
+                y1={y(r.before)}
+                x2={VIEW_W}
+                y2={y(r.after)}
+                stroke={r.color || 'var(--presence)'}
+                strokeWidth={active ? 3 : 2}
+                vectorEffect="non-scaling-stroke"
+                style={{ opacity: dim ? 0.18 : 1, transition: 'opacity var(--m-fast)' }}
+              />
             );
           })}
         </svg>
         {rows.map((r, i) => {
-          const dim = hot !== null && hot !== i;
+          const col = r.color || 'var(--presence)';
+          const active = hot === i;
+          const dim = hot !== null && !active;
           const up = r.after >= r.before;
           return (
-            <div key={i}>
+            <Fragment key={i}>
+              <span
+                className={`c2-slope-dot l${active ? ' on' : ''}`}
+                style={{ top: pct(y(r.before)), background: col, opacity: dim ? 0.18 : 1 }}
+                aria-hidden="true"
+              />
+              <span
+                className={`c2-slope-dot r${active ? ' on' : ''}`}
+                style={{ top: pct(y(r.after)), background: col, opacity: dim ? 0.18 : 1 }}
+                data-mark={i === salient ? 'point' : undefined}
+                aria-hidden="true"
+              />
               <div
                 className="c2-slope-lbl l"
-                style={{
-                  top: `${(leftLabelY[i] / H) * 100}%`,
-                  opacity: dim ? 0.25 : 1,
-                  // Override the class's 46% cap — reserved for the right-hand value column that
-                  // no longer needs that much room, so a long row label can grow before eliding.
-                  maxWidth: '62%',
-                }}
+                style={{ top: pct(leftLabelY[i]), opacity: dim ? 0.25 : 1 }}
                 onMouseEnter={() => setHot(i)}
               >
                 <span className="c2-slope-name">{r.label}</span>
-                <span className="tab-num mono">
-                  {r.before}
-                  {unit}
-                </span>
+                <span className="tab-num mono">{withUnit(r.before, unit)}</span>
               </div>
               <div
                 className="c2-slope-lbl r"
-                style={{ top: `${(rightLabelY[i] / H) * 100}%`, opacity: dim ? 0.25 : 1 }}
+                style={{ top: pct(rightLabelY[i]), opacity: dim ? 0.25 : 1 }}
                 onMouseEnter={() => setHot(i)}
               >
                 <span
                   className="tab-num mono"
                   style={{ color: up ? 'var(--insight)' : 'var(--danger)' }}
                 >
-                  {r.after}
-                  {unit}
+                  {withUnit(r.after, unit)}
                 </span>
               </div>
-            </div>
+            </Fragment>
           );
         })}
       </div>

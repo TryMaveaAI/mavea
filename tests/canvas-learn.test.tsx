@@ -1410,6 +1410,38 @@ describe('NumberLine', () => {
     expect(vbHeight).toBeGreaterThan(92);
   });
 
+  // The reported bug: the axis ends were inset a fixed 18 units, sized for a bare number, so an
+  // end tick carrying a unit ("2.5 hours") was centred on the edge and ran past the card.
+  it('keeps unit-bearing tick, point and interval labels inside the viewBox', () => {
+    const { container } = render(
+      <NumberLine
+        title="Nightly screen time"
+        min={0.5}
+        max={2.5}
+        step={0.5}
+        unit="hours"
+        points={[{ value: 2.5, label: 'Tonight, after the late film', open: true }]}
+        intervals={[{ from: 0.5, to: 1.5, label: 'Recommended evening range', openTo: true }]}
+      />,
+    );
+    const [, , vbW] = container
+      .querySelector('svg.lr-nl-svg')!
+      .getAttribute('viewBox')!
+      .split(' ')
+      .map(Number);
+    const texts = Array.from(
+      container.querySelectorAll<SVGTextElement>('.lr-nl-ticklbl, .lr-nl-plbl, .lr-nl-ivlbl'),
+    );
+    expect(texts.map((t) => t.textContent)).toContain('2.5\u00a0hours');
+    for (const t of texts) {
+      const bold = !t.classList.contains('lr-nl-ticklbl');
+      const half = estimateTextWidth(t.textContent ?? '', 9.5, bold) / 2;
+      const cx = Number(t.getAttribute('x'));
+      expect(cx - half).toBeGreaterThanOrEqual(0);
+      expect(cx + half).toBeLessThanOrEqual(vbW);
+    }
+  });
+
   it('renders a single point/interval with no stacking needed', () => {
     const { container } = render(
       <NumberLine title="Simple" min={0} max={10} points={[{ value: 5, label: 'x' }]} />,
