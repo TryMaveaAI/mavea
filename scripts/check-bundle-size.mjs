@@ -214,7 +214,12 @@ const ROUTE_BUDGETS = [
     // chunk), the dashboards learned to say what to set at every tracker entry, and the loop
     // began waiting for the key vault before taking its connection baseline. Product behavior
     // in the route's own shell, none of it deferrable; the request count is still under budget.
-    gzip: 360,
+    // 363 (was 360): measured at 362.2 kB once a card began gliding into place and the pen
+    // lifting between marks, a follow-up's sections continued the board's numbering, the Lens
+    // held diagram labels at a legible floor, a third document opened a choice of views, the
+    // thought map learned to share and present, and each card began waiting on its own family
+    // rather than the answer id. All of it runs on the board itself, so none of it can defer.
+    gzip: 363,
     files: 105,
   },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
@@ -290,7 +295,10 @@ const ROUTE_BUDGETS = [
     // back to the card it came from, states its scale in one readout, and holds a diagram's
     // labels at the size the board drew them (TopicCanvas +3.4 kB); the stat tiles and the
     // insight's headline read `longestRun`, and two importers gave lib/fitText a chunk of its own.
-    gzip: 166,
+    // 167 (was 166): measured at 166.1. A card now waits on its own block family through a loader
+    // subscription and a placeholder card, instead of a hold keyed on the answer id — the
+    // lesson renders the same canvas, so it carries the same few hundred bytes.
+    gzip: 167,
     files: 59,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
