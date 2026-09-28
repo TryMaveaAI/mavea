@@ -109,3 +109,16 @@ describe('legend rows are thumb-sized under a coarse pointer', () => {
     ).toBe(true);
   });
 });
+
+describe('the provider notice links are thumb-sized under a coarse pointer', () => {
+  it('gives each link the tap floor in both axes', () => {
+    const css = read('src/styles/wow-polish.css');
+    expect(
+      coarseAfter(
+        css,
+        '.provider-responsibility-link',
+        /\.provider-responsibility-link\s*\{[^}]*min-width:\s*var\(--tap-min\);\s*min-height:\s*var\(--tap-min\)/,
+      ),
+    ).toBe(true);
+  });
+});

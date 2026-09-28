@@ -401,6 +401,21 @@
   text-underline-offset: 3px;
 }
 
+/* The links sit in their own row, not in a sentence, so under a thumb each takes the tap floor.
+   The text stays at the box's start, in line with the paragraphs above it. */
+@media (pointer: coarse) {
+  .provider-responsibility-links {
+    row-gap: 0;
+    margin-top: 0;
+  }
+  .provider-responsibility-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+}
+
 /* Settings/Appearance → Text size: a Kindle-style multiplier over the whole fluid type ramp
    (tokens-base.css), stamped onto <html data-font-scale> by LiveApp from the user's fontScale
    choice. 'normal' never sets the attribute, so --fs-reader stays at its unscaled default of 1. */
