@@ -1242,6 +1242,10 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
     const footer = read('src/live/voice/AnswerFooter.tsx');
     expect(footer).toMatch(/className=\{'answer-footer'/);
     expect(footer).toContain('Keep going');
+    // …and its box's edge is its text's edge: an inline pad set Keep going and the disclaimer 2px
+    // inside every other edge on the page.
+    const footerRule = /\n\.live-voice \.answer-footer\s*\{[^}]*\}/.exec(voice)?.[0] ?? '';
+    expect(footerRule).toMatch(/padding:\s*\S+ 0 \S+;/);
     // Every dock row: the spoken-line strip and composer capsule, the ink bar, pins, attachments.
     expect(ruleFor(voice, '.live-voice .dock-main > *')).toMatch(
       /max-width:\s*var\(--live-content-max\)/,

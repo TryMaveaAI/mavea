@@ -181,7 +181,9 @@
   gap: 28px;
   border-top: 1px solid var(--hairline-ink);
   margin-top: 26px;
-  padding: 18px 2px 8px;
+  /* No inline padding: the footer shares the answer column, so its text starts on the same edge
+     as the cards, the hero and the dock above and below it. */
+  padding: 18px 0 8px;
 }
 .live-voice .answer-footer.single {
   grid-template-columns: 1fr;
