@@ -256,7 +256,9 @@ export function useDemoDriver(opts: {
       // AudioContext and never be heard.
       after(revealAt, () =>
         whenUnlocked(after, () => {
-          o.showFrame(frame, ask);
+          // A jump lands on this turn from wherever the reader was, so the board on screen is not
+          // necessarily the one it was recorded after.
+          o.showFrame(frame, ask, { prior: prevFrame });
           narration.play(script.persona, turnIdx, mutedRef.current);
         }),
       );

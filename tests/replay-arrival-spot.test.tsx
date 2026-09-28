@@ -80,4 +80,14 @@ describe('arrivalSpot — a replayed turn opens where the live one did', () => {
     expect(devFrames[1].mode).toBe('augment');
     expect(result.current.spot).toBe('live-8');
   });
+
+  it('finds the added cards from the recorded prior when a jump lands out of order', () => {
+    // Replaying the follow-up while the follow-up itself is on screen: the board already holds
+    // all twelve cards, so counting from it finds no new card at all.
+    const { result } = renderHook(() => useLiveTurn({ getConfig: () => cfg }));
+    const quiet = { revealNow: true, silent: true };
+    act(() => result.current.showFrame(devFrames[1], 'q2', quiet));
+    act(() => result.current.showFrame(devFrames[1], 'q2', { ...quiet, prior: devFrames[0] }));
+    expect(result.current.spot).toBe('live-8');
+  });
 });

@@ -29,7 +29,13 @@ export interface TourOps {
    *  chapter never cuts off its own thought. */
   isSpeaking: () => boolean;
   hasCanvas: () => boolean;
-  showFrame: (frame: TurnFrame, question: string, opts?: { silent?: boolean }) => void;
+  /** `prior` is the frame this one followed in its own conversation, when that is not the board
+   *  on screen (a replay jumped to it). */
+  showFrame: (
+    frame: TurnFrame,
+    question: string,
+    opts?: { silent?: boolean; prior?: TurnFrame | null },
+  ) => void;
   typeInto: (value: string) => void;
   /** Speak a coach line. May hand back the line's lifecycle handle (LiveApp's wrapped seam
    *  returns one so its own walk can sync to audio); the drivers here ignore it. */

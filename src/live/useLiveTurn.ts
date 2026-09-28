@@ -62,6 +62,15 @@ export type FailedTurn = LiveError & {
   inkIntents?: InkIntent[];
 };
 
+export interface ShowFrameOptions {
+  interrupt?: boolean;
+  revealNow?: boolean;
+  silent?: boolean;
+  /** The frame this one followed when it was recorded. Left out, the board on screen is taken as
+   *  its prior, which is only true when frames are shown in order. */
+  prior?: TurnFrame | null;
+}
+
 export interface LiveTurnState {
   history: ChatMessage[];
   spec: ConversationSpec | null;
@@ -840,11 +849,7 @@ export interface UseLiveTurn extends LiveTurnState {
   /** `silent` seeds the canvas without performing it — no voice, no spotlight walk, instant
    *  reveal — while the timeline still records the AUTHENTIC frame (narration + tour intact),
    *  so a video cut or replay of a jumped-to boot is never missing its narration. */
-  showFrame: (
-    frame: TurnFrame,
-    question: string,
-    opts?: { interrupt?: boolean; revealNow?: boolean; silent?: boolean },
-  ) => void;
+  showFrame: (frame: TurnFrame, question: string, opts?: ShowFrameOptions) => void;
   /** The spec actually on screen — a jumped-to past frame, or the live head. */
   viewSpec: ConversationSpec | null;
 }
@@ -1675,11 +1680,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // runner in LiveApp then walks the spotlight identically, skipping stop 0 so the opener never
   // double-speaks. No model, no key, no network.
   const showFrame = useCallback(
-    (
-      frame: TurnFrame,
-      question: string,
-      opts?: { interrupt?: boolean; revealNow?: boolean; silent?: boolean },
-    ) => {
+    (frame: TurnFrame, question: string, opts?: ShowFrameOptions) => {
       const silent = opts?.silent === true;
       // Start the frame's block-family chunks NOW, so by the time the narrate-then-reveal beat
       // mounts the canvas the families are in — a tour chapter (or a library re-open) must never
@@ -1702,7 +1703,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         blockTypes: frame.spec.blocks.map((b) => b.type),
       };
       const priorSpec = specRef.current;
-      const spot = arrivalSpot(frame, priorSpec?.blocks.length ?? 0);
+      const recordedPrior = opts?.prior === undefined ? priorSpec : opts.prior?.spec;
+      const spot = arrivalSpot(frame, recordedPrior?.blocks.length ?? 0);
       // A newer showFrame (or a real turn — see run()) supersedes whatever the previous one was
       // waiting to reveal; only ever one of these beats should be in flight at a time.
       showFrameCancelRef.current?.();

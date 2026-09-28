@@ -2332,6 +2332,7 @@ export function LiveApp(): ReactElement {
         interrupt: false,
         revealNow: mutedRef.current,
         silent: opts?.silent,
+        prior: opts?.prior,
       });
     },
     typeInto: setValue,
