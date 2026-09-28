@@ -130,9 +130,9 @@ describe('a rate-limit backoff is reported, not slept through in silence', () =>
     expect(waits[1]).toBeNull();
   });
 
-  it('shows the reader it is the provider, not the model', () => {
+  it('shows a plain provider-wait status', () => {
     const { container, rerender } = render(<ComposingStatus activity="rate-limited" />);
-    expect(container.textContent).toMatch(/rate-limited/i);
+    expect(container.textContent).toMatch(/waiting for your provider/i);
     rerender(<ComposingStatus activity={null} />);
     expect(container.textContent).toMatch(/Composing your answer/);
   });

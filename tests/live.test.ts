@@ -747,7 +747,7 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
     expect(replay.message).not.toMatch(/connection/i);
   });
 
-  it('404 → model-name guidance; transient failures keep the status and provider reason', () => {
+  it('404 → model-name guidance; transient failures give the reader a plain next step', () => {
     expect(describeLiveError(new Error('gemini 404'), 'gemini').message).toContain('Model not');
     const e = describeLiveError(
       new Error(
@@ -756,28 +756,19 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
       'gemini',
     );
     expect(e).toMatchObject({ kind: 'http', status: 503 });
-    expect(e.message).toContain('Google returned 503');
-    expect(e.message).toContain('currently experiencing high demand');
-    expect(e.message).not.toMatch(/temporarily overloaded or unavailable/i);
-
-    // One sentence stop between the provider's words and ours, whatever the provider ended with.
-    expect(e.message).toBe(
-      'Google returned 503: This model is currently experiencing high demand. Please try again ' +
-        'later. Mavéa already retried with backoff.',
-    );
+    expect(e.message).toBe('Google is busy right now. Please try again.');
+    expect(e.message).not.toMatch(/503|high demand|retried|backoff/i);
     for (const tail of ['', '.', '!', '. ']) {
       const reason = `upstream connect error${tail}`;
       const server = describeLiveError(new Error(`openai 500 — ${reason}`), 'openai').message;
       expect(server).toBe('OpenAI returned 500: upstream connect error — try again.');
       const busy = describeLiveError(new Error(`anthropic 529 — ${reason}`), 'anthropic').message;
-      expect(busy).toBe(
-        'Anthropic returned 529: upstream connect error. Mavéa already retried with backoff.',
-      );
+      expect(busy).toBe('Anthropic is busy right now. Please try again.');
     }
 
     const bare = describeLiveError(new Error('anthropic 529'), 'anthropic');
     expect(bare).toMatchObject({ kind: 'http', status: 529 });
-    expect(bare.message).toContain('Anthropic returned 529');
+    expect(bare.message).toBe('Anthropic is busy right now. Please try again.');
   });
 
   it('distinguishes a per-minute 429 from daily quota exhaustion', () => {

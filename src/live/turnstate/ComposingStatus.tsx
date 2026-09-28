@@ -24,12 +24,12 @@ export function ComposingStatus({
     <div className="composing-status" role="status" aria-live="polite">
       <span className="composing-orb" aria-hidden="true" />
       <span>
-        {/* Named, because a backoff can run ten seconds and is not the model being slow — the
-            request has not been sent yet. "Composing" for that reads as a hang. */}
+        {/* A provider wait is named so it does not look like a hung model; the implementation
+            detail stays out of the reader's language. */}
         {activity === 'rate-limited'
-          ? 'Rate-limited by the provider — retrying'
+          ? 'Waiting for your provider'
           : activity === 'provider-busy'
-            ? 'Provider is busy — retrying with backoff'
+            ? 'Trying again'
             : cue === 'extend'
               ? 'Adding to this board'
               : cue === 'revise'
