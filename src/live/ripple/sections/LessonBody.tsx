@@ -5,7 +5,14 @@
 // The deep content is generated once and cached by the loader, so reopening a lesson never re-spends
 // tokens. Keyed by lesson in the parent, so its state resets cleanly when you move between lessons.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import type { Altitude, CourseLesson, LessonDetail, ShipCourse } from '../model';
+import type {
+  Altitude,
+  CourseLesson,
+  LessonDetail,
+  LessonFailure,
+  LessonOutcome,
+  ShipCourse,
+} from '../model';
 
 interface LessonBodyProps {
   course: ShipCourse;
@@ -20,14 +27,21 @@ interface LessonBodyProps {
     lesson: CourseLesson,
     force?: boolean,
     altitude?: Altitude,
-  ) => Promise<LessonDetail | null>;
+  ) => Promise<LessonOutcome>;
   speak?: (text: string) => void;
   /** Open the Ask rail prefilled with a question about this lesson's topic. Omit → the chip stays
    *  hidden (matches `loadLessonDetail`'s degrade-honestly convention: no dead-end affordances). */
   onAskAboutLesson?: (question: string) => void;
 }
 
-type Status = 'idle' | 'loading' | 'error';
+type Status = 'idle' | 'loading' | { failed: LessonFailure };
+
+/** What the reader is told when a lesson could not be written, by why. */
+const FAILURE_LINE: Record<LessonFailure, string> = {
+  unavailable: 'This lesson needs a connected repo to read.',
+  request: 'Couldn’t reach your model to write this lesson.',
+  empty: 'Your model answered, but nothing in it could be used as this lesson.',
+};
 
 export function LessonBody({
   course,
@@ -42,19 +56,16 @@ export function LessonBody({
   const [status, setStatus] = useState<Status>('idle');
   const [spot, setSpot] = useState<number | null>(null); // active spotlight step, null = list view
   const requested = useRef(false);
-  // Guards the retry chain: unmounting (moving to a different lesson — this component is keyed per
-  // lesson, so that's a real unmount, not a rerender) must stop a pending retry from firing a second,
-  // now-pointless (and possibly billable) generation call for a lesson the reader already left, and
-  // must never write state into an instance that's gone. `run` can also be re-invoked manually
-  // ("Try again" / "Rewrite this lesson") while an earlier attempt is still mid-retry, so a fresh call
-  // supersedes any older one via a generation counter rather than just an alive flag.
+  // Each load is ONE request. A failure says why and waits for the reader's Try again; nothing
+  // here asks a second time on its own. Unmounting (this component is keyed per lesson, so moving
+  // on is a real unmount) must never write into an instance that's gone, and a fresh press ("Try
+  // again" / "Rewrite this lesson") supersedes an older one still in flight via the generation
+  // counter.
   const aliveRef = useRef(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const genRef = useRef(0);
   useEffect(
     () => () => {
       aliveRef.current = false;
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
     },
     [],
   );
@@ -62,25 +73,18 @@ export function LessonBody({
   const run = useCallback(
     (force: boolean) => {
       if (!loadLessonDetail) return;
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
       const gen = ++genRef.current;
       setStatus('loading');
       setDetail(null);
-      const attempt = (retriesLeft: number): void => {
-        void loadLessonDetail(course, lesson, force, altitude).then((d) => {
-          if (!aliveRef.current || gen !== genRef.current) return;
-          if (d) {
-            setDetail(d);
-            setStatus('idle');
-          } else if (retriesLeft > 0) {
-            // Transparent auto-retry — stays in 'loading' so the user never sees a flash of error.
-            timerRef.current = setTimeout(() => attempt(retriesLeft - 1), 2000);
-          } else {
-            setStatus('error');
-          }
-        });
-      };
-      attempt(1);
+      void loadLessonDetail(course, lesson, force, altitude).then((outcome) => {
+        if (!aliveRef.current || gen !== genRef.current) return;
+        if ('detail' in outcome) {
+          setDetail(outcome.detail);
+          setStatus('idle');
+        } else {
+          setStatus({ failed: outcome.failed });
+        }
+      });
     },
     [loadLessonDetail, course, lesson, altitude],
   );
@@ -262,11 +266,11 @@ export function LessonBody({
     );
   }
 
-  if (status === 'error') {
+  if (typeof status === 'object') {
     return (
-      <div className="ripple-course-empty">
+      <div className="ripple-course-empty" role="status">
         {goal && <p className="ripple-course-lede">{goal}</p>}
-        <p>Couldn’t write this lesson from the code just now.</p>
+        <p>{FAILURE_LINE[status.failed]}</p>
         <button type="button" className="ripple-course-reveal" onClick={() => run(true)}>
           Try again
         </button>

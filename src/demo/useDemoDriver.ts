@@ -23,6 +23,7 @@ import type { TurnFrame } from '../live/history';
 import { naturalGuidedCopy, naturalizeGuidedFrame } from '../tour/guidedCopy';
 import { savedViewMode } from '../canvas/focus/useFocusMode';
 import { DemoNarration } from './narration';
+import { inkPending, inkStillDrawing } from '../live/annotate/settle';
 
 /** Default breath a turn step holds after its walk + beats before auto-advance. */
 const STEP_HOLD_MS = 3000;
@@ -33,6 +34,23 @@ const STEP_HOLD_MS = 3000;
 const WALK_GRACE_MS = 1000;
 /** Hard cap on waiting for walk-quiet — a stuck walk must never hang the demo. */
 const WALK_WAIT_CAP_MS = 60000;
+
+/**
+ * Whether the pen still holds a step that is otherwise ready to move on. A stroke still drawing
+ * always does: the next ask clears the pen, and a mark wiped mid-stroke reads as the hand giving
+ * up, and strokes are finite. A mark still waiting to be placed holds it for at most one more of
+ * the step's own hold, since a card that never comes to rest keeps its mark pending for ~8s
+ * before the poll gives up, and the reader would sit through all of that on a finished step.
+ */
+export function penHoldsStep(p: {
+  now: number;
+  readyAt: number;
+  holdMs: number;
+  pending: boolean;
+  drawing: boolean;
+}): boolean {
+  return p.drawing || (p.pending && p.now < p.readyAt + p.holdMs);
+}
 
 export type DemoLoadState = 'loading' | 'error' | 'ready';
 
@@ -120,6 +138,7 @@ export function useDemoDriver(opts: {
   // The moment (ms epoch) the current step is allowed to auto-advance: set once its walk went
   // quiet and its beats were scheduled (quiet + beats tail + hold). Null while still revealing.
   const stepReadyAtRef = useRef<number | null>(null);
+  const stepHoldMsRef = useRef(STEP_HOLD_MS);
 
   // Load this persona's shard — lazily, its own chunk. A failed fetch (offline) is an honest
   // error state with retry, never a stall.
@@ -186,12 +205,13 @@ export function useDemoDriver(opts: {
     // Fire the step's beats (measured from walk-quiet) and open the advance window.
     const fireBeats = (): void => {
       const beats = step.beats ?? [];
-      for (const b of beats) runBeat(b, o, beatFrame, after);
+      for (const b of beats) runBeat(b, o, beatFrame, after, st.signal);
       if (step.note) {
         const firstAt = beats.length ? Math.min(...beats.map((b) => b.atMs)) : 0;
         after(firstAt, () => setNote(naturalGuidedCopy(step.note ?? '')));
       }
-      stepReadyAtRef.current = Date.now() + beatsEndMs(beats) + (step.holdMs ?? STEP_HOLD_MS);
+      stepHoldMsRef.current = step.holdMs ?? STEP_HOLD_MS;
+      stepReadyAtRef.current = Date.now() + beatsEndMs(beats) + stepHoldMsRef.current;
     };
 
     // Wait for the answer's own narration + reveal walk to finish, then decorate it. The
@@ -236,7 +256,9 @@ export function useDemoDriver(opts: {
       // AudioContext and never be heard.
       after(revealAt, () =>
         whenUnlocked(after, () => {
-          o.showFrame(frame, ask);
+          // A jump lands on this turn from wherever the reader was, so the board on screen is not
+          // necessarily the one it was recorded after.
+          o.showFrame(frame, ask, { prior: prevFrame });
           narration.play(script.persona, turnIdx, mutedRef.current);
         }),
       );
@@ -266,6 +288,14 @@ export function useDemoDriver(opts: {
       const readyAt = stepReadyAtRef.current;
       if (!readyAt || Date.now() < readyAt) return;
       if (o.isSpeaking() || o.isBusy() || narration.isPlaying()) return;
+      const held = penHoldsStep({
+        now: Date.now(),
+        readyAt,
+        holdMs: stepHoldMsRef.current,
+        pending: inkPending(),
+        drawing: inkStillDrawing().length > 0,
+      });
+      if (held) return;
       window.clearInterval(id);
       if (index + 1 >= total) {
         resetTriggers();

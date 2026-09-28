@@ -38,6 +38,29 @@
   box-shadow: var(--shadow-modal);
   overflow: hidden;
 }
+/* A 4K window at 1× put a 1700px panel of 11–13px type in the middle of 3840px: the app-wide type
+   scale stops at 1.25 by design, which is right for a page and wrong for a dense instrument panel
+   this size. On a window this big in BOTH axes (an ultrawide is as wide but laptop-tall) the panel
+   restates the type ramp at its ceilings ×1.5 — the app's 1.25 cap, ×1.2 — with the reader's
+   text-size knob still composing, and widens by the same ratio so its lines keep their measure.
+   The ceilings are tokens-base.css's own; tests/ripple-4k-type.test.ts holds them together. */
+@media (width >= 2560px) and (height >= 1500px) {
+  .ripple-panel {
+    --ripple-type: calc(var(--fs-reader, 1) * 1.5);
+    --fs-2xs: calc(10.5px * var(--ripple-type));
+    --fs-xs: calc(11.5px * var(--ripple-type));
+    --fs-sm: calc(13px * var(--ripple-type));
+    --fs-md: calc(14.5px * var(--ripple-type));
+    --fs-lg: calc(17px * var(--ripple-type));
+    --fs-xl: calc(22px * var(--ripple-type));
+    width: min(2040px, 100%);
+  }
+  /* The rail holds the three Explain-for labels, so it grows with their type. (Scoped under the
+     panel: the rail's own rule comes later in this sheet.) */
+  .ripple-panel .ripple-rail {
+    width: min(300px, 100%);
+  }
+}
 .ripple-scrim[data-expanded='true'] .ripple-panel {
   width: 100%;
   height: 100%;
@@ -375,6 +398,44 @@
   }
 }
 
+/* A phone: the head, the worked-example note and the tab row took 334px of a 568px screen before
+   a line of the analysis, and all three stayed pinned. The panel scrolls as ONE page instead, so
+   the head and note scroll away and the tab row sticks at the top while the reader moves down. And
+   the "Explain for" switch takes its own row: sharing one with the tabs left the tabs ~100px, with
+   "Mavéa's read" scrolled out of sight beneath the switch. */
+@media (width <= 560px) {
+  .ripple-panel {
+    overflow-y: auto;
+  }
+  .ripple-body {
+    flex: none;
+  }
+  .ripple-main {
+    overflow: visible;
+  }
+  .ripple-rail {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    flex-wrap: wrap;
+  }
+  .ripple-rail-sections {
+    flex-basis: 100%;
+  }
+  .ripple-rail-altitude {
+    flex: 1 1 100%;
+    margin: 0;
+    padding: 6px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+  /* A row of its own has the room the rail's column never did: at 4px a side the three labels ran
+     together as one word. */
+  .ripple-alt button {
+    padding-inline: 8px;
+  }
+}
+
 .ripple-eyebrow {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: var(--fs-2xs);
@@ -635,6 +696,9 @@
 
 /* ── impact map ── */
 .ripple-impact {
+  /* The simulator and the cause→effect story narrow with the COLUMN they sit in, not the window:
+     beside the rail on a zoomed laptop the column is phone-narrow while the window is not. */
+  container: ripple-impact / inline-size;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -693,6 +757,10 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+}
+/* The eyebrow sits in the glow's core, where the muted ink drops under 4.5:1 on every skin. */
+.ripple-impact-simulator-copy .ripple-eyebrow {
+  color: var(--text-primary);
 }
 .ripple-impact-simulator-copy strong {
   color: var(--text-primary);
@@ -970,6 +1038,8 @@
   padding: 0;
   border: 0;
   background: transparent;
+  /* A button does not inherit type: unset, it took the browser's 13.33px, a size no token names. */
+  font-size: var(--fs-xs);
   text-align: left;
   cursor: pointer;
 }
@@ -1141,7 +1211,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-@media (width <= 900px) {
+@container ripple-impact (width <= 760px) {
   .ripple-impact-simulator {
     grid-template-columns: 1fr;
   }
@@ -1223,7 +1293,10 @@
   accent-color: var(--presence);
 }
 .ripple-zoombtns {
-  margin-left: auto;
+  position: absolute;
+  top: var(--s-sm);
+  right: var(--s-sm);
+  z-index: 3;
 }
 .ripple-zoombtns button {
   width: 48px;
@@ -1332,6 +1405,11 @@
     opacity var(--m-fast) var(--ease-out),
     box-shadow var(--m-fast) var(--ease-out);
 }
+.ripple-edge-verb-probe {
+  visibility: hidden;
+  left: 0;
+  top: 0;
+}
 .ripple-edge-verb[data-active='true'] {
   opacity: 1;
   box-shadow: 0 0 0 1px currentColor;
@@ -1350,6 +1428,8 @@
   border-radius: var(--r-sm);
   background: var(--surface-elevated);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  /* Its lines set their own sizes; the button itself must not fall back to the browser's 13.33px. */
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition:
     opacity var(--m-fast) var(--ease-out),
@@ -1753,13 +1833,20 @@
   border: 0;
   border-radius: var(--r-sm);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-weight: 600;
   font-size: var(--fs-sm);
   cursor: pointer;
 }
 .ripple-paste-go:hover {
   background: var(--presence-deep);
+}
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ripple-paste-go:hover {
+    color: color(from var(--presence-deep) srgb-linear var(--ink-on-fill));
+  }
 }
 .ripple-paste-cancel {
   padding: 8px 16px;
@@ -2224,7 +2311,8 @@
   .ripple-rail {
     gap: 6px;
   }
-  .ripple-rail-item {
+  .ripple-rail-item,
+  .ripple-example-cta {
     min-height: var(--tap-min);
   }
 }

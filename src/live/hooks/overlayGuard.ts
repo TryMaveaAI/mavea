@@ -20,6 +20,9 @@ export interface AttentionOverlays {
   srsOpen: boolean;
   zoomLevel: unknown;
   mindViewOpen: boolean;
+  /** A card open on the Lens stage — a modal sheet like the rest, so a replay's banner and
+   *  transport must yield to it rather than paint over its toolbar and strip. */
+  lensOpen: boolean;
 }
 
 export function anyOverlayOpen(o: AttentionOverlays): boolean {
@@ -37,6 +40,7 @@ export function anyOverlayOpen(o: AttentionOverlays): boolean {
     o.delegateOpen ||
     o.srsOpen ||
     o.zoomLevel !== null ||
-    o.mindViewOpen
+    o.mindViewOpen ||
+    o.lensOpen
   );
 }

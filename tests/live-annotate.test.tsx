@@ -1,8 +1,9 @@
-import { liesFlat } from '../src/live/annotate/measure';
+import { layoutSize, liesFlat } from '../src/live/annotate/measure';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, cleanup } from '@testing-library/react';
 import { gestureOf, labelPlacements, relativeRect, strokeFor } from '../src/live/annotate/gesture';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
+import { inkPending } from '../src/live/annotate/settle';
 import { BarChart } from '../src/canvas/BarChart';
 import { KpiGrid } from '../src/canvas/KpiGrid';
 import { InsightCard } from '../src/canvas/InsightCard';
@@ -481,11 +482,132 @@ describe('AnnotationLayer', () => {
       // said-target passes, one gather of its content boxes for clear space (a different question).
       act(() => vi.advanceTimersByTime(100)); // the first measurement
       expect(textWalks()).toBe(2);
-      expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
+      // Nothing is drawn off a single read: a mark appears once, where the card has come to rest.
+      expect(wrap.querySelector('.ink-stroke')).toBeNull();
       act(() => vi.advanceTimersByTime(100)); // the read that confirms the geometry
       expect(textWalks()).toBe(4);
+      expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
     } finally {
       walker.mockRestore();
+      restore();
+    }
+  });
+
+  it('plots a card in its unrounded layout space, so its scale cannot move a mark', () => {
+    // A card 400.4 x 200.6 layout px: offsetWidth would round that to 400 x 201.
+    const W = 400.4;
+    const H = 200.6;
+    const draw = (scale: number): { d: string; viewBox: string } => {
+      const restore = mockRangeRects({
+        'Order Book': domRect(20 * scale, 30 * scale, 60 * scale, 16 * scale),
+      });
+      try {
+        const wrap = document.createElement('div');
+        wrap.setAttribute('data-spot-id', 'scaled');
+        wrap.style.boxSizing = 'border-box';
+        wrap.style.width = `${W}px`;
+        wrap.style.height = `${H}px`;
+        const label = document.createElement('span');
+        label.textContent = 'Order Book';
+        wrap.appendChild(label);
+        document.body.appendChild(wrap);
+        wrap.getBoundingClientRect = () => domRect(0, 0, W * scale, H * scale);
+        expect(layoutSize(wrap)).toEqual({ w: W, h: H });
+        render(
+          <AnnotationLayer
+            spots={[{ spot: 'scaled', mark: { kind: 'underline', at: 'Order Book' } }]}
+          />,
+        );
+        act(() => vi.advanceTimersByTime(300));
+        const svg = wrap.querySelector('svg.ink-layer');
+        const out = {
+          d: svg?.querySelector('.ink-stroke')?.getAttribute('d') ?? '',
+          viewBox: svg?.getAttribute('viewBox') ?? '',
+        };
+        cleanup();
+        wrap.remove();
+        return out;
+      } finally {
+        restore();
+      }
+    };
+    const flat = draw(1);
+    const lifted = draw(1.03); // the spotlight's lift
+    expect(flat.d).toBeTruthy();
+    expect(lifted.d).toBe(flat.d);
+    expect(flat.viewBox).toBe(`0 0 ${W} ${H}`);
+    expect(lifted.viewBox).toBe(flat.viewBox);
+  });
+
+  it('publishes a mark as pending until it lands, or until its poll gives up', () => {
+    const restore = mockRangeRects({ 'Order Book': domRect(20, 30, 60, 16) });
+    try {
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-spot-id', 'pending-card');
+      const label = document.createElement('span');
+      label.textContent = 'Order Book';
+      wrap.appendChild(label);
+      document.body.appendChild(wrap);
+      wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+      render(
+        <AnnotationLayer
+          spots={[
+            { spot: 'pending-card', mark: { kind: 'underline', at: 'Order Book' } },
+            { spot: 'never-there', mark: { kind: 'circle', at: 'Nothing like this' } },
+          ]}
+        />,
+      );
+      expect(inkPending('pending-card')).toBe(true);
+      expect(inkPending('never-there')).toBe(true);
+      act(() => vi.advanceTimersByTime(300));
+      expect(wrap.querySelector('.ink-stroke')).toBeTruthy();
+      expect(inkPending('pending-card')).toBe(false);
+      // A target that never resolves stops holding anyone once its poll gives up.
+      expect(inkPending('never-there')).toBe(true);
+      act(() => vi.advanceTimersByTime(2000));
+      expect(inkPending('never-there')).toBe(false);
+      expect(inkPending()).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it('keeps a drawn mark through a sub-pixel re-read, and follows a real move', () => {
+    let y = 30;
+    const restore = mockRangeRects({ 'Order Book': domRect(20, 30, 60, 16) });
+    const range = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function (this: Range) {
+      const r = range.call(this);
+      return r.width ? domRect(20, y, 60, 16) : r;
+    };
+    try {
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-spot-id', 'hair');
+      const label = document.createElement('span');
+      label.textContent = 'Order Book';
+      wrap.appendChild(label);
+      document.body.appendChild(wrap);
+      wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+      render(
+        <AnnotationLayer
+          spots={[{ spot: 'hair', mark: { kind: 'underline', at: 'Order Book' } }]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(300));
+      const path = (): string | null | undefined =>
+        wrap.querySelector('.ink-stroke')?.getAttribute('d');
+      const drawn = path();
+      expect(drawn).toBeTruthy();
+      y = 30.6; // a transition ending nudges the text by a fraction of a pixel
+      act(() => window.dispatchEvent(new Event('resize')));
+      act(() => vi.advanceTimersByTime(400));
+      expect(path()).toBe(drawn);
+      y = 60; // the row really moved
+      act(() => window.dispatchEvent(new Event('resize')));
+      act(() => vi.advanceTimersByTime(400));
+      expect(path()).not.toBe(drawn);
+    } finally {
+      Range.prototype.getBoundingClientRect = range;
       restore();
     }
   });
@@ -608,7 +730,7 @@ describe('cross-card "connect" gesture', () => {
     return { grid, a, b };
   }
 
-  it('resolves nothing without a .card-grid ancestor (e.g. Focus mode)', () => {
+  it('resolves nothing without a .card-grid ancestor (e.g. the desk)', () => {
     const a = document.createElement('div');
     a.setAttribute('data-spot-id', 'a');
     a.textContent = 'Seattle';

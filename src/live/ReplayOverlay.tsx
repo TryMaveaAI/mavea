@@ -17,6 +17,7 @@ import { replaySequence, type ReplaySegment } from './replay';
 import { useFocusTrap } from './useFocusTrap';
 import './replay-overlay.css';
 import { sentenceCase } from '../lib/sentenceCase';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 interface ReplayOverlayProps {
   frames: TurnFrame[];
@@ -189,6 +190,7 @@ export function ReplayOverlay({
   // Tear the player down on unmount so no timer or speech outlives the overlay.
   useEffect(() => () => stop(), [stop]);
 
+  const backdrop = useBackdropDismiss(close);
   if (!frame || !liveSpec) return null;
 
   return (
@@ -196,7 +198,7 @@ export function ReplayOverlay({
     // below is what assistive tech announces (a role="button" wrapper around every control would
     // read as one giant button with buttons nested inside it).
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div className="replay-scrim" onClick={close}>
+    <div className="replay-scrim" onPointerDown={backdrop.onPointerDown} onClick={backdrop.onClick}>
       {/* Clicks inside the dialog are swallowed so they don't bubble to the scrim and close it —
           a propagation guard, not a click affordance, so it has no keyboard twin. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}

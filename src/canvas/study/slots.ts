@@ -5,9 +5,9 @@
 // apart at an unanticipated stage size — it only gets bigger or smaller. The numbers are the
 // design's own (measured off the approved mockup), not derived; change them only against it.
 //
-// Scale, not reflow, is the responsive story down to STUDY_FIT_FLOOR; a short stage crops only its
-// decorative floor rather than silently changing the whole experience, and a genuinely NARROW
-// container drops the desk for the flat column (study.css's compact block). The floor is DERIVED the way
+// Scale, not reflow, is the responsive story down to STUDY_FIT_FLOOR; a NARROW container or a SHORT
+// window drops the desk for the flat column (study.css's compact block), because on either one the
+// floored desk can no longer show a card whole with Mavéa's note beside it. The floor is DERIVED the way
 // the world's camera floor is: the smallest persistent type on a reading surface here is authored
 // at 11px (kickers, the note pager), and 9px is the app-wide rendered floor, so the desk may
 // shrink to 9/10 of its authored size and no further.
@@ -52,6 +52,15 @@ export const STUDY_READING_PX = 14;
  *  container cannot query itself). */
 export const COMPACT_W = 1120;
 
+/** The window height at or under which the desk also stands down for the flat column — the
+ *  ladder's 820 rung (scripts/breakpoints.mjs). A laptop window leaves the desk ~500-650px of
+ *  stage, and at the floored scale a real card needs ~1.5× the front slot's cap: it scrolled
+ *  inside itself while Mavéa's note sat across the desk from it (measured at 1536×730: 599px of
+ *  card in a 299px box). The flat column shows the card whole with the note held beside it, so a
+ *  short window trades the desk's scenery for the one thing the Study is for — reading an object
+ *  with its notes. From 1728×993 up the desk has the height it was composed for, and stays. */
+export const COMPACT_H = 820;
+
 /** The tallest stage the desk is fitted into, mirroring study.css's own clamp — past it the
  *  composition is swimming in parchment rather than reading larger. */
 export const STAGE_H_MAX = 820;
@@ -65,8 +74,8 @@ export const TAKEAWAY_BOTTOM = 74;
  *  study.css collapses the floor-grid band instead of cropping into the cards. */
 export const SHALLOW_CROP = 90;
 
-/** Short windows scroll the authored desk instead of crushing it below the point where the card
- * arc survives. Derived from the same legibility floor and decorative crop allowance as the fit:
+/** Stages shorter than this scroll the authored desk instead of crushing it below the point where
+ * the card arc survives (a tall window whose canvas column is still short — a docked devtools pane). Derived from the same legibility floor and decorative crop allowance as the fit:
  * (DESK_H - SHALLOW_CROP) * STUDY_FIT_FLOOR + the 2px frame. */
 export const STAGE_H_MIN = Math.ceil((DESK_H - SHALLOW_CROP) * STUDY_FIT_FLOOR) + 2;
 

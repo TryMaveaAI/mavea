@@ -1,5 +1,5 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { LegalMarkdownDocument } from '../src/legal/LegalMarkdownDocument';
 import { parseLegalMarkdown } from '../src/legal/legalMarkdown';
 
@@ -53,8 +53,58 @@ describe('safe canonical legal Markdown renderer', () => {
       '#/privacy?from=live',
     );
     expect(screen.getByText('local storage').tagName).toBe('CODE');
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
+    const section = screen.getByRole('region', { name: 'First section' });
+    expect(within(within(section).getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText(/THIS WARRANTY PARAGRAPH/)).toHaveClass('legal-caps');
+  });
+
+  it('opens with an "On this page" list that jumps to each section without leaving the route', () => {
+    window.location.hash = '#/terms?from=home';
+    // jsdom has no scrollIntoView; the call on the right heading is the observable jump.
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    onTestFinished(() => {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    });
+    render(<LegalMarkdownDocument markdown={markdown} page="terms" kicker="Project terms" />);
+
+    const contents = screen.getByRole('navigation', { name: 'On this page' });
+    const links = within(contents).getAllByRole('link');
+    expect(links.map((a) => a.textContent)).toEqual(['01First section', '02Safety']);
+
+    // The href names this page and the section, so a new tab or a copied link lands there too.
+    expect(links[1]).toHaveAttribute('href', '#/terms?from=home&section=2');
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    links[1]!.dispatchEvent(click);
+    const target = screen.getByRole('heading', { name: 'Safety' });
+    expect(click.defaultPrevented).toBe(true);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(target);
+    expect(target).toHaveFocus();
+    expect(window.location.hash).toBe('#/terms?from=home');
+
+    // A modified click is the browser's: it opens the href in a new tab.
+    const newTab = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+    links[0]!.dispatchEvent(newTab);
+    expect(newTab.defaultPrevented).toBe(false);
+  });
+
+  it('opens a section link at its section', () => {
+    window.history.replaceState(null, '', '#/terms?from=home&section=2');
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: scrollIntoView,
+      configurable: true,
+    });
+    onTestFinished(() => {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    });
+    render(<LegalMarkdownDocument markdown={markdown} page="terms" kicker="Project terms" />);
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('heading', { name: 'Safety' }));
   });
 
   it('allows mapped documents and HTTPS while refusing HTML and unsafe link schemes', () => {

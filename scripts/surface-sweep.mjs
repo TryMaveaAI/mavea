@@ -3,8 +3,8 @@
 // table (src/routeTable.ts): a gate cannot see a surface it does not visit, and the failure mode of a
 // hand-kept list is a new route that nobody remembered to add a row for.
 //
-// Every row names the route prefix it covers. Live's takeovers (the board, the Lens, the Study,
-// Focus) are states of `#/live` reached by clicks and `?view=`, so several rows share one prefix;
+// Every row names the route prefix it covers. Live's takeovers (the board, the Lens, the
+// Study) are states of `#/live` reached by clicks and `?view=`, so several rows share one prefix;
 // the dev-only labs are rows too (`lab: true`) — swept in full mode, never in the per-push or fast
 // subsets, because they are QA harnesses rather than anywhere a reader lands.
 
@@ -62,17 +62,18 @@ export const SURFACES = [
   },
   {
     key: 'lens',
-    // The Lens is a STATE of the board, not a view of its own — but it is the state with new
-    // layout in it (one card forward, the rest dimmed, notes beside it), so it needs its own row.
-    // The settle is short on purpose: the curated replay moves on after a few seconds and takes
-    // the spotlight back, and a row that measures the board while claiming to measure the Lens is
-    // worse than no row at all.
+    // The Lens is a STATE of the board, not a view of its own: one card opened on a modal sheet
+    // over the blurred board, its notes beside it (under it, folded, on a narrow sheet), and a
+    // toolbar with the way back. The sheet is what the reader reads, so it is the reading
+    // column; the board behind it is inert. The settle is short on purpose: the curated replay
+    // moves on after a few seconds and closes the sheet, and a row that measures the board while
+    // claiming to measure the Lens is worse than no row at all.
     label: 'Answer · the Lens',
     route: '#/live',
     hash: '#/live?demo=dev&view=board',
     ready: '.mavea-app',
     click: ['Start demo', 'Look closer'],
-    reading: '.canvas-scroll',
+    reading: '.zoom-sheet',
     settleMs: 2500,
     owns: LIVE,
   },
@@ -81,18 +82,6 @@ export const SURFACES = [
     label: 'Answer · Study',
     route: '#/live',
     hash: '#/live?demo=dev&view=study',
-    ready: '.mavea-app',
-    click: ['Start demo'],
-    reading: '.canvas-scroll',
-    settleMs: 14_000,
-    owns: LIVE,
-  },
-  {
-    key: 'focus',
-    // Focus has no control of its own now — Present drives it, plus ⌘K.
-    label: 'Answer · Focus',
-    route: '#/live',
-    hash: '#/live?demo=dev&view=focus',
     ready: '.mavea-app',
     click: ['Start demo'],
     reading: '.canvas-scroll',

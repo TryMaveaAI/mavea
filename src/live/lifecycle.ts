@@ -13,6 +13,7 @@
 // hard rule the deterministic side enforces: you cannot AUGMENT a canvas about a
 // different topic — a real topic shift always REPLACES.
 import type { Block } from '../data/conversation';
+import { topicTokens } from './topicTokens';
 
 /** What this turn does to the canvas. */
 export type Mode = 'replace' | 'augment' | 'refine';
@@ -38,82 +39,6 @@ const TOPIC_SHIFT_BELOW = 0.1;
  *  canvas accreting unrelated answers. */
 const UNRELATED_FLOOR = 0.04;
 
-/** Common words that carry no topic signal — dropped before comparing turns. */
-const STOPWORDS: ReadonlySet<string> = new Set([
-  'the',
-  'a',
-  'an',
-  'of',
-  'to',
-  'and',
-  'or',
-  'is',
-  'are',
-  'was',
-  'were',
-  'be',
-  'in',
-  'on',
-  'at',
-  'for',
-  'my',
-  'me',
-  'i',
-  'you',
-  'it',
-  'this',
-  'that',
-  'these',
-  'those',
-  'how',
-  'what',
-  'why',
-  'when',
-  'where',
-  'which',
-  'who',
-  'should',
-  'do',
-  'does',
-  'did',
-  'can',
-  'could',
-  'would',
-  'will',
-  'with',
-  'about',
-  'please',
-  'show',
-  'tell',
-  'give',
-  'make',
-  'get',
-  'see',
-  'want',
-  'need',
-  'from',
-  'by',
-  'as',
-  'so',
-  'if',
-  'then',
-  'your',
-  'our',
-  'their',
-  'his',
-  'her',
-  'its',
-]);
-
-/** Lowercased, stopword-free, length≥2 word set — the topic fingerprint of some text. */
-export function topicTokens(text: string): Set<string> {
-  const out = new Set<string>();
-  for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
-    if (raw.length >= 2 && !STOPWORDS.has(raw)) out.add(raw);
-  }
-  return out;
-}
-
 /** Jaccard similarity of two token sets (0 = disjoint, 1 = identical). */
 function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 1;
@@ -129,12 +54,6 @@ const snapText = (s: TurnSnapshot): string => `${s.question} ${s.narration} ${s.
 export function topicOverlap(prior: TurnSnapshot, next: TurnSnapshot): number {
   return jaccard(topicTokens(snapText(prior)), topicTokens(snapText(next)));
 }
-
-/** Below this cohesion two consecutive turns are genuinely different SUBJECTS. Tuned against
- *  realistic pairs (see live-lifecycle tests): same-subject answers in different words land
- *  ~0.2–0.6 (the subject nouns recur even when everything else changes), a real pivot
- *  ~0.0–0.1 (only conversational filler survives the stopword strip) — the band holds. */
-export const SAME_SUBJECT_FLOOR = 0.15;
 
 /**
  * How much two turns share a SUBJECT: the fraction of the smaller turn's topic vocabulary
@@ -356,6 +275,22 @@ function renumber(blocks: Block[]): Block[] {
 }
 
 /**
+ * The cards a follow-up adds, with their section order continuing after the board they join.
+ * Every answer numbers its sections from 1, and the canvas sorts sections by that number, so a
+ * follow-up's first section would otherwise sort in beside the board's first and push everything
+ * the reader has scrolled down to further down the page. Cards joining a section the board
+ * already has keep that section's place, since a section takes its order from its first card.
+ * Cards that already sit past the board are returned as they are, so continuing twice (a shard
+ * baked after this ran, then repaired again on load) cannot push them further out.
+ */
+export function continueOrder(board: readonly Block[], added: readonly Block[]): Block[] {
+  const base = Math.max(0, ...board.map((b) => b.order ?? 0));
+  const orders = added.flatMap((b) => (b.order === undefined ? [] : [b.order]));
+  if (!base || !orders.length || Math.min(...orders) > base) return [...added];
+  return added.map((b) => (b.order === undefined ? b : { ...b, order: b.order + base }));
+}
+
+/**
  * Produce the next canvas from the `prior` blocks and this turn's `next` blocks.
  *  - replace: just this turn's blocks (also the path for the very first turn).
  *  - augment: keep the prior blocks, append the genuinely new ones (by content).
@@ -382,10 +317,12 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
       if (slot !== undefined) {
         // Compare before overwriting — afterwards there is nothing left to compare against.
         if (contentDiffers(merged[slot], nb)) changedSlots.push(slot);
-        merged[slot] = nb;
+        // Edited in place, so it keeps its place: its own answer's order hint would move it.
+        const order = merged[slot].order;
+        merged[slot] = nb.order === order ? nb : { ...nb, order };
       } else appended.push(nb);
     }
-    const blocks = renumber([...merged, ...appended]);
+    const blocks = renumber([...merged, ...continueOrder(merged, appended)]);
     const firstNewId = appended.length ? (blocks[merged.length]?.id ?? null) : null;
     // Read the ids off the RENUMBERED array by index, so the delta cannot drift from the blocks
     // it ships beside — it is the same list, addressed the same way.
@@ -402,7 +339,7 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
   // augment
   const seen = new Set(prior.map(blockSignature));
   const fresh = next.filter((b) => !seen.has(blockSignature(b)));
-  const blocks = renumber([...prior, ...fresh]);
+  const blocks = renumber([...prior, ...continueOrder(prior, fresh)]);
   const firstNewId = fresh.length ? (blocks[prior.length]?.id ?? null) : null;
   // An augment never touches what is already there — that is its whole promise.
   const delta: MergeDelta = {

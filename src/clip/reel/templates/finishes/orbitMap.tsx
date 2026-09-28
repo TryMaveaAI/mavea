@@ -38,8 +38,6 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
         aspectRatio: '1',
       }}
     >
-      <style>{`@keyframes orbit-ring{from{opacity:0;transform:scale(0.7)}to{opacity:1;transform:scale(1)}}`}</style>
-
       <svg
         viewBox="0 0 100 100"
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
@@ -124,8 +122,8 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
           borderRadius: 999,
           fontWeight: 800,
           fontFamily: 'var(--reel-sans)',
-          color: '#fff',
-          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2))',
+          color: 'var(--reel-on-accent)',
+          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2-fill))',
           boxShadow: '0 0 calc(var(--ru) * 5) var(--reel-glow)',
           animation: 'reel-pop 0.5s cubic-bezier(0.2,0.7,0.3,1) both',
           ...centerFit.style,

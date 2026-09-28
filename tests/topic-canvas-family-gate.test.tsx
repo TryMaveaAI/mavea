@@ -165,14 +165,14 @@ describe('TopicCanvas — family-gate skeletons', () => {
       );
       expect(observed.at(-1)).toBe(container.querySelector('.card-grid'));
 
-      // Focus mode unmounts the grid entirely…
+      // The desk unmounts the grid entirely…
       rerender(
         <TopicCanvas
           data={data}
           spot={null}
           built={{}}
           onProve={() => {}}
-          viewMode="focus"
+          viewMode="study"
           onViewMode={() => {}}
         />,
       );

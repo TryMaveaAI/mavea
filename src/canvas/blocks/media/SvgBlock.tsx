@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { richInnerHtml } from '../../../lib/richText';
+import { trustedHtml } from '../../../lib/trustedTypes';
 import { sanitizeSvg } from './sanitizeSvg';
 import type { SvgBlockProps } from './types';
 
@@ -54,7 +55,7 @@ export function SvgBlock({
             aria-label={title}
             // `safe` is the output of sanitizeSvg: a deny-by-default whitelist that removes every
             // script-, load-, and animation-capable element/attribute, so this is XSS-safe.
-            dangerouslySetInnerHTML={{ __html: safe }}
+            dangerouslySetInnerHTML={{ __html: trustedHtml(safe) }}
           />
         </div>
       )}

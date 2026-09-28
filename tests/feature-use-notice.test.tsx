@@ -36,7 +36,7 @@ describe('FeatureUseNotice', () => {
     const first = render(<FeatureUseNotice kind="voice-data" from="live" />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Dismiss Speech can become provider data notice' }),
+      screen.getByRole('button', { name: 'Dismiss Speech may be shared with providers notice' }),
     );
     first.unmount();
 
@@ -78,5 +78,31 @@ describe('FeatureUseNotice', () => {
     fireEvent.click(screen.getByRole('button', { name: /Dismiss/ }));
 
     expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  });
+
+  it('collapses a standing notice to one line and opens it in place, text intact', () => {
+    // jsdom lays nothing out, so stand in for a body taller than its one-line clamp.
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(120);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(18);
+    render(<FeatureUseNotice kind="monitoring" />);
+
+    const note = screen.getByRole('note');
+    expect(note).toHaveAttribute('data-collapsed');
+    // Clamped paint only: the whole disclosure is still in the document.
+    expect(screen.getByText(/cadence you set is a spending decision/i)).toBeInTheDocument();
+    const more = screen.getByRole('button', { name: 'More' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(more);
+    expect(note).toHaveAttribute('data-open');
+    expect(screen.getByRole('button', { name: 'Less' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('leaves an act-specific warning open, with no toggle when nothing is hidden', () => {
+    sessionStorage.removeItem('mavea-feature-notice-dismissed-v1:upload');
+    render(<FeatureUseNotice kind="upload" from="live" />);
+
+    expect(screen.getByRole('note')).not.toHaveAttribute('data-collapsed');
+    expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
   });
 });

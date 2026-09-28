@@ -1365,7 +1365,7 @@
   gap: 6px;
 }
 .cau-legend-item--weight {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .cau-swatch {
   width: 10px;
@@ -2524,81 +2524,6 @@
   color: var(--text-muted);
   font-style: italic;
 }
-
-/* ───────────────────────── sortingviz ─────────────────────────
-   Bar-chart sorting visualizer: bars proportional to value,
-   coloured by algorithm state (compared/swapped/sorted/pivot). */
-.sv-complexity-badge {
-  margin-left: 8px;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  font-family: ui-monospace, 'Fira Code', monospace;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: color-mix(in oklab, currentColor 10%, transparent);
-  border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
-  vertical-align: middle;
-}
-.sv-chart-wrap {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 160px;
-  margin: 14px 0 4px;
-  padding: 0 2px;
-  overflow: hidden;
-}
-.sv-bar-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  min-width: 0;
-  height: 100%;
-}
-.sv-val-label {
-  font-size: var(--fs-2xs);
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: center;
-}
-.sv-bar {
-  width: 100%;
-  border-radius: 3px 3px 0 0;
-  background: var(--surface-elevated);
-  border: 1.5px solid var(--line-strong);
-  border-bottom: none;
-  transition:
-    height 0.15s ease,
-    background 0.18s ease,
-    border-color 0.18s ease;
-  min-height: 4px;
-}
-.sv-bar-compared {
-  background: color-mix(in oklab, var(--warning) 22%, var(--surface-elevated));
-  border-color: var(--warning);
-}
-.sv-bar-swapped {
-  background: color-mix(in oklab, var(--insight) 28%, var(--surface-elevated));
-  border-color: var(--insight);
-  animation: sv-pulse 0.22s ease;
-}
-.sv-bar-sorted {
-  background: color-mix(in oklab, var(--presence) 18%, var(--surface-elevated));
-  border-color: var(--presence);
-}
-.sv-bar-pivot {
-  background: color-mix(in oklab, var(--danger) 24%, var(--surface-elevated));
-  border-color: var(--danger);
-}
 @keyframes sv-pulse {
   0% {
     filter: brightness(1);
@@ -2608,78 +2533,6 @@
   }
   100% {
     filter: brightness(1);
-  }
-}
-.sv-idx-label {
-  font-size: var(--fs-2xs);
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
-  white-space: nowrap;
-}
-.sv-ops {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 0 4px;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.sv-ops-sep {
-  color: var(--text-faint);
-}
-.sv-play-btn {
-  width: 34px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
-  background: var(--surface-elevated);
-  color: var(--text-primary);
-  font-size: var(--fs-md);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-}
-.sv-play-btn:hover {
-  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
-  border-color: var(--presence);
-}
-.sv-speed-group {
-  display: flex;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.sv-speed-btn {
-  padding: 3px 7px;
-  border: none;
-  background: var(--surface-elevated);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-  transition: background 0.12s ease;
-}
-.sv-speed-btn + .sv-speed-btn {
-  border-left: 1px solid var(--line-strong);
-}
-.sv-speed-btn.on {
-  background: color-mix(in oklab, var(--presence) 15%, var(--surface-elevated));
-  color: var(--presence);
-}
-@media (prefers-reduced-motion: reduce) {
-  .sv-bar,
-  .sv-bar-swapped {
-    transition: none;
-    animation: none;
   }
 }
 
@@ -2949,12 +2802,12 @@
 .gt2-start {
   background: var(--presence);
   border-color: color-mix(in oklab, var(--presence) 60%, transparent);
-  color: #fff;
+  color: var(--on-presence);
 }
 .gt2-end {
   background: var(--insight);
   border-color: color-mix(in oklab, var(--insight) 60%, transparent);
-  color: #fff;
+  color: var(--on-insight);
 }
 .gt2-current {
   background: color-mix(in oklab, var(--presence) 28%, var(--surface-elevated));

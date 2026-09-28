@@ -262,9 +262,6 @@ export type TrackerState =
   | { status: 'active'; lastSuccessAt: number }
   | { status: 'degraded'; lastSuccessAt?: number; failure: TrackerFailure; lastAttemptAt: number };
 
-/** The gallery status badge, derived purely from tripwire states (see status.ts). */
-export type DashboardStatus = 'tracking' | 'at-risk' | 'needs-attention';
-
 /* ---- extraction drafts (pre-Build, looser so the Extraction Preview can render before persist) ---- */
 
 export interface DraftMetric {

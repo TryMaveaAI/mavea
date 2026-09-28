@@ -95,8 +95,8 @@ export function FlagshipLanding({
               had a <em>pulse?</em>
             </h1>
             <p>
-              This is Mavéa. An AI you talk to, and a canvas you can wander through. A small
-              invitation to think a little differently.
+              This is Mavéa. An AI that draws the answer, on a canvas you can wander through. A
+              small invitation to think a little differently.
             </p>
             <div className="ob-actions">
               <button
@@ -117,7 +117,7 @@ export function FlagshipLanding({
           <AnswerObservatory />
         </div>
         <div className="ob-hero-foot">
-          <span>Voice · Canvas · Curiosity</span>
+          <span>Canvas · Voice · Curiosity</span>
           <span>
             There’s more down here <span aria-hidden="true">↓</span>
           </span>
@@ -297,9 +297,6 @@ export function FlagshipLanding({
         <nav aria-label="Project and legal information">
           <a href={REPO} target="_blank" rel="noreferrer">
             GitHub ↗
-          </a>
-          <a href={`${REPO}/discussions`} target="_blank" rel="noreferrer">
-            Discussions ↗
           </a>
           <a href="#/terms?from=home">Terms</a>
           <a href="#/privacy?from=home">Privacy</a>

@@ -1,7 +1,7 @@
 // The Lens's filmstrip: every card in the answer, along the foot of the stage, with a control at
 // each end for the part that is off screen.
 //
-// The rail itself is Focus's (FilmstripRail) — real miniatures, a roving tab stop, arrow-key
+// The rail itself is FilmstripRail — real miniatures, a roving tab stop, arrow-key
 // walking. What this adds is the scrolling story. The native scrollbar reads as stray browser
 // chrome under a row of thumbnails, but hiding it and leaving only a fade meant the strip looked
 // like it ended where the tiles did. A button at each end says "there is more this way" in a way

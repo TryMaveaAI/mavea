@@ -19,8 +19,6 @@ const icon = (paths: ReactNode) =>
     );
   };
 
-export const SendIcon = icon(<path d="m4 12 16-7-7 16-2.5-6.5L4 12Z" />);
-
 export const MenuIcon = icon(<path d="M4 7h16M4 12h16M4 17h16" />);
 
 export const SearchIcon = icon(
@@ -43,13 +41,5 @@ export const SpeakerOffIcon = icon(
   <>
     <path d="M4 9v6h4l5 4V5L8 9H4Z" />
     <path d="m17 9 4 6M21 9l-4 6" />
-  </>,
-);
-
-export const GlobeIcon = icon(
-  <>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M3 12h18" />
-    <path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z" />
   </>,
 );

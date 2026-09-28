@@ -4,6 +4,8 @@
 import type { SlideProps } from '../types';
 
 const MEDAL = ['var(--reel-accent)', 'var(--reel-orb-1)', 'var(--reel-accent-2)'];
+/** The ink each medal's fill carries, derived from it in reel.css. */
+const MEDAL_INK = ['var(--reel-on-accent)', 'var(--reel-on-orb-1)', 'var(--reel-on-accent-2)'];
 // Fixed block-height ratios per podium position (tallest at 1st) — a floor under the real pct so a
 // missing or 0% score still reads as a podium, not a flat line; the real pct still SETS the height
 // whenever it says more than that floor.
@@ -64,7 +66,7 @@ export function PodiumSlide({ slots }: SlideProps<'ranked'>) {
                   display: 'grid',
                   placeItems: 'center',
                   background: color,
-                  color: '#fff',
+                  color: MEDAL_INK[rank],
                   fontWeight: 800,
                   fontFamily: 'var(--reel-sans)',
                   fontSize: 'calc(var(--ru) * 2.6)',

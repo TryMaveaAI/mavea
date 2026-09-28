@@ -41,7 +41,10 @@ flowchart LR
 ```
 
 The default development/self-hosted topology runs on infrastructure you control. Provider keys are
-session-only by default; optional remembering encrypts them locally. The browser sends each key and
+session-only by default; optional remembering encrypts them locally, and Settings → Your data →
+Forget everything on this device destroys the device key along with every store. The encryption
+removes plaintext at rest; it does not stop code running as this origin (an injected script, or an
+extension with access to the site), which `pnpm probe:extensions` demonstrates. The browser sends each key and
 prompt through a **same-origin proxy**, which can see the credential in transit and must not log or
 persist it, then onward to the chosen provider. This repository has no hosted account, telemetry, or
 conversation-retention service, but a production deployment's proxy is still a privileged trust
@@ -53,12 +56,13 @@ decrypted JSON to a file the user explicitly downloads; it deliberately **exclud
 search keys**, and import forces `rememberKey:false`, so no export or import path can persist a
 credential. The resulting file is unencrypted and under the user's control.
 
-### The development server's own key
+### The local servers add no key of their own
 
-`pnpm dev` reads one Gemini key from a gitignored `.env` and lets the local `/llm/gemini` proxy use
-it when the page sends none. The proxy answers only this app's own pages (a matching Origin or
-Referer, or `Sec-Fetch-Site: same-origin`), but anyone using that browser profile can still spend
-it. Use a spend-capped key there and never expose the dev server beyond your machine.
+Neither the `pnpm dev` proxy nor the `npx mavea` server supplies a provider key. A request reaches
+the provider with exactly the key the page sent, and one that carries no key is refused by the
+provider rather than billed to whoever started the server. Both answer only this app's own pages (a
+matching Origin or Referer, or `Sec-Fetch-Site: same-origin`); keep them on your machine all the
+same.
 
 ## Accepted risks (defense-in-depth tradeoffs)
 
@@ -67,11 +71,16 @@ exploitable _given_ an existing XSS — which the input pipeline is designed to 
 web-search output is tag-neutralized before render, and the few fields that carry markup pass a
 strict DOMParser allow-list (rich text) or an SVG sanitizer.
 
-- **`style-src 'unsafe-inline'`** is retained because the design system applies dynamic values and
-  CSS custom properties through React `style` attributes throughout (chart geometry, theme tokens,
-  the live `--voice-energy`/aura variables, focus/tour transforms). CSP nonces and hashes do not
-  apply to inline `style` _attributes_, so dropping `'unsafe-inline'` would break theming with no
-  equivalent. The residual exposure is CSS-only (no script execution).
+- **`style-src-attr 'unsafe-inline'`** is retained for `style="…"` attributes inside sanitized
+  markup (SVG illustrations, KaTeX MathML, Shiki's token colors). React's `style` prop goes through
+  the CSSOM and needs no allowance. Inline `<style>` _elements_ are refused: `style-src` admits only
+  same-origin stylesheets plus two hashes (the boot splash and an empty element the raster export
+  fills through the CSSOM), so injected markup cannot bring its own stylesheet. The residual
+  exposure is CSS-only (no script execution).
+- **Trusted Types is enforced** (`require-trusted-types-for 'script'`, Chromium only). Sanitized
+  markup reaches the DOM through the `mavea` policy; a `default` policy lets third-party code
+  (MapLibre, modern-screenshot, Vite's worker loaders) write only markup with no active content and
+  load only same-origin script URLs.
 - **Dynamic visual runtimes are bundled and code-split**, including Shiki, KaTeX, Leaflet, jsPDF,
   pdfjs-dist, openchemlib, mediabunny, and modern-screenshot; the application does not import
   executable JavaScript from a CDN. Generated JavaScript/TypeScript runs only after an explicit

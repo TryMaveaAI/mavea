@@ -1,7 +1,6 @@
 // TrackComposer — the home page's "track anything" bar: type what you want to follow, Mavéa plans
 // it, and a sheet opens with either the live plan to review or — for a settled fact that isn't
-// worth a standing check — a one-time answer. Shares its post-plan UI with the older template
-// modal (NewFromTemplate) via PlanReview, so the two entry points never drift apart.
+// worth a standing check — a one-time answer. The post-plan review lives in PlanReview.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { AsyncSurface } from '../../components/AsyncSurface';
 import { cachedImport } from '../../lib/cachedImport';
@@ -21,6 +20,7 @@ import type { TrackerPlan, StaticAnswer } from './planTracker';
 import { AnswerCard } from './AnswerCard';
 import './dashboards.css';
 import './dash-composer.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 const loadPlanner = cachedImport(() => import('./planTracker'));
 
@@ -121,6 +121,7 @@ export function TrackComposer({
     window.location.hash = dashHref.detail(dashboardId);
   };
 
+  const backdrop = useBackdropDismiss(dismiss);
   return (
     <>
       <div className="dash-composer">
@@ -161,9 +162,8 @@ export function TrackComposer({
       {sheet && (
         <div
           className="xt-scrim"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) dismiss();
-          }}
+          onPointerDown={backdrop.onPointerDown}
+          onClick={backdrop.onClick}
           role="button"
           tabIndex={0}
           aria-label="Close"

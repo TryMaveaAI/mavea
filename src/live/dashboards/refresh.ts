@@ -291,8 +291,8 @@ export interface DashboardRefreshResult {
 }
 
 export interface BatchRefreshResult {
-  /** Whether the CALL survived (network/auth/parse) — false means every member should retry soon
-   *  without being marked as checked, same semantics as the old single-dashboard `ok`. */
+  /** Whether the CALL survived (network/auth/parse) — false means no member was checked, so none
+   *  is marked as checked; the loop waits for the next scheduled pass or the reader's Check now. */
   ok: boolean;
   /** Call-wide groundedness — an ungrounded call discards trusted output for EVERY member. */
   grounded: boolean;
@@ -305,11 +305,8 @@ export interface BatchRefreshResult {
    *  kinds differ in the answer they need: a rate window drains itself in seconds, a rejected key
    *  needs the user, an unreachable host needs the network back. */
   failure?: TrackerFailure;
-  /** How many provider calls this pass actually spent (1, or 2 when the first came back
-   *  ungrounded and refreshDashboards retried once with a sharpened search demand). NOT what the
-   *  ledger's `searches` counts — that stays 1 per user-facing check regardless (see
-   *  useDashboardLoop's ledger entry) — this is here for the diagnostic log line and for tests to
-   *  pin that the retry actually fired. */
+  /** How many provider calls this pass spent: 1 when the call went out, 0 when there was nothing
+   *  to ask. A pass never re-asks, so this is never more than one. */
   attempts: number;
 }
 
@@ -480,19 +477,6 @@ function coerceLiveWindow(v: unknown): DashboardRefreshResult['liveWindow'] {
   return { startAt, endAt, label: typeof o.label === 'string' ? o.label.trim().slice(0, 60) : '' };
 }
 
-/** Appended to the system prompt for ONE in-pass retry when the first attempt parsed but never
- *  grounded (no native citations, no self-reported "sources") — a real dashboard has something
- *  live to fetch, so a genuinely searchless answer is worth one more push before it's discarded.
- *  Escalates the demand without loosening the "never invent a source" rule the base prompt
- *  already carries — the model still has an honest out (null values, no sources) if search truly
- *  turns up nothing. */
-const GROUNDING_RETRY =
-  ' YOUR PREVIOUS ATTEMPT DID NOT ACTUALLY SEARCH (no citations came back). Before answering ' +
-  'this time, you MUST run a real web search for every DASHBOARD section above and report only ' +
-  'what those searches returned, listing the real URLs relied on in "sources" — this is not ' +
-  'optional. If search is genuinely unavailable or turns up nothing, return null values and ' +
-  'omit "sources" entirely; never invent a value or a source just to satisfy this instruction.';
-
 /** Fetch current real data for several dashboards at once — search-grounded metric values, rich
  *  (non-numeric) widget content, predictions/grades, and (optionally) the day's briefing — in ONE
  *  web-grounded model call. This is the cost core of the whole feature: one search-quota hit per
@@ -500,12 +484,9 @@ const GROUNDING_RETRY =
  *  anything; a bad or ungrounded call discards ALL trusted output for EVERY member, and one
  *  member's malformed section can't poison its siblings (each is coerced in isolation).
  *
- *  When the first attempt parses but never grounds — no native citations, no self-reported
- *  "sources" — and there's real live content on the line, this runs ONE more attempt with a
- *  sharpened system prompt (GROUNDING_RETRY) before giving up: a model that simply skipped its
- *  search tool once is common enough that discarding on the first miss made "checked" and
- *  "never actually looked" indistinguishable to the user. A briefing-only call (no members) has
- *  nothing to verify, so it never retries. */
+ *  One pass is one call. A reply that parses but never grounds (no native citations, no
+ *  self-reported "sources") is reported as ungrounded rather than asked again: a second call at a
+ *  higher effort would be a charge the reader never asked for, at a tier they never picked. */
 export async function refreshDashboards(
   members: RefreshBatchMember[],
   cfg: ModelConfig,
@@ -697,46 +678,26 @@ export async function refreshDashboards(
       (opts.briefingContext
         ? `\n\nCONTEXT (already known — do not search these):\n${opts.briefingContext}`
         : '');
-    const runCall = (
-      sharpen: boolean,
-    ): Promise<{ rr: Awaited<ReturnType<typeof adapter.generate>>; grounded: boolean }> =>
-      adapter
-        .generate(
-          {
-            usageLabel: sharpen ? 'dashboard-grounding-retry' : 'dashboard-refresh',
-            system: sharpen ? system + GROUNDING_RETRY : system,
-            history: [],
-            user,
-            maxTokens,
-            // First pass stays 'low' so providers that already ground well at low (Gemini, Anthropic)
-            // are unchanged; the OpenAI adapter internally lifts a search-metric turn to 'medium' on
-            // its own (web search is reasoning-gated on gpt-5.x — it doesn't engage reliably below
-            // 'medium', the root cause of "couldn't verify"). Only the grounding retry escalates to
-            // 'high' across every provider — a failed first check is exactly when it's worth thinking
-            // (and searching) harder.
-            temperature: 0.15,
-            thinkingLevel: sharpen ? 'high' : 'low',
-            // A dashboard check is the definition of a turn that is worthless ungrounded — the
-            // engine discards every value from a call that did not cite a source. Require the
-            // search rather than leaving it to the model's discretion.
-            tools: { webSearch: true, requireSearch: true },
-            format,
-            ...(anyTargets ? { blockTypes: [...allowedTypes], complexity: 'brief' as const } : {}),
-          },
-          cfg,
-        )
-        .then((rr) => ({ rr, grounded: isGrounded(rr, obj(parseLooseJson(rr.raw))) }));
-
-    let attempt = await runCall(false);
-    let attempts = 1;
-    // One retry, only when there's real live content on the line to verify — a call that never
-    // grounded on the first try is common enough (the model skipped its search tool) that
-    // discarding immediately made "checked" and "never actually looked" indistinguishable.
-    if (!attempt.grounded && members.length > 0) {
-      attempt = await runCall(true);
-      attempts = 2;
-    }
-    const { rr } = attempt;
+    const rr = await adapter.generate(
+      {
+        usageLabel: 'dashboard-refresh',
+        system,
+        history: [],
+        user,
+        maxTokens,
+        // 'low' across providers; the OpenAI adapter lifts a search-metric turn to 'medium' on
+        // its own, because web search on gpt-5.x does not engage reliably below it.
+        temperature: 0.15,
+        thinkingLevel: 'low',
+        // A dashboard check is the definition of a turn that is worthless ungrounded — the
+        // engine discards every value from a call that did not cite a source. Require the
+        // search rather than leaving it to the model's discretion.
+        tools: { webSearch: true, requireSearch: true },
+        format,
+        ...(anyTargets ? { blockTypes: [...allowedTypes], complexity: 'brief' as const } : {}),
+      },
+      cfg,
+    );
     const parsedObj = obj(parseLooseJson(rr.raw));
     const grounded = isGrounded(rr, parsedObj);
     const sectionsById = extractSections(parsedObj, members);
@@ -849,7 +810,8 @@ export async function refreshDashboards(
     );
     if (totallyEmpty) {
       console.warn(
-        `[dashboards] refreshDashboards got a response but nothing parsed out of it for any dashboard (${grounded ? 'empty/unparseable' : `ungrounded after ${attempts} attempt${attempts > 1 ? 's' : ''}, discarded`})`,
+        '[dashboards] refreshDashboards got a response but nothing parsed out of it for any ' +
+          `dashboard (${grounded ? 'empty/unparseable' : 'ungrounded, discarded'})`,
         { dashboardIds: members.map((m) => m.d.id), raw: rr.raw },
       );
     }
@@ -867,13 +829,13 @@ export async function refreshDashboards(
       grounded,
       perDashboard,
       sources,
-      attempts,
+      attempts: 1,
       ...(briefing ? { briefing } : {}),
     };
   } catch (err) {
     console.error('[dashboards] refreshDashboards failed', err);
     // ok:false is the loop's cue that the CALL itself died (network, 429, auth) — distinct from
-    // "ran fine, found nothing new" — so it can retry soon instead of parking a full cadence.
+    // "ran fine, found nothing new" — so it never stamps a check that did not happen.
     const perDashboard: Record<string, DashboardRefreshResult> = {};
     for (const m of members) perDashboard[m.d.id] = emptyDashboardResult();
     return {

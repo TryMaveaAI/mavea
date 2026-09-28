@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import type { LightboxProps } from './types';
 import { safeBlockImageSrc } from '../../../lib/safeImageUrl';
 import { safeCssColor } from '../../../lib/safeCssColor';
+import { useBackdropDismiss } from '../../../lib/useBackdropDismiss';
 
 type Props = LightboxProps & { delay?: number };
 
@@ -22,6 +23,7 @@ export function Lightbox({
   const cur = open != null ? items[open] : null;
   // untrusted model URL — a rejected src leaves the gradient hero, same as a 404
   const curSrc = cur ? safeBlockImageSrc(cur.src) : undefined;
+  const backdrop = useBackdropDismiss(() => setOpen(null));
 
   return (
     <div
@@ -72,7 +74,9 @@ export function Lightbox({
       {cur && open != null && (
         <div
           className="me-lb-modal"
-          onClick={() => setOpen(null)}
+          data-interactive
+          onPointerDown={backdrop.onPointerDown}
+          onClick={backdrop.onClick}
           role="button"
           tabIndex={0}
           aria-label="Close"

@@ -49,7 +49,7 @@ export function ChecklistSlide({ slots }: SlideProps<'steps'>) {
                     ? 'color-mix(in oklab, var(--reel-accent) 18%, transparent)'
                     : 'transparent',
                 border: `calc(var(--ru) * 0.5) solid ${done || active ? 'var(--reel-accent)' : 'color-mix(in oklab, var(--reel-ink) 22%, transparent)'}`,
-                color: '#fff',
+                color: 'var(--reel-on-accent)',
                 font: '700 calc(var(--ru) * 2.4)/1 var(--reel-sans)',
               }}
             >

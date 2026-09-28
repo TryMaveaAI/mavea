@@ -965,7 +965,7 @@ export function markDataRefreshed(
       lastRefreshedAt: now,
       lastDataOutcome: outcome,
       // A completed check is a success even when it found nothing new: the tracker demonstrably
-      // works. 'unverified' does NOT come through here (it routes to markDataUnverified).
+      // works. 'unverified' does NOT come through here (applyRefreshResult records it).
       state: stateAfterSuccess(now),
     };
   });
@@ -977,23 +977,28 @@ export function markTrackerFailure(id: string, failure: TrackerFailure, now = Da
   patchOne(id, (d) => ({ ...d, state: stateAfterFailure(trackerState(d), failure, now) }));
 }
 
-/** A data refresh ATTEMPT died (network, quota, auth) — schedule a soon retry WITHOUT touching
- *  lastRefreshedAt/lastDataOutcome. A failed call never happened as far as the honest clock is
- *  concerned ("updated 35m ago" over a dash, when every attempt 429'd, reads as a working
- *  dashboard that found nothing — a lie), and winding the full cadence on a transient failure
- *  parks an hourly dashboard stale for an hour over a blip.
+/** A data refresh ATTEMPT died (network, quota, auth). Nothing asks again on its own: the board
+ *  waits for its next REGULAR pass — the schedule the reader set — or for the reader's own Check
+ *  now. A rejected key (`stop`) parks the board entirely, since every scheduled pass would spend a
+ *  call on a key the provider has already refused; the reader's check after reconnecting is what
+ *  starts it again. lastRefreshedAt/lastDataOutcome are untouched: a failed call never happened
+ *  as far as the honest clock is concerned.
  *
- *  A DUE one-shot (set by the user, or the durable "first check" every new dashboard gets — see
- *  ensureFirstCheck) needs the same deferral: `isDataDue` fires on either clock, so leaving a due
- *  `oneShotAt` untouched would have the next 15s tick re-select this dashboard and retry
- *  immediately instead of waiting out `retryAt` — a network blip would hot-loop a fresh dashboard
- *  every tick until it happened to succeed. Push it out to match, never clear it early. */
-export function markDataRetry(id: string, retryAt: number): void {
-  patchOne(id, (d) => ({
-    ...d,
-    nextDataAt: retryAt,
-    ...(d.oneShotAt !== undefined && d.oneShotAt < retryAt ? { oneShotAt: retryAt } : {}),
-  }));
+ *  A DUE one-shot (a time the reader set, or the "first check" every new board gets — see
+ *  ensureFirstCheck) is spent by the attempt: `isDataDue` fires on either clock, so leaving it
+ *  would have the next 15s tick re-send the call that just failed. A one-shot still in the future
+ *  is a separate appointment and stays. */
+export function markDataFailed(id: string, now: number, opts: { stop?: boolean } = {}): void {
+  patchOne(id, (d) => {
+    const cadence = cleanCadenceWindow(d.cadence, now);
+    const spent = d.oneShotAt !== undefined && d.oneShotAt <= now;
+    const { oneShotAt: _at, oneShotLabel: _label, ...rest } = d;
+    return {
+      ...(spent ? rest : d),
+      cadence,
+      nextDataAt: opts.stop ? Number.MAX_SAFE_INTEGER : nextDataDue(cadence, now),
+    };
+  });
 }
 
 /** Arms the durable "first check" every fresh dashboard with live content gets: a one-shot due
@@ -1096,11 +1101,6 @@ export interface RefreshResultPatch {
   grade?: { result: PredictionGrade['result']; note?: string };
 }
 
-/** How soon an 'unverified' pass (a call that ran but never grounded in real search, even after
- *  refresh.ts's in-pass retry) gets another shot, instead of waiting out the dashboard's full
- *  cadence over what might just be one bad turn. */
-const UNVERIFIED_RETRY_MS = 5 * 60_000;
-
 /** Apply one whole batched-refresh pass — metric values (+ their history), rich-widget blocks,
  *  tripwire states, the honest clock, and (optionally) a prediction write/grade — in a SINGLE
  *  persist. A pass touching N metrics + M widgets used to cost up to N+M+2 separate
@@ -1130,33 +1130,10 @@ export function applyRefreshResult(id: string, patch: RefreshResultPatch, now = 
         prediction = { text: patch.expects.trim(), at: now };
       }
       const cadence = cleanCadenceWindow(d.cadence, now);
-      const dueBase = nextDataDue(cadence, now);
-      // 'unverified' still winds the honest clock (an attempt genuinely happened, after
-      // refresh.ts's own in-pass retry already tried once more) — but for the FIRST unverified
-      // pass in a streak, on a cadence that would auto-check again anyway, pull that recheck in
-      // to UNVERIFIED_RETRY_MS rather than making a user wait out a full hourly/daily cadence over
-      // what might just be a bad turn. A SECOND consecutive unverified winds the full cadence like
-      // any other outcome — bounded, not a hot loop. A not-yet-open live window is never pulled
-      // earlier than its own start.
-      //
-      // Manual stays parked (Check Now IS the retry) — with ONE exception: the pass that consumed
-      // a one-shot. The durable first check every new board carries (ensureFirstCheck) is spent
-      // here, and an ungrounded first pass used to leave a manual board with no pending clock at
-      // all: never due again under any model, values never filled in, and nothing on screen to say
-      // so beyond a pending badge. That is the "created it under one model, switched, and it never
-      // updated" report. One automatic retry after a spent one-shot, bounded by the same
-      // first-in-streak rule, is the difference between a board that recovers and one that is dead.
-      const firstUnverified =
-        patch.outcome === 'unverified' &&
-        d.lastDataOutcome !== 'unverified' &&
-        (!cadence.window || now >= cadence.window.startAt);
-      const nextDataAt = !firstUnverified
-        ? dueBase
-        : dueBase !== Number.MAX_SAFE_INTEGER
-          ? Math.min(dueBase, now + UNVERIFIED_RETRY_MS)
-          : patch.consumedOneShot
-            ? now + UNVERIFIED_RETRY_MS
-            : dueBase;
+      // 'unverified' winds the honest clock like any other outcome: an attempt genuinely
+      // happened. The next one is the board's own scheduled pass or the reader's Check now; a
+      // manual board stays parked, and a spent first check is not re-armed.
+      const nextDataAt = nextDataDue(cadence, now);
       return {
         ...d,
         cadence,

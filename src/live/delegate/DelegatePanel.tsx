@@ -32,6 +32,7 @@ import {
 import { buildPrepInstruction, prepLabel, runDebrief, type Debrief } from './debrief';
 import { tableLook, SAY_MS, POINT_MS, type TablePhase } from './tableLook';
 import './delegate.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 /** One model call through the active provider — the engine's transport. The abort signal is
  *  threaded into the request so Stop (or closing the panel) cancels the in-flight generation
@@ -618,12 +619,12 @@ export function DelegatePanel({
     onPrepTurn?.(buildPrepInstruction(brief, events, deal), prepLabel(brief.goal));
   };
 
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <div
       className="dlg-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close"

@@ -205,7 +205,7 @@ export function CanvasTakeover(props: Props) {
                 <>Ask about {selectedCount} →</>
               ) : (
                 <>
-                  <span aria-hidden="true">←</span> Back to answer
+                  <span aria-hidden="true">←</span> Back to the board
                 </>
               )}
               <kbd aria-hidden="true">esc</kbd>
@@ -220,7 +220,7 @@ export function CanvasTakeover(props: Props) {
 }
 
 export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBlockIds }: Props) {
-  // Only id-bearing blocks are nodes (the spotlightable set, same rule as FocusStage).
+  // Only id-bearing blocks are nodes (the spotlightable set, same rule as the Lens).
   const nodes = useMemo(() => blocks.filter((b) => !!b.id), [blocks]);
   const cols = useMemo(() => pickCols(nodes.length), [nodes.length]);
 

@@ -69,20 +69,9 @@
 :root[data-perf='lite'] .vlib-bar {
   background: var(--surface-deep);
 }
-:root[data-perf='lite'] .fl-composer {
-  background: var(--surface-elevated);
-}
 :root[data-perf='lite'] .fl-dock,
 :root[data-perf='lite'] .fl-node {
   background: var(--surface-elevated-2);
-}
-
-/* 5 — Compound backdrop-filters (blur + saturate) can't route through the blur token — a token
-   value of `none` would produce the invalid `none saturate(...)`. Kill the whole property here.
-   The full-screen scrims stay a semi-opaque veil (they exist to focus the rising panel). */
-:root[data-perf='lite'] .fl-composer {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }
 :root[data-perf='lite'] .ovw-scrim,
 :root[data-perf='lite'] .lib-ov-scrim {

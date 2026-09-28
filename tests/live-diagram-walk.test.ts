@@ -26,7 +26,7 @@ function makeLine(): { handle: SpokenLine; start: (heard: boolean) => void; end:
   const finished = new Promise<boolean>((resolve) => {
     end = resolve;
   });
-  return { handle: { started, finished }, start, end: () => end(true) };
+  return { handle: { started, finished, cancel: () => {} }, start, end: () => end(true) };
 }
 
 /** speakLine stub that records texts and hands each call its own controllable line. */

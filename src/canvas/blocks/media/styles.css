@@ -1171,6 +1171,14 @@
   border: 2px solid #fff;
   box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
 }
+/* A marker is filled in its own colour: its ink is derived from
+   that fill as --on-presence is from the accent (white without relative colour). */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .geo-pin {
+    color: color(from var(--geo-c, var(--presence)) srgb-linear var(--ink-on-fill));
+  }
+}
 /* themed popups (MapLibre defaults are white) */
 .geo-map .maplibregl-popup-content {
   background: var(--surface-elevated);
@@ -2124,13 +2132,17 @@
   stroke-width: 0.5;
 }
 .an-pin-num {
-  fill: #fff;
+  /* The resting dot is drawn in the text colour, so its number takes the page's. */
+  fill: var(--surface-default);
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.6px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
+}
+.an-pin.on .an-pin-num {
+  fill: var(--on-presence);
 }
 .an-list {
   display: flex;
@@ -2170,7 +2182,7 @@
 }
 .an-row.on .an-rownum {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .an-rowbody {
   display: flex;
@@ -3707,7 +3719,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--surface-deep);
+  color: var(--on-insight);
   background: var(--insight);
   box-shadow: 0 0 14px var(--glow-insight);
 }
@@ -4488,4 +4500,15 @@
   color: var(--text-secondary);
   margin-top: 10px;
   line-height: 1.45;
+}
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself. Where relative colour is unsupported the ink above stands, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .mc-score {
+    color: color(from color-mix(in oklab, var(--mc-sc) 90%, #000) srgb-linear var(--ink-on-fill));
+  }
+  .me-ico-rownum {
+    color: color(from var(--cc) srgb-linear var(--ink-on-fill));
+  }
 }

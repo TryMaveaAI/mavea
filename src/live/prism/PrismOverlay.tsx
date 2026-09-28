@@ -15,6 +15,7 @@ import { cachedImport } from '../../lib/cachedImport';
 import { usePrismWorld } from './usePrismWorld';
 import { usePanZoom } from './usePanZoom';
 import { layout, CARD_W, CARD_H, type LayoutResult, type Placed } from './layout';
+import { CONSENSUS_BADGE_RISE, mapContentBox } from './mapFrame';
 import { layoutPrismOffMain } from './layoutOffMain';
 import { DocPageView } from './DocPageView';
 import { destroyRenderDoc } from './extractPdf';
@@ -45,6 +46,7 @@ import { AsyncSurface } from '../../components/AsyncSurface';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import './prism.css';
 import './synthesis/synthesis.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 const askSurface = createPreloadableLazy(() =>
   import('./ask/PrismAskController').then((m) => ({ default: m.PrismAskController })),
@@ -333,17 +335,16 @@ export function PrismOverlay({
   // handled separately below (it backs out of nested panels before closing the whole overlay),
   // so onEscape is intentionally left unset here.
   const panelRef = useRef<HTMLElement>(null);
-  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim's
-  // handlers below. A click is only a dismissal when the whole gesture happened out there.
-  const downOnScrim = useRef(false);
+  const backdrop = useBackdropDismiss(onClose);
   useFocusTrap(panelRef);
   // Veracity: load-bearing claims checked against the live world → a verdict + gated web citation per
   // claim (keyed by claim id). `verifying` shows the honest "checking N claims" state while in flight.
   const [veracity, setVeracity] = useState<Map<string, Veracity>>(() => new Map());
   const [verifying, setVerifying] = useState(false);
   // Annotate (pen) mode — an independent toggle (default off). When on, asking / clicking a claim /
-  // the Briefing each draw a hand-drawn mark over the cited passage. `penAudioOn` opts into spoken
-  // narration (silent by default — Prism never auto-talks). `askText` holds the last Ask readout so
+  // the Briefing each draw a hand-drawn mark over the cited passage. `penAudioOn` opts the pen's
+  // explanations into speech (silent by default; a Briefing the reader starts speaks through its
+  // own player, and is silent under the tour, which narrates its own flight). `askText` holds the last Ask readout so
   // the pen can explain an answer span. `reel` records the marks for the share reel.
   // The walkthrough's auto-briefing runs with the pen already in hand: each beat's page gets the
   // quote highlight PLUS the hand-drawn circles/underlines, animating in as the flight lands.
@@ -438,29 +439,25 @@ export function PrismOverlay({
   // Pan + zoom the map. The world is rendered at its natural size and moved by a camera transform, so
   // the whole map is framed to fit on open AND re-frames when the source panel steals half the width.
   const stageRef = useRef<HTMLDivElement>(null);
-  // The tight bounding box of the actual content (cards + region labels), so the camera frames THAT
-  // and fills the viewport — a 5-claim map shouldn't sit tiny inside the whole (much larger) world.
-  const contentBox = useMemo(() => {
-    if (!placed || placed.claims.length === 0) return undefined;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const c of placed.claims) {
-      minX = Math.min(minX, c.x);
-      minY = Math.min(minY, c.y);
-      maxX = Math.max(maxX, c.x + CARD_W);
-      maxY = Math.max(maxY, c.y + CARD_H);
-    }
-    for (const r of placed.regions) {
-      minX = Math.min(minX, r.cx);
-      minY = Math.min(minY, r.cy);
-      maxX = Math.max(maxX, r.cx);
-      maxY = Math.max(maxY, r.cy);
-    }
-    const pad = 56;
-    return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
-  }, [placed]);
+  // The tight bounding box of the actual content (cards, region labels and, on a fused map, the
+  // corpus objects), so the camera frames THAT and fills the viewport — a 5-claim map shouldn't sit
+  // tiny inside the whole (much larger) world.
+  const corpusContradictions = corpusChrome?.contradictions;
+  const corpusGaps = corpusChrome?.gaps;
+  const corpusConsensus = corpusChrome?.consensus;
+  const contentBox = useMemo(
+    () =>
+      placed
+        ? mapContentBox({
+            claims: placed.claims,
+            regions: placed.regions,
+            objects: [...(corpusContradictions ?? []), ...(corpusGaps ?? [])],
+            consensus: corpusConsensus,
+          })
+        : undefined,
+    // The chrome object is rebuilt every render; its placed arrays are what is stable.
+    [placed, corpusContradictions, corpusGaps, corpusConsensus],
+  );
   const pan = usePanZoom(stageRef, placed?.width ?? 1, placed?.height ?? 1, contentBox, {
     wheelZoom: settled,
   });
@@ -632,11 +629,22 @@ export function PrismOverlay({
     // pad by a card so the framed cards aren't flush against the viewport edge
     const padW = CARD_W;
     const padH = CARD_H * 1.3;
-    frameCamera(
-      { x: minX - padW, y: minY - padH, w: maxX - minX + padW * 2, h: maxY - minY + padH * 2 },
-      { maxScale: 1.2 },
-    );
-  }, [settled, placed, spec, frameCamera]);
+    minX -= padW;
+    minY -= padH;
+    maxX += padW;
+    maxY += padH;
+    // On a fused map a key claim can sit inside a consensus ring; frame the whole ring and its count
+    // badge too, or the answer-first view opens with the ring's top sliced off at the stage edge.
+    const keyIds = new Set(key.map((c) => c.id));
+    for (const c of corpusConsensus ?? []) {
+      if (!c.memberClaimIds.some((id) => keyIds.has(id))) continue;
+      minX = Math.min(minX, c.x - c.r);
+      minY = Math.min(minY, c.y - c.r - CONSENSUS_BADGE_RISE);
+      maxX = Math.max(maxX, c.x + c.r);
+      maxY = Math.max(maxY, c.y + c.r);
+    }
+    frameCamera({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }, { maxScale: 1.2 });
+  }, [settled, placed, spec, frameCamera, corpusConsensus]);
 
   // Veracity pass: once the map settles, check the load-bearing claims against the live world — but
   // ONLY when the user has web search enabled in their Live settings (off by default). When it's off,
@@ -919,7 +927,7 @@ export function PrismOverlay({
     [panelView, penAudioOn, recordStep],
   );
 
-  // ── The Briefing — a silent, captioned flight along the argument's spine ──
+  // ── The Briefing — a captioned flight along the argument's spine, narrated unless muted ──
   const briefingOn = !!briefing;
 
   // Frame the camera on a set of claim cards (one claim → zoom in; two → frame both passages).
@@ -1011,7 +1019,7 @@ export function PrismOverlay({
     if (!placed || !spec) return;
     const beats = buildBriefing(placed.claims, spec.threads, verdictById);
     if (beats.length === 0) return;
-    cancelKokoro(); // a pen narration may be mid-sentence; the briefing is silent by default
+    cancelKokoro(); // a pen narration may be mid-sentence; the briefing brings its own voice
     cancelOtherRuns('none'); // a briefing supersedes any in-flight analysis
     setOpenId(null);
     setAskFocus(null);
@@ -1292,17 +1300,8 @@ export function PrismOverlay({
     <div
       className="prism-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      // Close only on a click that BEGAN and ENDED on the backdrop itself. `onClick={onClose}`
-      // alone closed the map on two ordinary gestures: a drag that started on a card and released
-      // past the panel's edge (the browser fires the click on their common ancestor — the scrim),
-      // and a click whose target unmounted mid-gesture, which the browser then dispatches on the
-      // nearest surviving ancestor. Both read as "I clicked a thing and the document shut".
-      onPointerDown={(e) => {
-        downOnScrim.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
     >
       {/* Clicks inside the panel are swallowed so they don't bubble to the scrim above and close
           the dialog — a propagation guard, not a click affordance, so it has no keyboard twin. */}
@@ -1949,7 +1948,7 @@ export function PrismOverlay({
               </AsyncSurface>
             )}
 
-            {/* The Briefing — a silent, captioned, camera-led flight through the document's argument */}
+            {/* The Briefing — a captioned, camera-led flight through the document's argument */}
             {settled && briefing && (
               <AsyncSurface label="Briefing">
                 <PrismBriefingPlayer

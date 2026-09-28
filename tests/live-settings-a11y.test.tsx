@@ -29,11 +29,14 @@ describe('LiveSettings — the tab strip is a real tablist', () => {
     expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1, -1]);
 
     fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Answers & display' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(screen.getByRole('tab', { name: 'Model' })).toHaveAttribute('aria-selected', 'false');
 
     // …and wraps backwards off the first tab rather than dead-ending.
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Settings' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Answers & display' }), { key: 'ArrowLeft' });
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Model' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Your data' })).toHaveAttribute('aria-selected', 'true');
   });
@@ -69,6 +72,43 @@ describe('LiveSettings — segmented pickers behave like radio groups', () => {
     for (const name of ['Web search', 'Explanation level', 'Thinking time', 'Visual richness']) {
       expect(screen.getByRole('radiogroup', { name })).toBeInTheDocument();
     }
+  });
+});
+
+describe('LiveSettings — the provider chips', () => {
+  const chipsOf = (group: HTMLElement) => within(group).getAllByRole('radio');
+  const picked = (group: HTMLElement) =>
+    chipsOf(group).filter((c) => c.getAttribute('aria-checked') === 'true');
+
+  it('are a named radio group with exactly one pick, and a press moves it', () => {
+    setLiveConfigV2({ provider: 'gemini' });
+    render(<LiveSettings initialTab="model" />);
+    const group = screen.getByRole('radiogroup', { name: 'Model providers' });
+    const chips = chipsOf(group);
+    expect(chips.length).toBeGreaterThan(1);
+    expect(picked(group)).toHaveLength(1);
+    // Styled by the stylesheet, never the field style inline: that set them in the input face at
+    // input size and dimmed every unpicked chip to 70%, so four of five read as disabled.
+    for (const chip of chips) expect(chip).not.toHaveAttribute('style');
+
+    const other = chips.find((c) => c.getAttribute('aria-checked') === 'false') as HTMLElement;
+    fireEvent.click(other);
+    expect(picked(group)).toEqual([other]);
+  });
+
+  it('is one tab stop, and the arrows move the pick and the focus together', () => {
+    setLiveConfigV2({ provider: 'gemini' });
+    render(<LiveSettings initialTab="model" />);
+    const group = screen.getByRole('radiogroup', { name: 'Model providers' });
+    const chips = chipsOf(group);
+    const at = chips.findIndex((c) => c.getAttribute('aria-checked') === 'true');
+    expect(chips.filter((c) => c.tabIndex === 0)).toEqual([chips[at]]);
+
+    fireEvent.keyDown(chips[at], { key: 'ArrowLeft' });
+    const back = chipsOf(group)[(at - 1 + chips.length) % chips.length];
+    expect(back).toHaveAttribute('aria-checked', 'true');
+    expect(back).toHaveFocus();
+    expect(back.tabIndex).toBe(0);
   });
 });
 

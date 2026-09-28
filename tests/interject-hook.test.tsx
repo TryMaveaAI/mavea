@@ -20,8 +20,7 @@ const OPEN: InterjectGates = {
 
 function props(over: Partial<UseInterjectionsOptions> = {}): UseInterjectionsOptions {
   return {
-    speak: vi.fn(),
-    cancelSpeak: vi.fn(),
+    speak: vi.fn(() => ({ cancel: vi.fn() })),
     isSpeaking: () => false,
     muted: false,
     turnCount: 5,
@@ -108,6 +107,29 @@ describe('useInterjections — when Mavéa steps into the conversation', () => {
     expect(result.current.interjecting).toBe(true);
     act(() => rerender(props({ speak, gates: { ...OPEN, atRest: false, busy: true } })));
     expect(result.current.interjecting).toBe(false);
+  });
+
+  it("an opened overlay stops only the aside's own line, never the narration after it", () => {
+    // The hook holds the aside's line and nothing else, so its stop cannot reach the narration;
+    // that one line's stop leaving the rest of the queue playing is kokoro-line-cancel's to pin.
+    const asideLine = { cancel: vi.fn() };
+    const speak = vi.fn(() => asideLine);
+    let speaking = false;
+    const base = props({ speak, isSpeaking: () => speaking });
+    const { result, rerender } = renderHook((p: UseInterjectionsOptions) => useInterjections(p), {
+      initialProps: base,
+    });
+    act(() => result.current.enqueue('clipShared'));
+    expect(result.current.interjecting).toBe(true);
+    // Narration has started since, so the hold keeps the aside up past its own line.
+    speaking = true;
+    act(() => vi.advanceTimersByTime(2000));
+    expect(result.current.interjecting).toBe(true);
+
+    act(() => rerender({ ...base, gates: { ...OPEN, modalOpen: true } }));
+    expect(result.current.interjecting).toBe(false);
+    expect(asideLine.cancel).toHaveBeenCalledTimes(1);
+    expect(speak).toHaveBeenCalledTimes(1);
   });
 
   it('reset clears an in-flight aside', () => {

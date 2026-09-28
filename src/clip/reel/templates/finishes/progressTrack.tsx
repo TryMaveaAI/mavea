@@ -13,7 +13,6 @@ export function ProgressTrackSlide({ slots }: SlideProps<'steps'>) {
       className="reel-fade"
       style={{ width: 'calc(var(--rw) * 82)', maxWidth: '92%', position: 'relative' }}
     >
-      <style>{`@keyframes ptk-fill{from{transform:scaleY(0)}to{transform:scaleY(1)}}`}</style>
       <span
         style={{
           position: 'absolute',

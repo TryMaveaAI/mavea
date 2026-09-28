@@ -131,7 +131,7 @@ export function ElementCard({
           <span className="lr-ec-tile-z">{zNum ?? '—'}</span>
           <span className="lr-ec-tile-sym">{symbol || '—'}</span>
           <span className="lr-ec-tile-name">{name || ''}</span>
-          <span className="lr-ec-tile-mass">
+          <span className="lr-ec-tile-mass tab-num">
             {massNum !== null ? formatValue(massNum, { decimals: massNum % 1 === 0 ? 0 : 3 }) : ''}
           </span>
         </div>

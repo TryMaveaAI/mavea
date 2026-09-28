@@ -46,7 +46,7 @@ export function VoiceMemoSlide({ slots }: SlideProps<'chat'>) {
       {msgs.map((m, i) => {
         const mine = m.role === 'user';
         const amp = amplitudes(m.text || 'mavea', BAR_COUNT);
-        const color = mine ? '#fff' : 'var(--reel-accent)';
+        const color = mine ? 'var(--reel-on-accent)' : 'var(--reel-accent)';
         const caption = fitText(m.text, BODY_TIERS, 60);
         return (
           <div

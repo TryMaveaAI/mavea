@@ -223,6 +223,15 @@
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
+/* The Compare / Synthesize pair is one item in whichever strip holds it (the dock's, or the setup
+   wizard's), spaced like that strip's own items. */
+.explode-choice {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: inherit;
+  max-width: 100%;
+}
 /* The flagship action on a PDF chip: one tap explodes the document into its claim map. Accented so
    it reads as the primary thing to do with an attached PDF, not a quiet utility. */
 .attach-explode {
@@ -287,10 +296,10 @@
   display: grid;
   place-items: center;
   border: none;
-  color: #fff;
+  color: var(--on-presence);
   position: relative;
   flex-shrink: 0;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   box-shadow: 0 8px 22px -8px var(--glow-presence);
   transition:
     transform var(--m-fast),
@@ -413,9 +422,9 @@
   display: grid;
   place-items: center;
   border: none;
-  color: #fff;
+  color: var(--on-presence);
   flex-shrink: 0;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   box-shadow: 0 8px 22px -8px var(--glow-presence);
   transition:
     transform var(--m-fast),

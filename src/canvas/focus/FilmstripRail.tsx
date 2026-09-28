@@ -1,4 +1,4 @@
-// The Focus-mode filmstrip: the quiet rail of every card in the answer, each shown as its kind, its
+// The filmstrip under the Lens: the quiet rail of every card in the answer, each shown as its kind, its
 // title, and a live thumbnail (a real miniature of the card — see FilmstripThumb). The card on the
 // stage is highlighted; tapping any entry — or walking the rail with the arrow keys — takes the wheel
 // and pins it on the stage. The rail keeps the active entry scrolled into view as the hero glides beat
@@ -9,6 +9,7 @@ import type { Block } from '../../data/conversation';
 import { blockKind, blockLabel } from '../blockLabel';
 import { FilmstripThumb } from './FilmstripThumb';
 import { prefersReducedMotion } from './motion';
+import './filmstrip.css';
 
 /** A glanceable rail is a handful of cards, not a phone book — cap the worst case (a huge canvas)
  *  and surface the remainder honestly rather than silently dropping it. */

@@ -23,12 +23,19 @@ import { safePdfUrl } from './src/live/doc/safeUrl.js';
 // off-allowlist (e.g. internal) host. Dev-only, like the /llm proxies below — a deployed build
 // needs an equivalent same-origin forwarder, else pdfreader gracefully shows the "Open" link.
 const PDF_MAX_BYTES = 30 * 1024 * 1024;
-// The provider proxies forward whatever key a request carries — and /llm/gemini supplies the
-// .env key when it carries none — so any page open in the same browser could otherwise spend it
-// with a blind cross-site POST to localhost. Only this app's own pages may use them, the same
-// proof bin/mavea.mjs demands: a matching Origin or Referer, else Fetch Metadata saying
-// same-origin. A raw curl carries none of these and is refused too.
-function sameOriginProxyGuardPlugin(): Plugin {
+// The provider proxies forward whatever key a request carries, and the /actions proxy attaches
+// GATEWAY_SECRET to whatever it forwards, so any page open in the same browser could otherwise
+// spend a reader's key, or act through their connectors, with a blind cross-site POST to
+// localhost. Only this app's own pages may use them, the same proof bin/mavea.mjs demands: a
+// matching Origin or Referer, else Fetch Metadata saying same-origin. A raw curl carries none of
+// these and is refused too. The local voice services sit behind the same door: another site
+// could otherwise run a reader's Kokoro or whisper for its own ends, or read what they return.
+// `/actions`, `/tts` and `/stt` are matched as bare prefixes because that is how their proxy
+// entries match.
+const GUARDED_PROXY = /^\/(?:llm\/|search\/|actions|tts|stt)/;
+
+export function proxyRequestAllowed(req: Pick<IncomingMessage, 'url' | 'headers'>): boolean {
+  if (!GUARDED_PROXY.test(req.url ?? '')) return true;
   const hostOf = (value: string | undefined) => {
     if (!value) return null;
     try {
@@ -37,19 +44,18 @@ function sameOriginProxyGuardPlugin(): Plugin {
       return null;
     }
   };
+  const claimed = hostOf(req.headers.origin) ?? hostOf(req.headers.referer);
+  return claimed ? claimed === req.headers.host : req.headers['sec-fetch-site'] === 'same-origin';
+}
+
+function sameOriginProxyGuardPlugin(): Plugin {
   return {
     name: 'mavea-same-origin-proxy-guard',
     configureServer(server) {
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
-        if (!/^\/(llm|search)\//.test(req.url ?? '')) return next();
-        const host = req.headers.host;
-        const claimed = hostOf(req.headers.origin) ?? hostOf(req.headers.referer);
-        const trusted = claimed
-          ? claimed === host
-          : req.headers['sec-fetch-site'] === 'same-origin';
-        if (trusted) return next();
+        if (proxyRequestAllowed(req)) return next();
         res.statusCode = 403;
-        res.end('Forbidden: provider proxies answer only this app.');
+        res.end('Forbidden: local proxies answer only this app.');
       });
     },
   };
@@ -318,6 +324,19 @@ function dropDeadOpenchemlibResourcesPlugin(): Plugin {
 // package weight for a code path this app structurally cannot reach. If a future export feature
 // ever calls jsPDF's `.html()`, tests/jspdf-html-guard.test.ts fails loudly (grep-based) instead of
 // this silently producing a 404 dynamic import at runtime.
+// The dev server delivers every stylesheet as an injected <style> element (that is how CSS
+// hot-reloads), which the shipped policy's style-src refuses on purpose: inline style elements are
+// the injected-markup route to CSS exfiltration. Serve relaxes exactly that one directive; the
+// built index.html, the one every host ships, keeps the strict policy.
+function devInlineStylesPlugin(): Plugin {
+  return {
+    name: 'mavea-dev-inline-styles',
+    apply: 'serve',
+    transformIndexHtml: (html) =>
+      html.replace(/style-src 'self'[^;"]*/, "style-src 'self' 'unsafe-inline'"),
+  };
+}
+
 function dropDeadHtml2canvasChunkPlugin(): Plugin {
   return {
     name: 'mavea-drop-html2canvas-chunk',
@@ -337,24 +356,6 @@ function dropDeadHtml2canvasChunkPlugin(): Plugin {
   };
 }
 
-// `pnpm dev` is plain `vite` (no --env-file), so read .env here for the one dev-only secret we
-// inject server-side: the Gemini key. It lets Ripple's analysis run on a capable model without the
-// key ever touching the browser (the /llm/gemini proxy adds it to requests that arrive without one).
-function envFromDotenv(key: string): string {
-  if (process.env[key]) return process.env[key] as string;
-  for (const p of ['.env', '../.env']) {
-    try {
-      const txt = readFileSync(resolve(process.cwd(), p), 'utf8');
-      const m = new RegExp('^' + key + '=(.*)$', 'm').exec(txt);
-      if (m?.[1]) return m[1].trim().replace(/^["']|["']$/g, '');
-    } catch {
-      /* no .env here — try the next */
-    }
-  }
-  return '';
-}
-const GEMINI_KEY = envFromDotenv('GEMINI_API_KEY');
-
 /** Worker budget for the test run — the lower of what the CPUs and the RAM can carry. Roughly 3GB
  *  per worker covers a jsdom plus the block library with headroom; see `maxWorkers` below. */
 const TEST_WORKERS = Math.max(
@@ -362,8 +363,13 @@ const TEST_WORKERS = Math.max(
   Math.min(availableParallelism() - 1, Math.floor(totalmem() / 1024 ** 3 / 3)),
 );
 
+// The release a reader is running. An acknowledgement is recorded against it, so every new release
+// asks again (src/legal/acceptance.ts).
+const APP_VERSION: string = JSON.parse(readFileSync('package.json', 'utf8')).version;
+
 // Single source of truth for build (Vite) + tests (Vitest).
 export default defineConfig({
+  define: { __MAVEA_VERSION__: JSON.stringify(APP_VERSION) },
   // Vite's dep scanner only follows STATIC imports from the entry, so a package that is reached
   // exclusively through a dynamic import() is invisible to it at server start. The first time the
   // running app actually reaches one, Vite pre-bundles it on the spot and hard-reloads the page to
@@ -398,6 +404,7 @@ export default defineConfig({
     // workflow all exercise the compiled output, so nothing ships untested by it.
     ...(process.env.VITEST ? [] : [babel({ presets: [reactCompilerPreset({ target: '19' })] })]),
     sameOriginProxyGuardPlugin(),
+    devInlineStylesPlugin(),
     pdfProxyPlugin(),
     runtimeAssetsPlugin(),
     legalDocsPlugin(),
@@ -473,11 +480,6 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq) => {
             proxyReq.removeHeader('origin');
             proxyReq.removeHeader('referer');
-            // Inject the dev .env key when the client didn't supply one, so features like Ripple can
-            // default to Gemini without the user pasting a key (and without the key in the browser).
-            if (GEMINI_KEY && !proxyReq.getHeader('x-goog-api-key')) {
-              proxyReq.setHeader('x-goog-api-key', GEMINI_KEY);
-            }
           });
         },
       },
@@ -505,7 +507,7 @@ export default defineConfig({
           });
         },
       },
-      // Keyed web-search providers (BYOK, free tiers available). Browser-origin calls
+      // Keyed web-search providers (BYOK). Browser-origin calls
       // to these are CORS-blocked, so the search adapter sends the user's key in the
       // request header and the proxy forwards it to the real API.
       '/search/brave': {
@@ -552,7 +554,7 @@ export default defineConfig({
     // NOTE: these /llm/* proxies are DEV-ONLY (Vite dev server). A deployed build
     // serves static files and has no proxy — a production deployment must provide an
     // equivalent same-origin forwarder (e.g. a serverless rewrite) for each /llm/<provider>
-    // path, or the BYOK browser calls will hit CORS. The keyless free paths
+    // path, or the BYOK browser calls will hit CORS. The keyless paths
     // (Wikipedia, Pollinations) need no proxy.
   },
   build: {

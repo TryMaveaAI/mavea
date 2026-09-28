@@ -46,6 +46,9 @@ const failed = new Set<BlockFamily>();
 // Sync escape hatch: the gallery (and the test suites that mount TopicCanvas directly) already
 // hold the whole merged registry — priming it makes every lookup synchronous with zero fetches.
 let primed: BlockRegistry | null = null;
+// Cells waiting on a family subscribe here, so a chunk landing re-renders exactly the cards it
+// unblocks — whatever memo sits between them and the canvas.
+const listeners = new Set<() => void>();
 
 /** How deep familiesFor follows nested blocks (composite regions) — mirrors renderBlock's cap. */
 const MAX_NEST = 2;
@@ -100,6 +103,7 @@ export function loadFamilies(fams: Iterable<BlockFamily>): Promise<void> {
         })
         .finally(() => {
           inflight.delete(f);
+          for (const l of listeners) l();
         });
       inflight.set(f, p);
     }
@@ -123,6 +127,21 @@ export function extendedRender(
   const fam = FAMILY_OF[type];
   if (!fam) return null;
   return loaded.get(fam)?.[type] ?? null;
+}
+
+/** True while the type's family chunk is still to arrive: neither loaded nor known-failed. */
+export function familyPending(type: string): boolean {
+  if (primed) return false;
+  const fam = FAMILY_OF[type];
+  return !!fam && !loaded.has(fam) && !failed.has(fam);
+}
+
+/** Be told whenever a family settles (loaded or failed). Returns the unsubscribe. */
+export function subscribeFamilies(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** Make every lookup synchronous by handing the loader the already-merged registry — for the

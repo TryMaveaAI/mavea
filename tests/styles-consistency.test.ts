@@ -93,8 +93,8 @@ describe('styles.css — brand dock: wordmark makes room for the docking jelly',
   // The real presence face docks INTO the brand slot; the wordmark slides left when the slot is
   // empty (no orphaned gap) and right as the jelly lands. Two load-bearing invariants:
   it('keeps the jelly mark a fixed 21px box — measureHome reads its width for the dock target+scale', () => {
-    // Collapsing this to 0 makes useScrollDock.measureHome bail (`if (!d.width) return`) and mis-scale
-    // the docked face. The shape (and its width) now lives in the shared .jelly-mark class — .brand-dot
+    // Collapsing this to 0 makes the dock's measure bail on a zero width and mis-scale the docked
+    // face. The shape (and its width) now lives in the shared .jelly-mark class — .brand-dot
     // is paired with it at every call site and only layers docking opacity/transition on top.
     expect(css).toMatch(/\.jelly-mark\s*\{[^}]*width:\s*21px/s);
   });
@@ -109,10 +109,6 @@ describe('styles.css — mobile safe-area + touch-reveal fixes', () => {
     // viewport-fit=cover (index.html) makes env(safe-area-inset-bottom) resolve to something
     // other than 0 on a notched phone; the dock must add it on top of its own padding.
     expect(css).toMatch(/\.rail-dock\s*\{[^}]*env\(safe-area-inset-bottom,\s*0px\)/);
-  });
-
-  it('wraps a long unbroken token (URL, identifier) inside a transcript bubble', () => {
-    expect(css).toMatch(/\.bubble\s*\{[^}]*overflow-wrap:\s*anywhere/);
   });
 
   it('rests the block-actions cluster visible on touch for every gated card kind', () => {

@@ -48,9 +48,9 @@ re-asked.
   worker, and the UI says so. A dashboard's "updated" time is real: it distinguishes a pass that
   actually found something ("updated 4m ago") from one that ran and found nothing ("checked 4m ago —
   no new data"), from one that ran but never grounded in real search ("checked 4m ago — couldn't
-  verify with sources" — refresh.ts retries once with a sharpened search demand before landing
-  here), and calls out a dashboard with nothing live-fetchable at all rather than ever implying a
-  refresh that couldn't do anything actually did. A **"Refresh now"** button (detail) / **"Check
+  verify with sources" — one call per pass, never asked again on its own), and calls out a
+  dashboard with nothing live-fetchable at all rather than ever implying a refresh that couldn't
+  do anything actually did. A **"Refresh now"** button (detail) / **"Check
   now"** (tile) / **"Check all"** (home) forces an on-demand pass on any cadence — the only way to
   update a dashboard set to Manual, the default for every new dashboard. A no-key tick is left
   fully due (no false "checked" stamp, no consumed schedule) rather than silently marked as a

@@ -1,6 +1,6 @@
 // State 2 of a turn: working. Labeled skeleton cards announce what is being built —
 // the kind and the user's own subject, shimmer lines for the not-yet-known content.
-// A short mount delay keeps a cached or prefetched answer from flashing skeletons.
+// A short mount delay keeps a cached answer from flashing skeletons.
 import { useEffect, useState, type ReactElement } from 'react';
 import type { SkeletonCard } from './skeletonPlan';
 // The shared skeleton vocabulary rides with this component, not the canvas chunk — the

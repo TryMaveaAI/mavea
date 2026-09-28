@@ -17,7 +17,6 @@ export function TerminalChatSlide({ slots }: SlideProps<'chat'>) {
         overflow: 'hidden',
       }}
     >
-      <style>{`@keyframes term-blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
       <div
         style={{
           display: 'flex',

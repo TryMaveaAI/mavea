@@ -53,7 +53,7 @@ describe('CanvasTakeover', () => {
 
   it('closes from the header button and from Escape on the board', () => {
     const { onExit } = renderTakeover();
-    fireEvent.click(screen.getByRole('button', { name: /back to answer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back to the board/i }));
     expect(onExit).toHaveBeenCalledTimes(1);
     const viewport = document.body.querySelector('.cv-viewport') as HTMLElement;
     fireEvent.keyDown(viewport, { key: 'Escape' });
@@ -103,7 +103,7 @@ describe('CanvasTakeover', () => {
   it('reads as a neutral "back to answer" when nothing is pinned', () => {
     renderTakeover();
     expect(screen.queryByText(/selected/i)).toBeNull();
-    expect(screen.getByRole('button', { name: /back to answer/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to the board/i })).toBeInTheDocument();
   });
 });
 
@@ -118,7 +118,7 @@ describe('CanvasTakeover focus', () => {
 
   it('closes on Escape from the header, where the shortcut is advertised', () => {
     const { onExit } = renderTakeover();
-    const close = screen.getByRole('button', { name: /back to answer/i });
+    const close = screen.getByRole('button', { name: /back to the board/i });
     close.focus();
     fireEvent.keyDown(close, { key: 'Escape' });
     expect(onExit).toHaveBeenCalledTimes(1);

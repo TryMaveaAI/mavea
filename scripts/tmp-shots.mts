@@ -1,7 +1,7 @@
 // Throwaway: screenshot the world lab for a reader's-eye pass.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 const OUT = process.env.SHOT_DIR!;
 mkdirSync(OUT, { recursive: true });
@@ -25,9 +25,9 @@ const ctx = await browser.newContext({
 await ctx.addInitScript(
   ({ t, k, v }) => {
     localStorage.setItem('mavea-theme', t);
-    localStorage.setItem(k, JSON.stringify({ version: v, acceptedAt: '2026-08-15T00:00:00.000Z' }));
+    localStorage.setItem(k, v);
   },
-  { t: theme, k: LEGAL_ACCEPTANCE_STORAGE_KEY, v: LEGAL_ACCEPTANCE_VERSION },
+  { t: theme, k: LEGAL_SEED.key, v: LEGAL_SEED.value },
 );
 const page = await ctx.newPage();
 

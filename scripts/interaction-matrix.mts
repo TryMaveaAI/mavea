@@ -5,7 +5,7 @@
 // shell, so this never needs a provider and must never make an LLM request.
 import { chromium, type Page } from 'playwright';
 import { FEATURES } from '../src/live/features/registry';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 // Both budgets below are RESPONSIVENESS bars, and responsiveness is relative to the machine. 100ms
 // is the right bar on a developer's laptop, and that is where this gate earns its keep: a real
@@ -51,7 +51,7 @@ interface Result {
 
 async function freshLanding(page: Page, base: string): Promise<void> {
   await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
-  await page.locator('.fl-hero, .flagship').first().waitFor({ state: 'visible' });
+  await page.locator('.ob-page').waitFor({ state: 'visible' });
   await page.evaluate(() => sessionStorage.clear());
 }
 
@@ -125,7 +125,7 @@ async function measureTopbar(page: Page, base: string): Promise<Result[]> {
   });
 
   await freshLanding(page, base);
-  const explore = page.getByRole('button', { name: 'Explore' });
+  const explore = page.getByRole('button', { name: 'Explore', exact: true });
   started = Date.now();
   await explore.click();
   await page.getByRole('menu', { name: 'Explore features' }).waitFor({ state: 'visible' });
@@ -221,15 +221,12 @@ async function main(): Promise<void> {
     // interaction budgets being measured, and a fresh profile would otherwise stall every
     // #/live-bound click at the acknowledgement screen instead of reaching the rail.
     await context.addInitScript(
-      ({ legalKey, legalVersion }) => {
+      ({ legalKey, legalValue }) => {
         localStorage.setItem('mavea-tour-seen-v1', '1');
         localStorage.setItem('mavea-live-setup-v1', '1');
-        localStorage.setItem(
-          legalKey,
-          JSON.stringify({ version: legalVersion, acceptedAt: '2026-07-16T00:00:00.000Z' }),
-        );
+        localStorage.setItem(legalKey, legalValue);
       },
-      { legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY, legalVersion: LEGAL_ACCEPTANCE_VERSION },
+      { legalKey: LEGAL_SEED.key, legalValue: LEGAL_SEED.value },
     );
     const page = await context.newPage();
     page.on('pageerror', (error) => pageErrors.push(`${currentAction}: ${error.message}`));

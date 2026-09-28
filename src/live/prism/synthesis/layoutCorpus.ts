@@ -6,6 +6,7 @@
 // the map (the object positions are derived from the card positions, which layout() fixes).
 import { layout, CARD_W, CARD_H, type LayoutResult, type LayoutSeed } from '../layout';
 import type { ConsensusCluster, ContradictionObject, CorpusSpec, GapObject } from './types';
+import { OBJECT_MAX_W } from '../mapFrame';
 
 export interface PlacedContradiction extends ContradictionObject {
   x: number;
@@ -112,7 +113,7 @@ function contentBoxOf(
     ys.push(y - hh, y + hh);
   };
   for (const c of base.claims) box(c.x, c.y, CARD_W / 2, CARD_H / 2);
-  for (const o of [...contradictions, ...gaps]) box(o.x, o.y, CARD_W / 2, CARD_H / 2);
+  for (const o of [...contradictions, ...gaps]) box(o.x, o.y, OBJECT_MAX_W / 2, CARD_H / 2);
   for (const c of consensus) box(c.x, c.y, c.r, c.r);
   // Region labels are pills centred at (cx, cy), sitting above their cluster — include them too.
   for (const r of base.regions) box(r.cx, r.cy, 90, 22);

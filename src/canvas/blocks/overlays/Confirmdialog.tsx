@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { useFocusTrap } from '../../../live/useFocusTrap';
 import { OverlayPortal } from './portal';
 import type { ConfirmdialogProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useBackdropDismiss } from '../../../lib/useBackdropDismiss';
 
 type Props = ConfirmdialogProps & { delay?: number };
 
@@ -27,6 +29,11 @@ export function Confirmdialog({
   const AlertIc = Icon[alertIcon] || Icon.alert;
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // A destructive confirm opens on Cancel, so a reflexive Enter never deletes anything.
+  useFocusTrap(dialogRef, { active: open, initialFocus: cancelRef });
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +42,7 @@ export function Confirmdialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const backdrop = useBackdropDismiss(() => setOpen(false));
   return (
     <div
       className="card reveal"
@@ -68,7 +76,9 @@ export function Confirmdialog({
           <div className="ov-portal">
             <div
               className="ov-backdrop"
-              onClick={() => setOpen(false)}
+              data-interactive
+              onPointerDown={backdrop.onPointerDown}
+              onClick={backdrop.onClick}
               role="button"
               tabIndex={0}
               aria-label="Close"
@@ -80,6 +90,7 @@ export function Confirmdialog({
               }}
             />
             <div
+              ref={dialogRef}
               className="ov-dialog ov-alert"
               role="alertdialog"
               aria-modal="true"
@@ -94,7 +105,12 @@ export function Confirmdialog({
                 dangerouslySetInnerHTML={richInnerHtml(body)}
               />
               <div className="ov-dialog-foot">
-                <button type="button" className="ov-btn ghost" onClick={() => setOpen(false)}>
+                <button
+                  ref={cancelRef}
+                  type="button"
+                  className="ov-btn ghost"
+                  onClick={() => setOpen(false)}
+                >
                   {cancel}
                 </button>
                 <button

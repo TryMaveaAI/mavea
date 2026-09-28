@@ -13,6 +13,7 @@
 import { createHighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 import type { HighlighterCore } from 'shiki/core';
+import type { SanitizedHtml } from '../../../lib/trustedTypes';
 
 type LangImport = Parameters<HighlighterCore['loadLanguage']>[0];
 
@@ -57,7 +58,7 @@ function core(): Promise<HighlighterCore> {
 
 /** Highlight `code` as dual-theme HTML, or null for a language we don't ship a grammar for —
  *  the caller falls back to plain text. `txt` is Shiki's built-in plaintext, always available. */
-export async function highlightCode(code: string, lang: string): Promise<string | null> {
+export async function highlightCode(code: string, lang: string): Promise<SanitizedHtml | null> {
   const c = await core();
   if (lang !== 'txt') {
     const load = LANG_CHUNKS[lang];
@@ -69,9 +70,11 @@ export async function highlightCode(code: string, lang: string): Promise<string 
     }
     await pending;
   }
+  // Shiki escapes every character of `code` into text nodes and emits only its own <pre>/<span>
+  // scaffolding — the output is sanitized by construction, which is what the brand records.
   return c.codeToHtml(code, {
     lang,
     themes: { light: 'github-light', dark: 'github-dark' },
     defaultColor: false,
-  });
+  }) as SanitizedHtml;
 }

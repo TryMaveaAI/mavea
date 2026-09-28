@@ -27,11 +27,6 @@ export function MagazineSlide({ slots }: SlideProps<'concept'>) {
         // clamp's own ellipsis ever got a chance to fire.
       }}
     >
-      <style>{`
-        /* The masthead rule draws across like setting a printed dateline. */
-        @keyframes mag-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-      `}</style>
-
       {/* Masthead: publication / issue line, all-caps mono, justified against the issue word. */}
       <div
         style={{

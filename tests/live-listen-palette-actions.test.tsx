@@ -1,4 +1,4 @@
-// Regression: the palette's "Watch me think" / "Just listen" / "Ghost answers" all funnel through
+// Regression: the palette's "Watch me think" and "Just listen" both funnel through
 // enterListening(), which flips the Tap↔Always-on mic mode to Always-on so the mic opens for that
 // surface — see LiveApp.tsx's enterListening. That flip used to be one-way: leaving the borrowed
 // surface (the listen-mode chip's "stop banking" control, a timeout, Escape, …) never put alwaysOn
@@ -83,17 +83,6 @@ describe('LiveApp — borrowed always-on is restored on exit', () => {
   // in is mid-refactor on this tree (src/live/voice/MicModePopover.tsx) and not yet settled enough
   // to couple a test's selectors to.
 
-  it('Ghost answers (same borrow as Just Listen) restores Tap mode once stopped', async () => {
-    render(<LiveApp />);
-
-    await openPaletteAndClick('Ghost answers');
-    await waitFor(() => expect(alwaysOnIsArmed()).toBe(true));
-
-    clickStopBanking();
-    await waitFor(() => expect(alwaysOnIsArmed()).toBe(false));
-    expect(localStorage.getItem(ALWAYS_ON_STORAGE_KEY)).toBe('false');
-  });
-
   it('never PERSISTS the borrowed mode — a reload mid-surface keeps Tap', async () => {
     // The restore-on-exit path only runs if the user reaches an exit. A reload or a closed tab
     // doesn't, so persisting the borrow left a Tap user hands-free on every future visit, with no
@@ -148,30 +137,5 @@ describe('LiveApp — palette entries land where they promised', () => {
     // disclosure are already visible, regardless of whichever tab was last active.
     await waitFor(() => expect(document.body.textContent).toContain('Quiet hours'));
     expect(document.body.textContent).toContain('Audibility still depends on your device volume');
-  });
-
-  it('"Ghost answers" is marked unavailable with a reason when quality is Fast', async () => {
-    setLiveConfigV2({ quality: 'fast' });
-    render(<LiveApp />);
-
-    fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    await waitFor(() => expect(document.querySelector('button.cmdk-row')).toBeTruthy());
-    const row = findButton((t) => t.startsWith('Ghost answers'));
-
-    expect(row.className).toContain('is-unavailable');
-    expect(row.textContent).toContain("Needs Balanced quality or higher — you're on Fast");
-    // The normal blurb (what a Balanced/Thorough user sees) is not shown alongside the reason.
-    expect(row.textContent).not.toContain('quietly drafts what it would say');
-  });
-
-  it('"Ghost answers" carries its normal blurb (no reason) on Balanced quality', async () => {
-    render(<LiveApp />); // useLiveConfig defaults to 'balanced'
-
-    fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    await waitFor(() => expect(document.querySelector('button.cmdk-row')).toBeTruthy());
-    const row = findButton((t) => t.startsWith('Ghost answers'));
-
-    expect(row.className).not.toContain('is-unavailable');
-    expect(row.textContent).toContain('quietly drafts what it would say');
   });
 });

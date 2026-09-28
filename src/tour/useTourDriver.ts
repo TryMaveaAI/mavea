@@ -1,6 +1,6 @@
 // useTourDriver — the CHAPTER player for the first-run feature walkthrough. Each chapter teaches
 // one thing on the REAL Live surface: it speaks a coach line (or stays silent with captions),
-// spotlights a real control, and can trigger a real feature (Focus, Present, Share, ⌘K, the pen)
+// spotlights a real control, and can trigger a real feature (the Lens, Present, export, ⌘K, the pen)
 // or show a real baked answer. It's fully navigable — play/pause, step back/forward, jump to any
 // chapter, replay — because every chapter is self-contained: entering one first RESETS any feature
 // a prior chapter opened (so skipping around never leaves a modal stuck), then applies its own.
@@ -29,7 +29,13 @@ export interface TourOps {
    *  chapter never cuts off its own thought. */
   isSpeaking: () => boolean;
   hasCanvas: () => boolean;
-  showFrame: (frame: TurnFrame, question: string, opts?: { silent?: boolean }) => void;
+  /** `prior` is the frame this one followed in its own conversation, when that is not the board
+   *  on screen (a replay jumped to it). */
+  showFrame: (
+    frame: TurnFrame,
+    question: string,
+    opts?: { silent?: boolean; prior?: TurnFrame | null },
+  ) => void;
   typeInto: (value: string) => void;
   /** Speak a coach line. May hand back the line's lifecycle handle (LiveApp's wrapped seam
    *  returns one so its own walk can sync to audio); the drivers here ignore it. */
@@ -38,14 +44,15 @@ export interface TourOps {
   setMuted: (muted: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   setInkArmed: (armed: boolean) => void;
-  /** Spotlight one card by id (drives the Focus hero + the Canvas fly-to). */
+  /** Spotlight one card by id (drives the Study's front card + the Canvas fly-to). */
   setSpot: (id: string | null) => void;
   /** Draw a scripted highlighter mark across the first canvas card, then spotlight it. */
-  scriptedMark: () => void;
+  scriptedMark: (signal?: AbortSignal) => void;
   /** Draw one step of the walkthrough with Mavéa's real answer-annotation Pen. */
-  drawPenTourStep: (step: 'result' | 'reason') => void;
+  /** `signal` is the step's: once it aborts, no mark may be drawn. */
+  drawPenTourStep: (step: 'result' | 'reason', signal?: AbortSignal) => void;
   /** Draw one real, generous Mavéa Pen stroke across the current answer's first card. */
-  drawPenOnFirstBlock: () => void;
+  drawPenOnFirstBlock: (signal?: AbortSignal) => void;
   /** Open the walkthrough's curated living dashboard (a real store entry, full-screen). */
   openDashboards: () => void;
   /** Flip the dashboard takeover from the board itself to its real refresh-cadence controls. */
@@ -54,10 +61,6 @@ export interface TourOps {
   openModelSettings: () => void;
   /** Open the export-to-document overlay (the ten print templates). */
   openExport: () => void;
-  /** Remix the share reel — the director recuts with a new seed. */
-  shareRemix: () => void;
-  /** Pick a reel palette chip by its label (Aurora, Ember, …). */
-  sharePalette: (label: string) => void;
   /** Flip the export studio's format (its own segmented buttons). */
   exportSetFormat: (f: 'presentation' | 'document') => void;
   /** Pick the i-th template swatch in the export studio's gallery. */
@@ -71,11 +74,15 @@ export interface TourOps {
   /** Seed a real five-lesson course into the course store and open Lesson 1 in place — the genuine
    *  CourseRail ("Lesson 1 of 5") over its baked canvas, replayed with no model call. */
   openTourCourse: () => void;
-  setPresenting: (on: boolean) => void;
-  setShareOpen: (on: boolean) => void;
+  /** Present the answer through the same path the Share menu takes: the deck loads, then shows. */
+  present: () => void;
   setPaletteOpen: (on: boolean) => void;
   /** Visually press the Keep-going chip with this label (the tap the chapter then acts on). */
   pressKeepGoing: (label: string) => void;
+  /** Open the Lens on this card through its own "Look closer" control, as a reader would. */
+  openLens: (id: string) => void;
+  /** Close the Lens through its own "Back to the board" control. */
+  closeLens: () => void;
   /** Pin the answer's first card via its Ask affordance — the real point-and-ask gesture. */
   pinFirstBlock: () => void;
   /** Pin the answer's first `count` cards together, so one follow-up can ground on all of them —
@@ -92,7 +99,6 @@ export interface TourOps {
   /** Seed (where needed) + open a feature on the real surface, so every feature has a "See how"
    *  walkthrough — not just the ones with a bespoke chapter. Keyed by the registry feature id. */
   showcaseFeature: (featureId: string) => void;
-  fireMemoryGlow: () => void;
   /** Stop the live surface's own reveal-tour narration/spotlight walk (so an answer chapter's
    *  narration doesn't bleed into the next chapter when navigating). */
   stopRevealWalk: () => void;
@@ -155,27 +161,26 @@ export function montageSchedule(frameCount: number, durationMs: number): number[
   return Array.from({ length: frameCount }, (_, i) => MONTAGE_LEAD_IN_MS + i * each);
 }
 
-/** How long the "focusWalk" chapter holds on the normal, unblurred canvas before Focus mode dims
- *  everything but the spotlit card — the viewer needs to actually see the "everything" the chapter
- *  is about to transform, not have it dim out from under them the instant the chapter starts. */
-const FOCUS_HOLD_MS = 1500;
-/** A settle beat after Focus mode itself takes over, before the card-by-card walk begins. */
-const FOCUS_WALK_SETTLE_MS = 350;
-const FOCUS_WALK_MIN_CARD_MS = 900;
+/** How long the "lensWalk" chapter holds on the plain board before the first card opens — the
+ *  viewer needs to see the board the gesture starts from, not have a card fly up the instant the
+ *  chapter begins. */
+const LENS_HOLD_MS = 1500;
+/** The shortest a card may hold on the stage — long enough to read the notes beside it. */
+const LENS_MIN_CARD_MS = 2000;
+/** How many cards the chapter opens; the rest of the answer stays on the board. */
+const LENS_WALK_CARDS = 3;
 
-/** The focusWalk chapter's schedule: when Focus mode itself kicks in, and the per-card spotlight
- *  delays (ms from chapter entry) after it settles. Exported for its own unit test. */
-export function focusWalkSchedule(
+/** The lensWalk chapter's schedule: when each card opens on the stage (ms from chapter entry) and
+ *  when the Lens closes back to the board. Exported for its own unit test. */
+export function lensWalkSchedule(
   cardCount: number,
   durationMs: number,
-): { focusAt: number; spotlightAt: number[] } {
-  const walkStart = FOCUS_HOLD_MS + FOCUS_WALK_SETTLE_MS;
-  if (cardCount <= 0) return { focusAt: FOCUS_HOLD_MS, spotlightAt: [] };
-  const each = Math.max(FOCUS_WALK_MIN_CARD_MS, Math.floor((durationMs - walkStart) / cardCount));
-  return {
-    focusAt: FOCUS_HOLD_MS,
-    spotlightAt: Array.from({ length: cardCount }, (_, i) => walkStart + i * each),
-  };
+): { openAt: number[]; closeAt: number } {
+  const n = Math.min(cardCount, LENS_WALK_CARDS);
+  if (n <= 0) return { openAt: [], closeAt: LENS_HOLD_MS };
+  const each = Math.max(LENS_MIN_CARD_MS, Math.floor((durationMs - LENS_HOLD_MS) / (n + 0.5)));
+  const openAt = Array.from({ length: n }, (_, i) => LENS_HOLD_MS + i * each);
+  return { openAt, closeAt: LENS_HOLD_MS + n * each };
 }
 
 // The 'listen' chapter's scripted ramble — each line trips a different local-extractor heuristic
@@ -319,7 +324,7 @@ export function useTourDriver(opts: {
     const speakWhenUnlocked = (line: string): void => whenUnlocked(() => o.speak(line));
     // Put a canvas on screen WITHOUT its voice — no narration AND no model-authored tour, since a
     // baked tour would have the reveal walk speak its per-stop lines right over the chapter's coach
-    // line. A view-change chapter (canvas/focus), a montage flip, or a just-need-a-canvas seed is
+    // line. A view-change chapter (canvas), a montage flip, or a just-need-a-canvas seed is
     // visual; only the 'answer' chapter keeps the full narration + spoken walk (there it IS the voice).
     // `silent` keeps the RECORDED frame authentic, so a later replay or video cut has its narration.
     const showSilent = (f: { frame: TurnFrame; question: string }): void =>
@@ -383,11 +388,6 @@ export function useTourDriver(opts: {
       >[];
       const schedule = montageSchedule(frames.length, ch.durationMs);
       frames.forEach((f, i) => after(schedule[i], () => showSilent(f)));
-    } else if (a.kind === 'ask') {
-      // Perform the gesture, not just the pointer: pin the first card via its Ask affordance (the
-      // pin chip + card ring appear for real), then type the follow-up a person would ask.
-      after(1300, () => o.pinFirstBlock());
-      scheduleTypewriter(after, o.typeInto, 'Why does it grow faster after year 20?', 1700);
     } else if (a.kind === 'askMulti') {
       // A direct jump must still show the exact two-card grounding gesture this scene promises.
       const f = tourFrame('money');
@@ -419,18 +419,16 @@ export function useTourDriver(opts: {
     } else if (a.kind === 'mark') {
       // Arm the pen, then physically draw a highlighter mark across the first card and spotlight it.
       after(400, () => o.setInkArmed(true));
-      after(900, () => o.scriptedMark());
+      after(900, () => o.scriptedMark(step.signal));
     } else if (a.kind === 'penDemo') {
       // This is Mavéa's answer-annotation Pen, not the user's Highlight tool. Reseed the worked
       // answer so a direct jump is deterministic, then visibly draw two real, persistent strokes.
       const f = tourFrame('money');
       if (f) showSilent(f);
-      after(1200, () => o.drawPenTourStep('result'));
-      after(3900, () => o.drawPenTourStep('reason'));
+      after(1200, () => o.drawPenTourStep('result', step.signal));
+      after(3900, () => o.drawPenTourStep('reason', step.signal));
       // Let the complete marked-up answer breathe before autoplay is allowed to move on.
       after(7200, () => o.setSpot(null));
-    } else if (a.kind === 'focus') {
-      after(500, () => o.setViewMode('focus'));
     } else if (a.kind === 'canvas') {
       const f = tourFrame(a.convoId);
       if (f) showSilent(f);
@@ -446,15 +444,15 @@ export function useTourDriver(opts: {
         .slice(0, 3);
       ids.forEach((id, i) => after(2700 + i * 1900, () => o.setSpot(id)));
       after(2700 + ids.length * 1900, () => o.setSpot(null));
-    } else if (a.kind === 'focusWalk') {
+    } else if (a.kind === 'lensWalk') {
       const f = tourFrame(a.convoId);
       if (f) showSilent(f);
-      // See focusWalkSchedule for why Focus mode itself waits (the hold) before the card-by-card
-      // walk starts.
+      // The chapter performs the reader's own gesture: each card opens through its "Look closer"
+      // control, holds long enough to read its notes, and the Lens closes back to the board.
       const ids = (f?.frame.spec.blocks ?? []).map((b) => b.id).filter((id): id is string => !!id);
-      const { focusAt, spotlightAt } = focusWalkSchedule(ids.length, ch.durationMs);
-      after(focusAt, () => o.setViewMode('focus'));
-      ids.forEach((id, i) => after(spotlightAt[i], () => o.setSpot(id)));
+      const { openAt, closeAt } = lensWalkSchedule(ids.length, ch.durationMs);
+      openAt.forEach((t, i) => after(t, () => o.openLens(ids[i])));
+      if (openAt.length > 0) after(closeAt, () => o.closeLens());
     } else if (a.kind === 'listen') {
       // Watch Me Think, for real: open the live map, then "think out loud" — each scripted thought
       // types into the real composer and banks into the map, so atoms bloom as the rambling goes.
@@ -475,20 +473,14 @@ export function useTourDriver(opts: {
     } else if (a.kind === 'course') {
       // Seed + open a real course lesson: the CourseRail ("Lesson 1 of 5" + objectives + Prev/Next)
       // rises over the lesson's baked canvas. The reveal is silent (the op strips narration) so the
-      // chapter's coach line stays the only voice — the same treatment canvas/focusWalk give a seed.
+      // chapter's coach line stays the only voice — the same treatment the canvas and Lens chapters give a seed.
       after(500, () => o.openTourCourse());
     } else if (a.kind === 'connect') {
       // Show the real connection UI without selecting a provider or typing into the key field.
       // A walkthrough must teach the path without mutating or fabricating the visitor's config.
       after(400, () => o.openModelSettings());
     } else if (a.kind === 'present') {
-      after(500, () => o.setPresenting(true));
-    } else if (a.kind === 'share') {
-      after(500, () => o.setShareOpen(true));
-      // Let the first cut play, then REMIX — a genuinely different recut of the same session —
-      // and warm the palette so the reel's range shows, not just one look.
-      after(3100, () => o.shareRemix());
-      after(4900, () => o.sharePalette('Ember'));
+      after(500, () => o.present());
     } else if (a.kind === 'palette') {
       after(500, () => o.setPaletteOpen(true));
     } else if (a.kind === 'atlas') {
@@ -498,8 +490,6 @@ export function useTourDriver(opts: {
       // briefing flying claim to claim over the real PDF page. (A second flip to a data file read
       // as a glitch — the PDF is the story.)
       after(400, () => o.openPrism(0));
-    } else if (a.kind === 'memory') {
-      after(700, () => o.fireMemoryGlow());
     } else if (a.kind === 'showcase') {
       // Session-context features (recap, chapter view) summarize a conversation, so seed a few turns
       // silently first — otherwise they'd open on an empty session. Everything else just opens.
@@ -530,7 +520,7 @@ export function useTourDriver(opts: {
         after(5200, () => o.showFrame(filled, filled.question));
       }
     }
-    // 'mic' / 'ask' / 'none' teach via the coach line + spotlight only.
+    // 'mic' teaches via the coach line + spotlight only.
 
     // 5) The coach voice. A short delay lets the mute state settle before we speak.
     if (ch.mode !== 'silent' && !userMutedRef.current) {

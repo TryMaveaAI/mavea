@@ -1,3 +1,6 @@
+// First, before any library can reach a DOM sink: this is where the Trusted Types policies the
+// CSP names are created, including the `default` one third-party code falls back on.
+import './lib/trustedTypes';
 import { Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/styles.css';
@@ -13,6 +16,7 @@ import { onAudioSuspended, unlockAudio } from './voice/voiceEnergy';
 import { installLastResort } from './lib/lastResort';
 import { installAmbientPlayDriver } from './lib/pageVisibility';
 import { RootBoundary, SurfaceFallback } from './RootBoundary';
+import { ProviderWaitStatus } from './ProviderWaitStatus';
 import { preloadRoute, routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
 import { isLegalGateBypassed, isNoSpendRoute } from './legal/routePolicy';
@@ -129,6 +133,8 @@ function Root() {
           <FlagshipHost />
         )}
       </Suspense>
+      {/* A provider backoff no surface is showing (see live/providers/wait). */}
+      <ProviderWaitStatus />
       {/* Its own boundary: a slow gate chunk must never pull SurfaceFallback over a live surface. */}
       {startLoop && (
         <Suspense fallback={null}>

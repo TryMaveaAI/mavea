@@ -156,7 +156,7 @@ export function deepenSection(label: string, standard: readonly Block[]): Promis
 
   const key = rippleCacheKey(
     `live-deepen:${turn.ask}\0${deepenKeySeed(label, standard)}`,
-    turn.cfg.provider,
+    turn.cfg,
   );
   const already = inFlight.get(key);
   const run =

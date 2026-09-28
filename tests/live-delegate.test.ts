@@ -135,6 +135,7 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     const r = await negotiate(BRIEF, fn, (e) => events.push(e));
     expect(events.filter((e) => e.kind === 'boundary')).toHaveLength(2);
     expect(events.at(-1)).toMatchObject({ kind: 'pass' });
+    expect(events.at(-1)?.say).toContain('No offer inside your boundaries');
     expect(r.deal).toBeNull();
   });
 
@@ -153,17 +154,47 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     expect(r.deal).toBe('$88k now with a 6-month review');
   });
 
-  it('nudges a first-move pass into a real move — nobody walks before making one', async () => {
+  it('lets a first-move pass stand — the model decided, nobody is billed to argue', async () => {
     const { fn, calls } = scripted([
       move('Not worth discussing.', null, 'pass'),
       move('$88k now, review in six months.', '$88k now with a 6-month review', 'offer'),
-      move('Deal.', null, 'accept'),
     ]);
     const events: NegotiationEvent[] = [];
     const r = await negotiate(BRIEF, fn, (e) => events.push(e));
-    expect(calls[1].user).toContain('too early');
-    expect(events[0]).toMatchObject({ side: 'yours', kind: 'offer' });
-    expect(r.deal).toBe('$88k now with a 6-month review');
+    expect(calls).toHaveLength(1);
+    expect(events).toEqual([expect.objectContaining({ side: 'yours', kind: 'pass' })]);
+    expect(r.deal).toBeNull();
+  });
+
+  it('re-asks an unreadable reply at most once per move', async () => {
+    const { fn, calls } = scripted(['prose, not JSON', 'still prose', 'and again']);
+    const events: NegotiationEvent[] = [];
+    await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(calls).toHaveLength(2);
+    expect(events.at(-1)?.say).toContain('could not be read');
+  });
+
+  it('names the last attempt when a withheld offer meets an unreadable reply', async () => {
+    const { fn, calls } = scripted([
+      move('Weekends it is, then.', 'Working weekends for the raise', 'offer'),
+      'prose, not JSON',
+    ]);
+    const events: NegotiationEvent[] = [];
+    await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(calls).toHaveLength(2);
+    // A reply did arrive: it could not be read. "No reply arrived" would blame the transport.
+    expect(events.at(-1)).toMatchObject({ kind: 'pass' });
+    expect(events.at(-1)?.say).toContain('could not be read');
+  });
+
+  it('never re-sends a call that failed outright', async () => {
+    const failing = vi.fn(async () => {
+      throw new Error('openai 500');
+    });
+    const events: NegotiationEvent[] = [];
+    await negotiate(BRIEF, failing, (e) => events.push(e));
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(events.at(-1)?.say).toContain('No reply arrived');
   });
 
   it('ends honestly when no readable reply ever arrives — never a fake "no further moves"', async () => {

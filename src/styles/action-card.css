@@ -41,8 +41,8 @@
   height: 42px;
   border-radius: var(--r-sm);
   border: none;
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
-  color: #fff;
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
+  color: var(--on-presence);
   font-weight: 600;
   font-size: var(--fs-md);
   display: inline-flex;

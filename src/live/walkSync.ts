@@ -80,6 +80,68 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
+ * Ends a walk once its last stroke has finished — unless the walk was cancelled in the meantime.
+ * The pen's promise resolves on its own clock, and by then a NEW walk may own the shared walk
+ * state (the active flag, the flush hook, the caption); ending the old one there would wipe the
+ * new walk's state mid-stop and let a driver cut across it.
+ */
+export function finishOnceInked(
+  penDown: Promise<void>,
+  isCancelled: () => boolean,
+  finish: () => void,
+): void {
+  void penDown.then(() => {
+    if (!isCancelled()) finish();
+  });
+}
+
+/**
+ * Resolves when a stop's pen has lifted: no mark on its card is still waiting to be placed, and
+ * every stroke drawing there has finished. Both are real signals — a card whose entrance holds a
+ * mark back for a second is waited out, and a stop whose strokes are done ends at once. The
+ * walk chains the NEXT stop's glide onto this — never the next line, which speaks on time — so
+ * a stroke is never scrolled or replaced mid-draw and the voice never waits on the pen.
+ *
+ * `ceilingAt` (performance.now() time) is the only time bound. With reduced motion the strokes do
+ * not animate, so it resolves at once.
+ */
+export async function awaitPenLift({
+  drawing,
+  pending,
+  pendingChanged,
+  ceilingAt,
+  reducedMotion = false,
+  signal,
+}: {
+  drawing: () => Animation[];
+  pending: () => boolean;
+  pendingChanged: (signal: AbortSignal) => Promise<void>;
+  ceilingAt: number;
+  reducedMotion?: boolean;
+  signal?: AbortSignal;
+}): Promise<void> {
+  if (reducedMotion) return;
+  for (;;) {
+    const left = ceilingAt - performance.now();
+    if (left <= 0 || signal?.aborted) return;
+    if (pending()) {
+      // A wait that times out or is cancelled withdraws its registration.
+      const done = new AbortController();
+      await untilOrAbort(pendingChanged(done.signal), left, signal);
+      done.abort();
+      continue;
+    }
+    const running = drawing();
+    if (!running.length) return;
+    await untilOrAbort(
+      Promise.all(running.map((a) => a.finished.catch(() => undefined))),
+      left,
+      signal,
+    );
+  }
+}
+
+/**
  * Wait until a line's audio is actually audible. Resolves true when the first buffer reached
  * the speakers, false when the line will never be heard (server down, cancelled) or nothing
  * arrived within `hangMs`. This is what lets the spotlight move WITH the voice instead of

@@ -18,13 +18,13 @@
    (`backwards`/`both` fill), so a paused, unsupported, printed or reduced-motion
    render shows the settled answer, never a stuck-empty one.
 
-   Everything is gated four ways: the `.bloom-on` flag (useBloomMode — off ==
-   today's plain reveal, byte-for-byte), the TRANSIENT `.blooming` flag, `prefers-reduced-motion:
-   no-preference`, and the per-card `--delay` the canvas already staggers by.
+   Everything is gated four ways: the `.bloom-on` scope on the canvas grid, the TRANSIENT
+   `.blooming` flag, `prefers-reduced-motion: no-preference`, and the per-card `--delay` the
+   canvas already staggers by.
 
-   `.blooming` is what makes the promise above true rather than merely intended. `bloom-on` is a
-   remembered preference, so it is on the grid forever; a `backwards` fill holds the FROM frame
-   for as long as its animation has not started, and an animation that never starts holds it
+   `.blooming` is what makes the promise above true rather than merely intended. `bloom-on` is on
+   the grid forever; a `backwards` fill holds the FROM frame for as long as its animation has not
+   started, and an animation that never starts holds it
    indefinitely. A chart then paints its axes, gridlines and legend around a line retracted out of
    view. The canvas drops `.blooming` once the choreography's window has passed, so from that
    point no element's visibility depends on an animation having run — which is the whole

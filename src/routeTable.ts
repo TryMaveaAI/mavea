@@ -74,8 +74,8 @@ export const PUBLIC_ROUTES: RouteSpec[] = [
     prefix: '#/flashcards',
     load: () => import('./live/srs/FlashcardsApp').then((m) => ({ default: m.FlashcardsApp })),
   },
-  // The visual library (#/gallery): every browsable production block type (internal full-frame
-  // renderers are intentionally excluded), mounted through the real canvas path.
+  // The visual library (#/gallery): every production block type, mounted through the real canvas
+  // path.
   {
     prefix: '#/gallery',
     load: () => import('./gallery/GalleryApp').then((m) => ({ default: m.GalleryApp })),

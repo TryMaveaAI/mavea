@@ -11,7 +11,7 @@ import type { ThinkingLevel } from '../../providers/types';
 import type {
   CourseCapstone,
   CourseLesson,
-  LessonDetail,
+  LessonOutcome,
   QuizQuestion,
   ShipCourse,
   ShipModel,
@@ -340,7 +340,7 @@ export async function enrichLesson(
   codeContext: string,
   cfg: ModelConfig,
   opts: LessonOpts = {},
-): Promise<LessonDetail | null> {
+): Promise<LessonOutcome> {
   const { signal, maxTokens = 4200, thinkingLevel, altitude } = opts;
   try {
     const out = await getAdapter(cfg.provider).generate(
@@ -358,10 +358,11 @@ export async function enrichLesson(
       },
       cfg,
     );
-    if (signal?.aborted) return null;
-    return parseLessonDetail(out.raw);
+    if (signal?.aborted) return { failed: 'request' };
+    const detail = parseLessonDetail(out.raw);
+    return detail ? { detail } : { failed: 'empty' };
   } catch {
-    return null;
+    return { failed: 'request' };
   }
 }
 

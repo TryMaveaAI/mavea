@@ -1,5 +1,4 @@
 import { render, fireEvent, cleanup, screen } from '@testing-library/react';
-import { Scrubber } from '../src/live/scrubber/Scrubber';
 import { Overview } from '../src/live/scrubber/Overview';
 import type { Chapter } from '../src/live/scrubber/chapters';
 
@@ -39,49 +38,6 @@ const CHAPTERS: Chapter[] = [
 ];
 
 afterEach(cleanup);
-
-describe('Scrubber', () => {
-  it('renders one track per chapter and one tick per moment', () => {
-    const { container } = render(
-      <Scrubber chapters={CHAPTERS} currentIndex={1} onJump={() => {}} onOpenOverview={() => {}} />,
-    );
-    expect(container.querySelectorAll('.scrub-track')).toHaveLength(2);
-    expect(container.querySelectorAll('.scrub-tick')).toHaveLength(3);
-    expect(container.querySelectorAll('.scrub-label')[0].textContent).toBe('Tokyo Itinerary');
-  });
-
-  it('glows the tick on screen and jumps when a tick is clicked', () => {
-    const onJump = vi.fn();
-    const { container } = render(
-      <Scrubber chapters={CHAPTERS} currentIndex={1} onJump={onJump} onOpenOverview={() => {}} />,
-    );
-    const current = container.querySelector('.scrub-tick.is-current');
-    expect(current?.getAttribute('aria-label')).toBe('Add a food day');
-    fireEvent.click(container.querySelectorAll('.scrub-tick')[2]);
-    expect(onJump).toHaveBeenCalledWith(2);
-  });
-
-  it('opens the overview from the layers button', () => {
-    const onOpenOverview = vi.fn();
-    const { container } = render(
-      <Scrubber
-        chapters={CHAPTERS}
-        currentIndex={0}
-        onJump={() => {}}
-        onOpenOverview={onOpenOverview}
-      />,
-    );
-    fireEvent.click(container.querySelector('.scrub-layers')!);
-    expect(onOpenOverview).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders nothing on an empty conversation', () => {
-    const { container } = render(
-      <Scrubber chapters={[]} currentIndex={0} onJump={() => {}} onOpenOverview={() => {}} />,
-    );
-    expect(container.firstChild).toBeNull();
-  });
-});
 
 describe('Overview', () => {
   it('shows the real chapter + moment counts', () => {

@@ -22,20 +22,6 @@ export function NeonSlide({ slots }: SlideProps<'concept'>) {
         overflow: 'hidden',
       }}
     >
-      <style>{`
-        @keyframes neon-glitch {
-          0%, 92%, 100% { transform: translate(0, 0); }
-          93% { transform: translate(calc(var(--rw) * -0.5), calc(var(--ru) * 0.2)); }
-          95% { transform: translate(calc(var(--rw) * 0.6), calc(var(--ru) * -0.2)); }
-          97% { transform: translate(calc(var(--rw) * -0.3), 0); }
-        }
-        @keyframes neon-scan {
-          0% { transform: translateY(calc(var(--ru) * -8)); opacity: 0; }
-          10%, 90% { opacity: 1; }
-          100% { transform: translateY(calc(var(--ru) * 80)); opacity: 0; }
-        }
-      `}</style>
-
       {/* Faint grid: low-opacity ink lines, so it recolors with the palette and never competes. */}
       <div
         aria-hidden="true"

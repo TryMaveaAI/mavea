@@ -4,6 +4,35 @@
    Tokens only. --nav-c is the per-card accent (defaults to var(--presence)).
    ════════════════════════════════════════════════════════════════════════ */
 
+/* A nav card's colour (--nav-c) is the model's to pick, not the app's accent, so text on it takes
+   an ink derived from it, and a gradient from it ends on a deeper shade of it that keeps that ink.
+   Where relative colour is unsupported: white, on the accent's deep end, as drawn. */
+.nv-brand-glyph,
+.nv-link-badge,
+.sn-brand-glyph,
+.sn-item-badge,
+.pg-num,
+.mm-promo-glyph,
+.cb-count-num,
+.cb-check {
+  --on-nav: #fff;
+  --nav-deep: var(--presence-deep);
+}
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .nv-brand-glyph,
+  .nv-link-badge,
+  .sn-brand-glyph,
+  .sn-item-badge,
+  .pg-num,
+  .mm-promo-glyph,
+  .cb-count-num,
+  .cb-check {
+    --on-nav: color(from var(--nav-c) srgb-linear var(--ink-on-fill));
+    --nav-deep: color(from var(--nav-c) srgb-linear var(--deepen-for-ink));
+  }
+}
+
 /* shared focus ring used by interactive nav controls */
 .nv-link:focus-visible,
 .nv-icon-btn:focus-visible,
@@ -61,8 +90,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);
-  color: #fff;
-  background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
+  color: var(--on-nav);
+  background: linear-gradient(150deg, var(--nav-c), var(--nav-deep));
   box-shadow: 0 4px 14px -4px color-mix(in oklab, var(--nav-c) 70%, transparent);
 }
 .nv-brand-glyph .ic {
@@ -142,7 +171,7 @@
   border-radius: var(--r-full);
   font-size: var(--fs-2xs);
   font-weight: 700;
-  color: #fff;
+  color: var(--on-nav);
   background: var(--nav-c);
 }
 
@@ -282,11 +311,10 @@
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(150deg, var(--insight), var(--presence));
+  color: var(--on-presence);
+  background: linear-gradient(150deg, var(--insight-held), var(--presence));
   letter-spacing: 0.02em;
 }
-
 /* ───────────────────────────── sidenav ───────────────────────────── */
 .sn-shell {
   width: 100%;
@@ -317,8 +345,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);
-  color: #fff;
-  background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
+  color: var(--on-nav);
+  background: linear-gradient(150deg, var(--nav-c), var(--nav-deep));
 }
 .sn-brand-glyph .ic {
   width: 15px;
@@ -461,7 +489,7 @@
   border: 1px solid var(--line);
 }
 .sn-item.on .sn-item-badge {
-  color: #fff;
+  color: var(--on-nav);
   background: var(--nav-c);
   border-color: transparent;
 }
@@ -724,9 +752,9 @@
   background: var(--surface-glass);
 }
 .pg-num.on {
-  color: #fff;
+  color: var(--on-nav);
   border-color: transparent;
-  background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
+  background: linear-gradient(160deg, var(--nav-c), var(--nav-deep));
   box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--nav-c) 65%, transparent);
 }
 .pg-ellipsis {
@@ -1077,8 +1105,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);
-  color: #fff;
-  background: linear-gradient(150deg, var(--nav-c), var(--presence-deep));
+  color: var(--on-nav);
+  background: linear-gradient(150deg, var(--nav-c), var(--nav-deep));
   margin-bottom: 2px;
 }
 .mm-promo-glyph .ic {
@@ -1251,7 +1279,7 @@
 .cb-check .ic {
   width: 12px;
   height: 12px;
-  color: #fff;
+  color: var(--on-nav);
 }
 .cb-row-ic {
   width: 18px;
@@ -1326,8 +1354,8 @@
   border-radius: var(--r-full);
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(160deg, var(--nav-c), var(--presence-deep));
+  color: var(--on-nav);
+  background: linear-gradient(160deg, var(--nav-c), var(--nav-deep));
 }
 .cb-count-noun {
   font-size: var(--fs-sm);

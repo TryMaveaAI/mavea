@@ -65,9 +65,12 @@ export function failureLine(failure: TrackerFailure): string {
     case 'auth':
       return 'Your model rejected the key — reconnect it in Live, then check again.';
     case 'rate-limit':
-      return 'Your model provider is rate-limiting right now. This retries itself shortly.';
+      return (
+        'Your model provider is rate-limiting right now. The next scheduled check tries again, ' +
+        'or check now.'
+      );
     case 'network':
-      return "Couldn't reach your model. This retries itself once the connection is back.";
+      return "Couldn't reach your model. The next scheduled check tries again, or check now.";
     case 'no-model':
       return 'No model is connected yet — connect one in Live and this starts checking.';
     case 'ungrounded':
@@ -83,7 +86,10 @@ export function failureLine(failure: TrackerFailure): string {
       // nothing on its own. Only the tracker's own promise is added to it.
       return `${searchBlockLine('search-off')} Then this starts checking.`;
     case 'provider-unavailable':
-      return 'Your model provider is unavailable right now. This retries itself shortly.';
+      return (
+        'Your model provider is unavailable right now. The next scheduled check tries again, ' +
+        'or check now.'
+      );
   }
 }
 

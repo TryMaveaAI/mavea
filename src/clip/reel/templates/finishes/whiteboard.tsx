@@ -18,19 +18,6 @@ export function WhiteboardSlide({ slots }: SlideProps<'concept'>) {
       className="reel-card reel-fade"
       style={{ background: '#fbfbf6', border: '1px solid rgba(28,26,58,0.1)' }}
     >
-      <style>{`
-        @keyframes whiteboard-draw {
-          0%, 8% { stroke-dashoffset: var(--ink-len); }
-          46%, 92% { stroke-dashoffset: 0; }
-          100% { stroke-dashoffset: var(--ink-len); }
-        }
-        .whiteboard-stroke {
-          stroke-dasharray: var(--ink-len);
-          stroke-dashoffset: 0;
-          animation: whiteboard-draw 5.4s ease-in-out var(--ink-delay, 0s) infinite both;
-        }
-      `}</style>
-
       <div
         className="reel-eyebrow"
         style={{ color: 'color-mix(in oklab, var(--reel-ink) 56%, transparent)' }}

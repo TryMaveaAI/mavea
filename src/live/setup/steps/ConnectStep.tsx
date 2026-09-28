@@ -20,14 +20,16 @@ import { looksLikeBadKey } from '../../providers/http';
 import { ToggleRow, EyeInput } from '../controls';
 import { ModelSelect } from '../ModelSelect';
 import { ProviderResponsibilityNotice } from '../ProviderResponsibilityNotice';
+import { revealAboveKeyboard } from '../revealAboveKeyboard';
 
-/** How each provider presents as a tile: a one-letter badge, a short name, and the company. */
-const TILE: Record<ProviderId, { badge: string; name: string; sub: string }> = {
-  gemini: { badge: 'G', name: 'Gemini', sub: 'Google' },
-  anthropic: { badge: 'A', name: 'Claude', sub: 'Anthropic' },
-  openai: { badge: 'O', name: 'GPT', sub: 'OpenAI' },
-  grok: { badge: 'X', name: 'Grok', sub: 'xAI' },
-  openrouter: { badge: 'R', name: 'OpenRouter', sub: 'Many models' },
+/** How each provider presents as a tile: the model family's name, and the company behind it. No
+ *  logo — a provider's mark is theirs to license, and a lone initial in a box read as a placeholder. */
+const TILE: Record<ProviderId, { name: string; sub: string }> = {
+  gemini: { name: 'Gemini', sub: 'Google' },
+  anthropic: { name: 'Claude', sub: 'Anthropic' },
+  openai: { name: 'GPT', sub: 'OpenAI' },
+  grok: { name: 'Grok', sub: 'xAI' },
+  openrouter: { name: 'OpenRouter', sub: 'Many models' },
 };
 
 /** A short, honest line about how the picked provider grounds answers in live web data — so
@@ -72,10 +74,10 @@ export function ConnectStep(): ReactElement {
   const [checking, setChecking] = useState(false);
   const probeSeq = useRef(0);
 
-  const probe = useCallback(async () => {
+  const probe = useCallback(async (fresh = false) => {
     const seq = ++probeSeq.current;
     setChecking(true);
-    const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false });
+    const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false, fresh });
     if (seq === probeSeq.current) {
       setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode, detail: r.detail });
       setChecking(false);
@@ -141,7 +143,6 @@ export function ConnectStep(): ReactElement {
               className={'provider-tile' + (active ? ' is-selected' : '')}
               onClick={() => setLiveConfigV2({ provider: p.id })}
             >
-              <span className="provider-badge">{t.badge}</span>
               <span className="provider-name">{t.name}</span>
               <span className="provider-sub">{t.sub}</span>
             </button>
@@ -173,7 +174,7 @@ export function ConnectStep(): ReactElement {
         </div>
 
         {info.needsKey && (
-          <label className="field-col" htmlFor={keyFieldId}>
+          <label className="field-col" htmlFor={keyFieldId} ref={revealAboveKeyboard}>
             <span className="field-head">
               <span className="card-eyebrow">API key</span>
             </span>
@@ -224,7 +225,7 @@ export function ConnectStep(): ReactElement {
         <button
           type="button"
           className="status-strip-test"
-          onClick={() => void probe()}
+          onClick={() => void probe(true)}
           title="Re-check the connection"
         >
           Test

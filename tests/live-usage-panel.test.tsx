@@ -38,6 +38,16 @@ describe('UsagePanel', () => {
     expect(container.querySelector('.usage-call-heading')?.textContent).toContain('last 50 of 60');
   });
 
+  it('lists a failed call with its outcome, never as a free one', () => {
+    recordUsage('canvas', { input: 100, output: 10, cachedInput: 0 }, 1);
+    recordUsage('canvas', undefined, 2, 1_200, 'failed');
+    const { container } = render(<UsagePanel />);
+    const values = [...container.querySelectorAll('.usage-totals dd')].map((d) => d.textContent);
+    expect(values[3]).toBe('2 · 1 unfinished');
+    const newest = container.querySelector('.usage-calls li .usage-call-tokens')?.textContent;
+    expect(newest).toBe('failed · no token count reported · 1.2s');
+  });
+
   it('attributes spend to the pass that spent it, heaviest first', () => {
     recordUsage('repair', { input: 500, output: 50, cachedInput: 0 });
     recordUsage('canvas', { input: 9_000, output: 800, cachedInput: 0 });

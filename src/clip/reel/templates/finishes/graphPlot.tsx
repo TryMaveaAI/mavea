@@ -25,7 +25,6 @@ export function GraphPlotSlide({ slots }: SlideProps<'diagram'>) {
   const note = slots.note ? fitText(slots.note, BODY_TIERS) : undefined;
   return (
     <Card kicker={slots.label}>
-      <style>{`@keyframes gp-trace{0%{stroke-dashoffset:1}55%,100%{stroke-dashoffset:0}}`}</style>
       <div
         style={{
           marginTop: 'calc(var(--ru) * 2)',

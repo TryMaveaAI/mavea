@@ -299,7 +299,7 @@
   padding: 9px 16px;
   border-radius: var(--r-md);
   cursor: pointer;
-  color: var(--surface-elevated);
+  color: var(--on-presence);
   background: var(--presence);
   border: 1px solid transparent;
   transition:

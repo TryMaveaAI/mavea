@@ -1,6 +1,7 @@
 import { useId, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { richInnerHtml } from '../../../lib/richText';
+import { markupLiteral, trustedHtml, type SanitizedHtml } from '../../../lib/trustedTypes';
 import type { SportsPitchProps, SportKind } from './types';
 
 type Props = SportsPitchProps & { delay?: number };
@@ -8,13 +9,13 @@ type Props = SportsPitchProps & { delay?: number };
 // Baked-in pitch SVG paths and viewBoxes for each sport
 const PITCH: Record<
   SportKind,
-  { viewBox: string; bg: string; markings: string; aspectRatio: number }
+  { viewBox: string; bg: string; markings: SanitizedHtml; aspectRatio: number }
 > = {
   soccer: {
     viewBox: '0 0 100 65',
     bg: '#2d7a3a',
     aspectRatio: 65 / 100,
-    markings: `
+    markings: markupLiteral`
       <rect x="0" y="0" width="100" height="65" fill="#2d7a3a"/>
       <rect x="1" y="1" width="98" height="63" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
       <line x1="50" y1="1" x2="50" y2="64" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
@@ -30,7 +31,7 @@ const PITCH: Record<
     viewBox: '0 0 100 55',
     bg: '#c45c2a',
     aspectRatio: 55 / 100,
-    markings: `
+    markings: markupLiteral`
       <rect x="0" y="0" width="100" height="55" fill="#c45c2a"/>
       <rect x="1" y="1" width="98" height="53" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
       <line x1="50" y1="1" x2="50" y2="54" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
@@ -46,12 +47,21 @@ const PITCH: Record<
     viewBox: '0 0 100 55',
     bg: '#3d7a44',
     aspectRatio: 55 / 100,
-    markings: `
+    markings: markupLiteral`
       <rect x="0" y="0" width="100" height="55" fill="#3d7a44"/>
       <rect x="1" y="1" width="98" height="53" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
       <rect x="1" y="1" width="10" height="53" fill="rgba(255,255,255,0.06)"/>
       <rect x="89" y="1" width="10" height="53" fill="rgba(255,255,255,0.06)"/>
-      ${Array.from({ length: 10 }, (_, i) => `<line x1="${11 + i * 8}" y1="1" x2="${11 + i * 8}" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>`).join('')}
+      <line x1="11" y1="1" x2="11" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="19" y1="1" x2="19" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="27" y1="1" x2="27" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="35" y1="1" x2="35" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="43" y1="1" x2="43" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="51" y1="1" x2="51" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="59" y1="1" x2="59" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="67" y1="1" x2="67" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="75" y1="1" x2="75" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
+      <line x1="83" y1="1" x2="83" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="0.4"/>
       <line x1="50" y1="1" x2="50" y2="54" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
     `,
   },
@@ -59,7 +69,7 @@ const PITCH: Record<
     viewBox: '0 0 100 55',
     bg: '#6aaa55',
     aspectRatio: 55 / 100,
-    markings: `
+    markings: markupLiteral`
       <rect x="0" y="0" width="100" height="55" fill="#6aaa55"/>
       <rect x="5" y="5" width="90" height="45" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="0.7"/>
       <line x1="50" y1="5" x2="50" y2="50" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
@@ -73,7 +83,7 @@ const PITCH: Record<
     viewBox: '0 0 100 90',
     bg: '#5a8a3a',
     aspectRatio: 90 / 100,
-    markings: `
+    markings: markupLiteral`
       <rect x="0" y="0" width="100" height="90" fill="#5a8a3a"/>
       <path d="M50 85 L5 85 L5 40 Q50 5 95 40 L95 85 Z" fill="rgba(200,160,80,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
       <rect x="42" y="77" width="16" height="8" fill="rgba(200,160,80,0.5)" stroke="rgba(255,255,255,0.5)" stroke-width="0.4"/>
@@ -147,7 +157,7 @@ export function SportsPitch({
           aria-hidden="true"
         >
           {/* Pitch markings */}
-          <g dangerouslySetInnerHTML={{ __html: p.markings }} />
+          <g dangerouslySetInnerHTML={{ __html: trustedHtml(p.markings) }} />
 
           {/* Play arrows */}
           {plays?.map((play, i) => {

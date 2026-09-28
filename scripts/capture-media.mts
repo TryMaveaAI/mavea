@@ -13,7 +13,7 @@
 // Run the dev server first (`pnpm dev`), then `pnpm gen:media`.
 import { mkdirSync } from 'node:fs';
 import { chromium, type Locator, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 /** Laptop-shaped: what the product is art-directed for, and short enough that a three-up row of
  *  them stays readable rather than becoming six tall crops. */
@@ -45,7 +45,7 @@ interface BaseShot {
 /** Which key-free surface the shot comes from, and what it needs to get there. */
 type Shot = BaseShot &
   (
-    | { from: 'demo'; persona: string; view?: 'board' | 'study' | 'focus'; then?: string[] }
+    | { from: 'demo'; persona: string; view?: 'board' | 'study'; then?: string[] }
     | { from: 'tour'; chapter: string; then?: string[]; awaitWalk?: boolean }
     | { from: 'ripple'; section: string; then?: string[] }
     | { from: 'route'; hash: string; ready: string; click?: string[] }
@@ -57,8 +57,8 @@ const SHOTS: Shot[] = [
   // Pinned to the board: a replay re-asserts its own reading mode, and without the pin these three
   // tiles were all shots of the desk.
   { name: 'answer-ink', from: 'demo', persona: 'dev', view: 'board', settleMs: 20_000 },
-  // The desk, one object at a time. The reading modes are what an answer IS now — Study, Focus and
-  // Everything — and none of them had a tile; the board view this replaced is a per-answer takeover
+  // The desk, one object at a time. The reading modes are what an answer IS now — the board and the
+  // Study — and the desk had no tile; the board view this replaced is a per-answer takeover
   // that is never even remembered, and the causal web below already carries the spatial reading.
   {
     name: 'study-desk',
@@ -239,7 +239,7 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     await start.waitFor({ state: 'visible', timeout: 30_000 });
     await start.click();
     // Any answer card, not one inside the grid: the reading modes place their cards elsewhere, so
-    // waiting on the grid meant a shot of a Study or Focus replay timed out instead of firing.
+    // waiting on the grid meant a shot of a Study replay timed out instead of firing.
     await page.waitForSelector('.card', { timeout: 30_000 });
     await page.waitForTimeout(shot.settleMs);
     if (shot.then) {
@@ -335,19 +335,16 @@ async function main(): Promise<void> {
       });
       const page = await ctx.newPage();
       await page.addInitScript(
-        ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
+        ({ initialTheme, initialTemplate, legalKey, legalValue }) => {
           localStorage.setItem('mavea-theme', initialTheme);
           localStorage.setItem('mavea-template', initialTemplate);
-          localStorage.setItem(
-            legalKey,
-            JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-12T00:00:00.000Z' }),
-          );
+          localStorage.setItem(legalKey, legalValue);
         },
         {
           initialTheme: THEME,
           initialTemplate: TEMPLATE,
-          legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-          legalVersion: LEGAL_ACCEPTANCE_VERSION,
+          legalKey: LEGAL_SEED.key,
+          legalValue: LEGAL_SEED.value,
         },
       );
       await openSurface(page, baseUrl, shot);

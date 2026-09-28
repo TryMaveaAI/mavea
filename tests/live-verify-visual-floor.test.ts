@@ -4,11 +4,10 @@
 // but prose cards (insight/list) — no chart, comparison, timeline, or diagram — so there's
 // literally nothing to SEE. It slips past `low-variety` (which only fires at ≥8 blocks) and past
 // `too-sparse` (which only counts blocks), and reads as a broken/generic reply. checkConsistency
-// now flags `no-visual` (a HARD issue) on any NON-brief answer built entirely from prose staples,
-// routing it to the generateLive repair pass which re-asks for a fitting visual hero. Brief asks
+// now flags `no-visual` on any NON-brief answer built entirely from prose staples. Brief asks
 // are exempt: a couple of text cards is a complete answer to a quick factual question.
 import { validateLiveResponse } from '../src/engine/liveSchema';
-import { checkConsistency, hasHardIssue, HARD_ISSUE_CODES } from '../src/live/verify';
+import { checkConsistency } from '../src/live/verify';
 
 function build(blocks: object[]) {
   const resp = validateLiveResponse({
@@ -42,16 +41,11 @@ function codes(r: ReturnType<typeof build>, complexity?: 'brief' | 'lean' | 'ric
 }
 
 describe('verify — visual-presence floor', () => {
-  it('lists no-visual as a HARD issue code', () => {
-    expect(HARD_ISSUE_CODES.has('no-visual')).toBe(true);
-  });
-
   it('flags an all-prose non-brief answer (insight + list + list) as no-visual', () => {
     const r = build([insight('Headline'), list('Options'), list('Caveats')]);
     expect(r.blocks).toHaveLength(3); // fixtures survived validation
     const c = codes(r, 'rich');
     expect(c).toContain('no-visual');
-    expect(hasHardIssue(checkConsistency(r, 'rich'))).toBe(true);
   });
 
   it('does NOT flag when at least one visual is present (insight + list + kpi)', () => {
@@ -70,9 +64,9 @@ describe('verify — visual-presence floor', () => {
     expect(codes(r, 'lean')).toContain('no-visual');
   });
 
-  it('defaults to flagging (complexity defaults to rich) so the after-repair recheck agrees', () => {
+  it('defaults to flagging (complexity defaults to rich) ', () => {
     const r = build([insight('Headline'), list('Options'), list('More')]);
-    // No complexity arg — matches generateLive's post-repair checkConsistency(fixed2) call.
+    // No complexity arg — dropUndrawable calls it this way.
     expect(codes(r)).toContain('no-visual');
   });
 });

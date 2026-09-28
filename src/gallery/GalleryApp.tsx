@@ -530,7 +530,9 @@ export function GalleryApp() {
             </button>
           </div>
         </div>
-        {import.meta.env.DEV && (
+        {/* Developer tooling, and only meaningful with ?mountall=1 — windowed mounting otherwise
+            leaves most tiles out of the DOM for the sweep to see. */}
+        {import.meta.env.DEV && mountAll && (
           <div className="vlib-audits">
             <button
               className={`vlib-audit ${flags ? 'active' : ''}`}

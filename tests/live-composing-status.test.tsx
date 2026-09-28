@@ -15,6 +15,16 @@ describe('ComposingStatus', () => {
     expect(status).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('says a follow-up is adding to, or updating, the board on screen', () => {
+    const { rerender } = render(<ComposingStatus cue="extend" />);
+    expect(screen.getByRole('status')).toHaveTextContent(/adding to this board/i);
+    rerender(<ComposingStatus cue="revise" />);
+    expect(screen.getByRole('status')).toHaveTextContent(/updating this board/i);
+    // A backoff is still named over the cue: the request has not been sent.
+    rerender(<ComposingStatus cue="extend" activity="rate-limited" />);
+    expect(screen.getByRole('status')).toHaveTextContent(/rate-limited/i);
+  });
+
   it('explains overload recovery without calling it a rate limit', () => {
     render(<ComposingStatus activity="provider-busy" />);
     expect(screen.getByRole('status')).toHaveTextContent(/provider is busy/i);

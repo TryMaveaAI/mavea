@@ -7,16 +7,17 @@ import type { Block, ConversationSpec } from '../data/conversation';
 import {
   resolveMode,
   mergeForMode,
+  AUGMENT_CAP,
   topicCohesion,
-  SAME_SUBJECT_FLOOR,
   type Mode,
   type MergeDelta,
   type TurnSnapshot,
 } from './lifecycle';
+import { SAME_SUBJECT_FLOOR } from './topicTokens';
 import { remapTour } from './tourRemap';
 import { classifyRevision } from './revise/classifyRevision';
 import { createTurnFrameId, type TurnFrame } from './history';
-import type { LiveResult } from './generateLive';
+import type { AnswerFraming, LiveResult } from './generateLive';
 
 /** Everything a settled turn hands back to its surface. `frame.spec` is the merged canvas
  *  (what actually renders); `snap` is this turn's snapshot, which becomes the next turn's
@@ -57,13 +58,7 @@ export function settleTurn(
   // hint. Kept separate from the render mode below: a streamed turn must RENDER as a replace
   // (it already revealed a fresh canvas), and an overcrowded augment falls back to one.
   // Live and the demo baker both settle through here, so they make the identical decision.
-  const naturalMode = resolveMode(
-    prior,
-    snap,
-    result.continuity,
-    result.tier,
-    classifyRevision(displayText),
-  );
+  const naturalMode = naturalModeOf(prior, snap, result.continuity, result.tier);
   // The SUBJECT boundary the session rail chapters on. The canvas hint is not the subject: a
   // model may legitimately ask to REPLACE the canvas for a fresh take on the same thread
   // ("plan it" after an itinerary), or omit the hint entirely (smaller models often do) — and
@@ -113,4 +108,66 @@ export function settleTurn(
   // The delta of the merge that actually produced the canvas — on an overflow fallback that is
   // the SECOND merge, not the first, or the board would be told about edits it never rendered.
   return { frame, mode, spot, snap, delta: merge.delta };
+}
+
+/**
+ * Where a replayed frame opens its spotlight: the same answer `settleTurn` gave when it was live.
+ * An augment or refine keeps the board the reader has scrolled down, so opening on its first
+ * card lights something far above the view, and the walk then has to fly back down to the
+ * cards the turn actually added. Frames baked before `revision` existed carry no record of
+ * what was added, but a merge only ever appends, so the first new card sits just past the
+ * prior board.
+ */
+export function arrivalSpot(
+  frame: Pick<TurnFrame, 'mode' | 'spec' | 'revision'>,
+  priorCount: number,
+): string | null {
+  const blocks = frame.spec.blocks;
+  if (frame.mode === 'replace') return blocks.find((b) => b.id)?.id ?? null;
+  if (frame.revision) return frame.revision.addedIds[0] ?? null;
+  return blocks[priorCount]?.id ?? null;
+}
+
+/** The one call both the settle and the early board cue make, so the cue can never decide
+ *  differently from the canvas it announces. */
+function naturalModeOf(
+  prior: TurnSnapshot | null,
+  snap: TurnSnapshot,
+  continuity: Mode | undefined,
+  tier: LiveResult['tier'],
+): Mode {
+  return resolveMode(prior, snap, continuity, tier, classifyRevision(snap.question));
+}
+
+/** What a follow-up is about to do to the board on screen: add cards to it, or edit cards on it. */
+export type BoardCue = 'extend' | 'revise';
+
+/**
+ * Name what this turn will do to the board BEFORE its cards land — or return null when that is not
+ * yet certain, so the surface stays neutral rather than guess.
+ *
+ * The mode `settleTurn` will pick depends only on things the answer's framing already carries
+ * (its narration, title and continuity hint, which the model writes ahead of the blocks), plus one
+ * thing it does not: whether an augment grows past AUGMENT_CAP and falls back to a replace. That
+ * needs the final card count, so the cue is only named when NO answer this call can return could
+ * overflow — `framing.ceiling` is the most cards the turn can produce. A board too full for that
+ * guarantee stays neutral: "adding to this board" followed by a fresh board is the one outcome
+ * worse than saying nothing.
+ */
+export function boardCueFor(
+  prior: TurnSnapshot | null,
+  priorCount: number,
+  displayText: string,
+  framing: AnswerFraming,
+): BoardCue | null {
+  if (!prior || priorCount === 0) return null;
+  if (priorCount + framing.ceiling > AUGMENT_CAP) return null;
+  const snap: TurnSnapshot = {
+    question: displayText,
+    narration: framing.narration,
+    title: framing.title,
+    blockTypes: [],
+  };
+  const mode = naturalModeOf(prior, snap, framing.continuity, framing.tier);
+  return mode === 'augment' ? 'extend' : mode === 'refine' ? 'revise' : null;
 }

@@ -27,7 +27,7 @@ const FLOOR_VAR = (() => {
 const FLOOR = Number(new RegExp(`\\${FLOOR_VAR}:\\s*([\\d.]+)px`).exec(css)?.[1] ?? NaN);
 
 const CAPSULE_H = 110; // the composer alone, measured
-const NOTICE_H = 72; // the dismissible "Speech can become provider data" strip above it
+const NOTICE_H = 72; // the dismissible "Speech may be shared with providers" strip above it
 
 let observers: (() => void)[] = [];
 

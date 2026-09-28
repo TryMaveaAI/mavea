@@ -14,12 +14,13 @@
 // shows the canvas skeleton while they stream in, and caches them for every later
 // open. A section matching no live turn (the tour, demos, restored specs with no
 // drawer content) simply doesn't offer a drawer — and can never fire a model call.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../icons/icons';
 import type { Block } from '../../data/conversation';
 import type { DepthSection } from '../../live/depth/depthLens';
 import { deepenOffered } from '../../live/depth/deepenStore';
 import { CanvasSkeleton } from '../CanvasSkeleton';
+import { retileSection, useResponsiveGrid } from '../hooks/useResponsiveGrid';
 import './depth.css';
 
 interface Props {
@@ -63,7 +64,19 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
     };
   }, []);
 
-  const deeper = section.deeper.length > 0 ? section.deeper : (fetched ?? []);
+  // Tiled for the width THIS section has, not the board's. The flat pass packs blocks across
+  // section boundaries, so a section split back out can be left partial (col-4 + col-4 filling
+  // 8/12); re-tiling it on its own restores full, even rows. And it must be its own width: an
+  // ultrawide board sets sections two abreast, and spans chosen for the whole board then drew a
+  // col-3 card at ~190px inside a half. Where a section spans the board (every width below that)
+  // the two widths are the same number, so the layout is exactly the board's.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { displayBlocks: standard, budget } = useResponsiveGrid(section.standard, gridRef);
+  const tiledDeeper = useMemo(
+    () => retileSection(section.deeper, budget),
+    [section.deeper, budget],
+  );
+  const deeper = tiledDeeper.length > 0 ? tiledDeeper : (fetched ?? []);
   // The prompt asks the model to tag its quiz blocks `"facet":"check"` so they land in the
   // drawer's recall group — this is that group. Recall belongs AFTER the reading: a quiz above
   // the material it tests gives the answer away. Everything else keeps its authored order.
@@ -133,7 +146,9 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
           )}
         </div>
       )}
-      <div className="card-grid">{section.standard.map((b, i) => renderCard(b, i))}</div>
+      <div className="card-grid" ref={gridRef}>
+        {standard.map((b, i) => renderCard(b, i))}
+      </div>
       {hasDeeper && (
         <div
           className={'depth-drawer' + (isOpen ? ' is-open' : '')}
@@ -145,7 +160,7 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
               {pending && deeper.length === 0 ? (
                 <CanvasSkeleton blocks={DRAWER_SKELETON} />
               ) : (
-                reading.map((b, i) => renderCard(b, section.standard.length + i))
+                reading.map((b, i) => renderCard(b, standard.length + i))
               )}
             </div>
             {failure && deeper.length === 0 && !pending && (
@@ -160,9 +175,7 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
               <>
                 <h4 className="depth-recall-label">Check yourself</h4>
                 <div className="card-grid depth-drawer-grid">
-                  {recall.map((b, i) =>
-                    renderCard(b, section.standard.length + reading.length + i),
-                  )}
+                  {recall.map((b, i) => renderCard(b, standard.length + reading.length + i))}
                 </div>
               </>
             )}

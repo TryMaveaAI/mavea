@@ -5,18 +5,15 @@
 // GC, and comparing the browser's own heap/DOM/listener counters after the lazy chunks and module
 // caches have already been warmed. Growth after that baseline is the suspicious part.
 import { type CDPSession, type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
 import { launchChromium } from './launch-chromium.mts';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 
 /** Connected-feature surfaces sit behind the one-time legal acknowledgement, so a fresh context
  *  renders the gate instead of the route and every wait times out. Seed the acceptance before any
  *  page script runs — this probe measures a returning user's mount/unmount churn, not consent. */
 const SEED_LEGAL_ACCEPTANCE = `
   try {
-    localStorage.setItem(${JSON.stringify(LEGAL_ACCEPTANCE_STORAGE_KEY)}, JSON.stringify({
-      version: ${JSON.stringify(LEGAL_ACCEPTANCE_VERSION)},
-      acceptedAt: new Date(0).toISOString(),
-    }));
+    localStorage.setItem(${JSON.stringify(LEGAL_SEED.key)}, ${JSON.stringify(LEGAL_SEED.value)});
   } catch { /* no storage: the landing route still measures */ }
 `;
 
@@ -117,7 +114,7 @@ async function landing(page: Page, oldReady?: string): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/';
   });
-  await page.locator('.fl-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('.ob-page').waitFor({ state: 'visible', timeout: 15000 });
   if (oldReady) await page.locator(oldReady).first().waitFor({ state: 'detached', timeout: 15000 });
 }
 
@@ -175,7 +172,7 @@ async function main(): Promise<void> {
   await cdp.send('Performance.enable');
 
   await page.goto(`${baseUrl}/`, { waitUntil: 'commit' });
-  await page.locator('.fl-hero').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('.ob-page').waitFor({ state: 'visible', timeout: 15000 });
 
   // Warm every lazy module and its stable caches before taking the baseline.
   for (const route of ROUTES) {

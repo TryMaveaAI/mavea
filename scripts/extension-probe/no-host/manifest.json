@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "Probe C: no host permission",
+  "version": "1.0.0",
+  "description": "An extension with only its own storage: no host permission and no content script.",
+  "permissions": ["storage"],
+  "background": { "service_worker": "worker.js" }
+}

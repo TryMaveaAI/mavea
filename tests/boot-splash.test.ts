@@ -15,8 +15,8 @@ vi.mock('../src/flagship/FlagshipHost', async () => {
 vi.mock('../src/lib/perfProbe', () => ({ startPerfProbe: () => {} }));
 
 // The boot splash is the one piece of loading UI that must exist BEFORE any JavaScript runs:
-// index.html paints it from static markup + inline style (the CSP allows inline style, never an
-// inline script), and Root() removes it on its first commit. Half of that contract lives in a
+// index.html paints it from static markup + inline style (the CSP admits that one stylesheet by its
+// hash, never an inline script), and Root() removes it on its first commit. Half of that contract lives in a
 // file no bundler ever type-checks, so pin it by source-scan; the removal is real behavior, so
 // exercise it by actually booting the entry module into a seeded document.
 

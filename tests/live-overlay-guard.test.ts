@@ -22,6 +22,7 @@ const allClosed = {
   srsOpen: false,
   zoomLevel: null,
   mindViewOpen: false,
+  lensOpen: false,
 } as const;
 
 describe('anyOverlayOpen', () => {
@@ -43,6 +44,7 @@ describe('anyOverlayOpen', () => {
     'delegateOpen',
     'srsOpen',
     'mindViewOpen',
+    'lensOpen',
   ] as const;
   it.each(booleanKeys)('counts %s as an open overlay', (key) => {
     expect(anyOverlayOpen({ ...allClosed, [key]: true })).toBe(true);

@@ -2836,7 +2836,7 @@ table.tbl-cj-table {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--surface-deep);
+  color: var(--on-presence);
   background: var(--presence);
   box-shadow: 0 0 14px var(--glow-presence);
 }
@@ -2885,7 +2885,7 @@ table.tbl-cj-table {
   background: color-mix(in oklab, var(--presence) 10%, transparent);
 }
 .pt-plan.hot .pt-cta {
-  color: var(--surface-deep);
+  color: var(--on-presence);
   background: var(--presence);
   border-color: var(--presence);
 }

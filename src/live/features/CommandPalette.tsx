@@ -10,6 +10,7 @@ import { preloadIntentProps } from '../../lib/preloadableLazy';
 import { useFocusTrap } from '../useFocusTrap';
 import { FEATURE_GROUPS, featureHaystack, type Feature } from './registry';
 import './commandPalette.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 export interface PaletteItem {
   feature: Feature;
@@ -130,12 +131,12 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
 
   const activeId = flat[active]?.feature.id;
 
+  const backdrop = useBackdropDismiss(pinned ? undefined : onClose);
   return (
     <div
       className="cmdk-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !pinned) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close"

@@ -1,9 +1,14 @@
 // "Forget everything on this device" has to reach every store, and a browser missing one API
 // (or refusing one database) must cost that one step, not the rest of the sweep.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { forgetDevice, FORGOTTEN_DATABASES } from '../src/live/forgetDevice';
+import {
+  forgetDevice,
+  FORGOTTEN_DATABASES,
+  LEGACY_UNPREFIXED_KEYS,
+} from '../src/live/forgetDevice';
 import { getLiveConfigV2, setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { KEY_VAULT_DB_NAME } from '../src/live/keyVault';
+import { isVerified, sharedPaidCheck } from '../src/live/providers/readiness';
 import { RIPPLE_CACHE_DB_NAME } from '../src/live/ripple/cache';
 import { OBSERVATION_DB_NAME } from '../src/live/dashboards/observationStore';
 import { execFileSync } from 'node:child_process';
@@ -35,6 +40,8 @@ function seedStorage(): void {
   localStorage.setItem('mavea-ripple-gh-token', 'ciphertext');
   localStorage.setItem('mavea.ripple.tracked.v1', '[]');
   localStorage.setItem('maveaLegalAnchor', 'terms');
+  localStorage.setItem('ripple.seenWorkedExample', '1');
+  localStorage.setItem('ripple.hint.fastModel.dismissed', '1');
   localStorage.setItem('unrelated-app', 'keep me');
   sessionStorage.setItem('mavea-live-seed', 'a question');
   sessionStorage.setItem('other-session', 'keep me');
@@ -105,6 +112,44 @@ describe('forgetDevice', () => {
     }
   });
 
+  it('names every unprefixed key the app still reads, so the sweep can find it', () => {
+    // The sweep owns keys by their `mavea` prefix. A key read under any other name is one an
+    // older build wrote, and it outlives "Forget everything" unless it is named here.
+    const call = new RegExp(
+      String.raw`\b(?:safeLocal(?:Get|Set)|safeSession(?:Get|Set)|` +
+        String.raw`(?:local|session)Storage\.(?:getItem|setItem|removeItem))\(\s*` +
+        String.raw`(?:'([^']+)'|([A-Za-z_$][\w$]*)\s*[,)])`,
+      'g',
+    );
+    const constant = /\bconst\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*'([^']+)'/g;
+    const sources = execFileSync('git', ['ls-files', '--', 'src/*.ts', 'src/*.tsx'], {
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .map((file) => readFileSync(file, 'utf8'));
+    // Most stores name their key once as a constant, often in another module, so a call site
+    // that passes an identifier is resolved against its own file first, then every constant of
+    // that name. An identifier no constant defines is a helper's parameter; its callers are the
+    // call sites that name the key, and those are read here too.
+    const constants = new Map<string, Set<string>>();
+    for (const text of sources) {
+      for (const [, name, value] of text.matchAll(constant)) {
+        constants.set(name, (constants.get(name) ?? new Set()).add(value));
+      }
+    }
+    const unprefixed = new Set<string>();
+    for (const text of sources) {
+      const own = new Map([...text.matchAll(constant)].map(([, name, value]) => [name, value]));
+      for (const [, literal, name = ''] of text.matchAll(call)) {
+        const local = own.get(name);
+        const keys = literal ? [literal] : local ? [local] : [...(constants.get(name) ?? [])];
+        for (const key of keys) if (!key.startsWith('mavea')) unprefixed.add(key);
+      }
+    }
+    expect([...unprefixed].sort()).toEqual([...LEGACY_UNPREFIXED_KEYS].sort());
+  });
+
   it('clears every Mavéa key, every Mavéa database and cache, and leaves the rest alone', async () => {
     seedStorage();
     setLiveConfigV2({ keys: { gemini: 'sk-live-secret' }, rememberKey: true });
@@ -123,6 +168,27 @@ describe('forgetDevice', () => {
     expect(deleted).toEqual(['mavea-dashboards', 'mavea-key-vault', 'mavea-ripple']);
     expect(cacheStore.delete).toHaveBeenCalledTimes(1);
     expect(cacheStore.delete).toHaveBeenCalledWith('mavea-static-v3');
+  });
+
+  it('forgets which keys passed a readiness check, including one still in flight', async () => {
+    await sharedPaidCheck('passed', async () => ({ ok: true, model: true }));
+    let settle!: () => void;
+    const inFlight = sharedPaidCheck(
+      'pending',
+      () =>
+        new Promise((resolve) => {
+          settle = () => resolve({ ok: true, model: true });
+        }),
+    );
+    expect(isVerified('passed')).toBe(true);
+    vi.stubGlobal('indexedDB', fakeIndexedDb(succeedingDelete));
+
+    await forgetDevice();
+    settle();
+    await inFlight;
+
+    expect(isVerified('passed')).toBe(false);
+    expect(isVerified('pending')).toBe(false);
   });
 
   it('removes its own scratch files from the origin directory and nothing else', async () => {

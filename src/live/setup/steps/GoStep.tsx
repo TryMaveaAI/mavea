@@ -1,6 +1,7 @@
 // GoStep.tsx — step 4: the hub. A glanceable checklist of your setup (each row a shortcut back
-// into the step that owns it), the big "Start talking", and a quiet reset. On the right, starter
-// prompts. This is what a returning user lands on directly.
+// into the step that owns it), "Start talking" and a quiet reset beside it (the composer under the
+// hub is the way in). On the right, starter prompts. This is what a returning user lands on
+// directly.
 import { type ReactElement, type ReactNode } from 'react';
 import { hasModelConfigured, useLiveConfig } from '../../useLiveConfig';
 import { providerInfo } from '../../providers';
@@ -124,12 +125,7 @@ export function GoStep({
         </ul>
 
         {configured ? (
-          <>
-            <FeatureUseNotice kind="voice-data" from="live" className="go-voice-notice" />
-            <button type="button" className="go-start" onClick={onStartTalking}>
-              <Icon.mic /> Start talking
-            </button>
-          </>
+          <FeatureUseNotice kind="voice-data" from="live" className="go-voice-notice" />
         ) : (
           <button
             type="button"
@@ -141,7 +137,14 @@ export function GoStep({
           </button>
         )}
 
+        {/* The composer pinned under the hub is the way in — most readers type. Speaking is one
+            option beside it, so it sits with the quiet actions rather than as the hub's hero. */}
         <div className="go-ghosts">
+          {configured && (
+            <button type="button" className="ghost-btn go-talk" onClick={onStartTalking}>
+              <Icon.mic /> Start talking
+            </button>
+          )}
           <button type="button" className="ghost-btn" onClick={onStartOver}>
             Start over
           </button>

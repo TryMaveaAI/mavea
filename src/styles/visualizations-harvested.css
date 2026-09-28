@@ -321,32 +321,96 @@
 .kpi-card .kpi-grid {
   margin-block: auto;
 }
+/* Equal tiles whatever they hold, up to `--kpi-cols` of them. Holding the words whole is the
+   TYPE's job, below, but type only shrinks to a floor: a fourteen-character figure at that floor
+   is wider than a phone's three-up tile, and the card clips what the tile cannot hold. So a tile
+   is never narrower than the grid's longest figure at the value's floor, or its longest label
+   word at the label's (--kpi-need, from the runs KpiGrid states), and the grid drops a column
+   rather than go under it. The half pixel keeps float rounding from dropping one at exactly N. */
 .kpi-grid {
+  --kpi-gap: 15px;
+  --kpi-need: max(
+    calc(var(--kpi-val-run, 4) * 0.62 * var(--fs-sm)),
+    calc(var(--kpi-label-run, 8) * 0.8 * var(--fs-2xs))
+  );
   display: grid;
-  grid-template-columns: repeat(var(--kpi-cols, 2), 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      max(
+        min(100%, var(--kpi-need)),
+        calc((100% - (var(--kpi-cols, 2) - 1) * var(--kpi-gap)) / var(--kpi-cols, 2) - 0.5px)
+      ),
+      1fr
+    )
+  );
+  gap: var(--kpi-gap);
 }
-/* A long WORD value ("Pocket Wi-Fi") drops a size rather than wrapping mid-word under the
-   grid's column width — numbers keep the full size, names stay whole. */
+/* Each tile is the container its type is fitted to. The card's last-resort `word-break` split a
+   figure or a word wherever the tile ran out ("112,0" over "00", "ACTIVATI" over "ON" in a
+   phone's three-up row), so here words and figures never break inside: a label wraps between its
+   words, a figure stays on one line, and each shrinks until its longest run fits the tile — to a
+   floor, the way fitText treats an SVG label. KpiGrid states the runs' lengths
+   (--kpi-val-chars, --kpi-label-chars); the advances are a touch generous, as fitText's are. */
+.kpi {
+  min-width: 0;
+  container-type: inline-size;
+}
+.kpi-val,
+.kpi-label {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+/* A label word too long for even a one-column tile at the floor is the one case left: it breaks
+   there rather than run under the card's edge. `break-word` (not `anywhere`) leaves the word's
+   min-content whole, so this never fires while the tile could still hold it. */
+.kpi-label {
+  overflow-wrap: break-word;
+}
+/* A single-run figure ("112,000", "36%") is one line; a named value ("Pocket Wi-Fi") may wrap
+   between its words. */
+.kpi-val--whole {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term: the font below is sized so the run fits its tile */
+  white-space: nowrap;
+}
+/* A long WORD value drops a size rather than competing with the figures beside it. */
 .kpi-val--long {
-  font-size: var(--fs-lg);
+  --kpi-val-max: var(--fs-lg);
   line-height: 1.15;
 }
 
 .kpi-val {
-  font-size: var(--fs-xl);
+  font-size: clamp(
+    var(--fs-sm),
+    calc(100cqi / (var(--kpi-val-chars, 4) * 0.62)),
+    var(--kpi-val-max, var(--fs-xl))
+  );
   font-weight: 750;
   letter-spacing: -0.03em;
   color: var(--presence);
   line-height: 1;
 }
 .kpi-label {
-  font-size: var(--fs-xs);
+  font-size: clamp(
+    var(--fs-2xs),
+    calc(100cqi / (var(--kpi-label-chars, 8) * var(--kpi-label-adv, 0.8))),
+    var(--fs-xs)
+  );
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-top: 3px;
+}
+/* A tile this narrow (a phone's three-up row) cannot hold a tracked capital word at the floor —
+   "ACTIVATION" in a display serif is ~85px at 10px. Sentence case at plain tracking is a fifth
+   narrower, and a word held whole in lower case beats one split in capitals. */
+@container (width < 100px) {
+  .kpi-label {
+    --kpi-label-adv: 0.6;
+    text-transform: none;
+    letter-spacing: 0;
+  }
 }
 /* The tile's qualifier. Sentence case at a normal weight so it reads as a caption beneath the
    uppercase label rather than competing with it — 11px, on the legibility floor's right side. */
@@ -354,7 +418,7 @@
   font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 1.35;
-  color: color-mix(in oklab, var(--text-muted) 78%, transparent);
+  color: var(--text-muted);
   letter-spacing: 0;
   margin-top: 2px;
   text-wrap: balance;
@@ -438,6 +502,7 @@
 }
 .plan-row.st-done .plan-check {
   background: var(--insight);
+  color: var(--on-insight);
   border-color: var(--insight);
 }
 .plan-row.st-done .plan-t {

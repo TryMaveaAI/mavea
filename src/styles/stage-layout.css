@@ -136,12 +136,6 @@
 .greeting .accent {
   color: var(--presence-soft);
 }
-.subgreeting {
-  color: var(--text-secondary);
-  font-size: var(--fs-lg);
-  max-width: 46ch;
-  line-height: 1.5;
-}
 
 /* caption shown under presence */
 .caption {
@@ -202,33 +196,6 @@
   50% {
     opacity: 0.35;
   }
-}
-
-/* try-chips */
-.try-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  max-width: 720px;
-}
-.try-chip {
-  padding: 10px 16px;
-  border-radius: var(--r-full);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
-  white-space: nowrap;
-  background: var(--surface-glass);
-  border: 1px solid var(--line);
-  color: var(--text-secondary);
-  font-size: var(--fs-md);
-  font-weight: 450;
-  transition: all var(--m-fast) var(--ease-out);
-}
-.try-chip:hover {
-  color: var(--text-primary);
-  border-color: rgba(110, 140, 255, 0.35);
-  background: rgba(110, 140, 255, 0.08);
-  transform: translateY(-1px);
 }
 
 /* Live "Or try one" example prompts — a tidy 2×2 grid of equal cells. A grid
@@ -302,10 +269,10 @@
   background: var(--surface-elevated-2);
 }
 .entry-action.primary {
-  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep-held));
   border-color: transparent;
   box-shadow: 0 6px 18px -10px var(--glow-presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .entry-action.primary.is-active {
   outline: 2px solid var(--presence-soft);
@@ -328,8 +295,8 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--presence-deep);
-  background: var(--presence-soft);
+  color: var(--on-presence);
+  background: var(--presence-soft-held);
   border: 1px solid var(--presence-soft);
 }
 .live-badge .live-dot {
@@ -409,7 +376,7 @@
   padding: 0 14px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   border: none;
   font-weight: 600;
   font-size: var(--fs-sm);

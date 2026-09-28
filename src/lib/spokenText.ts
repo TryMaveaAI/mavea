@@ -36,6 +36,19 @@ const PLAIN = /\[\[([^[\]|]*)\]\]/g;
  *  a half-arrived annotation is never shown or spoken as literal brackets. */
 const DANGLING = /\[\[[^\]]*$/;
 
+/** [[shown|said] — opened with two brackets, closed with one. A finished annotation, not a streaming
+ *  one, so DANGLING never sees it: without this the reader gets the literal markup and its reading. */
+const HALF_CLOSED = /\[\[([^[\]|]*)\|((?:[^[\]]|\[[^[\]]*\])*)\](?!\])/g;
+/** [shown|said]] — the mirror slip. */
+const HALF_OPENED = /(?<!\[)\[([^[\]|]+)\|([^[\]|]+)\]\](?!\])/g;
+
+/** Rewrite an annotation with a mismatched bracket pair into the proper form, so every reader of
+ *  the markup (the display side, the voice, and the guard that vets the said side) sees one shape. */
+function closeHalfFormed(text: string): string {
+  if (!text.includes('|')) return text;
+  return text.replace(HALF_CLOSED, '[[$1|$2]]').replace(HALF_OPENED, '[[$1|$2]]');
+}
+
 /** True when the text carries at least one (possibly still-open) annotation. */
 export function hasAnnotation(text: string): boolean {
   return text.includes('[[');
@@ -142,7 +155,7 @@ function resolveToFixedPoint(
  *  their HTML has to survive the schema to reach the render-time sanitizer (see liveSchema) while
  *  the reader must still never see a literal `[[CPU|C-P-U]]`. */
 export function resolveAnnotations(text: string): string {
-  let out = resolveToFixedPoint(text, ANNOTATED, '$1');
+  let out = resolveToFixedPoint(closeHalfFormed(text), ANNOTATED, '$1');
   out = resolveToFixedPoint(out, ANNOTATED_SINGLE, '$1');
   return resolveToFixedPoint(out, PLAIN, '$1').replace(DANGLING, '').trimEnd();
 }
@@ -169,7 +182,7 @@ export function forDisplay(text: string): string {
  *  before it can be spoken; the shown side survives untouched, so display is unaffected either way
  *  (forDisplay keeps the same text with or without the guard). See lib/annotationGuard. */
 export function forSpeech(text: string): string {
-  let out = resolveToFixedPoint(guardAnnotations(text), ANNOTATED, saidSide);
+  let out = resolveToFixedPoint(guardAnnotations(closeHalfFormed(text)), ANNOTATED, saidSide);
   out = resolveToFixedPoint(out, ANNOTATED_SINGLE, saidSide);
   out = resolveToFixedPoint(out, PLAIN, '$1');
   return out.replace(DANGLING, '').trimEnd();

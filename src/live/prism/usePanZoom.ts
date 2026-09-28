@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
-interface Camera {
+export interface Camera {
   x: number;
   y: number;
   scale: number;
@@ -14,6 +14,31 @@ interface Camera {
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
+
+/** The least a FIT may shrink the map, derived rather than chosen: a card's claim is set in --fs-sm
+ *  (the base `.prism-claim-title` rule), whose floor is 11.5px, and 9px is the rendered legibility
+ *  floor the UI audit holds everything to. Fitting a nine-claim map into a short laptop's stage painted its cards at 3.6px — a picture
+ *  of a map nobody could read. Below this the camera stops fitting and the reader pans; their own
+ *  zoom (the wheel, the − button) still goes as far out as MIN_SCALE. */
+export const FIT_FLOOR = 9 / 11.5;
+
+/** The camera that frames a world box in a viewport with `pad` px to spare: never zoomed in past
+ *  `cap` (a tiny box must not balloon) and never out past FIT_FLOOR. When the floor holds, the box
+ *  no longer fits, so it is centred across and pinned to its TOP rather than its middle — the reader
+ *  starts where the map starts and pans down, instead of opening on a slice of its middle. */
+export function frameCamera(
+  view: { w: number; h: number },
+  box: { x: number; y: number; w: number; h: number },
+  pad: number,
+  cap: number,
+): Camera {
+  const fill = Math.min((view.w - pad) / box.w, (view.h - pad) / box.h);
+  const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cap, Math.max(FIT_FLOOR, fill)));
+  const x = view.w / 2 - (box.x + box.w / 2) * scale;
+  const tall = box.h * scale > view.h - pad;
+  const y = tall ? pad / 2 - box.y * scale : view.h / 2 - (box.y + box.h / 2) * scale;
+  return { x, y, scale };
+}
 
 export interface PanZoom {
   /** Attach to the world element. The camera transform is written to it directly rather than
@@ -102,18 +127,9 @@ export function usePanZoom(
         ? contentBox
         : { x: 0, y: 0, w: worldW, h: worldH };
     const pad = 64;
-    const w = el.clientWidth - pad;
-    const h = el.clientHeight - pad;
-    if (w <= 0 || h <= 0) return;
+    if (el.clientWidth - pad <= 0 || el.clientHeight - pad <= 0) return;
     // Cap the zoom-in so a tiny two-card map doesn't balloon; otherwise fill the available space.
-    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, 1.35, Math.min(w / box.w, h / box.h)));
-    const cx = box.x + box.w / 2;
-    const cy = box.y + box.h / 2;
-    setCamera({
-      x: el.clientWidth / 2 - cx * scale,
-      y: el.clientHeight / 2 - cy * scale,
-      scale,
-    });
+    setCamera(frameCamera({ w: el.clientWidth, h: el.clientHeight }, box, pad, 1.35));
   }, [viewportRef, worldW, worldH, contentBox, setCamera]);
 
   const frame = useCallback(
@@ -127,14 +143,7 @@ export function usePanZoom(
       intent.current = 'framed';
       lastFramed.current = { bbox, opts };
       const cap = opts?.maxScale ?? 1.4;
-      const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cap, Math.min(w / bbox.w, h / bbox.h)));
-      const cx = bbox.x + bbox.w / 2;
-      const cy = bbox.y + bbox.h / 2;
-      setCamera({
-        x: el.clientWidth / 2 - cx * scale,
-        y: el.clientHeight / 2 - cy * scale,
-        scale,
-      });
+      setCamera(frameCamera({ w: el.clientWidth, h: el.clientHeight }, bbox, pad, cap));
     },
     [viewportRef, setCamera],
   );

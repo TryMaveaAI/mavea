@@ -19,6 +19,7 @@ import { SLIDE_SKINS } from '../../slides/skins/registry';
 import type { SlideSkin } from '../../slides/skins/types';
 import type { PersonaId } from './personas';
 import { isHidden } from '../../lib/pageVisibility';
+import { useFocusTrap } from '../useFocusTrap';
 
 interface Props {
   spec: ConversationSpec | null;
@@ -174,8 +175,17 @@ function OverviewGrid({
 
 /** A simple, readable list of the whole keyboard map. */
 function HelpOverlay({ onClose }: { onClose: () => void }): ReactElement {
+  // The deck's own capture listener closes this on Escape, so the trap only holds focus.
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref);
   return (
-    <div className="preso-help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div
+      ref={ref}
+      className="preso-help"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Keyboard shortcuts"
+    >
       <button type="button" className="preso-help-close" onClick={onClose} aria-label="Close help">
         ×
       </button>

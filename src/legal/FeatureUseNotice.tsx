@@ -1,4 +1,4 @@
-import { useId, useState, type ReactElement } from 'react';
+import { useCallback, useId, useState, type ReactElement } from 'react';
 import { FEATURE_NOTICE_COPY, type FeatureNoticeKind } from './featureRiskAudit';
 import './feature-use-notice.css';
 
@@ -8,8 +8,8 @@ const DISMISSAL_STORAGE_PREFIX = 'mavea-feature-notice-dismissed-v1:';
  *  reappear every session for the life of the feature. Dismissing is an acknowledgment, so the
  *  notice goes away for good — the full text stays one click away on the legal page, which every
  *  surface links to. Warnings attached to an act the user is about to take (upload, export, share,
- *  storing a key) stay non-dismissible: each describes THAT act, so retiring one would silence the
- *  next one too. */
+ *  storing a key) can be closed only for the session: each describes THAT act, so retiring one for
+ *  good would silence the next one too. */
 const DISMISSIBLE_KINDS: ReadonlySet<FeatureNoticeKind> = new Set([
   'learning',
   'monitoring',
@@ -17,6 +17,12 @@ const DISMISSIBLE_KINDS: ReadonlySet<FeatureNoticeKind> = new Set([
   // Shown on every Live session that has speech available — a capability, not a pending action.
   'voice-data',
 ]);
+
+/** A standing notice leads with its title and one line, and opens in place: at a desktop width its
+ *  whole body ran 250+ characters to a line across the top of the surface it was guarding. The
+ *  full text stays in the DOM (and the accessibility tree) either way; only its paint is clamped.
+ *  A notice about an act the reader is about to take stays open — it describes THAT act. */
+const COLLAPSED_KINDS = DISMISSIBLE_KINDS;
 
 function storageKey(kind: Exclude<FeatureNoticeKind, 'global'>): string {
   return `${DISMISSAL_STORAGE_PREFIX}${kind}`;
@@ -57,17 +63,47 @@ export function FeatureUseNotice({
 }): ReactElement | null {
   const copy = FEATURE_NOTICE_COPY[kind];
   const [dismissed, setDismissed] = useState(() => readDismissed(kind));
+  const [open, setOpen] = useState(false);
+  // Whether the clamp (this kind's default, or a short window's) is actually hiding anything —
+  // a toggle that reveals nothing is a control that lies.
+  const [clipped, setClipped] = useState(false);
   const descriptionId = useId();
+  const measure = useCallback((p: HTMLParagraphElement | null) => {
+    if (!p) return;
+    const check = () => setClipped(p.scrollHeight > p.clientHeight + 1);
+    check();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(check);
+    ro.observe(p);
+    return () => ro.disconnect();
+  }, []);
 
   if (dismissed) return null;
 
   return (
-    <aside className={`feature-use-notice ${className}`.trim()} data-kind={kind} role="note">
+    <aside
+      className={`feature-use-notice ${className}`.trim()}
+      data-kind={kind}
+      data-collapsed={COLLAPSED_KINDS.has(kind) || undefined}
+      data-open={open || undefined}
+      role="note"
+    >
       <span className="feature-use-notice-dot" aria-hidden />
-      <p id={descriptionId}>
+      <p id={descriptionId} ref={measure}>
         <strong>{copy.title}.</strong> {copy.body}
       </p>
       <div className="feature-use-notice-actions">
+        {(open || clipped) && (
+          <button
+            type="button"
+            className="feature-use-notice-more"
+            aria-expanded={open}
+            aria-controls={descriptionId}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? 'Less' : 'More'}
+          </button>
+        )}
         <a href={`#/legal?from=${from}`}>Details</a>
         {
           <button

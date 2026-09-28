@@ -73,13 +73,30 @@ export function DemoOverlay({
   const attachBanner = useCallback((banner: HTMLDivElement | null) => {
     const app = banner?.closest<HTMLElement>('.mavea-app');
     if (!banner || !app) return;
-    const apply = (): void =>
-      app.style.setProperty('--demo-banner-h', `${Math.round(banner.offsetHeight) + 8}px`);
+    // A phone on its side has no height to spare, so there the banner rides IN the bar's row
+    // (demo.css) and claims nothing below it. Layout offsets, not client rects: the banner's
+    // entrance is a transform, and a rect read mid-entrance would be off by its travel.
+    const bar = app.querySelector<HTMLElement>('.topbar');
+    const apply = (): void => {
+      // Hidden, the banner has no box and measures as nothing — which it is only while a modal
+      // covers the replay (data-covered). The board behind a modal must not move, so a hidden
+      // banner keeps the claim it last made, and gives the same room back when it returns.
+      if (banner.getClientRects().length === 0) return;
+      const inBar = !!bar && banner.offsetTop + banner.offsetHeight <= bar.offsetHeight;
+      app.style.setProperty(
+        '--demo-banner-h',
+        inBar ? '0px' : `${Math.round(banner.offsetHeight) + 8}px`,
+      );
+    };
     apply();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
     observer?.observe(banner);
+    // Moving into the bar changes where the banner sits, not its size, so the observer alone
+    // would miss a rotation.
+    window.addEventListener('resize', apply);
     return () => {
       observer?.disconnect();
+      window.removeEventListener('resize', apply);
       app.style.removeProperty('--demo-banner-h');
     };
   }, []);

@@ -289,11 +289,11 @@
   border-radius: 50%;
   font-size: var(--fs-md);
   font-weight: 700;
-  color: var(--surface-deep);
+  color: var(--on-presence);
   background: linear-gradient(
     135deg,
     var(--presence),
-    color-mix(in oklab, var(--presence) 55%, var(--insight))
+    color-mix(in oklab, var(--presence) 55%, var(--insight-held))
   );
 }
 .ripple-hot-ask-who {

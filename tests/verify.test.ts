@@ -1,9 +1,8 @@
-import { autoFix, checkConsistency, dropUndrawable, hasHardIssue } from '../src/live/verify';
+import { autoFix, checkConsistency, dropUndrawable } from '../src/live/verify';
 import type { LiveResponse } from '../src/engine/liveSchema';
 
-// Locks the accuracy guardrail — the cheap checks that decide whether a turn needs
-// a self-correction pass. If these mis-fire, we either repair good answers (slow)
-// or pass bad ones (inaccurate).
+// Locks the accuracy guardrail — the cheap, local checks every turn runs. If these
+// mis-fire, autoFix and dropUndrawable either rewrite good answers or pass bad ones.
 function resp(blocks: LiveResponse['blocks']): LiveResponse {
   return { title: 't', sub: '', narration: '', blocks };
 }
@@ -241,10 +240,6 @@ describe('specialization floor — the "same ten components every time" collapse
     ]);
     expect(checkConsistency(r).map((i) => i.code)).not.toContain('low-variety');
   });
-
-  it('treats low-variety as a hard issue (worth one repair call)', () => {
-    expect(hasHardIssue([{ code: 'low-variety', detail: 'collapsed to staples' }])).toBe(true);
-  });
 });
 
 describe('autoFix — deterministic, zero-call repair (saves model calls)', () => {
@@ -344,7 +339,7 @@ describe('autoFix — deterministic, zero-call repair (saves model calls)', () =
     expect(autoFix(r).blocks.length).toBe(1); // lone insight left alone
   });
 
-  it('does NOT mask a 1-point chart — that stays a hard issue for the model', () => {
+  it('does NOT mask a 1-point chart — it stays flagged', () => {
     const r = resp([
       {
         type: 'chart',
@@ -358,12 +353,7 @@ describe('autoFix — deterministic, zero-call repair (saves model calls)', () =
       },
     ]);
     const issues = checkConsistency(autoFix(r));
-    expect(hasHardIssue(issues)).toBe(true); // → the one case worth a repair call
-  });
-
-  it('no-variety alone is NOT a hard issue (not worth a model call)', () => {
-    const issues = [{ code: 'no-variety', detail: 'all the same' }];
-    expect(hasHardIssue(issues)).toBe(false);
+    expect(issues.some((i) => i.code === 'chart-too-short')).toBe(true);
   });
 });
 
@@ -391,10 +381,6 @@ describe('fabricated action claims', () => {
     expect(checkConsistency(r).map((i) => i.code)).not.toContain('fabricated-action-claim');
     r.narration = "I'll send it once you confirm.";
     expect(checkConsistency(r).map((i) => i.code)).not.toContain('fabricated-action-claim');
-  });
-
-  it('is not a hard issue — autoFix rewrites it for free instead of a repair round-trip', () => {
-    expect(hasHardIssue([{ code: 'fabricated-action-claim', detail: '' }])).toBe(false);
   });
 
   it('autoFix rewrites the false completion claim into an honest offer', () => {

@@ -1399,6 +1399,7 @@
   transform: translateY(0) scale(0.98);
 }
 .fp-submit.done {
+  color: var(--on-insight);
   background: var(--insight);
   box-shadow: 0 2px 10px color-mix(in oklab, var(--insight) 30%, transparent);
 }
@@ -1422,4 +1423,21 @@
 .fp-success-ic {
   width: 14px;
   height: 14px;
+}
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself, and a hover shades the fill away from that ink. Where relative colour is
+   unsupported the ink and hover above stand, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .cal-day.sel,
+  .fp-submit,
+  .tg-chip-x:hover,
+  .tp-mer-btn.on {
+    color: color(from var(--pk-c) srgb-linear var(--ink-on-fill));
+  }
+  .cal-day.sel:hover,
+  .fp-submit:not(.done):hover {
+    background: color(from var(--pk-c) srgb-linear var(--lift-for-ink));
+    filter: none;
+  }
 }

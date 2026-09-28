@@ -21,13 +21,6 @@ export function LockScreenSlide({ slots }: SlideProps<'concept'>) {
         gap: 'calc(var(--ru) * 7)',
       }}
     >
-      <style>{`
-        @keyframes lockscreen-notify {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 5)) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-
       {/* The big clock face — the tag becomes the "time", with a dash standing in when it's absent. */}
       <div
         style={{

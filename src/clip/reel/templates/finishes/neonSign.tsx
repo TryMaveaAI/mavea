@@ -21,21 +21,6 @@ export function NeonSignSlide({ slots }: SlideProps<'concept'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`
-        @keyframes neonsign-flicker {
-          0%, 100% { opacity: 1; }
-          43% { opacity: 1; }
-          45% { opacity: 0.62; }
-          47% { opacity: 1; }
-          61% { opacity: 1; }
-          62% { opacity: 0.78; }
-          63% { opacity: 1; }
-        }
-        @keyframes neonsign-on {
-          from { opacity: 0; transform: scale(0.94); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
       {tag && (
         <span
           style={{

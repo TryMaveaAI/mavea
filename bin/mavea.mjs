@@ -61,15 +61,42 @@ export const LOCAL_SECURITY_HEADERS = Object.freeze({
   'X-Frame-Options': 'DENY',
 });
 
-// The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice
-// mode needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
+const LOCAL_SECURITY_HEADER_NAMES = new Set(
+  Object.keys(LOCAL_SECURITY_HEADERS).map((name) => name.toLowerCase()),
+);
+
+// The page's Content-Security-Policy is written once, in index.html's <meta> tag, so it travels
+// with dist/ to any static host. Reading it back out of the build being served means this header
+// cannot disagree with the page it protects, and it adds the one directive a meta tag is not
+// allowed to carry. A dist/ without the tag still gets the frame protection on its own.
+const META_POLICY = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i;
+
+export function appPolicyFor(distDir) {
+  let html = '';
+  try {
+    html = readFileSync(join(distDir, 'index.html'), 'utf8');
+  } catch {
+    return LOCAL_SECURITY_HEADERS['Content-Security-Policy'];
+  }
+  const meta = META_POLICY.exec(html)?.[1].replace(/\s+/g, ' ').trim();
+  return meta
+    ? `${meta}; ${LOCAL_SECURITY_HEADERS['Content-Security-Policy']}`
+    : LOCAL_SECURITY_HEADERS['Content-Security-Policy'];
+}
+
+// Only the bundled PDFs Pdfreader frames are exempt from DENY — the same path public/_headers
+// scopes its exception to. Any other .pdf a build happens to contain stays unframeable.
+const FRAMEABLE_PDF_PREFIX = '/demo-assets/pdf/';
+
+// The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice mode
+// needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
 // weight even if they never touch voice (most turns are text). Both are ALSO already public,
 // permanently-versioned npm package assets, so instead of shipping them in dist/ (see the `files`
 // exclusion in package.json), they're fetched ONCE from jsDelivr's npm CDN the first time voice
 // actually starts, cached to a persistent per-OS cache dir, and served from there on every request
 // after — a normal user who never uses voice never downloads either file. Pinned to the exact
-// version this package was built against (see devDependencies) so a version bump here and a
-// version bump there can never silently drift apart.
+// version this package was built against (see devDependencies) so a version bump here and a version
+// bump there can never silently drift apart.
 const LAZY_ASSETS = {
   'ort-wasm-simd-threaded.wasm': {
     url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort-wasm-simd-threaded.wasm',
@@ -86,8 +113,8 @@ const LAZY_ASSETS = {
 };
 
 // Standard per-OS cache location (the same convention env-paths/XDG use) — persists across
-// `npx @mavea/mavea` invocations (npx's own package cache does NOT persist these, since they're fetched
-// at runtime, not installed), so a user only pays the download once, ever, per machine.
+// `npx @mavea/mavea` invocations (npx's own package cache does NOT persist these, since they're
+// fetched at runtime, not installed), so a user only pays the download once, ever, per machine.
 function lazyCacheDir() {
   const plat = platform();
   if (plat === 'darwin') return join(homedir(), 'Library', 'Caches', 'mavea');
@@ -292,11 +319,11 @@ export const PROXIES = [
     timeoutMs: 120_000,
   },
   // The concurrency caps are sized from what the app itself fans out, not from a guess at abuse:
-  // a turn at the Thorough dial runs the answer, two chip prefetches and the desk's notes at once,
-  // and the forecast autopsy searches up to ten claims in parallel. A cap below that answers 503
-  // to the page's own work, and the adapters wait a second per retry — measured as the whole
-  // reason a local install felt slower than the dev server. Two tabs' worth is the ceiling; the
-  // browser's own per-host connection limit holds one page near six regardless.
+  // a settled answer can be followed at once by the desk's notes and a world or node breakdown the
+  // reader opens, and the forecast autopsy searches up to ten claims in parallel. A cap below that
+  // answers 503 to the page's own work, and the adapters wait a second per retry — measured as the
+  // whole reason a local install felt slower than the dev server. Two tabs' worth is the ceiling;
+  // the browser's own per-host connection limit holds one page near six regardless.
   {
     prefix: '/llm/anthropic',
     target: 'https://api.anthropic.com',
@@ -329,7 +356,6 @@ export const PROXIES = [
     requestsPerMinute: 60,
     maxConcurrent: 8,
     timeoutMs: 120_000,
-    injectGeminiKey: true,
   },
   {
     prefix: '/llm/grok',
@@ -541,9 +567,6 @@ function requestHeadersForUpstream(req, route, targetUrl, body) {
   }
   headers.host = targetUrl.host;
   if (body.byteLength > 0) headers['content-length'] = String(body.byteLength);
-  if (route.injectGeminiKey && process.env.GEMINI_API_KEY && !headers['x-goog-api-key']) {
-    headers['x-goog-api-key'] = process.env.GEMINI_API_KEY;
-  }
   if (route.injectGatewaySecret && process.env.GATEWAY_SECRET) {
     headers['x-gateway-secret'] = process.env.GATEWAY_SECRET;
   }
@@ -556,6 +579,9 @@ function responseHeadersForClient(proxyHeaders) {
     const lower = name.toLowerCase();
     if (
       HOP_BY_HOP_HEADERS.has(lower) ||
+      // A provider's own framing or CSP headers describe ITS pages. Copied after ours under a
+      // lower-cased name, they would silently replace the local policy on this origin.
+      LOCAL_SECURITY_HEADER_NAMES.has(lower) ||
       lower === 'set-cookie' ||
       lower.startsWith('access-control-') ||
       lower === 'content-length'
@@ -757,7 +783,7 @@ export function resetCompressionCacheForTest() {
   compressedCacheBytes = 0;
 }
 
-function serveStatic(req, res, requestTarget, distDir = DIST) {
+function serveStatic(req, res, requestTarget, distDir = DIST, appPolicy = appPolicyFor(distDir)) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     sendProblem(res, 405, 'Method not allowed.', { Allow: 'GET, HEAD' });
     return;
@@ -785,13 +811,16 @@ function serveStatic(req, res, requestTarget, distDir = DIST) {
     return;
   }
   const isHtml = extname(filePath) === '.html';
-  const isPdf = extname(filePath).toLowerCase() === '.pdf';
+  const isFrameablePdf =
+    extname(filePath).toLowerCase() === '.pdf' &&
+    safePath.split(sep).join('/').startsWith(FRAMEABLE_PDF_PREFIX);
   const isHashedAsset = safePath.startsWith('/assets/');
   const encoding = negotiateEncoding(req.headers['accept-encoding'], extname(filePath));
   const cached = encoding ? cachedCompression(filePath, encoding, isHashedAsset) : null;
   res.writeHead(200, {
     ...LOCAL_SECURITY_HEADERS,
-    ...(isPdf
+    'Content-Security-Policy': appPolicy,
+    ...(isFrameablePdf
       ? {
           // The app shell remains DENY/'none'. Only a PDF response may be framed, and then only
           // by this same origin for Pdfreader's sandboxed iframe.
@@ -838,6 +867,7 @@ function serveStatic(req, res, requestTarget, distDir = DIST) {
 export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Date.now } = {}) {
   const limiter = createRateLimiter(now);
   const activeByRoute = new Map();
+  const appPolicy = appPolicyFor(distDir);
   const server = createServer((req, res) => {
     let requestTarget;
     try {
@@ -852,7 +882,7 @@ export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Dat
     );
     if (!route) {
       try {
-        serveStatic(req, res, requestTarget, distDir);
+        serveStatic(req, res, requestTarget, distDir, appPolicy);
       } catch {
         sendProblem(res, 500, 'The local server could not complete the request.');
       }
@@ -1074,7 +1104,8 @@ export function voiceThreadEnv(threads, env = process.env) {
   return next;
 }
 
-/** Synthesize one clause and return how many seconds of audio came back per second of wall clock. */
+/** Synthesize one clause and return how many seconds of audio came back per second of wall
+ *  clock. */
 async function measureVoiceRealtime(kokoroUrl) {
   try {
     const started = performance.now();
@@ -1121,7 +1152,8 @@ async function settleVoiceThreads(kokoroUrl, ranAt) {
   rememberVoiceThreads(want, Number(perThread.toFixed(3)));
   if (want === ranAt) return;
   console.log(
-    `  Voice: this machine only needs ${want} core${want === 1 ? '' : 's'} — applied from the next run.`,
+    `  Voice: this machine only needs ${want} core${want === 1 ? '' : 's'}` +
+      ' — applied from the next run.',
   );
 }
 
@@ -1175,7 +1207,8 @@ function askYesNo(question, defaultYes = true) {
 
 const VOICE_INTRO =
   '\n◌ Configured speech — Kokoro reads replies and whisper.cpp transcribes your mic.\n' +
-  '  The defaults are loopback-only. A custom WHISPER_URL receives microphone audio at that endpoint.\n';
+  '  The defaults are loopback-only. ' +
+  'A custom WHISPER_URL receives microphone audio at that endpoint.\n';
 
 /** A speech service's health endpoint. Probed instead of the root because the roots differ —
  *  Kokoro's answers 404 (FastAPI routes /health, not /) — so a root probe reported a running
@@ -1231,7 +1264,9 @@ async function maybeOfferVoice() {
   }
   if (runtime.label === 'Docker') {
     const licensed = await askYesNo(
-      '  Docker Desktop has separate terms and may require a paid subscription. Have you read them and confirmed your Docker installation is licensed for this use? [y/N] ',
+      '  Docker Desktop has separate terms and may require a paid subscription. ' +
+        'Have you read them and confirmed your Docker installation is licensed for this use? ' +
+        '[y/N] ',
       false,
     );
     if (!licensed) {
@@ -1331,9 +1366,9 @@ Podman is the recommended free/open-source container runtime. Docker Desktop has
 }
 
 // npm/npx installs `bin` entries as a symlink (node_modules/.bin/mavea -> ../@mavea/mavea/bin/
-// mavea.mjs). Node's ESM loader resolves that symlink when setting import.meta.url to this
-// module's REAL path, but path.resolve(process.argv[1]) does not dereference symlinks — it stays
-// the symlink's own path, so the two never matched and `npx @mavea/mavea` silently ran main() 0 times.
+// mavea.mjs). Node's ESM loader resolves that symlink when setting import.meta.url to this module's
+// REAL path, but path.resolve(process.argv[1]) does not dereference symlinks — it stays the
+// symlink's own path, so the two never matched and `npx @mavea/mavea` silently ran main() 0 times.
 // realpathSync resolves both sides to the same real filesystem path before comparing.
 function isMainModule() {
   if (!process.argv[1]) return false;

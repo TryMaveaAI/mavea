@@ -16,7 +16,6 @@
 
 .mavea-app.presenting .topbar,
 .mavea-app.presenting .side-rail,
-.mavea-app.presenting .scrubber,
 .mavea-app.presenting .dock-modes,
 .mavea-app.presenting .dock-hint {
   display: none;
@@ -56,100 +55,9 @@
   display: none;
 }
 
-/* ── Focus stage → full stage ────────────────────────────────────────────────────────────── */
-.mavea-app.presenting .focus-stage {
-  grid-template-columns: 1fr;
-  gap: 0;
-  width: 100%;
-  max-width: none;
-  margin-inline: 0;
-}
-.mavea-app.presenting .focus-main {
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-}
-.mavea-app.presenting .focus-hero {
-  justify-content: center;
-  align-items: center;
-  min-height: 0;
-  width: 100%;
-}
-
-/* ── Slide surface — the frame the block lives inside ────────────────────────────────────── */
-/* A proper slide: centered, 16:10-ish, elevated over the stage, less rounded than a card.
-   Font size is nudged up so content designed for small cards reads at stage scale. */
-.mavea-app.presenting .focus-hero-card.focus-in,
-.mavea-app.presenting .focus-hero-card.focus-out {
-  width: min(92vw, 1480px);
-  max-width: none;
-  min-height: min(80dvh, 828px);
-  margin-inline: auto;
-  display: grid;
-  place-items: center;
-  background: var(--surface-elevated);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow:
-    0 40px 110px -28px rgba(0, 0, 0, 0.38),
-    0 8px 24px -12px rgba(0, 0, 0, 0.18);
-  padding: clamp(32px, 4.5vw, 80px);
-  font-size: 1.05em;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Accent strip — a thin line of persona color at the top of every slide. */
-.mavea-app.presenting .focus-hero-card.focus-in::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--presence);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-/* The outgoing card overlays the incoming one during the crossfade. */
-.mavea-app.presenting .focus-hero-card.focus-out {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-}
-
 /* Slide is for showing, not editing. */
 .mavea-app.presenting .block-actions {
   display: none;
-}
-
-/* The block sits directly on the slide surface — strip the card's own chrome so the
-   slide is the one surface, but keep internal layout intact. */
-.mavea-app.presenting .focus-hero-card .card {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-/* Elevate the card-eyebrow to a proper slide-label — more room, more presence. */
-.mavea-app.presenting .focus-hero-card .card-eyebrow {
-  font-size: var(--fs-sm);
-  letter-spacing: 0.14em;
-  padding-bottom: 12px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--line-soft);
-  opacity: 0.9;
-}
-
-/* Caption stays clean below the slide frame. */
-.mavea-app.presenting .focus-caption {
-  width: min(92vw, 1480px);
-  margin-inline: auto;
-  text-align: center;
-  color: color-mix(in oklab, var(--present-stage) 30%, var(--text-muted));
-  font-size: clamp(14px, 1vw, 18px);
 }
 
 /* ── Mavéa: a quiet presence in the corner during a deck ─────────────────────────────────── */
@@ -325,86 +233,6 @@
   grid-column: 2;
 }
 
-/* ── Side arrow click zones — primary mouse affordance ──────────────────────────────────── */
-/* Full-height flanks on either side of the slide. Invisible at rest; a large chevron
-   appears on hover. Disabled at the first/last slide so the cursor stays default. */
-.present-arrow {
-  position: fixed;
-  top: 0;
-  bottom: calc(var(--dock-h, 72px) + 80px);
-  width: clamp(64px, 9vw, 140px);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 52;
-  color: white;
-  opacity: 0;
-  transition: opacity 180ms ease;
-  padding: 0;
-}
-.present-arrow-prev {
-  left: 0;
-}
-.present-arrow-next {
-  right: 0;
-}
-
-.present-arrow:disabled {
-  cursor: default;
-  pointer-events: none;
-}
-.present-arrow:not(:disabled):hover {
-  opacity: 1;
-}
-/* Gradient hint so the chevron has contrast over any persona background */
-.present-arrow-prev:not(:disabled):hover {
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent);
-}
-.present-arrow-next:not(:disabled):hover {
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.18), transparent);
-}
-.present-arrow svg {
-  width: 40px;
-  height: 40px;
-  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
-  flex: none;
-}
-
-/* ── Slide counter — minimal centered pill at the bottom ─────────────────────────────────── */
-/* Belongs to FocusStage's filmstrip-present feature, so it rides just above its own arrows (52)
-   and stays under the .preso-deck overlay (150-162). At 155 it landed INSIDE that band and drew a
-   canvas-card count over a real slide — three counters on a projected screen, one of them wrong. */
-.present-nav {
-  position: fixed;
-  bottom: calc(var(--dock-h, 72px) + 14px);
-  left: 50%;
-  translate: -50% 0;
-  z-index: 53;
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 14px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--line);
-  border-radius: var(--r-full);
-  backdrop-filter: var(--glass-blur-soft);
-  opacity: 0.35;
-  transition: opacity 200ms ease;
-}
-.present-nav:hover {
-  opacity: 1;
-}
-
-.present-nav-count {
-  font: 600 var(--fs-sm)/1 var(--font-data, var(--font));
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
-  white-space: nowrap;
-}
-
 /* ── Room-question tag on the session rail ───────────────────────────────────────────────── */
 .sess-room {
   flex: none;
@@ -418,10 +246,7 @@
 /* ─────────────────────────────────────────────────────────────────────────────────────────
    PresentationDeck — the real slide deck (cover / agenda / one visual per slide / closing).
    Sits BELOW the present chrome (style picker + exit pill are z-index 160+) so those stay
-   clickable above it. The whole overlay (50-62, now 150-162) sits above .present-arrow (52,
-   FocusStage's unrelated filmstrip-present feature) — a conversation's canvas can have its own
-   present-mode active behind this overlay, and without this margin its fixed-position arrows
-   would poke through and steal clicks meant for this modal.
+   clickable above it.
    ───────────────────────────────────────────────────────────────────────────────────────── */
 .preso-deck {
   position: fixed;

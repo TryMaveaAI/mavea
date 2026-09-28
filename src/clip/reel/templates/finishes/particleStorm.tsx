@@ -41,12 +41,6 @@ export function ParticleStormSlide({ slots }: SlideProps<'stat'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`
-        @keyframes storm-breathe { 0%,100% { transform: scale(0.82); opacity: 0.78; } 50% { transform: scale(1.12); opacity: 1; } }
-        @keyframes storm-swirl { to { transform: rotate(360deg); } }
-        @keyframes storm-twinkle { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
-      `}</style>
-
       {/* The swarm + value share one square so the particles ring the number. Sized in --ru for
           both axes (matching the ring math above, which works in one unitless percentage space) —
           on a tall, narrow board --ru runs proportionally wider than --rw, so cap it to the rw-based

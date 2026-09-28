@@ -16,6 +16,7 @@ import type {
   CourseCapstone,
   CourseLesson,
   LessonDetail,
+  LessonOutcome,
   QuizQuestion,
   ShipCourse as CourseModel,
   ShipModel,
@@ -42,6 +43,7 @@ import { cachedImport } from '../../lib/cachedImport';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { SecretInput } from '../../lib/SecretInput';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 // Every key Mavéa writes carries the `mavea` prefix so "Forget everything on this device" can find
 // it by name; the unprefixed spellings are still read so nobody sees the worked example twice.
@@ -183,10 +185,6 @@ const ALTITUDES: { id: Altitude; label: string; description: string }[] = [
     description: 'The crux, tradeoffs, and system-level risk',
   },
 ];
-
-/** Providers capable of a deep read. With nothing connected, Ripple falls back to Gemini for
- *  the analysis — the floor still serves every visitor. */
-const CAPABLE_PROVIDERS = new Set(['anthropic', 'openai', 'gemini', 'grok', 'openrouter']);
 
 export interface RippleOverlayProps {
   /** The grounded picture of consequence to render (a worked example today, a real diff/repo later). */
@@ -527,10 +525,10 @@ export function RippleOverlay({
   // Ripple's analysis runs on the connected model or not at all. With nothing connected it carries
   // no model id, so modelCanGenerate refuses and the reader is asked to connect one — Ripple never
   // reads a repo through a model they did not choose.
-  const analysisCfg = useMemo<ModelConfig>(() => {
-    if (cfg && CAPABLE_PROVIDERS.has(cfg.provider)) return cfg;
-    return { provider: cfg?.provider ?? 'gemini', model: '', apiKey: '' };
-  }, [cfg]);
+  const analysisCfg = useMemo<ModelConfig>(
+    () => cfg ?? { provider: 'gemini', model: '', apiKey: '' },
+    [cfg],
+  );
   const canGenerate = modelCanGenerate(analysisCfg);
 
   // Size the work to the model WITHOUT ever changing it (token caps, course count, code-context gate,
@@ -724,7 +722,7 @@ export function RippleOverlay({
           // reader should choose to spend).
           const okey = rippleCacheKey(
             `courses|${repo}|${refRef.current ?? ''}|${focus ?? ''}`,
-            analysisCfg.model,
+            analysisCfg,
           );
           const cached = force ? null : await cacheGet<CachedOutline>(okey);
           // This run's OWN AbortController is the staleness guard — see ensureOrientation.
@@ -795,23 +793,24 @@ export function RippleOverlay({
   );
 
   // Load ONE lesson's deep, in-depth body on demand (reading its real code), cached so reopening the
-  // same lesson never re-spends tokens. `force` rebuilds it fresh. Returns null if it can't be built.
+  // same lesson never re-spends tokens. `force` rebuilds it fresh. A failure says why, and is never
+  // cached: the next press is a real attempt.
   const loadLessonDetail = useCallback(
     async (
       course: CourseModel,
       lesson: CourseLesson,
       force = false,
       altitude?: Altitude,
-    ): Promise<LessonDetail | null> => {
+    ): Promise<LessonOutcome> => {
       const repo = repoRef.current;
-      if (!repo) return null;
+      if (!repo) return { failed: 'unavailable' };
       // These file reads cost no model call, so always gather fresh rather than trust a possibly-
       // stale `ref` — the content hash addresses the cache key, so a lesson whose real files changed
       // misses cleanly and regenerates ONLY ITSELF, never the branch name standing in for identity.
       const { codeContext, contentHash } = await gatherLessonCode(lesson, refRef.current, repo);
       const lkey = rippleCacheKey(
         `lesson|${repo}|${course.title}|${lesson.title}|${altitude ?? 'working'}|${contentHash}`,
-        analysisCfg.model,
+        analysisCfg,
       );
       if (!force) {
         const cached = await cacheGet<LessonDetail>(lkey);
@@ -819,19 +818,19 @@ export function RippleOverlay({
           // Feeds the ask rail's corpus — a lesson already read (cache hit or fresh) becomes free
           // context the moment a question reaches for it, instead of the rail re-deriving it.
           lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), cached);
-          return cached;
+          return { detail: cached };
         }
       }
-      const detail = await enrichLesson(course, lesson, codeContext, analysisCfg, {
+      const outcome = await enrichLesson(course, lesson, codeContext, analysisCfg, {
         maxTokens: plan.lessonMaxTokens,
         thinkingLevel: plan.thinkingLevel,
         altitude,
-      }).catch(() => null);
-      if (detail) {
-        void cachePut(lkey, detail);
-        lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), detail);
+      }).catch((): LessonOutcome => ({ failed: 'request' }));
+      if ('detail' in outcome) {
+        void cachePut(lkey, outcome.detail);
+        lessonDetailsRef.current.set(lessonKey(course.title, lesson.title), outcome.detail);
       }
-      return detail;
+      return outcome;
     },
     [analysisCfg, plan],
   );
@@ -848,7 +847,7 @@ export function RippleOverlay({
       if (!repo) return undefined;
       const ckey = rippleCacheKey(
         `closing|${repo}|${course.title}|${refRef.current ?? ''}`,
-        analysisCfg.model,
+        analysisCfg,
       );
       if (!force) {
         const cached = await cacheGet<{ quiz?: QuizQuestion[]; capstone?: CourseCapstone }>(ckey);
@@ -1274,8 +1273,7 @@ export function RippleOverlay({
   // at window rather than on the dialog node).
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef);
-  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim.
-  const downOnScrim = useRef(false);
+  const backdrop = useBackdropDismiss(onClose);
 
   // The intake sits INSIDE the panel, so the panel's trap alone left its input 36 tab stops behind
   // the rail, the map and the verdict chips — every one of them covered by the intake's own scrim.
@@ -1383,15 +1381,9 @@ export function RippleOverlay({
     <div
       className="ripple-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      // Close only on a click that BEGAN and ENDED on the backdrop. Selecting a diff line or a file
-      // path and releasing past the panel's edge fires the click on the common ancestor — the scrim
-      // — and closing here discards the whole analysis, including the model spend behind it.
-      onPointerDown={(e) => {
-        downOnScrim.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
+      // A stray close here discards the whole analysis, including the model spend behind it.
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close Ripple"
@@ -1410,6 +1402,8 @@ export function RippleOverlay({
       <section
         className="ripple-panel"
         role="dialog"
+        // Focus is trapped in here and the scrim covers the app, so say so to assistive tech too.
+        aria-modal="true"
         aria-label="Ripple"
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}

@@ -158,39 +158,16 @@ export function syncTourUrl(chapterId: string, solo = false): void {
   }
 }
 
-// ── "See it live" handoff for Ripple ─────────────────────────────────────────
-// Ripple was cut from the walkthrough to keep it fast, so its flagship vignette can't deep-link a
-// tour chapter (doing so silently dropped visitors on chapter 1). Instead its "See it live" opens
-// Ripple's OWN live overlay on the next #/live mount — an honest preview that actually shows Ripple,
-// seeded with its demo ship. Same one-shot sessionStorage handoff as tour mode.
-const RIPPLE_KEY = 'mavea-open-ripple';
+// ── Opening Ripple from a link ────────────────────────────────────────────────
+// `#/live?ripple=1` opens Ripple's own live overlay, seeded with its demo ship — an honest preview
+// that actually shows Ripple, and the route `pnpm audit:surfaces` uses to reach it.
 
-/** Ask the next #/live mount to open Ripple's live overlay (its SEED_SHIP demo). Call right before
- *  navigating to #/live. */
-export function stashOpenRipple(): void {
-  try {
-    sessionStorage.setItem(RIPPLE_KEY, '1');
-  } catch {
-    /* storage unavailable — Ripple just won't auto-open; harmless */
-  }
-}
-
-/** Pure check (safe in render — see peekTourMode). Pair with clearOpenRipple to consume. */
+/** Pure check (safe in render — see peekTourMode). */
 export function peekOpenRipple(): boolean {
   try {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (/[?&]ripple=1(?:&|$)/.test(hash)) return true;
-    return !!sessionStorage.getItem(RIPPLE_KEY);
+    return /[?&]ripple=1(?:&|$)/.test(hash);
   } catch {
     return false;
-  }
-}
-
-/** Consume the one-shot Ripple-open flag. Call once, from an effect after mount. */
-export function clearOpenRipple(): void {
-  try {
-    sessionStorage.removeItem(RIPPLE_KEY);
-  } catch {
-    /* storage unavailable */
   }
 }

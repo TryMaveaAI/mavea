@@ -27,6 +27,7 @@ import { preloadIntentProps } from '../lib/preloadableLazy';
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
 import type { VideoStudioMode } from './conversation/types';
 import './share-modal.css';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 /** The narration synthesizer, fetched on the gesture that asks for sound.
  *
@@ -389,6 +390,7 @@ export function ShareModal({
     }
   }, [cleanupExport, failExport, onShared, shown]);
 
+  const backdrop = useBackdropDismiss(busy ? undefined : onClose);
   if (!scriptProp && !frames?.length) return null;
 
   // Remix re-rolls the look of a director-cut reel; a prebuilt script has nothing to re-roll. It
@@ -403,7 +405,8 @@ export function ShareModal({
     <div
       className="shm-scrim"
       role="presentation"
-      onClick={busy ? undefined : (e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
     >
       <div
         ref={dialogRef}

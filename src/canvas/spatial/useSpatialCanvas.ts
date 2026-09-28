@@ -68,6 +68,8 @@ export interface SpatialCanvasOptions {
    *  over the canvas rather than sitting beside it (the mindshape action bar). Content is fitted
    *  and centred in what's left above it, so the band stays free at every zoom. */
   insetBottom?: number;
+  /** Where a fit puts content the clamp's floor leaves taller than the viewport (fitToContent). */
+  tall?: 'center' | 'top';
 }
 
 /** The camera and what kind of move produced it, held together so the two can never disagree. */
@@ -90,6 +92,7 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
   const clampMax = opts.clamp?.max ?? DEFAULT_CLAMP.max;
   const margin = opts.margin ?? 0;
   const insetBottom = opts.insetBottom ?? 0;
+  const tall = opts.tall ?? 'center';
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [view, setView] = useState<CameraView>({ cam: { x: 0, y: 0, scale: 1 }, flying: false });
@@ -127,11 +130,11 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
       const vp = measureViewport();
       if (!vp) return;
       commit(
-        fitToContent(content, vp, margin, { min: clampMin, max: clampMax }),
+        fitToContent(content, vp, margin, { min: clampMin, max: clampMax }, tall),
         fitOpts?.fly ?? true,
       );
     },
-    [measureViewport, margin, clampMin, clampMax, commit],
+    [measureViewport, margin, clampMin, clampMax, tall, commit],
   );
 
   const setCamera = useCallback((cam: Camera) => commit(cam, true), [commit]);
@@ -185,7 +188,7 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
         setViewport((prev) => (prev && prev.w === vp.w && prev.h === vp.h ? prev : vp));
         const content = lastContent.current;
         if (!content) return;
-        commit(fitToContent(content, vp, margin, { min: clampMin, max: clampMax }), true);
+        commit(fitToContent(content, vp, margin, { min: clampMin, max: clampMax }, tall), true);
       });
     });
     ro.observe(el);
@@ -193,7 +196,7 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [measureViewport, margin, clampMin, clampMax, commit]);
+  }, [measureViewport, margin, clampMin, clampMax, tall, commit]);
 
   const transform = useMemo(() => cameraTransform(view.cam), [view.cam]);
 

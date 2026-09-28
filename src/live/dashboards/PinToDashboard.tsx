@@ -23,6 +23,7 @@ import { pinBlockToDashboard, type PinTarget } from './pin';
 import { useFocusTrap } from '../useFocusTrap';
 import type { DataCadenceMode } from './types';
 import './dash-pin.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 const CADENCE_OPTS: { v: DataCadenceMode; label: string }[] = [
   { v: '15min', label: '15M' },
@@ -125,12 +126,12 @@ export function PinToDashboard({
   // never fill.
   const ready = useMemo(() => searchReadiness(getLiveConfigV2()), []);
 
+  const backdrop = useBackdropDismiss(onClose);
   return (
     <div
       className="pin-scrim"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
       role="button"
       tabIndex={0}
       aria-label="Close"

@@ -16,14 +16,8 @@
   --ink-cool: #3566c9;
 }
 
-.live-voice .card-grid > div,
-.live-voice .focus-hero-card.focus-in {
-  /* The ink layer anchors to its card wrapper (grid cell or the ACTIVE focus hero). Scope this to
-     `.focus-in` only: it ties `.focus-hero-card.focus-out { position: absolute }` (same 0,2,0
-     specificity, defined earlier in focus.css) and, winning by cascade order, would force the
-     outgoing swap overlay back in-flow — the flex `.focus-hero` then splits the two cards 50/50,
-     so each new slide flashes at half width for the length of the crossfade. The outgoing card
-     never carries ink, so it has no need to be a positioning context. */
+.live-voice .card-grid > div {
+  /* The ink layer anchors to its card wrapper, the grid cell. */
   position: relative;
 }
 .ink-layer {
@@ -195,6 +189,19 @@
   font-family: inherit;
   opacity: 0;
   animation: ink-note-in 0.35s ease-out var(--ink-delay, 0ms) forwards;
+}
+/* The dot takes the mark's colour, so its number takes an ink derived from that colour. White
+   where relative colour is unsupported. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ink-step-num {
+    fill: color(from var(--ink-gesture, var(--warning)) srgb-linear var(--ink-on-fill));
+  }
+  .ink-step-num[data-color='key'] {
+    fill: color(from var(--ink-key) srgb-linear var(--ink-on-fill));
+  }
+  .ink-step-num[data-color='cool'] {
+    fill: color(from var(--ink-cool) srgb-linear var(--ink-on-fill));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

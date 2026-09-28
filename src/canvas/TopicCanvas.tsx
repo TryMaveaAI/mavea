@@ -6,17 +6,19 @@
 // card still mounts (and staggers) together.
 import '../styles/canvas-runtime.css';
 import '../live/print/print.css';
-import { extendedRender } from './blocks/loader';
-import { useBlockFamilies } from './blocks/useBlockFamilies';
+import { useBlockFamilies, useExtendedRender } from './blocks/useBlockFamilies';
 // Shared visual foundations used across families (axis/legend primitives, empty states,
 // entrance motion, exploration controls) — they ride the canvas, not any one family chunk.
 import './lib/axis.css';
 import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
-import { FitBox } from './layout/FitBox';
+import { FitBox, type FitFacts } from './layout/FitBox';
+import { diagramLabelPx, type DiagramFloors } from './layout/diagramFloor';
+import { observeResize } from './layout/sharedResize';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import { useFocusTrap } from '../live/useFocusTrap';
 import { FIT_TYPES } from './layout/fitPolicy';
-import { useBloomMode } from './reveal/useBloomMode';
 import { CanvasTakeover } from './focus/CanvasView';
 import { boardCapable } from './focus/canvasGate';
 import type { StudyAside } from './study/types';
@@ -57,8 +59,18 @@ import { ScreenMap } from './ScreenMap';
 import { BuildProgress } from './BuildProgress';
 import { PreviewFrame } from './PreviewFrame';
 import { Icon, type IconKey } from '../icons/icons';
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useResponsiveGrid, retileSection } from './hooks/useResponsiveGrid';
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useResponsiveGrid } from './hooks/useResponsiveGrid';
 import { useAccessibleScrollRegions } from './hooks/useAccessibleScrollRegions';
 import { useTruncatedTextDisclosures } from './hooks/useTruncatedTextDisclosures';
 import './layout/hscroll.css';
@@ -68,7 +80,7 @@ import { BlockBoundary } from './BlockBoundary';
 import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
 import { LensStrip } from './lens/LensStrip';
-import { skeletonCell } from './CanvasSkeleton';
+import { skeletonCard, skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
 import { SectionGroup } from './depth/SectionGroup';
@@ -78,7 +90,6 @@ import { ActionProposal, type ActionProposalProps } from './ActionProposal';
 import { blockLabel } from './blockLabel';
 import { BlankFillContext, type BlankFillState } from './lib';
 import { useCardDrag } from './dnd/useCardDrag';
-import { FocusStage } from './focus/FocusStage';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
 import { StudyStage } from './study/StudyStage';
 import { deskObjects } from './study/scene';
@@ -97,6 +108,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   MouseEvent as ReactMouseEvent,
 } from 'react';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 // A replay extra is rare and opt-in; keeping its story composer out of the canvas's static graph
 // avoids making every answer, course lesson, and Gallery tile download the reel runtime up front.
@@ -104,18 +116,33 @@ const ReplayCard = lazy(() =>
   import('./ReplayCard').then((module) => ({ default: module.ReplayCard })),
 );
 
-// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls. Below 1 as well
-// as above: the fit stops at the legibility floor, so a tall card on a short laptop window had
-// no way to come into view whole — past the floor it is the reader's own hand that trades type
-// size for the whole picture.
-const ZOOM_MIN = 0.55;
-const ZOOM_MAX = 1.75;
+// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls. Zooming out stops
+// where the card's smallest type would paint under 9px (the fit reports that scale), and never
+// under ZOOM_MIN whatever the card holds; in, it stops at 2.5x, past which a reader is panning a
+// fragment rather than reading a card.
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.15;
-// The Lens opens a card at its OWN size: the point is to see it alone and undistracted, not
-// bigger. Magnification is a control on the stage for when the reader wants it — and starting
-// above 1 also pushed the body wider than the sheet, which clipped the card's right edge and
-// carried the toolbar's close button off with it.
-const ZOOM_DEFAULT = 1;
+/** The Lens opens a card FITTED to its stage (`'fit'`), the way a viewer opens a picture: a short
+ *  card is grown toward a reading size, a tall one is fitted down to the room, and neither ever
+ *  runs wider than the sheet. At its board size a one-row stat card floated in a sheet five
+ *  times its height, which is not looking closer. A number is the reader's own magnification,
+ *  stepped from wherever the fit left the card. The readout toggles between the fit and actual
+ *  size, on the keys a design tool uses for the same two views: Shift+0 is actual size, Shift+1
+ *  the fit. ⌘0 and ⌘9 belong to the browser (its own zoom reset, its last tab), so taking them
+ *  over a page is taking them from the reader. */
+type LensZoom = 'fit' | number;
+/** The body size the fit grows a card toward, in rendered px. The board's body type is ~14–16px
+ *  on a laptop, so this is a visible step closer without a paragraph ballooning; FitBox caps the
+ *  growth at 1.5x and never past the room. */
+const LENS_READING_PX = 20;
+/** …and past a 1920px window, where the sheet grows with the type scale and the board's body step
+ *  is ~16px. */
+const LENS_WIDE_READING_PX = 24;
+/** The sheet width from which Mavéa's notes sit BESIDE the card rather than under it. Mirrors
+ *  the `@container lens` query in wow-polish.css (a test holds the two together): under it a
+ *  column of notes would leave the card too narrow to be worth the look. */
+export const LENS_BESIDE_PX = 880;
 
 // The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
 // gesture rides the cell, not the card, because the cell is what carries `.spotlit`/`.dimmed`.
@@ -185,6 +212,8 @@ function BlockViewImpl({
   onUnrenderable,
 }: BlockViewProps): ReactNode {
   const common = { delay: b.delay };
+  // Read before any early return: a hook, and the cell's own subscription to its family's chunk.
+  const ext = useExtendedRender(b.type);
   // A composite is a model-arranged sub-grid of other blocks. Render it here (where the
   // full render path is in scope) so every region goes through the SAME vetted renderer.
   // A nesting cap stops a pathological self-nesting payload from recursing without bound.
@@ -277,11 +306,11 @@ function BlockViewImpl({
     return <ActionProposal {...p} {...common} />;
   }
   // Extended library (595 components, 24 families) — looked up through the per-family
-  // loader (null while that family's chunk is in flight; useBlockFamilies holds the grid
-  // back until every needed family has settled, so this is never null mid-render).
+  // loader. A family still in flight shows a placeholder card, which this cell swaps for the
+  // real one when the chunk lands.
   // Cast through unknown so this compiles whether the extended union is empty (never) or full.
   const bx = b as unknown as { type: string; props: unknown; delay?: number; id?: string };
-  const ext = extendedRender(bx.type);
+  if (ext === 'pending') return skeletonCard(0);
   if (ext) {
     const rendered = ext(bx.props, {
       delay: bx.delay,
@@ -327,26 +356,25 @@ interface Props {
   studyStreaming?: boolean;
   /** Live's stable per-answer identity. Standalone consumers fall back to a content digest. */
   studyAnswerEpoch?: number;
-  /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
-   *  remembered preference). Absent → the classic full grid, exactly as before — clips and
+  /** When set, the canvas offers its view doors (Guide me, View as canvas) and renders the view
+   *  the surface names. Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
   viewMode?: ViewMode;
   onViewMode?: (mode: ViewMode) => void;
-  /** Focus mode: tapping a filmstrip card asks the surface to narrate that block aloud. */
+  /** Study: tapping a card asks the surface to narrate that block aloud. */
   onNarrate?: (b: Block) => void;
-  /** Focus mode: the id of the block Mavéa is currently narrating, so the stage can show a quiet
+  /** Study: the id of the block Mavéa is currently narrating, so the stage can show a quiet
    *  "describing this" indicator on it. */
   narratingId?: string | null;
-  /** Live-only: output is muted. In Focus mode the stage reads calmly (no "Speaking" cue). */
+  /** Live-only: output is muted. The desk then reads calmly (no "Speaking" cue). */
   muted?: boolean;
   onToggleMute?: () => void;
   /** Live-only: reserve the margin-note gutter beside the grid (padding-right on `.card-grid`,
    *  where MarginNoteRail portals its notes). Reserved as padding so the responsive grid's
    *  content-box measurement re-budgets the card tiling on its own. Absent → classic grid. */
   noteGutter?: boolean;
-  /** Live-only: the muted walk's written asides so far, in walk order — the Focus stage shows
-   *  them as its clickable trail column ("Mavéa's notes"); the grid renders them via the
-   *  annotation layer's rail instead. Absent/empty → no column. */
+  /** Live-only: the muted walk's written asides so far, in walk order — the desk shows them
+   *  beside its cards; the grid renders them via the annotation layer's rail instead. */
   walkNotes?: readonly { spot: string; text: string }[];
   /** Study only: the line the voice is on, whether it is audible, the answer's lead, and
    *  whether the per-answer intro plays — see StudyStage's props. */
@@ -363,15 +391,15 @@ interface Props {
   onAddToFlashcard?: (b: Block) => void;
   /** Ids captured to the flashcard deck this session, so the chip reads "Added". */
   flashedIds?: ReadonlySet<string>;
-  /** Optional node rendered at the trailing edge of the canvas header, next to the
-   *  Focus/Everything toggle. Used by Live to inject the persistent pen toggle. */
+  /** Optional node rendered at the trailing edge of the canvas header, next to Guide
+   *  me. Used by Live to inject the persistent pen toggle. */
   headerSlot?: ReactNode;
   /** Optional node rendered beside "View as canvas", at the very end of the header's action row.
    *  For controls that are that button's PEER — another way of looking at this same answer — so
    *  they read as a set rather than as one control stranded at the far end of the row. */
   viewSlot?: ReactNode;
   /** Optional node rendered between the canvas header and the card grid. Used by Live to
-   *  place the voice scrubber below the Pen/Focus/Everything controls. */
+   *  place the voice scrubber below the Pen and the view doors. */
   belowHeaderSlot?: ReactNode;
   /** Live-only: enables the Lens — clicking a card opens it on its own stage. Called with the
    *  block when the stage opens and with null when it closes, so the surface can prepare that
@@ -384,8 +412,6 @@ interface Props {
   /** Live-only: this turn declared it corrects an earlier answer. Rendered as an honest
    *  was → now line, because a correction the reader cannot see is a silent rewrite. */
   corrects?: { what: string; was: string; now: string } | null;
-  /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
-  presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
    *  commits). Provided via context so a BlankSlot nested inside any block reaches it. Absent in
    *  the Demo → holes fall back to local state and no card-drag affordance renders. */
@@ -426,7 +452,6 @@ export function TopicCanvas({
   onLens,
   revision,
   corrects,
-  presenting,
   blankFill,
 }: Props) {
   // The "Open my CRM/tracker" action launches the real built app full-screen.
@@ -437,13 +462,115 @@ export function TopicCanvas({
   // Reading mode: expand every "Go deeper" drawer at once (find-in-page + screen reader access).
   // Offered only when the current answer has section-tagged blocks.
   const [readingMode, setReadingMode] = useState(false);
-  // Zoom: the "magnify" pill on a card's action cluster opens that ONE block full-screen, re-using
-  // the same renderBlock path so the zoomed view is pixel-identical to the card, just larger.
+  // The Lens: a card's "Look closer" pill (or a click on the card) opens that ONE block on a
+  // stage, re-using the same renderBlock path so the view is pixel-identical to the card.
   const [zoomedBlock, setZoomedBlock] = useState<Block | null>(null);
   // How far the zoomed sheet's content is magnified, adjustable via the sheet's +/- controls.
   // Uses the CSS `zoom` property (not `transform: scale`) so the enlarged content participates in
   // layout — the sheet's scroll area grows to match, instead of clipping the painted overflow.
-  const [zoomLevel, setZoomLevel] = useState(ZOOM_DEFAULT);
+  const [zoomLevel, setZoomLevel] = useState<LensZoom>('fit');
+  // The scale the fit settled on, reported by the stage's FitBox: the readout states it, and a
+  // magnification starts from it rather than jumping back to the card's board size.
+  const [fitScale, setFitScale] = useState(1);
+  // What the fit learned beyond its scale: where the card's smallest type reaches the floor
+  // (the zoom-out stops there), and whether the card still runs past the stage at that scale.
+  const [lensFit, setLensFit] = useState<FitFacts>({ legibleMin: 0, spills: false });
+  const onLensFit = useCallback((k: number, facts: FitFacts) => {
+    setFitScale(k);
+    setLensFit(facts);
+  }, []);
+  // The size the board already shows this card at. The Lens is for looking closer, so a fit
+  // never takes the card below it; a card taller than the stage at that size scrolls instead.
+  const [boardScale, setBoardScale] = useState(1);
+  // What the card's diagrams' smallest labels painted at on the board. A diagram draws its labels
+  // at whatever width its box gives it, and the stage is often narrower than the board's card
+  // (the notes sit beside it), so a scale alone cannot keep the promise above for them.
+  const [boardDiagramPx, setBoardDiagramPx] = useState<DiagramFloors>(() => new Map());
+  // A narrow sheet stacks the notes under the card in the one scroll. When the card already runs
+  // past the stage, four notes under it are a long way down, so they start folded to one line;
+  // the reader's own choice (null until they make one) outranks that, until the next card.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [lensNarrow, setLensNarrow] = useState(false);
+  const [notesOpen, setNotesOpen] = useState<boolean | null>(null);
+  const lensOpen = zoomedBlock !== null;
+  useLayoutEffect(() => {
+    const sheet = sheetRef.current;
+    if (!lensOpen || !sheet) return;
+    const read = () => setLensNarrow(sheet.clientWidth > 0 && sheet.clientWidth < LENS_BESIDE_PX);
+    read();
+    return observeResize(sheet, read);
+  }, [lensOpen]);
+  // The Lens is modal. While it is open the board behind it takes no focus, clicks or reading
+  // cursor. Declared before the trap on purpose: effects clean up in order, so on close the board
+  // is live again before the trap hands focus back to a card on it.
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const scrim = scrimRef.current;
+    if (!lensOpen || !scrim?.parentElement) return;
+    // Only what this effect set is undone: a sibling already inert stays that way.
+    const quieted = Array.from(scrim.parentElement.children).filter(
+      (el) => el !== scrim && !el.hasAttribute('inert'),
+    );
+    for (const el of quieted) el.setAttribute('inert', '');
+    return () => {
+      for (const el of quieted) el.removeAttribute('inert');
+    };
+  }, [lensOpen]);
+  // Where the reader was when the Lens opened, and the card it last showed. A reader who opened it
+  // from the board with the keyboard goes back to the card they stepped to, not the one they
+  // started on; one who opened it any other way goes back to whatever held focus before.
+  const lensOpener = useRef<HTMLElement | null>(null);
+  const lensLastId = useRef<string | undefined>(undefined);
+  useFocusTrap(scrimRef, {
+    active: lensOpen,
+    initialFocus: closeRef,
+    onEscape: () => setZoomedBlock(null),
+    returnTo: () => {
+      const opener = lensOpener.current;
+      if (!opener?.isConnected || !opener.closest('[data-spot-id]')) return null;
+      const cell = boardCellOf(lensLastId.current);
+      if (!cell) return null;
+      return cell.contains(opener) ? opener : cell.querySelector<HTMLElement>('.block-lens');
+    },
+  });
+  const fitted = zoomLevel === 'fit';
+  // Honest in both modes: fitted, the stage's one FitBox is the whole scale (any FitBox inside
+  // the block stands down under it); magnified, the fit holds at 1 and `zoom` is the whole scale.
+  const shownZoom = fitted ? fitScale : zoomLevel;
+  // A fit that landed on 100% is already actual size. Offering "100%" there would only swap the
+  // notes' layout for a magnified one at the same scale.
+  const atActual = fitted && Math.round(fitScale * 100) === 100;
+  // Never under the floor, and never above 1 either: a card whose own type is already under 9px
+  // can still be seen at its own size, which is what the board shows.
+  const zoomFloor = Math.max(ZOOM_MIN, Math.min(1, lensFit.legibleMin));
+  // The fit scale a magnification lays the card out against: the fit's own when a step leaves
+  // the fit (so the picture carries on from it), 1 at actual size (the card's own layout).
+  const [layoutFit, setLayoutFit] = useState(1);
+  const zoomBy = (d: number): void => {
+    if (fitted) setLayoutFit(fitScale);
+    const from = fitted ? fitScale : zoomLevel;
+    setZoomLevel(Math.min(ZOOM_MAX, Math.max(zoomFloor, +(from + d).toFixed(2))));
+  };
+  const actualSize = (): void => {
+    setLayoutFit(1);
+    setZoomLevel(1);
+  };
+  // What a press on the readout does: actual size from a fit, the fit from a magnification, and
+  // nothing from a fit that is already actual size.
+  const readoutOffer = atActual
+    ? null
+    : fitted
+      ? { label: 'Actual size', keys: 'Shift+0', short: '100%', run: actualSize }
+      : {
+          label: 'Fit to the stage',
+          keys: 'Shift+1',
+          short: 'Fit',
+          run: () => setZoomLevel('fit'),
+        };
+  // Past a 1920px window the Lens sheet grows with the type scale, so the reading size the fit
+  // grows a card toward grows with it.
+  const lensGrows = useMediaQuery('(width > 1920px)');
   useEffect(() => {
     if (!zoomedBlock) return;
     const onKey = (e: KeyboardEvent) => {
@@ -462,6 +589,29 @@ export function TopicCanvas({
       ) {
         return;
       }
+      // Shift+0 actual size, Shift+1 the fit. Matched on the physical key, not the character:
+      // Shift+0 types ")" on a US keyboard and "0" on AZERTY, and both are the same key. Any other
+      // modifier held means the chord is someone else's.
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.code === 'Digit0' || e.code === 'Digit1') {
+          e.preventDefault();
+          if (e.code === 'Digit0') {
+            if (!atActual) actualSize();
+          } else setZoomLevel('fit');
+          return;
+        }
+      }
+      // A focused pan region inside the card (a diagram held at its legible width, a wide table)
+      // scrolls on the arrows; stepping the card there takes the pan away. Keyed to the region
+      // role every pan carries: a truncated button overflows its box too, and does not pan.
+      if (
+        t instanceof HTMLElement &&
+        t.matches('[role="region"]') &&
+        t.closest('.card') &&
+        t.scrollWidth > t.clientWidth
+      ) {
+        return;
+      }
       if (e.key === 'ArrowRight') stepLens(1);
       else if (e.key === 'ArrowLeft') stepLens(-1);
     };
@@ -473,14 +623,16 @@ export function TopicCanvas({
   const lensedIdRef = useRef<string | null>(null);
   useEffect(() => {
     const id = zoomedBlock?.id ?? null;
-    if (lensedIdRef.current === id) return;
+    // The surface withdraws `onLens` while a turn streams, and the sheet can close in that window.
+    // Recording the change with nobody listening would leave the surface believing the Lens is
+    // still open — which now also holds a replay's chrome back — so it is reported once the
+    // listener returns instead.
+    if (!onLens || lensedIdRef.current === id) return;
     lensedIdRef.current = id;
     onLens?.(zoomedBlock);
   }, [zoomedBlock, onLens]);
 
   const gridRef = useRef<HTMLDivElement>(null);
-  // The "answers bloom" reveal choreography (off == today's plain .reveal entrance).
-  const [bloomOn] = useBloomMode();
   // Responsive layout: re-runs the adaptive-cols algorithm at the actual container width
   // so rows are always full and blocks scale proportionally at every viewport size.
   // displayBlocks defaults to data.blocks as a safety net — the hook always returns
@@ -504,8 +656,8 @@ export function TopicCanvas({
   }, [answerSig, studyStreaming]);
 
   // The bloom's hidden FROM frames — a retracted trend line, an unwiped bar, a number resolving
-  // out of a blur — are only safe while their animations are actually running. `bloom-on` is a
-  // remembered preference, so on its own it holds those frames for the life of the grid, and a
+  // out of a blur — are only safe while their animations are actually running. `bloom-on` sits on
+  // the grid for its whole life, so on its own it holds those frames indefinitely, and a
   // `backwards` fill keeps showing the 0% frame for as long as its animation has not started. An
   // animation that never starts therefore hides its content for good: a chart paints its axes,
   // gridlines and legend around a line retracted out of view. Scope them to the window the
@@ -518,11 +670,10 @@ export function TopicCanvas({
   const BLOOM_WINDOW_MS = 4000;
   const [blooming, setBlooming] = useState(false);
   useEffect(() => {
-    if (!bloomOn) return;
     setBlooming(true);
     const timer = setTimeout(() => setBlooming(false), BLOOM_WINDOW_MS);
     return () => clearTimeout(timer);
-  }, [answerSig, bloomOn]);
+  }, [answerSig]);
   const markUnrenderable = useCallback((id: string) => {
     setDroppedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
@@ -532,29 +683,25 @@ export function TopicCanvas({
     [data.blocks, droppedIds],
   );
   const { displayBlocks = sourceBlocks, budget } = useResponsiveGrid(sourceBlocks, gridRef);
-  // Per-family chunk gate: hold the cards back until every family this answer uses has
-  // loaded, then mount the whole grid in one pass (preloading at the stream/intent stage
-  // means this is almost always already true — see blocks/loader.ts).
-  const familiesLoaded = useBlockFamilies(data.blocks, data.id);
+  // Per-family chunk gate: hold the first paint until every family it uses has loaded, then
+  // mount the whole grid in one pass (preloading at the stream/intent stage means this is
+  // almost always already true — see blocks/loader.ts). A family a later block brings is
+  // waited on by that card alone.
+  const familiesLoaded = useBlockFamilies(data.blocks);
   const contentRevision = `${data.id}:${familiesLoaded}:${budget}`;
   useAccessibleScrollRegions(gridRef, contentRevision);
   useTruncatedTextDisclosures(gridRef, contentRevision);
   const previewBlock = data.blocks.find((b) => b.type === 'preview');
   const previewProps = previewBlock ? (previewBlock.props as PreviewProps) : null;
 
-  // Study mode needs one addressable object. Focus is offered only when the surface opts in AND
-  // there are at least two
-  // id-bearing cards to page through — a single card has nothing to focus, so it stays a plain
-  // Study. Neither mode disturbs the remembered preference if a particular answer cannot use it.
-  const addressableCount = displayBlocks.filter((b) => !!b.id).length;
+  // Study mode needs one addressable object, and never disturbs the remembered preference if a
+  // particular answer cannot use it.
   // The desk drops a world preview — it is a doorway to another surface, not an object to examine
   // (StudyStage does the same filter) — so counting one here offered a Study that then rendered
   // nothing at all: no cards, no message, no way back but the toggle.
   const deskCount = deskObjects(displayBlocks).filter((b) => !!b.id).length;
   const studyCapable = viewMode !== undefined && deskCount >= 1;
-  const focusCapable = viewMode !== undefined && addressableCount >= 2;
   const inStudy = studyCapable && viewMode === 'study';
-  const focused = focusCapable && viewMode === 'focus';
   // The spatial "Canvas" board is offered only when the answer is genuinely board-shaped. Gate on
   // data.blocks (not the responsive-trimmed set) so the offer is stable as the container resizes.
   const canvasCapable = viewMode !== undefined && boardCapable(data);
@@ -592,17 +739,21 @@ export function TopicCanvas({
   onProveRef.current = onProve;
   const stableProve = useCallback(() => onProveRef.current(), []);
 
-  const renderBlock = (b: Block): ReactNode => (
+  const drawBlock = (b: Block, onStage: boolean): ReactNode => (
     <BlockView
       block={bend && bendValue !== null ? bendBlock(b, bend, bendValue) : b}
       nest={0}
-      spotlight={!!b.id && spot === b.id}
-      dimmed={!!b.id && !!spot && spot !== b.id}
+      spotlight={!onStage && !!b.id && spot === b.id}
+      dimmed={!onStage && !!b.id && !!spot && spot !== b.id}
       spot={b.type === 'composite' ? spot : null}
       onProve={stableProve}
       onUnrenderable={markUnrenderable}
     />
   );
+  const renderBlock = (b: Block): ReactNode => drawBlock(b, false);
+  // The Lens shows one card at a time, so the board's spotlight has no meaning there: a card the
+  // narration is not on would otherwise sit on the stage dimmed to 42%.
+  const renderOnStage = (b: Block): ReactNode => drawBlock(b, true);
 
   const renderExtra = (ex: Extra): ReactNode => {
     if (ex.kind === 'slide') return <SlidePreview {...ex.props} />;
@@ -627,19 +778,8 @@ export function TopicCanvas({
 
   // Partition display blocks into concept sections when the model tagged them.
   // Falls back to a single anonymous section — the zero-regression path for untagged answers.
-  // Each section is RE-TILED on its own: the flat pass fills rows across the whole answer, packing
-  // blocks over section boundaries, so a section split back out can be left partial (col-4 + col-4
-  // filling only 8/12 — a narrow, left-aligned block with an empty right edge). Re-tiling per
-  // section restores full, even rows so every section spans the same width. Memoised on the inputs.
-  const sections = useMemo(
-    () =>
-      depthLens(displayBlocks).map((s) => ({
-        ...s,
-        standard: retileSection(s.standard, budget),
-        deeper: retileSection(s.deeper, budget),
-      })),
-    [displayBlocks, budget],
-  );
+  // Each section is RE-TILED by SectionGroup for the width it actually has (see there).
+  const sections = useMemo(() => depthLens(displayBlocks), [displayBlocks]);
   // Whether this answer renders as concept sections. The raw hasSections() answer can change
   // mid-stream — the first section-tagged block may land several blocks in, and a tagged block
   // can drop out later (unrenderable) — and every flip re-parents each mounted card between
@@ -662,20 +802,38 @@ export function TopicCanvas({
   // past the card's edge, and a click whose target unmounted mid-gesture (the browser retargets to
   // the nearest survivor), both read as "I clicked a thing and it did something else".
   const lensDown = useRef<{ id: string; x: number; y: number } | null>(null);
-  /** Whether the press that may become a backdrop click actually began on the backdrop. */
-  const scrimDown = useRef(false);
+  const zoomScrim = useBackdropDismiss(() => setZoomedBlock(null));
 
   const lensPointerDown = (b: Block) => (e: ReactPointerEvent<HTMLDivElement>) => {
     lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
   };
 
+  /** The card's cell on the board (the Lens stage renders its own copy, which this skips). */
+  function boardCellOf(id: string | undefined): HTMLElement | undefined {
+    return Array.from(
+      gridRef.current?.parentElement?.querySelectorAll<HTMLElement>('[data-spot-id]') ?? [],
+    ).find((el) => el.dataset.spotId === id && !el.closest('.zoom-scrim'));
+  }
+  /** The scale the board's own fit draws a card at (1 unless it had to shrink it). */
+  const boardScaleOf = (id: string | undefined): number => {
+    const cell = boardCellOf(id);
+    const fit = cell?.querySelector<HTMLElement>(':scope > .fit-box > div');
+    const k = Number(/scale\(([\d.]+)\)/.exec(fit?.style.transform ?? '')?.[1]);
+    return k > 0 ? k : 1;
+  };
   /** Open the Lens on a block: its own stage, over a board faded back behind it. */
   const openLens = (b: Block): void => {
+    if (!zoomedBlock) lensOpener.current = document.activeElement as HTMLElement | null;
+    lensLastId.current = b.id;
+    setBoardScale(boardScaleOf(b.id));
+    const cell = boardCellOf(b.id);
+    setBoardDiagramPx(cell ? diagramLabelPx(cell) : new Map());
+    setNotesOpen(null);
     setZoomedBlock(b);
-    setZoomLevel(ZOOM_DEFAULT);
+    setZoomLevel('fit');
   };
-  // Every card the Lens can step to, in reading order. Switching without leaving the stage is the
-  // half of Focus worth keeping: one object at a time, and the others still within reach.
+  // Every card the Lens can step to, in reading order: one object at a time, and the others still
+  // within reach without leaving the stage.
   const lensSteps = displayBlocks.filter((b) => b.id);
   const lensAt = zoomedBlock ? lensSteps.findIndex((b) => b.id === zoomedBlock.id) : -1;
   // Clamped, never wrapping: wrapping in a reading surface quietly loses your place.
@@ -858,6 +1016,7 @@ export function TopicCanvas({
     );
   };
 
+  const appScrim = useBackdropDismiss(() => setLaunched(null));
   return (
     // Provide the fill wiring so a BlankSlot nested in any block reaches it; a null value (Demo)
     // is equivalent to no provider — the slot then keeps its own local state.
@@ -911,11 +1070,11 @@ export function TopicCanvas({
               className="canvas-exit"
               onClick={() => onViewMode?.(savedViewMode())}
             >
-              <span aria-hidden>←</span> Back to answer
+              <span aria-hidden>←</span> Back to the board
             </button>
           ) : (
             <>
-              {useSections && hasDeeper && !focused && !inStudy && (
+              {useSections && hasDeeper && !inStudy && (
                 <button
                   type="button"
                   className={'depth-reading-toggle' + (readingMode ? ' is-reading' : '')}
@@ -928,10 +1087,9 @@ export function TopicCanvas({
                   {readingMode ? 'Collapse sections' : 'Expand sections'}
                 </button>
               )}
-              {/* The desk and the single-card stage are takeovers of THIS answer, so each carries
-                  its own door back. The board itself needs no control: it is where the canvas
+              {/* The desk is a takeover of THIS answer, so it carries its own door back. The board itself needs no control: it is where the canvas
                   rests, and reading one card closer is a gesture on the card. */}
-              {onViewMode && (inStudy || focused) && (
+              {onViewMode && inStudy && (
                 <button
                   type="button"
                   className="study-exit"
@@ -940,7 +1098,7 @@ export function TopicCanvas({
                   <span aria-hidden>←</span> Back to the board
                 </button>
               )}
-              {studyCapable && onViewMode && !inStudy && !focused && (
+              {studyCapable && onViewMode && !inStudy && (
                 <button
                   type="button"
                   className="guide-me"
@@ -961,7 +1119,7 @@ export function TopicCanvas({
                   type="button"
                   className="canvas-open"
                   onClick={() => onViewMode('canvas')}
-                  title="Spread this answer's cards on a board you can wander"
+                  title="Spread this answer's cards on a canvas you can wander"
                 >
                   <span className="canvas-open-glyph" aria-hidden>
                     ◇
@@ -1026,21 +1184,6 @@ export function TopicCanvas({
           streaming={studyStreaming}
           answerEpoch={studyAnswerEpoch}
         />
-      ) : familiesLoaded && focused ? (
-        <FocusStage
-          data={data}
-          blocks={displayBlocks}
-          spot={spot}
-          renderBlock={renderBlock}
-          onAskBlock={onAskBlock}
-          selectedBlockIds={selectedBlockIds}
-          onNarrate={onNarrate}
-          narratingId={narratingId}
-          muted={muted}
-          walkNotes={walkNotes}
-          presenting={presenting}
-          answerEpoch={studyAnswerEpoch}
-        />
       ) : (
         // ONE grid element for both the loading and the loaded state: two sibling .card-grid
         // divs made React tear one subtree down and rebuild the other on the swap — every card
@@ -1053,9 +1196,8 @@ export function TopicCanvas({
         // width never jumps when cards land.
         <div
           className={
-            'card-grid' +
-            (bloomOn ? ' bloom-on' : '') +
-            (bloomOn && blooming ? ' blooming' : '') +
+            'card-grid bloom-on' +
+            (blooming ? ' blooming' : '') +
             (noteGutter ? ' note-gutter' : '')
           }
           ref={gridRef}
@@ -1161,7 +1303,8 @@ export function TopicCanvas({
           role="button"
           tabIndex={0}
           aria-label="Close app preview"
-          onClick={() => setLaunched(null)}
+          onPointerDown={appScrim.onPointerDown}
+          onClick={appScrim.onClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -1199,28 +1342,24 @@ export function TopicCanvas({
       {zoomedBlock &&
         (() => {
           const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
+          const notesShown = !lensNarrow || (notesOpen ?? !lensFit.spills);
           return (
-            // Close only on a gesture that BEGAN and ENDED on the backdrop. A plain onClick also
-            // fires for a drag released past the sheet's edge (selecting text inside it, say) and
-            // for a click whose target unmounted mid-gesture, and both read as "I clicked a thing
-            // and it shut".
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
             <div
+              ref={scrimRef}
               className="zoom-scrim"
-              onPointerDown={(e) => {
-                scrimDown.current = e.target === e.currentTarget;
-              }}
-              onClick={(e) => {
-                const began = scrimDown.current;
-                scrimDown.current = false;
-                if (began && e.target === e.currentTarget) setZoomedBlock(null);
-              }}
+              // The dialog is the whole stage: the sheet and the strip of cards under it.
+              role="dialog"
+              aria-modal="true"
+              aria-label={blockLabel(zoomedBlock)}
+              onPointerDown={zoomScrim.onPointerDown}
+              onClick={zoomScrim.onClick}
             >
               <div
+                ref={sheetRef}
                 className="zoom-sheet"
-                role="dialog"
-                aria-modal="true"
-                aria-label={blockLabel(zoomedBlock)}
+                data-notes={lensNotes.length > 0 ? '' : undefined}
+                data-magnified={fitted ? undefined : ''}
               >
                 <div className="zoom-sheet-toolbar">
                   {/* What you are looking at. The row was controls-only and right-aligned, which
@@ -1230,69 +1369,162 @@ export function TopicCanvas({
                       here is the same sentence twice. */}
                   <div className="zoom-sheet-title">Looking closer</div>
                   <div className="zoom-sheet-tools">
-                    <button
-                      type="button"
-                      className="zoom-sheet-zoom-btn"
-                      aria-label="Zoom out"
-                      disabled={zoomLevel <= ZOOM_MIN}
-                      onClick={() =>
-                        setZoomLevel((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))
-                      }
-                    >
-                      <Icon.zoomOut />
-                    </button>
-                    <span className="zoom-sheet-zoom-level">{Math.round(zoomLevel * 100)}%</span>
-                    <button
-                      type="button"
-                      className="zoom-sheet-zoom-btn"
-                      aria-label="Zoom in"
-                      disabled={zoomLevel >= ZOOM_MAX}
-                      onClick={() =>
-                        setZoomLevel((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))
-                      }
-                    >
-                      <Icon.zoomIn />
-                    </button>
-                    <button
-                      type="button"
-                      className="zoom-sheet-x"
-                      aria-label="Back to the board"
-                      onClick={() => setZoomedBlock(null)}
-                    >
-                      <Icon.x />
-                    </button>
+                    {/* Always a visible way to the next card. The strip is the rich way, and a
+                        short window has no room for it; arrow keys alone are no way at all for
+                        a reader who does not know they exist. */}
+                    {lensSteps.length > 1 && (
+                      // At either end the button says so rather than going `disabled`: a
+                      // disabled button drops the focus it holds to the page, and a keyboard
+                      // reader pressing Next to the last card would land back on the board.
+                      <div className="zoom-sheet-stepper" role="group" aria-label="Cards">
+                        <button
+                          type="button"
+                          className="zoom-sheet-step-btn"
+                          aria-label="Previous card"
+                          aria-disabled={lensAt <= 0}
+                          onClick={() => stepLens(-1)}
+                        >
+                          <Icon.chevL />
+                        </button>
+                        <span className="zoom-sheet-step-at" aria-live="polite">
+                          {lensAt + 1} of {lensSteps.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="zoom-sheet-step-btn"
+                          aria-label="Next card"
+                          aria-disabled={lensAt >= lensSteps.length - 1}
+                          onClick={() => stepLens(1)}
+                        >
+                          <Icon.chevR />
+                        </button>
+                      </div>
+                    )}
+                    {/* One group, so a narrow sheet under a thumb can set it aside whole: pinch
+                        is the zoom there. */}
+                    <div className="zoom-sheet-zoom" role="group" aria-label="Zoom">
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-btn"
+                        aria-label="Zoom out"
+                        disabled={shownZoom <= zoomFloor + 0.005}
+                        onClick={() => zoomBy(-ZOOM_STEP)}
+                      >
+                        <Icon.zoomOut />
+                      </button>
+                      {/* The readout is also the toggle between the fit and actual size. At rest
+                        it reads as the number it always was; hovered or focused it names what a
+                        press will do. The offer is painted from `data-offer`, never written as
+                        text, so the button holds one value: its text is the zoom, nothing else. */}
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-level"
+                        aria-label={`Zoom ${Math.round(shownZoom * 100)}%. ${
+                          readoutOffer?.label ?? 'Already actual size'
+                        }`}
+                        aria-disabled={readoutOffer ? undefined : true}
+                        aria-keyshortcuts={readoutOffer?.keys}
+                        title={
+                          readoutOffer ? `${readoutOffer.label} (${readoutOffer.keys})` : undefined
+                        }
+                        onClick={readoutOffer?.run}
+                        data-offer={readoutOffer?.short}
+                      >
+                        <span className="zoom-sheet-zoom-now">{Math.round(shownZoom * 100)}%</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="zoom-sheet-zoom-btn"
+                        aria-label="Zoom in"
+                        disabled={shownZoom >= ZOOM_MAX}
+                        onClick={() => zoomBy(ZOOM_STEP)}
+                      >
+                        <Icon.zoomIn />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                {/* The ONE thing that scrolls and scales. The toolbar above and the notes below sit
-                    outside it, so magnifying the card can never move, shrink or scroll the
-                    controls — a sticky toolbar inside the scroller was sized to the sheet and, once
-                    the zoomed card overflowed, its right end (and the close button) went with it. */}
-                <div className="zoom-sheet-scroll">
-                  <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
-                    {/* At the card's own size the sheet fits the card to its height before it
-                        scrolls; once the reader magnifies, scrolling is the point. */}
-                    <FitBox fitHeight={zoomLevel === 1}>{renderBlock(zoomedBlock)}</FitBox>
-                  </div>
-                </div>
-                {lensNotes.length > 0 && (
-                  <aside
-                    className="lens-notes"
-                    aria-label={`Mavéa's notes on ${blockLabel(zoomedBlock)}`}
+                  {/* Its own slot at the end of the first row, whatever wraps: the way out is
+                      never pushed onto a second line or off the edge of a phone. */}
+                  <button
+                    ref={closeRef}
+                    type="button"
+                    className="zoom-sheet-x"
+                    aria-label="Back to the board"
+                    onClick={() => setZoomedBlock(null)}
                   >
-                    <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
-                    {lensNotes.map((n, ni) => (
-                      <p key={ni} className={'lens-note is-' + n.kind}>
-                        {n.text}
-                      </p>
-                    ))}
-                  </aside>
-                )}
+                    <Icon.x />
+                  </button>
+                </div>
+                {/* The ONE thing that scrolls: the card, and Mavéa's notes beside it on a wide
+                    sheet or under it on a narrow one. Only the card scales. The toolbar sits
+                    outside, so magnifying can never move, shrink or scroll the controls — a sticky
+                    toolbar inside the scroller was sized to the sheet and, once the zoomed card
+                    overflowed, its right end (and the close button) went with it. */}
+                <div className="zoom-sheet-scroll">
+                  <div
+                    className="zoom-sheet-body"
+                    // A magnification keeps the width the fit laid the card out at (--lens-fit),
+                    // so the first step in or out moves on from the fitted picture instead of
+                    // re-flowing the card at its board size first.
+                    style={
+                      fitted
+                        ? undefined
+                        : ({ zoom: zoomLevel, '--lens-fit': layoutFit } as CSSProperties)
+                    }
+                  >
+                    {/* Fitted, the card is grown toward a reading size or shrunk to the room
+                        before it scrolls; once the reader magnifies, scrolling is the point. */}
+                    <FitBox
+                      fitHeight={fitted}
+                      hold={!fitted}
+                      governs
+                      onStage
+                      minScale={boardScale}
+                      diagramFloorPx={boardDiagramPx}
+                      readingPx={
+                        fitted ? (lensGrows ? LENS_WIDE_READING_PX : LENS_READING_PX) : undefined
+                      }
+                      onScale={fitted ? onLensFit : undefined}
+                    >
+                      {renderOnStage(zoomedBlock)}
+                    </FitBox>
+                  </div>
+                  {lensNotes.length > 0 && (
+                    <aside
+                      className="lens-notes"
+                      aria-label={`Mavéa's notes on ${blockLabel(zoomedBlock)}`}
+                    >
+                      {lensNarrow ? (
+                        <button
+                          type="button"
+                          className="lens-notes-eyebrow lens-notes-toggle"
+                          aria-expanded={notesShown}
+                          onClick={() => setNotesOpen(!notesShown)}
+                        >
+                          Mavéa&rsquo;s notes
+                          {!notesShown && (
+                            <span className="lens-notes-count"> · {lensNotes.length}</span>
+                          )}
+                          <Icon.chevR className="lens-notes-chev" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
+                      )}
+                      {notesShown &&
+                        lensNotes.map((n, ni) => (
+                          <p key={ni} className={'lens-note is-' + n.kind}>
+                            {n.text}
+                          </p>
+                        ))}
+                    </aside>
+                  )}
+                </div>
               </div>
               {lensSteps.length > 1 && (
                 // Under the sheet, on the backdrop — not inside it. The stage is one card; the
                 // strip is the rest of the answer, and keeping it outside means it never scrolls
                 // away with the card and never competes with the notes for the sheet's height.
-                // Focus's own rail, reused whole: real miniatures, a roving tab stop and
+                // The filmstrip rail, reused whole: real miniatures, a roving tab stop and
                 // arrow-key walking all come with it.
                 <LensStrip
                   blocks={lensSteps}
@@ -1301,7 +1533,7 @@ export function TopicCanvas({
                     const b = lensSteps.find((x) => x.id === id);
                     if (b) openLens(b);
                   }}
-                  renderBlock={renderBlock}
+                  renderBlock={renderOnStage}
                 />
               )}
             </div>

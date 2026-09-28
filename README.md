@@ -69,7 +69,8 @@ rates — the model call is the part of a turn that costs money; the app and the
 run on your machine. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that
 provider — your key and prompts never pass through Mavéa's own servers, because there aren't
-any. Full options — models, hosting, and the trust boundary — are in
+any. Settings → Your data → **Forget everything on this device** removes the key, the encryption
+key that sealed it, and everything else Mavéa stored in your browser. Full options — models, hosting, and the trust boundary — are in
 [docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
 
 **Local speech:** Mavéa speaks through Apache-2.0
@@ -89,37 +90,33 @@ place of the spoken walk.
 
 ## What it does
 
-Mavéa is an AI you watch think. Type a question or ask it out loud: a calm face takes it, says the
-headline the instant it forms, then steps aside while a living canvas draws the answer in charts,
-timelines, and evidence you can check, choosing the right form for each one. As it narrates, it
-draws on the answer, circling the exact figure each line is about. Sourced claims keep their links and
-estimates can be labelled.
+Mavéa is an AI you watch think. Type a question or ask it out loud: a calm face takes it, then steps
+aside while a living canvas draws the answer in charts, timelines, and evidence you can check,
+choosing the right form for each one. As it narrates, it draws on the answer, circling the exact
+figure each line is about. Sourced claims keep their links and estimates can be labelled.
 
 A few specific things worth trying:
 
-- **Ink is the interface.** Draw on the answer to ask — circle a value to explain it, cross one
-  out, arrow between two figures, drop a "?". The gesture grounds the next turn on that exact bar,
-  row, or number.
-- **It draws while it talks.** It speaks each headline as it streams, then lands hand-style circles
-  and arrows on the figure it's narrating.
+- **Highlight to ask.** Drag across any part of the answer and ask about it — the next turn is
+  grounded on that exact bar, row, or number, not the whole card.
+- **It draws while it talks.** It speaks each headline once the first card is on the canvas, then
+  lands hand-style circles and arrows on the figure it's narrating.
 - **One board, and a card you can look closer at.** The board lays the whole canvas out at once —
   nothing staged, nothing to pick. Click any card and it opens on its own stage, centred over the
   blurred board, with Mavéa's notes beside it: what it assumes, the pattern she sees, what the
   sources actually back, and the question that would break it. Step through the rest with the
   arrows, magnify if you want to, and Escape puts you back. When you'd rather be walked
   through the whole thing, _Guide me_ pulls the answer onto a lamplit desk.
-- **It answers while you talk.** Mid-sentence, dashed ghost cards sketch the answer taking shape
-  behind your words, reshaping as your question turns.
 - **It maps your thinking.** Ramble for a minute and Mavéa clusters your words into the themes that
   surface from what you actually said — never fixed buckets — with the tensions between them.
 - **The Blank Space.** When an answer needs a number only you have, Mavéa leaves a hole to fill —
   by voice, type, or a dragged card — instead of quietly guessing.
-- **View any "why" as a living answer.** The answer opens into the causal web behind it: press
-  _Walk me through it_ and the camera flies cause to cause while Mavéa narrates, or read the same
-  web as contribution ribbons, a timeline, or a chart. Break a cause open and its parts are drawn by
-  whichever component the library has for that shape — or simply named, where nothing measured them.
-  Every figure on it can prove itself, every arrow says what it does _not_ claim, and pulling a
-  what-if lever re-weights the world in words — never in invented numbers.
+- **View any "why" as a living answer.** The answer opens into the causal web behind it: press _Walk
+  me through it_ and the camera flies cause to cause while Mavéa narrates, or read the same web as
+  contribution ribbons, spheres of force, a timeline, or a chart. Break a cause open and its parts
+  are drawn by whichever component the library has for that shape — or simply named, where nothing
+  measured them. Every figure on it can prove itself, every arrow says what it does _not_ claim, and
+  pulling a what-if lever re-weights the world in words — never in invented numbers.
 
 The full tour — the Study, Prism and Synthesis, Deep Zoom, Courses, Ripple, the Atlas, the
 Rehearsal, living dashboards, selective Conversation video, Mavéa Reels, and deck/document export,
@@ -207,5 +204,5 @@ Copies of the software must keep the license's required notice:
 ## Contact
 
 - **Anything else** — <trymavea@gmail.com>
-- **Questions and feature ideas** — [GitHub Discussions](https://github.com/TryMaveaAI/mavea/discussions)
+- **Feature ideas and bugs** — [open an issue](https://github.com/TryMaveaAI/mavea/issues/new/choose)
 - **Security** — follow [SECURITY.md](./SECURITY.md); never report a vulnerability in a public issue

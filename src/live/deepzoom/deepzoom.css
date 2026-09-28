@@ -688,7 +688,8 @@
 }
 .dz-zoom strong {
   font-weight: 700;
-  color: var(--dz-current);
+  /* Leaned toward the text colour so every scale's hue reads on its button, hovered included. */
+  color: color-mix(in oklab, var(--dz-current) 65%, var(--text-primary));
 }
 .dz-zoom:hover {
   border-color: color-mix(in oklab, var(--dz-current) 70%, transparent);
@@ -881,6 +882,10 @@
   text-align: center;
   gap: 0;
   padding: clamp(32px, 7vw, 96px) clamp(24px, 6vw, 72px);
+  /* The column is centred with auto margins in a flex COLUMN, which sizes it to its content — so
+     the widest unbreakable child (the notice's one clamped line) set the width and pushed the
+     whole hero off a 320px screen. Fill the row, cap it, and let the children wrap inside. */
+  width: 100%;
   max-width: 920px;
   margin-inline: auto;
 }
@@ -929,6 +934,7 @@
 }
 .dz-start-body > .feature-use-notice {
   width: min(640px, 100%);
+  min-width: 0;
   margin: -18px 0 20px;
 }
 .dz-start-composer {
@@ -965,8 +971,8 @@
 .dz-start-btn {
   padding: 11px 22px;
   border-radius: var(--r-md);
-  background: linear-gradient(120deg, var(--presence-deep), var(--presence));
-  color: var(--text-on-accent, #fff);
+  background: linear-gradient(120deg, var(--presence-deep-held), var(--presence));
+  color: var(--on-presence);
   font-size: var(--fs-md);
   font-weight: 600;
   border: none;
@@ -979,7 +985,7 @@
     transform var(--m-fast);
 }
 [data-theme='dark'] .dz-start-btn {
-  background: linear-gradient(120deg, var(--presence), var(--presence-soft));
+  background: linear-gradient(120deg, var(--presence), var(--presence-soft-held));
 }
 .dz-start-btn:hover:not(:disabled) {
   opacity: 0.9;
@@ -1014,6 +1020,34 @@
   background: color-mix(in oklab, var(--presence) 12%, var(--surface-glass));
   color: var(--text-primary);
   border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+}
+
+/* ── short window (a phone on its side, a laptop with the dock up) ──────── */
+/* The hero is sized for a tall screen: at 844x390 the headline alone filled the space under the top
+   bar and the composer — the one thing this screen is for — started below the fold. A short window
+   starts the column at the top and tightens the hero so the form lands on the first screen. */
+@media (height <= 650px) {
+  .dz-start-body {
+    justify-content: flex-start;
+    padding-block: var(--s-lg);
+  }
+  .dz-start-eyebrow {
+    margin-bottom: 10px;
+  }
+  .dz-start-title {
+    margin-bottom: 10px;
+    font-size: clamp(24px, 4vw, 40px);
+  }
+  .dz-start-sub {
+    margin-bottom: 14px;
+    font-size: var(--fs-md);
+  }
+  .dz-start-body > .feature-use-notice {
+    margin: 0 0 12px;
+  }
+  .dz-start-form {
+    margin-bottom: 16px;
+  }
 }
 
 /* ── tablet: narrow the ladder ────────────────────────────────────────── */

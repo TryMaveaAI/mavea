@@ -5,7 +5,7 @@
 //
 // What's saved is the minimal state a resume needs: the rolling chat history (what the model
 // is re-sent so follow-ups still work) and the recent turn frames (each one the canvas the
-// user actually saw, its question and spoken line). Everything else — spotlight, prefetch,
+// user actually saw, its question and spoken line). Everything else — spotlight,
 // presence — is per-session ephemera that rebuilds naturally.
 //
 // Mirrors the library/memory/useLiveConfig store idiom exactly: localStorage, dependency-free,

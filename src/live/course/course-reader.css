@@ -34,11 +34,34 @@
   margin-inline: auto;
 }
 
-/* The reader's only surface chrome: one right-aligned row above the reading column. */
+/* The reader's surface chrome: the way back on the left, Appearance on the right. */
 .clr-top {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 8px;
+}
+.clr-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: var(--tap-min);
+  padding: 0 10px 0 4px;
+  border: none;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 var(--fs-sm)/1 var(--font);
+  cursor: pointer;
+}
+.clr-back svg {
+  width: 15px;
+  height: 15px;
+}
+.clr-back:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
 }
 
 .clr-canvas {
@@ -52,7 +75,9 @@
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: clamp(40px, 9dvh, 96px) 24px;
+  /* Tracks the window's height: on a short laptop the rail above already takes half the screen,
+     and a fixed 40px floor was enough to push the state's one action under the fold. */
+  padding: clamp(20px, 6dvh, 96px) 24px;
 }
 .clr-state-head {
   font: 700 var(--fs-lg)/1.3 var(--font);
@@ -229,6 +254,7 @@
 /* ── buttons ───────────────────────────────────────────────────────────────────────────────── */
 .clr-btn {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -255,11 +281,20 @@
 .clr-btn-primary {
   background: var(--presence);
   border-color: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .clr-btn-primary:hover {
   background: color-mix(in oklab, var(--presence) 88%, #000);
   border-color: color-mix(in oklab, var(--presence) 88%, #000);
+}
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .clr-btn-primary:hover {
+    color: color(
+      from color-mix(in oklab, var(--presence) 88%, #000) srgb-linear var(--ink-on-fill)
+    );
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

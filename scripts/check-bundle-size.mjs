@@ -214,7 +214,12 @@ const ROUTE_BUDGETS = [
     // chunk), the dashboards learned to say what to set at every tracker entry, and the loop
     // began waiting for the key vault before taking its connection baseline. Product behavior
     // in the route's own shell, none of it deferrable; the request count is still under budget.
-    gzip: 360,
+    // 363 (was 360): measured at 362.2 kB once a card began gliding into place and the pen
+    // lifting between marks, a follow-up's sections continued the board's numbering, the Lens
+    // held diagram labels at a legible floor, a third document opened a choice of views, the
+    // thought map learned to share and present, and each card began waiting on its own family
+    // rather than the answer id. All of it runs on the board itself, so none of it can defer.
+    gzip: 363,
     files: 105,
   },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
@@ -283,8 +288,18 @@ const ROUTE_BUDGETS = [
     // 163 (was 162): measured at 162.4. A lesson opened from a URL alone now shows its goal and
     // a Build button instead of spending the key on load, and the shared config module listens
     // for another tab forgetting the device.
-    gzip: 163,
-    files: 58,
+    // 164 (was 163): measured at 163.3. The Lens sizes its sheet for a large monitor, an unbuilt
+    // lesson leads with Build, feature notices open in place, and the stage card ignores the
+    // board's spotlight — all code the lesson reader loads.
+    // 166 kB and 59 files (were 164 and 58): measured at 165.5. The Lens traps focus and hands it
+    // back to the card it came from, states its scale in one readout, and holds a diagram's
+    // labels at the size the board drew them (TopicCanvas +3.4 kB); the stat tiles and the
+    // insight's headline read `longestRun`, and two importers gave lib/fitText a chunk of its own.
+    // 167 (was 166): measured at 166.1. A card now waits on its own block family through a loader
+    // subscription and a placeholder card, instead of a hold keyed on the answer id — the
+    // lesson renders the same canvas, so it carries the same few hundred bytes.
+    gzip: 167,
+    files: 59,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
   {
@@ -312,7 +327,9 @@ const ROUTE_BUDGETS = [
     // paths and role-aware explanations; measured at 64.8 kB.
     // 66, from 65: measured at 65.3. The GitHub token field became a SecretInput, which keeps the
     // pasted token out of the DOM's value attribute.
-    gzip: 66,
+    // 67, from 66: measured at 66.9. The impact map opens framed on its top instead of wherever the
+    // camera last sat, and places each verb label off the cards at the size it actually renders.
+    gzip: 67,
     files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus

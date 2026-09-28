@@ -101,6 +101,36 @@
   border-color: color-mix(in oklab, var(--presence) 40%, var(--line-soft));
   background: color-mix(in oklab, var(--presence) 8%, transparent);
 }
+/* A phone cannot fit the brand, search, both actions and the appearance control on one row — at
+   320px "Present" ran off the edge. The actions keep their glyph and their accessible name and
+   become square, thumb-sized targets instead. */
+@media (width <= 430px) {
+  .dash-topbar-action {
+    justify-content: center;
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    padding: 0;
+  }
+  .dash-topbar-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
+    white-space: nowrap;
+  }
+}
+
+/* At 320 the square actions still left the row 16px too long, and it was the appearance control —
+   last on the row — that went off the edge. The narrowest phones tighten the row's spacing, not its
+   targets. */
+@media (width <= 360px) {
+  .dash-topbar {
+    gap: var(--s-sm);
+    padding-inline: var(--s-md);
+  }
+}
 
 /* ── "N on watch" pill ───────────────────────────────────────────────────────────────────── */
 .dash-watch-pill {
@@ -244,6 +274,17 @@
 }
 .dash-connect-banner-link:hover {
   text-decoration: underline;
+}
+button.dash-connect-banner-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.dash-connect-banner-link:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 /* ── tracking grid ───────────────────────────────────────────────────────────────────────── */

@@ -15,13 +15,11 @@ import {
 import { resultLimit, DEFAULT_RESULTS, MAX_RESULTS_CEIL } from '../src/live/search/limit';
 import { braveSearchUrl, parseBrave, braveProvider } from '../src/live/search/brave';
 import { parseTavily, tavilyProvider } from '../src/live/search/tavily';
-import { buildSearchContext, toSources } from '../src/live/search/inject';
 import {
   validateLiveResponse,
   FRONTIER_BLOCK_TYPES,
   PHOTO_BLOCK_TYPE,
 } from '../src/engine/liveSchema';
-import type { SearchResult } from '../src/live/search';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -267,43 +265,6 @@ describe('resultLimit — bound the fetched count', () => {
   it('clamps above the ceiling and below one', () => {
     expect(resultLimit(99)).toBe(MAX_RESULTS_CEIL);
     expect(resultLimit(0)).toBe(DEFAULT_RESULTS);
-  });
-});
-
-describe('search context + citations', () => {
-  const results: SearchResult[] = [
-    { title: 'A', url: 'https://a.test', snippet: 'alpha' },
-    { title: 'B', url: 'https://b.test', snippet: 'beta' },
-  ];
-  it('builds a numbered context block', () => {
-    const ctx = buildSearchContext('q', results);
-    expect(ctx).toContain('Web search results for "q"');
-    expect(ctx).toContain('[1] A: alpha (https://a.test)');
-    expect(ctx).toContain('[2] B: beta (https://b.test)');
-  });
-  it('respects an explicit limit instead of re-truncating to the default', () => {
-    const five: SearchResult[] = [1, 2, 3, 4, 5].map((n) => ({
-      title: `T${n}`,
-      url: `https://t${n}.test`,
-      snippet: `s${n}`,
-    }));
-    // Default cap keeps all five (it equals DEFAULT_RESULTS) — but a tighter explicit cap trims.
-    expect(toSources(five, 2)).toHaveLength(2);
-    expect(buildSearchContext('q', five, 2).match(/\[\d+\]/g)).toHaveLength(2);
-  });
-  it('returns "" for no results', () => {
-    expect(buildSearchContext('q', [])).toBe('');
-  });
-  it('toSources keeps title, url, and the real snippet (the evidence excerpt)', () => {
-    expect(toSources(results)).toEqual([
-      { title: 'A', url: 'https://a.test', snippet: 'alpha' },
-      { title: 'B', url: 'https://b.test', snippet: 'beta' },
-    ]);
-  });
-  it('toSources omits an empty snippet rather than carrying a blank quote', () => {
-    expect(toSources([{ title: 'C', url: 'https://c.test', snippet: '' }])).toEqual([
-      { title: 'C', url: 'https://c.test' },
-    ]);
   });
 });
 

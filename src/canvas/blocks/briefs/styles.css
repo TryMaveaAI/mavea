@@ -499,7 +499,7 @@
 }
 .brf-approval-step--done .brf-step-node {
   background: var(--insight);
-  color: var(--surface-default);
+  color: var(--on-insight);
 }
 .brf-approval-step p {
   margin: 3px 0;
@@ -579,8 +579,9 @@
   height: 34px;
   place-items: center;
   border-radius: 50%;
-  background: color-mix(in oklab, var(--presence) 12%, var(--track));
-  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+  /* An exported figure hands the accent's text shade over as --accent-ink. */
+  color: var(--accent-ink, var(--presence));
   font-weight: 750;
 }
 .brf-contact-body > span {
@@ -844,11 +845,11 @@
   margin-top: 10px;
   padding: 10px;
   border-radius: var(--r-md);
-  background: color-mix(in oklab, var(--presence) 8%, var(--track));
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-elevated));
 }
 .brf-offer-total strong {
   font-size: var(--fs-lg);
-  color: var(--presence);
+  color: var(--accent-ink, var(--presence));
 }
 
 @container (max-width: 420px) {

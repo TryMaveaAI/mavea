@@ -8,6 +8,7 @@
 //
 // It is still one source of truth: `tests/feature-registry-sync` checks every id against FEATURES,
 // so a renamed or removed feature fails CI rather than painting a card that does nothing.
+import { explodeRoute } from '../attachments';
 
 /**
  * The order they appear in.
@@ -34,7 +35,11 @@ export const START_WITH_IDS: readonly string[] = [
  * — and the row, left generic, silently re-opened that first file on every later visit with nothing
  * on screen explaining why or how to choose another. The row now names the file it will open.
  */
-export function prismRow(staged: readonly { name: string }[]): {
+export function prismRow(
+  staged: readonly { name: string }[],
+  /** How many of them Synthesis can read (images are Prism-only), the count the route turns on. */
+  readable = staged.length,
+): {
   blurb: string;
   opensPicker: boolean;
 } {
@@ -44,11 +49,17 @@ export function prismRow(staged: readonly { name: string }[]): {
       opensPicker: true,
     };
   }
+  // Say what the press will do: the same count rule decides which surface it opens.
+  const route = explodeRoute(readable);
   return {
     blurb:
-      staged.length === 1
-        ? `Open the map for ${staged[0].name}`
-        : `Open the map across ${staged.length} documents`,
+      route === 'synthesis'
+        ? `Synthesize ${readable} sources into one map`
+        : route === 'choose'
+          ? `Compare or synthesize ${readable} documents`
+          : staged.length === 1
+            ? `Open the map for ${staged[0].name}`
+            : `Open the map across ${staged.length} documents`,
     opensPicker: false,
   };
 }

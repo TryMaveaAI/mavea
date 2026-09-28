@@ -271,12 +271,6 @@
   color: var(--text-primary);
   font-style: italic;
 }
-.vs-line.indent-1 {
-  padding-left: 24px;
-}
-.vs-line.indent-2 {
-  padding-left: 48px;
-}
 
 /* ── slidedeck ── slide-by-slide outline */
 .sd-slides {

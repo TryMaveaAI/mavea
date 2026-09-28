@@ -16,6 +16,7 @@ import {
   kokoroSpeaking,
   kokoroSynthesizing,
   subscribeKokoroSpeaking,
+  silentLine,
   type KokoroLine,
 } from './kokoro';
 import { forSpeech } from '../lib/spokenText';
@@ -86,7 +87,7 @@ export function speak(text: string, who: Speaker): void {
 
 /** One queued line's two lifecycle moments — `started` (audio first audible, or definitively
  *  never) and `finished` (played end-to-end, or skipped/cancelled). Both only ever resolve;
- *  `started` settles first. */
+ *  `started` settles first. `cancel` stops this line alone. */
 export type SpokenLine = KokoroLine;
 
 /**
@@ -100,7 +101,7 @@ export type SpokenLine = KokoroLine;
  * honest fallback.
  */
 export function speakLine(text: string, who: Speaker): SpokenLine {
-  if (IS_SHOWCASE) return { started: Promise.resolve(false), finished: Promise.resolve(false) };
+  if (IS_SHOWCASE) return silentLine();
   return speakKokoroLine(text, who);
 }
 

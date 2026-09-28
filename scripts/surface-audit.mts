@@ -35,7 +35,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 import { startDevServer } from './dev-server.mts';
 import { launchChromium } from './launch-chromium.mts';
 import { DEFAULT_SIZES, SURFACES, ZOOM_DPRS, ZOOM_SIZES, type Surface } from './surface-sweep.mjs';
@@ -210,6 +210,11 @@ const MEASURE_SCRIPT = (
     const s = getComputedStyle(el);
     return s.overflow !== 'visible' || s.overflowX !== 'visible' || s.overflowY !== 'visible';
   };
+  // Is this box the containing block of a fixed descendant (and so the one that can clip it)?
+  const holdsFixed = (s) =>
+    s.transform !== 'none' || s.perspective !== 'none' || s.filter !== 'none' ||
+    (s.backdropFilter || 'none') !== 'none' || /paint|layout|strict|content/.test(s.contain) ||
+    /transform|perspective|filter/.test(s.willChange) || s.containerType !== 'normal';
   // Behind a takeover. A fixed element covering (nearly) the whole window that sits ABOVE the
   // target in the stack at that point is a scrim — the Lens, a sheet, a modal — and what it covers
   // is neither read nor pressed while it is up, so it is judged as absent rather than flagged.
@@ -250,6 +255,11 @@ const MEASURE_SCRIPT = (
   // A declared fade: a mask that runs to transparent hides the overflow on purpose, the way a
   // line clamp does — the reader is shown an edge, not a cut.
   const fades = (style) => /gradient/.test(style.maskImage || '') || /gradient/.test(style.webkitMaskImage || '');
+  // The topmost open modal: the last shown one in document order, since a nested sheet mounts after
+  // the dialog it opens from. A dialog kept mounted but faded out or hidden is not open.
+  const modal = Array.from(document.querySelectorAll('[aria-modal="true"]'))
+    .filter((d) => d.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+    .at(-1) ?? null;
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
@@ -280,8 +290,13 @@ const MEASURE_SCRIPT = (
     // cut.
     let rescueX = false;
     let rescueY = false;
+    // A fixed box escapes every clip and scroller above it until one holds fixed boxes: the Lens's
+    // scrim sits inside the board's clipped stage and paints over the whole window regardless.
+    let escaped = style.position === 'fixed';
     for (let p = el.parentElement; p; p = p.parentElement) {
       const ps = getComputedStyle(p);
+      if (escaped && !holdsFixed(ps)) continue;
+      escaped = ps.position === 'fixed';
       // Judged per axis: an overflow-y: auto, overflow-x: hidden pane is a scroll container on
       // both, so a right-overflowing leaf raises its scrollWidth while nothing can scroll it into
       // view — read as a horizontal scroller it would forgive the very cut it is evidence of.
@@ -314,7 +329,14 @@ const MEASURE_SCRIPT = (
         (style.webkitLineClamp !== 'none' && style.webkitLineClamp !== '');
       const parentTruncates = el.parentElement && ((getComputedStyle(el.parentElement).textOverflow === 'ellipsis') ||
         (getComputedStyle(el.parentElement).webkitLineClamp !== 'none' && getComputedStyle(el.parentElement).webkitLineClamp !== ''));
-      if (lost > 4 && !truncates && !parentTruncates && !el.closest('.zoom-scrim, [data-text-disclosure]')) {
+      // A reel marquee's track is wider than its band by design: the band's overflow is what turns an
+      // endless strip into a crawl, so words the BAND cuts are the next frames, not lost text. The
+      // pass needs the marked track inside the clipper that cut — some finishes mark only the track
+      // (marquee.tsx), others the band too — so a band clipped by anything else is judged like any
+      // other text. The reel gallery's own board audit excuses the same attribute (auditBoard.ts).
+      const track = el.closest('[data-reel-marquee]');
+      const byMarquee = !!track && clipper.contains(track);
+      if (lost > 4 && !truncates && !parentTruncates && !byMarquee && !el.closest('[data-text-disclosure]')) {
         clipped.push(name(el) + ' loses ' + Math.round(lost) + 'px to ' + name(clipper));
       }
     }
@@ -381,7 +403,9 @@ const MEASURE_SCRIPT = (
       }
     }
 
-    if (CHECK.has('type')) {
+    // With a modal open, the modal IS the surface: what sits under its scrim is another surface's
+    // type system, and counting it made Ripple answer for the setup wizard's buttons.
+    if (CHECK.has('type') && (!modal || modal.contains(el))) {
       const tag = el.tagName.toLowerCase();
       // font-size: 0 is the icon-only-button idiom (the label is for assistive tech), not a size.
       const fs = Math.round(parseFloat(style.fontSize) * 2) / 2;
@@ -440,12 +464,20 @@ const MEASURE_SCRIPT = (
         const r = el.getBoundingClientRect();
         return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 1 && r.height > 1;
       });
+    // The bar is one full-width row whose middle is a spacer with no height, and on a short window
+    // the replay banner is laid out in that gap on purpose. So the bar is judged by what it paints
+    // (its children), never by its band: a banner over the brand, the search or the theme toggle
+    // still collides, and one sitting in the empty middle does not.
+    const partsOf = (el) => el.matches('.topbar')
+      ? Array.from(el.children).map((c) => c.getBoundingClientRect())
+      : [el.getBoundingClientRect()];
+    const overlap = (ar, br) => Math.max(0, Math.min(ar.right, br.right) - Math.max(ar.left, br.left)) *
+      Math.max(0, Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top));
     for (let i = 0; i < fixed.length; i += 1) for (let j = i + 1; j < fixed.length; j += 1) {
       const a = fixed[i], b = fixed[j];
       if (a.contains(b) || b.contains(a)) continue;
-      const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
-      const area = Math.max(0, Math.min(ar.right, br.right) - Math.max(ar.left, br.left)) *
-        Math.max(0, Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top));
+      let area = 0;
+      for (const ar of partsOf(a)) for (const br of partsOf(b)) area += overlap(ar, br);
       if (area > 16) shellOverlaps.push(name(a) + ' overlaps ' + name(b) + ' by ' + Math.round(area) + 'px²');
     }
   }
@@ -587,7 +619,58 @@ const MEASURE_SCRIPT = (
     }
   }
 
+  // Every control of an open modal has to be reachable: the page behind it is inert, so a control
+  // the modal cannot show is a control with no way to it — a close button off a phone's edge is a
+  // sheet the reader cannot leave. The tap check above skips anything off-window or cut by a clip
+  // (it judges the size of what CAN be pressed), so this is where those are judged. A scroller
+  // between the control and the cut, on the axis it cuts, brings it back.
+  if (modal && CHECK.has('outside')) {
+    const sel = 'button, a[href], [role="button"], input:not([type="hidden"]), select, textarea';
+    for (const el of Array.from(modal.querySelectorAll(sel))) {
+      // Only what the modal itself sets aside: a curated replay holds the whole surface inert
+      // while it drives it, and the controls under that lock are the ones a visitor inherits.
+      const aside = el.closest('[inert], [aria-hidden="true"]');
+      if (aside && aside !== modal && modal.contains(aside)) continue;
+      if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      let cutX = false;
+      let cutY = false;
+      // The nearest scroller on an axis answers for every cut beyond it on that axis.
+      let rescuedX = false;
+      let rescuedY = false;
+      let escaped = getComputedStyle(el).position === 'fixed';
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        const acs = getComputedStyle(a);
+        if (escaped && !holdsFixed(acs)) continue;
+        escaped = acs.position === 'fixed';
+        const ar = a.getBoundingClientRect();
+        // A scroll container reaches all it holds on its scrolling axis, however little it
+        // overflows (a sub-pixel overhang in a row that scrolls is still scrolled to), and a camera
+        // the reader drags (a map declares one with a grab cursor) brings back either axis.
+        const pans = acs.cursor === 'grab' || acs.cursor === 'grabbing';
+        if (pans || /(auto|scroll)/.test(acs.overflowX)) rescuedX = true;
+        if (pans || /(auto|scroll)/.test(acs.overflowY)) rescuedY = true;
+        if (!rescuedX && acs.overflowX !== 'visible' && (r.left < ar.left - 1 || r.right > ar.right + 1)) cutX = true;
+        if (!rescuedY && acs.overflowY !== 'visible' && (r.top < ar.top - 1 || r.bottom > ar.bottom + 1)) cutY = true;
+      }
+      if (!rescuedX && (r.left < -1 || r.right > vw + 1)) cutX = true;
+      if (!rescuedY && (r.top < -1 || r.bottom > vh + 1)) cutY = true;
+      if (cutX || cutY) {
+        const label = (el.getAttribute('aria-label') || (el.textContent || '').trim()).slice(0, 30);
+        outside.push('control "' + label + '" [' + name(el) + '] out of reach in ' + name(modal));
+      }
+    }
+  }
+
   const readingEl = ${readingSel ? `document.querySelector(${JSON.stringify(readingSel)})` : 'null'};
+  // A column showing everything it holds is not a porthole, however short: the Lens's sheet hugs
+  // its card, so a one-row stat card is a short sheet with nothing out of sight. Holding means no
+  // scroller in the column, the column included, has content below its fold.
+  const overflowsY = (e) =>
+    /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 2;
+  const readingHolds = !!readingEl && !overflowsY(readingEl) &&
+    !Array.from(readingEl.querySelectorAll('*')).some(overflowsY);
   const uniq = (xs, n) => Array.from(new Set(xs)).slice(0, n);
   return {
     outside: uniq(outside, 8),
@@ -600,7 +683,9 @@ const MEASURE_SCRIPT = (
     small: uniq(small, 12),
     crowded: uniq(crowded, 8),
     typeSizes: { h1: [...typeSizes.h1], p: [...typeSizes.p], button: [...typeSizes.button] },
+    typeScope: modal ? name(modal) : null,
     readingH: readingEl ? Math.round(readingEl.clientHeight) : null,
+    readingHolds,
     viewportH: vh,
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
@@ -618,7 +703,11 @@ interface Measured {
   small: string[];
   crowded: string[];
   typeSizes: { h1: number[]; p: number[]; button: number[] };
+  /** The open modal the type tally was confined to, when one was open. */
+  typeScope: string | null;
   readingH: number | null;
+  /** The reading column shows all it holds: nothing in it scrolls. */
+  readingHolds: boolean;
   viewportH: number;
   scrollWidth: number;
   innerWidth: number;
@@ -660,21 +749,18 @@ export async function sweepSurfaces(opts: SweepOptions): Promise<Finding[]> {
           });
           const page = await ctx.newPage();
           await page.addInitScript(
-            ({ initialTheme, legalKey, legalVersion }) => {
+            ({ initialTheme, legalKey, legalValue }) => {
               try {
                 localStorage.setItem('mavea-theme', initialTheme);
-                localStorage.setItem(
-                  legalKey,
-                  JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-12T00:00:00.000Z' }),
-                );
+                localStorage.setItem(legalKey, legalValue);
               } catch {
                 // A sandboxed preview frame: no storage, and nothing here to seed.
               }
             },
             {
               initialTheme: theme,
-              legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-              legalVersion: LEGAL_ACCEPTANCE_VERSION,
+              legalKey: LEGAL_SEED.key,
+              legalValue: LEGAL_SEED.value,
             },
           );
           await page.addInitScript(OBSERVE_SCRIPT(surface.ready, surface.settleMs ?? 1200));
@@ -735,22 +821,23 @@ export async function sweepSurfaces(opts: SweepOptions): Promise<Finding[]> {
               // control, a dock button; body, a caption, a pull-quote — the Study sets its notes
               // in a hand and its takeaway large on purpose), but a sixth size is a control or a
               // paragraph that missed the ramp, which is what this is here to catch.
+              const scope = m.typeScope ? ` (within ${m.typeScope})` : '';
               if (m.typeSizes.h1.length > 1)
                 issues.push(
-                  `h1 set in ${m.typeSizes.h1.length} sizes: ${m.typeSizes.h1.join('/')}px`,
+                  `h1 set in ${m.typeSizes.h1.length} sizes: ${m.typeSizes.h1.join('/')}px${scope}`,
                 );
               if (m.typeSizes.button.length > 5)
                 issues.push(
-                  `buttons set in ${m.typeSizes.button.length} sizes: ${m.typeSizes.button.join('/')}px`,
+                  `buttons set in ${m.typeSizes.button.length} sizes: ${m.typeSizes.button.join('/')}px${scope}`,
                 );
               if (m.typeSizes.p.length > 5)
                 issues.push(
-                  `body text set in ${m.typeSizes.p.length} sizes: ${m.typeSizes.p.join('/')}px`,
+                  `body text set in ${m.typeSizes.p.length} sizes: ${m.typeSizes.p.join('/')}px${scope}`,
                 );
             }
             if (m.readingH !== null) {
               const share = m.readingH / m.viewportH;
-              if (share < MIN_READING_SHARE) {
+              if (share < MIN_READING_SHARE && !m.readingHolds) {
                 issues.push(
                   `reading column ${m.readingH}px of ${m.viewportH}px (${Math.round(share * 100)}%, floor ${Math.round(MIN_READING_SHARE * 100)}%)`,
                 );

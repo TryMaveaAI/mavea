@@ -2,6 +2,9 @@ name: Bug report
 description: Something isn't working as expected
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: By posting, you agree to the feedback terms in [TERMS.md §9](https://github.com/TryMaveaAI/mavea/blob/main/TERMS.md#9-ownership-and-feedback).
   - type: textarea
     id: what
     attributes:

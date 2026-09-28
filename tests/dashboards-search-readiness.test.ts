@@ -73,7 +73,6 @@ describe('every create and check entry reads the one judgement', () => {
   const dir = join(__dirname, '..', 'src', 'live', 'dashboards');
   const surfaces = [
     'TrackComposer.tsx',
-    'NewFromTemplate.tsx',
     'AddWidgetPalette.tsx',
     'PinToDashboard.tsx',
     'ExtractionPreview.tsx',
@@ -98,7 +97,6 @@ describe('every create and check entry reads the one judgement', () => {
     }
     const gated = [
       'TrackComposer.tsx',
-      'NewFromTemplate.tsx',
       'AddWidgetPalette.tsx',
       'PinToDashboard.tsx',
       'TalkToDashboard.tsx',

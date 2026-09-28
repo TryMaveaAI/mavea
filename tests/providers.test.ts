@@ -1,16 +1,25 @@
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { anthropicAdapter } from '../src/live/providers/anthropic';
+import {
+  failedVerdict,
+  forgetReadiness,
+  forgetVerified,
+  isVerified,
+  readinessFingerprint,
+  sharedPaidCheck,
+} from '../src/live/providers/readiness';
 import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
 import { grokAdapter } from '../src/live/providers/grok';
 import { ADAPTERS, PROVIDERS, VISIBLE_PROVIDERS, getAdapter } from '../src/live/providers';
 import { getUsageLedger, resetUsageLedgerForTest } from '../src/live/usage/ledger';
-import type { LiveRequest } from '../src/live/providers/types';
+import type { LiveProbe, LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
-import { speculate } from '../src/live/ghost/speculate';
 import {
+  STREAM_FIRST_CHUNK_MS,
+  STREAM_STALLED,
   isTransientProviderFailure,
   providerRetryDelayMs,
   retryAfterMs,
@@ -70,6 +79,19 @@ describe('provider pressure parsing', () => {
       ),
     ).toBe(30_000);
     expect(retryAfterMs(new Response(null), 0, 'Please retry in 4.25s.')).toBe(4250);
+  });
+
+  it('waits a little longer before the second busy re-send than before the first', () => {
+    const range = (attempt: number) => {
+      const waits = Array.from({ length: 200 }, () => retryAfterMs(new Response(null), attempt));
+      return [Math.min(...waits), Math.max(...waits)];
+    };
+    const [firstMin, firstMax] = range(0);
+    const [secondMin, secondMax] = range(1);
+    expect(firstMin).toBeGreaterThanOrEqual(765);
+    expect(firstMax).toBeLessThanOrEqual(1035);
+    expect(secondMin).toBeGreaterThanOrEqual(2125);
+    expect(secondMax).toBeLessThanOrEqual(2875);
   });
 
   it('retries temporary overloads but never loops on a daily or spend limit', () => {
@@ -262,7 +284,8 @@ describe('anthropic adapter — non-canvas caller (format omitted, no blockTypes
     mockFetchOnce(
       streamResponse(
         [
-          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ghosts\\":"}}\n',
+          'data: {"type":"content_block_delta",' +
+            '"delta":{"type":"text_delta","text":"{\\"cards\\":"}}\n',
           'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"[]}"}}\n',
         ],
         'text/event-stream',
@@ -271,8 +294,8 @@ describe('anthropic adapter — non-canvas caller (format omitted, no blockTypes
     const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
     const { raw } = await anthropicAdapter.generate(req, cfg);
     // Free-form text that happens to be valid JSON resolves as the parsed object (same as the
-    // canvas path) — callers like ghost/speculate.ts accept either shape.
-    expect(raw).toEqual({ ghosts: [] });
+    // canvas path) — non-canvas callers accept either shape.
+    expect(raw).toEqual({ cards: [] });
   });
 });
 
@@ -280,6 +303,8 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
   // /v1/models can return 200 while /v1/messages 401s (Anthropic's browser detection blocks
   // only the latter) — so "Ready" must be earned by the endpoint a turn actually hits.
   const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
+
+  beforeEach(() => forgetReadiness());
 
   /** Mocks fetch per-endpoint and records every call so tests can assert what was hit. */
   function mockProbeFetch(
@@ -309,6 +334,201 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     const body = JSON.parse(String(gen!.init?.body)) as { max_tokens: number; messages: unknown[] };
     expect(body.max_tokens).toBe(1); // the paid check costs ~one token, never a real turn
     expect(body.messages).toHaveLength(1);
+  });
+
+  it('bills the paid pass once per model and key, and reports what it cost', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        calls.push(String(url));
+        return String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response(JSON.stringify({ usage: { input_tokens: 8, output_tokens: 1 } }), {
+              status: 200,
+            });
+      }),
+    );
+    const messages = (): number => calls.filter((u) => u.includes('/v1/messages')).length;
+
+    // Through the registry, as Settings and the Connect step call it.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(getUsageLedger().some((e) => e.label === 'readiness-check')).toBe(true);
+    // Re-opening the panel re-checks reachability for free, without a second billed call.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(messages()).toBe(1);
+    expect(calls.filter((u) => u.includes('/v1/models'))).toHaveLength(2);
+    // A different model or key has not been verified yet, so it earns its own check.
+    await getAdapter('anthropic').probe({ ...cfg, model: 'claude-sonnet-5' });
+    await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
+    expect(messages()).toBe(3);
+  });
+
+  /** Holds every messages call open until `release`, so two checks genuinely overlap. */
+  function holdMessages(status: number): { messages: () => number; release: () => void } {
+    let messages = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        messages++;
+        await gate;
+        return new Response(JSON.stringify({ usage: { input_tokens: 8, output_tokens: 1 } }), {
+          status,
+        });
+      }),
+    );
+    return { messages: () => messages, release };
+  }
+
+  /** Resolves once `count()` reaches `n`, polling across the probe's own awaits. */
+  async function until(count: () => number, n: number): Promise<void> {
+    await vi.waitFor(() => expect(count()).toBe(n));
+  }
+
+  it('shares one paid pass between overlapping checks, and ledgers it once', async () => {
+    const held = holdMessages(200);
+    const first = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    const second = getAdapter('anthropic').probe(cfg);
+    held.release();
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(held.messages()).toBe(1);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toHaveLength(1);
+  });
+
+  it('shares a check in flight, and keeps a failed verdict once it settles', async () => {
+    let settle!: (verdict: LiveProbe) => void;
+    const run = vi.fn(
+      () =>
+        new Promise<LiveProbe>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const first = sharedPaidCheck('fp', run);
+    const second = sharedPaidCheck('fp', run);
+    expect(run).toHaveBeenCalledTimes(1);
+    settle({ ok: false, model: false, statusCode: 401 });
+    expect((await first).ok).toBe(false);
+    expect((await second).ok).toBe(false);
+
+    // Settled and failed: not verified, the verdict is kept, and nothing is left in flight.
+    expect(isVerified('fp')).toBe(false);
+    expect(failedVerdict('fp')).toEqual({ ok: false, model: false, statusCode: 401 });
+    void sharedPaidCheck('fp', run);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('pays for a failed combination once — only Recheck asks again', async () => {
+    const calls = mockProbeFetch(200, 401);
+    const messages = (): number => calls.filter((c) => c.url.includes('/v1/messages')).length;
+    // Settings and the Connect step re-check every time they open: one billed call in all.
+    for (let i = 0; i < 5; i++) {
+      const verdict = await getAdapter('anthropic').probe(cfg);
+      expect(verdict).toMatchObject({ ok: false, model: false, statusCode: 401 });
+    }
+    expect(messages()).toBe(1);
+    // The reader's Recheck is the one thing that spends again.
+    await getAdapter('anthropic').probe(cfg, { fresh: true });
+    expect(messages()).toBe(2);
+    // A different key has no verdict yet, so it earns its own check.
+    await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' });
+    expect(messages()).toBe(3);
+  });
+
+  it('clears a failed verdict once a real turn on the same key is answered', async () => {
+    let checks = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        if (!String(init?.body).includes('"stream":true')) {
+          checks++;
+          return new Response('{"error":{"message":"invalid x-api-key"}}', { status: 401 });
+        }
+        return streamResponse(
+          [
+            'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{}"}}\n',
+            'data: {"type":"message_stop"}\n',
+          ],
+          'text/event-stream',
+        );
+      }),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    await getAdapter('anthropic').generate(req, cfg);
+    // The turn is the stronger evidence: Settings reads Ready, with no second paid check.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(checks).toBe(1);
+    // A different key has earned nothing from that turn.
+    expect((await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' })).ok).toBe(false);
+    expect(checks).toBe(2);
+  });
+
+  it('keeps a paid pass that never answered as a failure, not a reason to ask again', async () => {
+    let messages = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        messages++;
+        throw new TypeError('network down');
+      }),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect(messages).toBe(1);
+  });
+
+  it('never lets a check in flight record a pass once a turn has been refused', async () => {
+    // The proxy path every probe here runs through (no baseUrl on cfg).
+    const fingerprint = await readinessFingerprint('/llm/anthropic', cfg);
+    let held = holdMessages(200);
+    const stale = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    // A real turn is refused for the key while the readiness check is still out.
+    forgetVerified(fingerprint);
+    held.release();
+    expect((await stale).ok).toBe(true);
+    expect(isVerified(fingerprint!)).toBe(false);
+
+    // And a check started after the refusal makes its own request rather than joining one begun
+    // before it.
+    forgetReadiness();
+    held = holdMessages(200);
+    const before = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    forgetVerified(fingerprint);
+    const after = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 2);
+    held.release();
+    await Promise.all([before, after]);
+    expect(isVerified(fingerprint!)).toBe(true);
+  });
+
+  it('re-runs the paid pass when the reader asks for a fresh check', async () => {
+    const calls = mockProbeFetch(200, 200);
+    await getAdapter('anthropic').probe(cfg);
+    await getAdapter('anthropic').probe(cfg, { fresh: true });
+    expect(calls.filter((c) => c.url.includes('/v1/messages'))).toHaveLength(2);
+  });
+
+  it('forgets a passed check once a turn is refused for its key or credit', async () => {
+    for (const status of [400, 401, 403]) {
+      forgetReadiness();
+      mockProbeFetch(200, 200);
+      expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+
+      // The key is revoked (or out of credit) between the check and the next turn.
+      const calls = mockProbeFetch(200, status);
+      await expect(anthropicAdapter.generate(req, cfg)).rejects.toThrow(String(status));
+      const verdict = await getAdapter('anthropic').probe(cfg);
+      expect(verdict.ok).toBe(false);
+      expect(calls.filter((c) => c.url.includes('/v1/messages'))).toHaveLength(2);
+    }
   });
 
   it('reports NOT ready when models is 200 but messages 401s (the production trap)', async () => {
@@ -479,7 +699,7 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
     expect(body.max_output_tokens).toBe(8000);
   });
 
-  it('Responses: the grounding retry (high effort) gets the largest floor', async () => {
+  it('Responses: a high-effort web-search turn gets the largest floor', async () => {
     const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
@@ -530,14 +750,13 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
 });
 
 // The floor above is a reservation for hidden thinking — and a GLIMPSE does none. A caller that
-// declares `minimal` thinking AND sizes its own budget (the ghost speculation off a half-spoken
-// sentence, a node breakdown, a grounding resolve) was paying the 1500-token floor on a reasoning
-// model: the default provider IS one, and up to three glimpses fire per listen, so the "150-token"
-// ghost billed an order of magnitude more than it asked for. Asking for the `minimal` tier removes
+// declares `minimal` thinking AND sizes its own budget (a node breakdown, a grounding resolve) was
+// paying the 1500-token floor on a reasoning model, so a 150-token ask billed an order of
+// magnitude more than it asked for. Asking for the `minimal` tier removes
 // the hidden pass the floor protects against, which is exactly what makes dropping the floor safe.
 // The two move TOGETHER — a floor removed while the model still thinks is how a small caller pays
 // for reasoning and receives an empty completion.
-describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () => {
+describe('a small, self-budgeted ask costs what it asked for (no-thinking tier, no floor)', () => {
   async function responsesBody(
     model: string,
     extra: Partial<LiveRequest> = {},
@@ -549,19 +768,19 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     return JSON.parse(init.body as string) as Record<string, unknown>;
   }
 
-  const glimpse: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
+  const smallAsk: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
 
-  it('Responses: a gpt-5 glimpse asks for the no-thinking tier and keeps its own 150-token budget', async () => {
+  it('Responses: a small gpt-5 ask takes no-thinking and keeps its 150 tokens', async () => {
     // The rung below `low` is `none` on the current family — `minimal` was its name on the first
-    // GPT-5 models and is now rejected outright, which broke every glimpse.
-    const body = await responsesBody('gpt-5.6-luna', glimpse);
+    // GPT-5 models and is now rejected outright, which broke every such ask.
+    const body = await responsesBody('gpt-5.6-luna', smallAsk);
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 
   it('Responses: an o-series model has no sub-low tier, so it keeps low effort AND the floor', async () => {
     // The value would be rejected outright there — the saving is never worth a 400.
-    const body = await responsesBody('o4-mini', glimpse);
+    const body = await responsesBody('o4-mini', smallAsk);
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_output_tokens).toBe(1500);
   });
@@ -569,15 +788,15 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
   it('Responses: an ordinary canvas asking for minimal thinking skips the hidden pass', async () => {
     // Canvas output has its own full-size budget. Paying for hidden reasoning before the first
     // visible token only delays an ordinary composition turn.
-    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, blockTypes: ['insight'] });
+    const body = await responsesBody('gpt-5.6-luna', { ...smallAsk, blockTypes: ['insight'] });
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 
-  it('Responses: a glimpse that also wants web search stays at medium — grounding outranks it', async () => {
+  it('Responses: a small ask that searches stays at medium (grounding wins)', async () => {
     // Search is reasoning-gated: at the lowest tier the tool doesn't engage and the "saving" is an
     // ungrounded answer.
-    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, tools: { webSearch: true } });
+    const body = await responsesBody('gpt-5.6-luna', { ...smallAsk, tools: { webSearch: true } });
     expect(body.reasoning).toEqual({ effort: 'medium' });
     expect(body.max_output_tokens).toBe(8000);
   });
@@ -594,7 +813,7 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
       const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
       vi.stubGlobal('fetch', fetchMock);
       await openrouterAdapter.generate(
-        { ...req, ...glimpse },
+        { ...req, ...smallAsk },
         { provider: 'openrouter', model, apiKey: 'k' },
       );
       const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -665,50 +884,51 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_tokens).toBe(2200);
   });
-
-  it('the ghost glimpse itself lands on the wire as one — and still parses its cards', async () => {
-    // End-to-end over the real adapter (no provider mock): speculate's request shape is what has
-    // to trip the exemption, not a hand-copied approximation of it. And it must still WORK —
-    // ghosts are default-on and user-visible.
-    const fetchMock = vi.fn(async () =>
-      streamResponse(
-        [
-          'data: {"type":"response.output_text.delta","delta":"{\\"ghosts\\":[{\\"kind\\":\\"forming\\",\\"title\\":\\"Bloom forecast\\"}]}"}\n',
-        ],
-        'text/event-stream',
-      ),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const cards = await speculate(
-      'we are thinking Tokyo in',
-      { provider: 'openai', model: 'gpt-5.6-luna', apiKey: 'k' },
-      new AbortController().signal,
-    );
-    expect(cards).toEqual([{ kind: 'forming', title: 'Bloom forecast' }]);
-    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body.reasoning).toEqual({ effort: 'none' });
-    expect(body.max_output_tokens).toBe(150);
-  });
 });
 
-describe('token usage capture — the cost signal the eval reads', () => {
-  it('anthropic sums input + both cache slices and takes the final output_tokens', async () => {
-    mockFetchOnce(
-      streamResponse(
-        [
-          'data: {"type":"message_start","message":{"usage":{"input_tokens":100,"cache_read_input_tokens":900,"cache_creation_input_tokens":0,"output_tokens":1}}}\n',
-          'data: {"type":"content_block_delta","delta":{"text":"{\\"narration\\":\\"Hi\\"}"}}\n',
-          'data: {"type":"message_delta","usage":{"output_tokens":42}}\n',
-        ],
-        'text/event-stream',
-      ),
+describe('a stream that goes quiet is never re-sent', () => {
+  // The provider may already be billing the prompt it was reading, and a turn is one ask: a stall
+  // fails the turn, and the reader's Retry decides whether to pay for another.
+  const silent = (): Response =>
+    new Response(new ReadableStream<Uint8Array>({ start() {} }), {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    });
+
+  it('gemini: a first-byte timeout sends one request and fails as a stall', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async () => silent());
+      vi.stubGlobal('fetch', fetchMock);
+      const settled = geminiAdapter
+        .generate(req, { provider: 'gemini', model: 'reader-pick', apiKey: 'k' })
+        .catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(STREAM_FIRST_CHUNK_MS + 1_000);
+      const err = await settled;
+      expect((err as Error).message).toBe(STREAM_STALLED);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const shown = describeLiveError(err, 'gemini');
+      expect(shown.kind).toBe('network');
+      expect(shown.message).toMatch(/stopped responding/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('re-sends only a refusal made before any work, never claiming a retry it skipped', () => {
+    // 429, 503 and 529 are refused before the model runs. Everything else here can arrive after the
+    // upstream already processed, and billed, the prompt.
+    const resent = [408, 429, 500, 502, 503, 504, 524, 529].filter((status) =>
+      isTransientProviderFailure(status),
     );
-    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
-    const { usage } = await anthropicAdapter.generate(req, cfg);
-    // input = fresh 100 + cache_read 900 + cache_creation 0 (total input, cross-provider-consistent);
-    // cachedInput = the cache_read slice; output = the cumulative message_delta count.
-    expect(usage).toEqual({ input: 1000, output: 42, cachedInput: 900 });
+    expect(resent).toEqual([429, 503, 529]);
+    for (const status of [408, 500, 502, 504, 524]) {
+      const shown = describeLiveError(new Error(`openrouter ${status}`), 'openrouter');
+      expect(shown.kind).toBe('http');
+      expect(shown.status).toBe(status);
+      expect(shown.message).not.toMatch(/retried/);
+    }
+    expect(describeLiveError(new Error('gemini 503'), 'gemini').message).toMatch(/retried/);
   });
 
   it('gemini counts thinking as output and the search tool prompt as input', async () => {
@@ -781,6 +1001,69 @@ describe('token usage capture — the cost signal the eval reads', () => {
       }),
     ]);
   });
+
+  it('records a call that failed, and one that was cancelled, as attempts', async () => {
+    const cfg: ModelConfig = { provider: 'openrouter', model: 'openai/gpt-4o-mini', apiKey: 'k' };
+    const fetchMock = vi.fn(
+      async () => new Response('{"error":{"message":"invalid key"}}', { status: 401 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      getAdapter('openrouter').generate({ ...req, usageLabel: 'canvas' }, cfg),
+    ).rejects.toThrow();
+    const stop = new AbortController();
+    stop.abort();
+    await expect(
+      getAdapter('openrouter').generate(
+        { ...req, usageLabel: 'study-notes', signal: stop.signal },
+        cfg,
+      ),
+    ).rejects.toThrow();
+
+    expect(getUsageLedger()).toEqual([
+      expect.objectContaining({ label: 'canvas', outcome: 'failed', reported: false }),
+      expect.objectContaining({ label: 'study-notes', outcome: 'cancelled', reported: false }),
+    ]);
+  });
+
+  it('records a failed paid readiness check once, never a remembered verdict', async () => {
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-ledger', apiKey: 'k' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) =>
+        String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response('{"error":{"message":"credit balance is too low"}}', { status: 400 }),
+      ),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toEqual([
+      expect.objectContaining({ outcome: 'failed', reported: false }),
+    ]);
+  });
+
+  it('records a readiness check whose answer broke off mid-read', async () => {
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-cutoff', apiKey: 'k' };
+    const brokenBody = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new TypeError('network connection was lost'));
+        },
+      });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) =>
+        String(url).includes('/v1/models')
+          ? new Response('{}', { status: 200 })
+          : new Response(brokenBody(), { status: 200 }),
+      ),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(getUsageLedger().filter((e) => e.label === 'readiness-check')).toEqual([
+      expect.objectContaining({ outcome: 'ok', reported: false }),
+    ]);
+  });
 });
 
 describe('openrouter adapter — OpenAI-compatible, attribution + correct URL', () => {
@@ -843,21 +1126,17 @@ function stallingResponse(before: string[] = []): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
 }
 
-describe('gemini retries a stall only when nothing was streamed', () => {
+describe('gemini never re-sends a stalled stream', () => {
   const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
 
-  it('retries once when the stream died before a single byte', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(stallingResponse())
-      .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
+  it('fails a stream that died before a single byte, after one request', async () => {
+    const fetchMock = vi.fn(async () => stallingResponse());
     vi.stubGlobal('fetch', fetchMock);
-    const { raw } = await geminiAdapter.generate(req, cfg);
-    expect(raw).toBe('{}');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/stream stalled/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT retry once fragments have already been streamed', async () => {
+  it('fails a stream that died mid-answer, after one request, keeping what arrived', async () => {
     // Re-asking here would bill the turn twice AND paint the answer's opening twice — the user has
     // already seen and heard what arrived, and generateLive salvages it.
     const fetchMock = vi.fn(async () => stallingResponse([TEXT_FRAME]));
@@ -868,13 +1147,6 @@ describe('gemini retries a stall only when nothing was streamed', () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(deltas).toEqual(['{}']);
-  });
-
-  it('gives up after one retry rather than looping', async () => {
-    const fetchMock = vi.fn(async () => stallingResponse());
-    vi.stubGlobal('fetch', fetchMock);
-    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/stream stalled/);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -1142,7 +1414,7 @@ describe('openai Responses API — reasoning-model params (gpt-5.x / o-series)',
     expect(body.reasoning).toEqual({ effort: 'medium' });
   });
 
-  it('escalates a web-search turn to high effort when the caller asks (the grounding retry)', async () => {
+  it('escalates a web-search turn to high effort when the caller asks', async () => {
     const body = await bodyFor('gpt-5.4-nano', {
       thinkingLevel: 'high',
       tools: { webSearch: true },

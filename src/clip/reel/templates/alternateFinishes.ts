@@ -1,5 +1,7 @@
 // Alternate reel finishes live behind one shared async boundary. The canonical title/data/concept/
 // talk slides stay in the first-preview path; Remix pays for this richer wardrobe only on intent.
+// Their fixed colors and keyframes ride the same boundary.
+import './finishes/finishes.css';
 export { NeonSlide } from './finishes/neon';
 export { NeonSignSlide } from './finishes/neonSign';
 export { GlowOutlineSlide } from './finishes/glowOutline';

@@ -48,10 +48,10 @@ describe('the reveal walk barrier keeps its escape hatches armed', () => {
   it('lights a spoken stop only after its own line reports audio started', () => {
     const stopRunner = effect.slice(effect.indexOf('const runSpokenStop'));
     const started = stopRunner.indexOf('await waitLineStart(handle,');
-    // Prefix-matched, not the whole call: applyStop has grown arguments (the stop index, so a
-    // voiced walk can write its margin aside) and will grow more. What this pins is the ORDER —
-    // the stop lights after its own audio is reported started — never the argument list.
-    const lit = stopRunner.indexOf('applyStop(spot, line', started);
+    // Prefix-matched, not the whole call: the stop is lit through `lightStop`, which forwards to
+    // applyStop and remembers when the pen was asked. What this pins is the ORDER — the stop
+    // lights after its own audio is reported started — never the argument list.
+    const lit = stopRunner.indexOf('lightStop(line', started);
     expect(started).toBeGreaterThan(-1);
     expect(lit).toBeGreaterThan(started);
   });

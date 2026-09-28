@@ -31,11 +31,6 @@ export function MetaballSlide({ slots }: SlideProps<'concept'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`
-        @keyframes meta-goo1 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(6%,-5%); } 66% { transform: translate(-5%,4%); } }
-        @keyframes meta-goo2 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(-6%,5%); } 66% { transform: translate(5%,-4%); } }
-      `}</style>
-
       {/* The goo lives in one square. The filter blurs the fills, then the color-matrix steepens alpha
           so blurred edges snap to a hard rim — overlapping balls melt into a single contour. */}
       <svg

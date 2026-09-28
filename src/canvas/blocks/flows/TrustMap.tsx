@@ -9,7 +9,7 @@ type Props = TrustMapProps & { delay?: number };
 // of data is, WHERE it is stored, and WHO can see it — the three questions someone actually means by
 // "where does my data go?". An optional retention tag rides under the location (how long it sticks
 // around), and an optional security checklist sits below as honest pass/gap rows. Stateless and
-// hover-free so it reads identically on a phone, in Focus mode, and in a Replay capture; it only
+// hover-free so it reads identically on a phone, in the Lens, and in a Replay capture; it only
 // ever shows what was mapped, never an invented assurance.
 export function TrustMap({
   title,

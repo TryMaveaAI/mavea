@@ -1,5 +1,5 @@
 /* ============================================================
-   MOBILE — phones and small tablets (≤768px). The canvas becomes the
+   MOBILE — phones and small tablets (≤768px, or ≤500px tall). The canvas becomes the
    full-width stage; the conversation rail collapses into a bottom dock
    (composer always reachable) with the transcript behind a toggle that
    opens it as a bottom sheet. Desktop (>768px) is untouched.
@@ -18,7 +18,10 @@
   }
 }
 
-@media (width <= 768px) {
+/* A phone on its side is still a phone: 844×390 is wider than the tablet line, and on width alone it
+   kept the desktop rail and the full menu bar and left the answer ~330px of a 390px-tall screen.
+   The short-height arm hands it the same compact shell as the phone held upright. */
+@media (width <= 768px) or (height <= 500px) {
   /* every `left: var(--rail-w)` offset (topbar, stages, presence, scrubber,
      center caption) collapses to full width in one move */
   .mavea-app.with-rail {
@@ -29,6 +32,17 @@
        measured at 44 the toggle overhung the band by that pixel, into the replay's transport. */
     --mobile-rail-h: calc(var(--tap-min) + 1px);
     --canvas-dock-gap: 4px;
+  }
+
+  /* A locked run (a replay, the walkthrough) makes the whole surface inert but its transport, so
+     the "This session" sheet cannot be opened while it plays: its band would be 45px of a dead
+     control, packed against whatever the run is showing above it. The band goes with it, unless
+     the run itself has the sheet open to read from. */
+  .mavea-app.with-rail[data-scripted-run='locked']:not(:has(.side-rail.chat-open)) {
+    --mobile-rail-h: 0px;
+  }
+  .mavea-app.with-rail[data-scripted-run='locked'] .side-rail:not(.chat-open) {
+    display: none;
   }
 
   /* The desktop "This session" topbar toggle collapses the left rail — meaningless
@@ -130,9 +144,10 @@
   }
 }
 
-/* Smallest phones (≤430px): the topbar must never force the page to scroll sideways. Tighten its
-   padding/gap so a long model name can't push the row past the viewport. */
-@media (width <= 430px) {
+/* Smallest phones (≤430px), and any phone on its side: the topbar must never force the page to
+   scroll sideways. Tighten its padding/gap so a long model name can't push the row past the
+   viewport. Landscape has the width for the menus but not the height for what they open. */
+@media (width <= 430px) or (height <= 500px) {
   .topbar {
     gap: 8px;
     padding: 0 12px;
@@ -170,7 +185,7 @@
    hides the dock. A host alone reaches too far the other way — the card's action cluster and a
    section's controls sit in the cell BESIDE the card, shown at rest on touch, and those are
    chrome. The hosts are every place a `Block` is drawn: the board grid (depth drawers included),
-   the Focus hero, a canvas-board node, the Study desk's card face, the Lens stage, the gallery
+   a canvas-board node, the Study desk's card face, the Lens stage, the gallery
    preview, the world's parts rail, and an exported figure's frame. Add the host here when you add
    a surface that renders blocks.
    ============================================================ */
@@ -178,7 +193,6 @@
   :where(button, [role='button'], summary, select, label[for]):not(
     :where(
         .card-grid,
-        .focus-hero-card,
         .cv-node-inner,
         .study-card-face,
         .zoom-sheet-body,
@@ -194,7 +208,6 @@
   :where(button, [role='button'], summary, select, label[for]):not(
       :where(
           .card-grid,
-          .focus-hero-card,
           .cv-node-inner,
           .study-card-face,
           .zoom-sheet-body,

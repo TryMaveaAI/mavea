@@ -31,6 +31,7 @@ import { exportDeckToPdf, printDeck, printDeckWithNotes } from './pipeline/expor
 import { exportDeckToPptx } from './pipeline/exportPptx';
 import { printDoc } from './pipeline/printFallback';
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 type ExportFormat = 'presentation' | 'document';
 
@@ -425,11 +426,13 @@ export function ExportModal({
     </button>
   );
 
+  const backdrop = useBackdropDismiss(busy ? undefined : onClose);
   return (
     <div
       style={ST.scrim}
       role="presentation"
-      onClick={busy ? undefined : (e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={backdrop.onPointerDown}
+      onClick={backdrop.onClick}
     >
       <div
         style={narrow ? { ...ST.panel, ...ST.panelNarrow } : ST.panel}

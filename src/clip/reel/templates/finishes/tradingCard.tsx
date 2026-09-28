@@ -49,15 +49,6 @@ export function TradingCardSlide({ slots }: SlideProps<'stat'>) {
     >
       {/* DARK_BLEED finish on a LIGHT foil, so the board's near-white --reel-ink would wash out the
           name/HP/stats — scope a dark ink for the card's text (the foil is light on every palette). */}
-      <style>{`
-        .reel-tc { --tc-ink: #1c1a3a; }
-        @keyframes card-deal {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 3)) rotate(-2deg) scale(0.94); }
-          to { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
-        }
-        @keyframes card-spin { to { transform: rotate(360deg); } }
-      `}</style>
-
       {/* The foil holo: a diagonal rainbow band that sweeps across with a screen blend, so the whole
           card glints as if tilted in the light. Purely decorative, so it sits above and ignores pointers. */}
       <span

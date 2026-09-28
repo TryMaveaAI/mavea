@@ -36,6 +36,12 @@
   align-items: center;
   height: 100%;
   overflow: hidden;
+  /* One measure for a step's card AND the footer pinned under it: they are siblings of
+     different scroll boxes, so they share it through the root rather than the card. */
+  --setup-measure: 560px;
+}
+.setup.stage[data-wide] {
+  --setup-measure: 860px;
 }
 
 /* top navigation bar */
@@ -187,10 +193,14 @@
 }
 .const-step.is-current .const-disc {
   position: relative;
-  background: radial-gradient(circle at 50% 32%, var(--presence-soft), var(--presence-deep));
+  background: radial-gradient(
+    circle at 50% 32%,
+    var(--presence-soft-held),
+    var(--presence-deep-held)
+  );
   border-color: var(--presence-soft);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
-  color: #fff;
+  color: var(--on-presence);
 }
 /* A bright, softly-breathing core turns "you are here" from a flat blob into a live, ready pulse.
    The halo animates transform/opacity only (compositor-cheap on weak hardware, see [[feedback-runs-on-all-hardware]]). */
@@ -281,6 +291,8 @@
 
 .setup-q {
   color: var(--text-primary);
+  /* A wide window otherwise leaves the question's last word alone on the second line. */
+  text-wrap: balance;
   font-size: var(--fs-2xl);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -301,12 +313,9 @@
      .setup-stage comment). The stage's own overflow-y:auto handles a tall step, so the card
      just needs its natural full height here, no flex-shrink games. */
   margin: var(--s-lg) auto 0;
-  max-width: 560px;
+  max-width: var(--setup-measure);
   padding: var(--s-xl);
   width: 100%;
-}
-.setup-card--wide {
-  max-width: 860px;
 }
 
 /* step body */
@@ -316,31 +325,54 @@
   gap: var(--s-lg);
 }
 
-/* card footer (non-Go steps) */
+/* The step's way forward, pinned under the scrolling stage (non-Go steps). A sibling of
+   .setup-stage in the column, exactly like .go-composer, so it never scrolls away with a long step
+   and a phone keyboard pushes it up rather than covering it. */
 .setup-foot {
-  align-items: center;
   border-top: 1px solid var(--line-soft);
+  background: var(--bg);
+  padding: var(--s-sm) var(--s-xl) max(var(--s-sm), env(safe-area-inset-bottom));
+  width: 100%;
+}
+.setup-foot-inner {
+  align-items: center;
   display: flex;
+  gap: var(--s-md);
   justify-content: space-between;
-  margin-top: var(--s-md);
-  padding-top: var(--s-md);
+  margin: 0 auto;
+  max-width: var(--setup-measure);
 }
 .setup-foot-note {
-  color: var(--text-faint);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+}
+.setup-foot-step {
+  color: var(--text-secondary);
   font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.setup-foot-save {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
 }
 .setup-done {
   align-items: center;
   appearance: none;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
+  flex-shrink: 0;
   font: 600 var(--fs-md)/1 var(--font);
   gap: var(--s-xs);
-  padding: 9px var(--s-lg);
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--s-lg);
   transition:
     opacity var(--m-fast),
     transform var(--m-fast);
@@ -348,6 +380,17 @@
 .setup-done:hover {
   opacity: 0.88;
   transform: translateY(-1px);
+}
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .setup-done:hover {
+    opacity: 1;
+    background: linear-gradient(
+      135deg,
+      color(from var(--presence) srgb-linear var(--lift-for-ink)),
+      color(from var(--presence-deep-held) srgb-linear var(--lift-for-ink))
+    );
+  }
 }
 .setup-done svg {
   height: 14px;
@@ -459,29 +502,14 @@
   background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
   border-color: var(--presence);
 }
-.tile-badge {
-  background: var(--surface-glass-strong);
-  border-radius: var(--r-sm);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  height: 26px;
-  line-height: 26px;
-  text-align: center;
-  width: 26px;
-}
-.provider-tile.is-selected .tile-badge {
-  background: color-mix(in oklab, var(--presence) 22%, transparent);
-  color: var(--presence-soft);
-}
-.tile-name {
+.provider-name {
   color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: 650;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-.tile-sub {
+.provider-sub {
   color: var(--text-muted);
   font-size: var(--fs-xs);
   line-height: 1.2;
@@ -669,7 +697,7 @@
 }
 .seg-opt.is-active {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .seg-title {
   display: block;
@@ -950,6 +978,17 @@
   transition: background var(--m-fast);
   width: 100%;
 }
+/* A short laptop window (1366×657) put the voice notice across the fold of the hub's scroller, its
+   Details and dismiss controls cut off at the composer's edge. The settled rows give back their
+   spare padding there so the notice lands whole above the composer. */
+@media (height <= 700px) {
+  .go-left {
+    gap: var(--s-md);
+  }
+  .go-left .check-row {
+    padding-block: 4px;
+  }
+}
 .go-left .check-row:hover {
   background: var(--surface-glass);
 }
@@ -985,10 +1024,10 @@
 .go-start {
   align-items: center;
   appearance: none;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
   font: 700 var(--fs-md)/1 var(--font);
@@ -1003,6 +1042,17 @@
 .go-start:hover {
   opacity: 0.88;
   transform: translateY(-1px);
+}
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .go-start:hover {
+    opacity: 1;
+    background: linear-gradient(
+      135deg,
+      color(from var(--presence) srgb-linear var(--lift-for-ink)),
+      color(from var(--presence-deep-held) srgb-linear var(--lift-for-ink))
+    );
+  }
 }
 .go-start svg {
   height: 16px;
@@ -1030,7 +1080,9 @@
 .go-composer-inner {
   align-items: center;
   background: var(--surface-elevated);
-  border: 1px solid var(--line-strong);
+  /* The hub's way in, so it carries the accent at rest — not only once it has focus. */
+  border: 1px solid color-mix(in oklab, var(--presence) 55%, var(--line-strong));
+  min-height: 56px;
   border-radius: var(--r-full);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -1042,11 +1094,12 @@
   border-color: var(--presence);
 }
 .go-composer-input {
+  align-self: stretch;
   background: transparent;
   border: none;
   color: var(--text-primary);
   flex: 1;
-  font: var(--fs-md)/1.4 var(--font);
+  font: var(--fs-lg)/1.4 var(--font);
   min-width: 0;
   outline: none;
 }
@@ -1061,21 +1114,29 @@
   background: var(--presence);
   border: none;
   border-radius: var(--r-full);
-  color: #fff;
+  color: var(--on-presence);
   cursor: pointer;
   display: flex;
   flex-shrink: 0;
-  height: 34px;
+  height: 42px;
   justify-content: center;
   transition:
     opacity var(--m-fast),
     background var(--m-fast);
-  width: 34px;
+  width: 42px;
 }
 .go-composer-attach:hover,
 .go-composer-mic:hover,
 .go-composer-send:hover {
   opacity: 0.85;
+}
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .go-composer-attach:hover,
+  .go-composer-mic:hover,
+  .go-composer-send:hover {
+    opacity: 1;
+    background: color(from var(--presence) srgb-linear var(--lift-for-ink));
+  }
 }
 .go-composer-attach svg,
 .go-composer-mic svg,
@@ -1089,6 +1150,23 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-xs);
+}
+/* Voice, offered beside the composer rather than as the hub's hero: a quiet pill with the mic. */
+.go-talk {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  gap: 6px;
+}
+.go-talk svg {
+  height: 14px;
+  width: 14px;
+}
+@media (pointer: coarse) {
+  .go-ghosts .ghost-btn {
+    min-height: var(--tap-min);
+    padding-inline: var(--s-md);
+  }
 }
 
 /* try-one prompts */
@@ -1186,6 +1264,9 @@
   .setup-stage {
     padding: var(--s-md) var(--s-md) var(--s-xl);
   }
+  .setup-foot {
+    padding-inline: var(--s-md);
+  }
   .setup-card {
     padding: var(--s-lg);
   }
@@ -1195,7 +1276,7 @@
   .voice-grid {
     max-width: none;
   }
-  /* Five fixed columns get too narrow to hold a badge + two lines of label text on a phone-
+  /* Five fixed columns get too narrow to hold two lines of label text on a phone-
      width screen — wrap normally here instead; three-then-two reads as ordinary responsive
      wrap, not the lonely-orphan layout bug the fixed 5-column grid fixes at desktop width. */
   .provider-tiles {
@@ -1207,6 +1288,35 @@
   .go-left,
   .go-right {
     grid-column: 1;
+  }
+}
+
+/* A phone: the provider choice is one compact, wrapping row of name pills instead of two
+   rows of tall tiles — measured, the tiles alone took 380px of a 844px screen before the model
+   field began. The company line stays in the accessible name, only its paint goes. */
+@media (width <= 560px) {
+  .provider-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    /* --s-sm, not --s-xs: on a phone the viewport scale takes --s-xs to ~3px, too little for a
+       thumb to choose between two pills; --s-sm stays over the 6px that takes. */
+    gap: var(--s-sm);
+  }
+  .provider-tile {
+    border-radius: var(--r-full);
+    flex: 1 1 auto;
+    flex-direction: row;
+    gap: var(--s-xs);
+    justify-content: center;
+    min-height: var(--tap-min);
+    padding: 4px var(--s-md);
+  }
+  .provider-sub {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
   }
 }
 

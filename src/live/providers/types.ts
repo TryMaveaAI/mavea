@@ -40,8 +40,7 @@ export interface LiveRequestTools {
    *  tool_choice to auto BECAUSE forcing a specific tool stops Claude's web_search loop outright
    *  (see anthropic.ts's header), Gemini's google_search is a built-in with no force lever, and
    *  Grok/OpenRouter have documented none. Everywhere the flag can't bind, the existing defenses
-   *  still hold: the prompt demands search, the grounding gate discards uncited values, and the
-   *  in-pass retry re-asks with a sharpened demand. */
+   *  still hold: the prompt demands search, and the grounding gate discards uncited values. */
   requireSearch?: boolean;
 }
 
@@ -129,6 +128,18 @@ export interface LiveProbe {
    *  400, which the setup wizard could only report as "Error 400." on the one screen whose whole
    *  job is getting a key working. */
   detail?: string;
+  /** What the check itself was billed, when it had to generate to reach a verdict (Anthropic's
+   *  one-token messages call). The registry records it in the usage ledger like any other call. */
+  usage?: TokenUsage;
+  /** This verdict came from a paid request made for this very call, whatever it returned. The
+   *  registry records it even when it failed and reported no usage. */
+  paid?: boolean;
+}
+
+export interface ProbeOptions {
+  /** The reader pressed Recheck or Test: re-run a paid check this session already passed, rather
+   *  than answering from the remembered verdict. */
+  fresh?: boolean;
 }
 
 /** Optional per-delta metadata. `reasoning` marks a model "thinking" token (e.g. OpenRouter's
@@ -180,7 +191,7 @@ export interface ProviderAdapter {
   /** Short, never-throws readiness probe. Answers "will a turn actually work?", so an adapter may
    *  spend a token to ask the generation endpoint itself — only call it when the user asked for a
    *  readiness verdict (setup, Recheck, a settled key/model change), never on speculation. */
-  probe(cfg: ModelConfig): Promise<LiveProbe>;
+  probe(cfg: ModelConfig, opts?: ProbeOptions): Promise<LiveProbe>;
   /**
    * Open the network path without asking for a verdict — for prewarming, where the result is
    * discarded and the only goal is a warm connection. Implement this wherever `probe` would cost

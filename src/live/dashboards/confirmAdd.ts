@@ -2,7 +2,7 @@
 // board once a REAL grounded read has come back FOR IT. Creation used to persist first and fire
 // the first fetch blind — a metric the model invented (or one search can't actually answer) sat
 // rendered as if it were fact until a refresh quietly failed. The probe IS the production
-// refresh engine (web search on, "NO SOURCE, NO NUMBER", one grounding retry), so "confirmed"
+// refresh engine (web search on, "NO SOURCE, NO NUMBER", one call), so "confirmed"
 // means exactly what the refresh loop will keep enforcing for the tile's whole life.
 //
 // Two subtleties the first cut of this gate got wrong, both now pinned by tests:
@@ -68,8 +68,11 @@ export function confirmFailureMessage(
       ? `Saved, but nothing can be checked yet. ${searchBlockLine('search-off')} Then this starts filling in.`
       : `${searchBlockLine('search-off')} ${ONLY_ONCE_REAL[subject]}.`;
   return kept
-    ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. It keeps trying; you can also reword what to track.'
-    : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";
+    ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. ' +
+        'Its next scheduled check tries again, or check it now; you can also reword what to track.'
+    : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the " +
+        'board once a real search returns real data. Try again in a moment, or reword what to ' +
+        'track.';
 }
 
 /** Snapshot of what a board held BEFORE a fold, so an unconfirmed addition can be rolled back
@@ -112,10 +115,6 @@ function rollBackFold(id: string, before: BoardIds): void {
 // cheaply — refreshDashboardNow answers 'busy' without spending anything while the slot is held.
 const BUSY_POLL_MS = 1_500;
 const BUSY_WAIT_MS = 45_000;
-/** Bounded patience for a probe that FAILED outright — sized for a per-minute rate window that
- *  outlived the adapter's own retry-after retries; such a window drains within seconds. */
-const FAILED_RETRIES = 2;
-const FAILED_RETRY_MS = 10_000;
 const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Did every search metric this addition brought in actually land a value? A blank-key metric is
@@ -202,17 +201,10 @@ export async function confirmRealData(
     return out;
   };
 
-  let outcome = await probe();
-  // A failed probe gets the same bounded patience a busy slot does. The adapter already absorbs a
-  // rate limit that names a short retry-after; the failure that reaches here is the window that
-  // OUTLIVED those retries — a per-minute token cap saturated by a burst — which drains on its own
-  // in seconds. Rolling the board back over that read as "adding never works" when nothing was
-  // wrong with the tracker at all. A hard failure (network down, revoked key) fails each retry
-  // fast and spends nothing, so the extra patience costs a genuine error only seconds.
-  for (let retry = 0; retry < FAILED_RETRIES && outcome === 'failed'; retry++) {
-    await delay(FAILED_RETRY_MS);
-    outcome = await probe();
-  }
+  // One probe. A failed one is never re-run automatically: a pass can fail after the model has
+  // already read, and billed, the whole search, so a second pass is the reader's to ask for. The
+  // failure is logged and the board's own "Check now" is that Retry.
+  const outcome = await probe();
 
   // Pass-level grounding isn't tile-level. 'done' also covers a grounded no-change pass, so an
   // added metric search couldn't answer still shows itself here: its value never filled in.

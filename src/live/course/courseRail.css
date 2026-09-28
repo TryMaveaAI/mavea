@@ -102,7 +102,13 @@
 .cx-fail {
   color: var(--warning);
 }
+/* A text action with a button's hit box: the box is 32px tall and its negative margins give the
+   difference back, so the row keeps the rhythm of its one line of type. */
 .cx-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-block: calc((1em - 32px) / 2);
   border: none;
   background: none;
   color: var(--presence);
@@ -217,11 +223,20 @@
 .cx-btn-primary {
   background: var(--presence);
   border-color: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .cx-btn-primary:hover {
   background: color-mix(in oklab, var(--presence) 88%, #000);
   border-color: color-mix(in oklab, var(--presence) 88%, #000);
+}
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .cx-btn-primary:hover {
+    color: color(
+      from color-mix(in oklab, var(--presence) 88%, #000) srgb-linear var(--ink-on-fill)
+    );
+  }
 }
 .cx-btn-got {
   border-color: color-mix(in oklab, var(--insight) 55%, transparent);
@@ -279,11 +294,30 @@
   color: var(--presence);
 }
 
+/* A pager, not a pair of banners: each button is as wide as its label, Prev at the start and Next
+   at the end. Stretched to share the row they became 600px pills that read as page sections. */
 .cx-nav {
   display: flex;
+  justify-content: space-between;
   gap: 8px;
   margin-top: 2px;
 }
-.cx-nav .cx-btn {
-  flex: 1;
+
+/* Under a thumb the rail's text actions are still text, but each is a full tap target: they were
+   12-13px tall, the height of their own line. */
+@media (pointer: coarse) {
+  .cx-back,
+  .cx-link,
+  .cx-deck-link,
+  .cx-zoom-link {
+    min-height: var(--tap-min);
+  }
+  .cx-link {
+    margin-block: calc((1em - var(--tap-min)) / 2);
+  }
+  /* The taller hit boxes keep the rows' visual rhythm: they overlap the rail's gap, not add to it. */
+  .cx-secondary-links {
+    row-gap: 0;
+    margin-block: -8px;
+  }
 }

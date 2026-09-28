@@ -340,7 +340,7 @@
 /* Mostly a touch context by 768px — the key hint is noise. Below 430px the topbar menus collapse
    away (see mobile.css), but this standalone button survives untouched, so drop just the label and
    keep the magnifier: the palette (and the ~dozen features only it reaches) stays tappable. */
-@media (width <= 768px) {
+@media (width <= 768px) or (height <= 500px) {
   .topbar-search-kbd {
     display: none;
   }
@@ -362,7 +362,7 @@
   padding: 0 4px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;

@@ -33,14 +33,12 @@ export function SessionPassSlide({ slots }: SlideProps<'recap'>) {
       {/* This is a DARK_BLEED finish, so the board flips --reel-ink near-white — but the ticket stub
           is a near-white panel, so its tear line, labels and barcode need a DARK ink to stay legible.
           Scope a local dark ink (the finder finish uses the same pattern). */}
-      <style>{`.reel-pass{--pass-ink:#1c1a3a}@keyframes pass-scan{from{transform:translateX(-120%)}to{transform:translateX(320%)}}`}</style>
-
       {/* Event stub: the gradient header, with the topic as the headline act. */}
       <div
         style={{
           padding: 'calc(var(--ru) * 4.4) calc(var(--rw) * 5) calc(var(--ru) * 4)',
-          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2))',
-          color: '#fff',
+          background: 'linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2-fill))',
+          color: 'var(--reel-on-accent)',
         }}
       >
         <div

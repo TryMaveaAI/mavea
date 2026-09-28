@@ -1,8 +1,7 @@
 /* dash-composer.css — the "track anything" home composer: the sticky ask bar + its ⌘K hint, plus
-   the two bits its plan-review sheet adds beyond the older template modal (dashboards.css) — the
-   honest search-volume estimate and the one-time static-fact answer card. The sheet's own chrome
-   (scrim, modal, head, back, close, loading) rides dashboards.css's existing xt- and tpl- rules so
-   both "track anything" entry points read as one surface, not two. Tokens only, light+dark auto. */
+   its plan-review sheet's honest search-volume estimate and the one-time static-fact answer card.
+   The sheet's own chrome (scrim, modal, head, back, close, loading) rides dashboards.css's xt- and
+   tpl- rules. Tokens only, light+dark auto. */
 
 /* The bar and its gate line stick together as one column: the bar floats at the bottom of a
    long page, so a line left in the flow beneath it sits under the fold, where a phone reader who
@@ -17,6 +16,15 @@
   gap: 8px;
   width: min(100%, 640px);
   margin: 24px auto 0;
+}
+/* On a short phone the floating bar is a tenth of the screen, and at rest it sat over the Tracking
+   section's own "not a live feed" line — the one sentence that says what the numbers are. There the
+   bar takes its place at the end of the page instead of floating over it; the gate line still
+   travels with it, right under the Track button the reader just pressed. */
+@media (width <= 480px) and (height <= 650px) {
+  .dash-composer {
+    position: static;
+  }
 }
 .dash-composer-bar {
   display: flex;

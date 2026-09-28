@@ -152,12 +152,12 @@ export function PracticeLog({
         <>
           <div className="lr-pl-stats">
             <div className="lr-pl-stat">
-              <span className="lr-pl-stat-v">{totalLabel}</span>
+              <span className="lr-pl-stat-v tab-num">{totalLabel}</span>
               <span className="lr-pl-stat-k">min logged</span>
             </div>
             {streakDays > 0 && (
               <div className="lr-pl-stat lr-pl-stat--streak">
-                <span className="lr-pl-stat-v">{formatValue(streakDays)}</span>
+                <span className="lr-pl-stat-v tab-num">{formatValue(streakDays)}</span>
                 <span className="lr-pl-stat-k">day streak</span>
               </div>
             )}
@@ -188,7 +188,9 @@ export function PracticeLog({
                 <span className="lr-pl-session-date">
                   {s.dateKey ? formatDate(s.dateMs, { style: 'day' }) : '—'}
                 </span>
-                <span className="lr-pl-session-min">{formatValue(s.minutes, { unit: 'min' })}</span>
+                <span className="lr-pl-session-min tab-num">
+                  {formatValue(s.minutes, { unit: 'min' })}
+                </span>
                 <span className="lr-pl-session-body">
                   {s.piece && <b>{s.piece}</b>}
                   {s.focus && <span className="lr-pl-session-focus">{s.focus}</span>}

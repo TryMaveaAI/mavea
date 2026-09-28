@@ -118,9 +118,6 @@ describe('guided experience quality', () => {
     expect(student?.steps.some((step) => step.beats?.some((beat) => beat.kind === 'pen'))).toBe(
       true,
     );
-    expect(developer?.steps.some((step) => step.beats?.some((beat) => beat.kind === 'share'))).toBe(
-      false,
-    );
     expect(
       developer?.steps.some((step) =>
         step.beats?.some((beat) => beat.kind === 'export' && beat.format === 'presentation'),

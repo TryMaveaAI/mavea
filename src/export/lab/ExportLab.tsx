@@ -765,7 +765,8 @@ function primary(busy: boolean): CSSProperties {
     padding: '6px 12px',
     borderRadius: 8,
     border: '1px solid rgba(255,255,255,.16)',
-    background: busy ? 'rgba(255,255,255,.06)' : '#5B8CFF',
+    // Deep enough for its white label to read 5:1 (the lighter #5B8CFF gave 3.2:1).
+    background: busy ? 'rgba(255,255,255,.06)' : '#3A66E0',
     color: '#fff',
     fontSize: 12,
     fontWeight: 600,

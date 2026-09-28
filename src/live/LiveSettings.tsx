@@ -201,19 +201,6 @@ function pttBtnStyle(active: boolean): CSSProperties {
   };
 }
 
-// Design tokens only (these adapt to light/dark); the old `var(--card/--bg/--border)`
-// fallbacks were undefined, so their dark hex always won and looked wrong in light mode.
-const card: CSSProperties = {
-  background: 'var(--surface-elevated)',
-  border: '1px solid var(--line)',
-  borderRadius: 16,
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  width: 'min(460px, calc(100vw - 32px))',
-  boxShadow: 'var(--shadow-modal)',
-};
 const labelStyle: CSSProperties = {
   fontSize: 12,
   color: 'var(--text-muted)',
@@ -340,8 +327,9 @@ function ArmedActionButton({
   confirmLabel: string;
   onConfirm: () => void;
   /** 'link' wears the surrounding text's look — for an armed action that lives in a row of
-   *  links rather than beside the other controls. */
-  variant?: 'pill' | 'link';
+   *  links rather than beside the other controls. 'danger' is a full-width destructive button
+   *  (`.ls-danger`), for an action that cannot be undone. */
+  variant?: 'pill' | 'link' | 'danger';
   /** While the confirmed action is still running. */
   disabled?: boolean;
 }): ReactElement {
@@ -371,6 +359,8 @@ function ArmedActionButton({
     <button
       type="button"
       disabled={disabled}
+      className={variant === 'danger' ? 'ls-danger' : undefined}
+      data-armed={armed || undefined}
       onClick={() => {
         if (!armed) {
           setArmed(true);
@@ -379,15 +369,26 @@ function ArmedActionButton({
         setArmed(false);
         onConfirm();
       }}
-      style={{
-        cursor: disabled ? 'default' : 'pointer',
-        font: 'inherit',
-        ...(variant === 'link' ? link : pill),
-      }}
+      style={
+        variant === 'danger'
+          ? undefined
+          : {
+              cursor: disabled ? 'default' : 'pointer',
+              font: 'inherit',
+              ...(variant === 'link' ? link : pill),
+            }
+      }
     >
       {armed ? confirmLabel : label}
     </button>
   );
+}
+
+/** The WAI-ARIA radio pattern's arrow step: +1 forward, -1 back, 0 for any other key. */
+function radioStep(key: string): number {
+  if (key === 'ArrowRight' || key === 'ArrowDown') return 1;
+  if (key === 'ArrowLeft' || key === 'ArrowUp') return -1;
+  return 0;
 }
 
 /** A segmented picker (2–3 options) with an optional feature badge per option. */
@@ -413,12 +414,7 @@ function SegRow({
   // The handler sits on the options, not the group: the group itself must never be focusable
   // under this pattern, and a key press always reaches the focused option first anyway.
   const move = (e: React.KeyboardEvent<HTMLButtonElement>): void => {
-    const step =
-      e.key === 'ArrowRight' || e.key === 'ArrowDown'
-        ? 1
-        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-          ? -1
-          : 0;
+    const step = radioStep(e.key);
     if (!step) return;
     e.preventDefault();
     const next = (activeIndex + step + options.length) % options.length;
@@ -505,6 +501,11 @@ export function LiveSettings({
   const { style: studyStyle, newPerDay } = useStudyPrefs();
   const cardCounts = useCardCounts();
   const info = providerInfo(cfg.provider);
+  // The provider chips' roving tab stop; an unlisted provider leaves it on the first chip.
+  const providerIndex = Math.max(
+    0,
+    VISIBLE_PROVIDERS.findIndex((v) => v.id === cfg.provider),
+  );
   // What is actually stored, which may be empty from a deliberate clear. Nothing substitutes a
   // model here — an empty field means no model is chosen, and the readiness dot says so.
   const rawModel = cfg.models[cfg.provider] ?? '';
@@ -761,7 +762,7 @@ export function LiveSettings({
     applyPerfTier(resolveTierNow());
   }, []);
 
-  const probe = useCallback(async () => {
+  const probe = useCallback(async (fresh = false) => {
     const seq = ++probeSeq.current;
     setChecking(true);
     setProbeError(false);
@@ -769,7 +770,7 @@ export function LiveSettings({
       // The readiness probe lives in the catalog-free leaf ./ready — import it directly (no longer
       // via generateLive, which would drag the turn engine + catalog into the settings chunk).
       const { checkLiveReady } = await import('./ready');
-      const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false });
+      const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false, fresh });
       if (seq === probeSeq.current) {
         setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode });
       }
@@ -824,7 +825,15 @@ export function LiveSettings({
                     : 'Not reachable';
 
   return (
-    <div ref={dialogRef} style={card} role="dialog" aria-modal="true" aria-label="Mavéa settings">
+    // The card's box lives in wow-polish.css (`.ls-card`), not inline, because a phone or a short
+    // window turns it into a full-height sheet and an inline style would outrank that media query.
+    <div
+      ref={dialogRef}
+      className="ls-card"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Mavéa settings"
+    >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span
@@ -837,22 +846,11 @@ export function LiveSettings({
         </span>
         {onClose && (
           <button
+            type="button"
+            className="ls-close"
             onClick={onClose}
             title="Close"
             aria-label="Close settings"
-            style={{
-              display: 'inline-grid',
-              placeItems: 'center',
-              width: 28,
-              height: 28,
-              padding: 0,
-              border: 'none',
-              borderRadius: 6,
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
           >
             <Icon.x style={{ width: 16, height: 16 }} />
           </button>
@@ -885,7 +883,8 @@ export function LiveSettings({
             {t === 'model'
               ? 'Model'
               : t === 'settings'
-                ? 'Settings'
+                ? // Named for what is in it: "Settings" inside Settings named nothing.
+                  'Answers & display'
                 : t === 'you'
                   ? 'You'
                   : 'Your data'}
@@ -903,26 +902,36 @@ export function LiveSettings({
         {tab === 'model' && (
           <div className="settings-model-connect">
             {/* provider chips */}
+            {/* One provider is picked at a time, so this is a radio group: one tab stop, arrows
+                move the pick (the same pattern as SegRow). */}
             <div
               className="settings-provider-picker"
-              style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+              role="radiogroup"
               aria-label="Model providers"
             >
-              {VISIBLE_PROVIDERS.map((p) => {
+              {VISIBLE_PROVIDERS.map((p, i) => {
                 const active = p.id === cfg.provider;
                 return (
                   <button
                     key={p.id}
+                    type="button"
+                    role="radio"
+                    className="settings-provider-chip"
+                    aria-checked={active}
+                    tabIndex={i === providerIndex ? 0 : -1}
                     onClick={() => setLiveConfigV2({ provider: p.id })}
-                    style={{
-                      ...inputStyle,
-                      width: 'auto',
-                      cursor: 'pointer',
-                      borderColor: active ? 'var(--presence)' : 'var(--line)',
-                      boxShadow: active ? '0 0 0 1px var(--presence)' : 'none',
-                      opacity: active ? 1 : 0.7,
+                    onKeyDown={(e) => {
+                      const step = radioStep(e.key);
+                      if (!step) return;
+                      e.preventDefault();
+                      const next =
+                        (providerIndex + step + VISIBLE_PROVIDERS.length) %
+                        VISIBLE_PROVIDERS.length;
+                      setLiveConfigV2({ provider: VISIBLE_PROVIDERS[next].id });
+                      (
+                        e.currentTarget.parentElement?.children[next] as HTMLElement | undefined
+                      )?.focus();
                     }}
-                    aria-pressed={active}
                   >
                     {p.label}
                   </button>
@@ -997,7 +1006,7 @@ export function LiveSettings({
               <span style={{ color: 'var(--text-muted)' }}>·</span>
               <span style={{ color: 'var(--text-muted)' }}>{info.hint}</span>
               <button
-                onClick={() => void probe()}
+                onClick={() => void probe(true)}
                 disabled={checking}
                 style={{
                   marginLeft: 'auto',
@@ -1078,7 +1087,9 @@ export function LiveSettings({
         )}
 
         {tab === 'settings' && (
-          <>
+          // Its own flow box, not the scroller: two columns on a scroll container whose height is
+          // capped spill into a third, sideways, instead of scrolling.
+          <div className="ls-cols">
             <AppearanceSettings />
 
             {/* Web search — Real-time is always pickable (never disabled for a non-native
@@ -1143,10 +1154,8 @@ export function LiveSettings({
                 onPick={(v) => setLiveConfigV2({ quality: v as typeof cfg.quality })}
               />
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                How long Mavéa reasons before answering — speed versus care on hard questions.
-                Thorough also buys two speculative turns per answer; Balanced glimpses cost up to
-                three small calls per utterance. (How the answer is written is Explanation level,
-                above.)
+                How long Mavéa reasons before answering — speed versus care on hard questions. (How
+                the answer is written is Explanation level, above.)
               </span>
             </div>
 
@@ -1209,7 +1218,7 @@ export function LiveSettings({
                 </div>
               )}
             </AdvancedGroup>
-          </>
+          </div>
         )}
 
         {tab === 'you' && (
@@ -1608,10 +1617,11 @@ export function LiveSettings({
             </div>
             <div
               className="settings-transfer-row"
-              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--s-sm)' }}
+              style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--s-sm)' }}
               aria-busy={forgetBusy}
             >
               <ArmedActionButton
+                variant="danger"
                 label={forgetBusy ? 'Forgetting…' : 'Forget everything on this device'}
                 confirmLabel="Confirm: forget everything on this device"
                 disabled={forgetBusy}

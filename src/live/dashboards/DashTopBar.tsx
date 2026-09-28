@@ -94,11 +94,13 @@ export function DashTopBar({ view }: { view: DashView }): ReactElement {
       </nav>
       <span className="topbar-divider" aria-hidden="true" />
       <div className="dash-topbar-tools">
-        <a className="dash-topbar-action" href={dashHref.rewind}>
-          ✦ Rewind
+        <a className="dash-topbar-action" href={dashHref.rewind} aria-label="Rewind">
+          <span aria-hidden="true">✦</span>
+          <span className="dash-topbar-action-label">Rewind</span>
         </a>
-        <a className="dash-topbar-action" href={dashHref.present}>
-          ▸ Present
+        <a className="dash-topbar-action" href={dashHref.present} aria-label="Present">
+          <span aria-hidden="true">▸</span>
+          <span className="dash-topbar-action-label">Present</span>
         </a>
         <TemplatePicker triggerClassName="ctrl" />
       </div>

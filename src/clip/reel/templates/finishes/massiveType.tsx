@@ -24,13 +24,6 @@ export function MassiveTypeSlide({ slots }: SlideProps<'concept'>) {
         overflow: 'hidden',
       }}
     >
-      <style>{`
-        @keyframes massiveType-marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-      `}</style>
-
       {slots.tag && (
         <span
           style={{

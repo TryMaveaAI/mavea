@@ -27,15 +27,18 @@ the repository owners the operator of someone else's deployment.
   handles them, while a second cache risks stale deploys and duplicate storage. `/sw.js` is a
   temporary retirement worker for older installations and intentionally has no fetch handler.
 - Preserve every security header in `public/_headers`, including the header-level
-  `Content-Security-Policy: frame-ancestors 'none'`; a meta CSP cannot express `frame-ancestors`.
+  `Content-Security-Policy`: it is index.html's meta policy plus `frame-ancestors 'none'`, which a
+  meta CSP cannot express. Copy the line verbatim; `tests/csp-parity.test.ts` holds it to the page.
 - Put the same-origin `/llm`, `/search`, `/actions`, `/tts`, `/stt`, and `/pdf` forwarders behind
   bounded request sizes, timeouts, concurrency/rate limits, and origin/authentication checks. A
   static host without these forwarders is not a complete Live deployment.
 - Keep origin logs free of request bodies and authorization headers. BYOK prompts and keys must not
   enter CDN analytics, error pages, or access logs.
 
-Cloudflare Pages and Netlify consume `public/_headers` directly. Other hosts must translate it into
-their own response-header configuration. Modern CDNs normally provide HTTP/2, HTTP/3, Brotli, and
+Cloudflare Pages and Netlify consume `public/_headers` directly. Its overlapping rules are written
+for Cloudflare Pages, which applies every matching rule in order and comma-joins a header set twice;
+on Netlify, confirm the deployed PDF and asset responses carry one value per header. Other hosts
+must translate it into their own response-header configuration. Modern CDNs normally provide HTTP/2, HTTP/3, Brotli, and
 regional edge caching; verify the actual response rather than relying on a plan description.
 
 ## Release probe

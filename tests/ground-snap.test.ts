@@ -2,7 +2,8 @@
 // model's quote to the page and adopting the page's OWN text — while fabrications still die. The
 // strict verbatim gate is unchanged; every snapped quote must re-pass it.
 import { describe, it, expect } from 'vitest';
-import { snapQuoteToPage, isVerbatimOnPage } from '../src/live/ground/verbatim';
+import { isVerbatimOnPage } from '../src/live/ground/verbatim';
+import { snapQuoteToPage, makePageSnapper } from '../src/live/ground/snap';
 import { groundClaims } from '../src/live/prism/mapping';
 
 // Verbatim OCR output from the 1906 Wright brothers patent scan (pdftotext) — the document that
@@ -135,5 +136,42 @@ describe('groundClaims with snapping', () => {
       pages,
     );
     expect(claims).toHaveLength(0);
+  });
+});
+
+describe('makePageSnapper', () => {
+  // groundClaims sweeps an ungroundable quote across every page, so it snaps through one prepared
+  // snapper per document. Whatever it caches, each answer must be the one snapQuoteToPage gives.
+  const INTERLEAVED = `portions of the machine. Each aeroplane means for maintaining or restoring the equi- is of considerablygreater width from side'to librium, or lateral balance of the apparatus, side than from front to rear other means for guiding the machine both vertically and horizontally provide a structure combining lightness, strength, convenience of construction`;
+  const pages = [OCR_PAGE, INTERLEAVED, 'a short page with nothing to align against at all'];
+  const quotes = [
+    'Our invention relates to that class of flying-machines in which the weight is sustained by the reactions',
+    'PATENTED MAY 22, 1906. O. & W. WRIGHT. FLYING MACHINE.',
+    'residing in the city of Dayton, county of Montgomery',
+    'means for maintaining or restoring the equilibrium, or lateral balance of the apparatus',
+    'The Wright brothers sold their flying machine patent to the government for a large sum of money',
+    'WRIGHT',
+    '',
+  ];
+
+  it('answers every quote on every page exactly as snapQuoteToPage does, in any order', () => {
+    const snap = makePageSnapper(pages);
+    let snapped = 0;
+    // Twice over, so the second pass reads only prepared pages and repeats each quote.
+    for (let round = 0; round < 2; round++) {
+      for (const quote of quotes) {
+        for (let i = pages.length - 1; i >= 0; i--) {
+          const expected = snapQuoteToPage(quote, pages[i]);
+          expect(snap(quote, i)).toBe(expected);
+          if (expected) snapped++;
+        }
+      }
+    }
+    // The fixtures reach the verbatim, coarse and interleaved paths — not just null answers.
+    expect(snapped).toBeGreaterThanOrEqual(8);
+  });
+
+  it('snaps nothing on a page index past the document', () => {
+    expect(makePageSnapper(pages)(quotes[0], pages.length)).toBeNull();
   });
 });

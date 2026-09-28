@@ -21,6 +21,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 import { flushSync } from 'react-dom';
 import { loadFamilies, familiesFor } from '../canvas/blocks/loader';
 import type { WorldSpec } from './world/types';
@@ -63,7 +64,6 @@ import {
   clearTourSoloFlag,
   launchSoloChapter,
   peekOpenRipple,
-  clearOpenRipple,
 } from '../tour/tourEntry';
 import { useTourDriver, type TourOps } from '../tour/useTourDriver';
 import { TourOverlay } from '../tour/TourOverlay';
@@ -98,7 +98,9 @@ import {
   waitLineStart,
   waitLineEnd,
   waitQueueQuiet,
+  awaitPenLift,
   delay,
+  finishOnceInked,
   finishCapMs,
   spokenMs,
   spokenMsUncapped,
@@ -118,6 +120,7 @@ import { liveTourBeats } from './generateBeats';
 import { revealInkPlan } from './mutedReveal';
 import { claim as claimStepper } from '../canvas/focus/stepDriver';
 import { runDiagramWalk, STEP_DWELL_MS } from './diagramWalk';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 import { prefersReducedMotion } from '../canvas/focus/motion';
 import { TopbarMenu, type TopbarMenuItem } from './TopbarMenu';
 import type { PaletteItem } from './features/CommandPalette';
@@ -151,13 +154,13 @@ import { providerInfo, getAdapter } from './providers';
 import {
   attachmentLabel,
   isImage,
-  isPdf,
-  isOffice,
-  isText,
-  isExplodable,
+  explodableOn,
+  explodeRoute,
+  explodeSources,
   ACCEPTED_TYPES,
   type Attachment,
 } from './attachments';
+import { ExplodeChoice } from './prism/ExplodeChoice';
 import { SetupWizard } from './setup/SetupWizard';
 import { isSetupDone } from './setup/setup';
 import { TemplatePicker } from './TemplatePicker';
@@ -180,6 +183,7 @@ import {
 import { useTurnLatency, formatLatency } from './voice/useTurnLatency';
 import type { HeroContent } from './voice/heroSource';
 import { AnnotationLayer, BADGE_MS, MARK_DRAW_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
+import { INK_SETTLE_MS, inkPending, inkStillDrawing, pendingInkChanged } from './annotate/settle';
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
@@ -266,14 +270,13 @@ import { turnFrameId } from './history';
 import { VoiceScrubber } from './scrubvoice/VoiceScrubber';
 import { VoiceSpeedChip } from './scrubvoice/VoiceSpeedChip';
 import { ExplainLevelChip } from './ExplainLevelChip';
-import { useGhosts } from './ghost/useGhosts';
-import { GhostRow } from './ghost/GhostRow';
 import { useWhisper, WHISPER_GAIN } from './whisper/quietHours';
 import { useMindShape } from './mindshape/useMindShape';
 import { MindShapeCanvas } from './mindshape/MindShapeCanvas';
 import { registerWorldOpener } from './world/openWorld';
 import './world/worldChip.css';
 import { mindShapeToPrompt } from './mindshape/mindShapeToPrompt';
+import { mapAsFrame } from './mindshape/mapAsAnswer';
 import { completeWordsOnly, countThoughts } from './mindshape/localExtract';
 import { joinRamble } from './mindshape/joinRamble';
 import type { MindShapeSpec } from './mindshape/types';
@@ -304,7 +307,14 @@ import {
 // it stays out of the './turnstate' barrel anyway — the barrel is imported by the eager demo, and
 // this keeps its surface minimal. See index.ts.
 import { pendingCard } from './turnstate/pendingCard';
+import { BoardCuePill } from './turnstate/BoardCuePill';
 import { anyOverlayOpen } from './hooks/overlayGuard';
+import {
+  glideScroll,
+  revealTop,
+  spotScrollDelta,
+  useKeepSpotInView,
+} from './hooks/useKeepSpotInView';
 import { markCircleLoop } from '../tour/markCircle';
 import {
   MIC_AUDIO_MSG,
@@ -328,6 +338,24 @@ import { sentenceCase } from '../lib/sentenceCase';
 // What the lazy-canvas Suspense fallback sketches while the TopicCanvas chunk downloads: two
 // half-width cards over a full-width one — the generic shape of an answer, no catalog reach.
 const CANVAS_LOADING_SHAPE = [{ col: 6 }, { col: 6 }, { col: 12 }];
+
+/** The innermost element of a card that shows each of `texts`: the spots a scripted mark will be
+ *  drawn on. A text the card does not show is skipped, so a missing one only keeps less in view. */
+function cardText(spotId: string, texts: readonly string[]): Element[] {
+  const card = document.querySelector(`[data-spot-id="${CSS.escape(spotId)}"]`);
+  if (!card) return [];
+  const found: Element[] = [];
+  for (const text of texts) {
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.parentElement && n.textContent?.includes(text)) {
+        found.push(n.parentElement);
+        break;
+      }
+    }
+  }
+  return found;
+}
 
 const RAIL_COLLAPSED_STORAGE_KEY = 'mavea-live-rail-collapsed-v1';
 
@@ -535,20 +563,16 @@ function isContinuePhrase(text: string): boolean {
 }
 
 /**
- * A takeover asked for in the URL — `#/live?demo=dev&view=focus`. The Study and Focus are entered
- * by a control and left by one; Focus no longer has a control of its own outside Present, so this
- * is how the layout gates reach it (a gate cannot see a surface it does not visit) and how a
- * takeover is deep-linked while debugging. SHOWN, never saved: it must not become a preference.
+ * A takeover asked for in the URL — `#/live?demo=dev&view=study`. Takeovers are entered by a
+ * control and left by one, so this is how the layout gates reach them (a gate cannot see a surface
+ * it does not visit) and how a takeover is deep-linked while debugging. SHOWN, never saved: it
+ * must not become a preference.
  */
 function viewFromHash(): ViewMode | null {
   try {
     if (typeof window === 'undefined') return null;
     const asked = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('view');
-    return asked === 'board' ||
-      asked === 'study' ||
-      asked === 'focus' ||
-      asked === 'canvas' ||
-      asked === 'world'
+    return asked === 'board' || asked === 'study' || asked === 'canvas' || asked === 'world'
       ? asked
       : null;
   } catch {
@@ -683,6 +707,8 @@ export function LiveApp(): ReactElement {
   const [dashOpen, setDashOpen] = useState(false);
   // The walkthrough's curated dashboard (a transient store entry) shown in a full-screen takeover.
   const [tourDashId, setTourDashId] = useState<string | null>(null);
+  const tourDashRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(tourDashRef, { active: tourDashId !== null });
   useEffect(() => {
     if (!tourDashId) return;
     return () => releaseTourDashboard(tourDashId);
@@ -778,29 +804,30 @@ export function LiveApp(): ReactElement {
   // A whole PILE of sources fuses into the Synthesis World (themes + contradictions + gaps across the
   // corpus); a document or a few go to Prism. Same "explode" gesture — it just scales by input count.
   const [synthesis, setSynthesis] = useState<Attachment[] | null>(null);
-  // The Synthesis World is OFFERED from 3 sources, and taken automatically at 4+. A single document is
-  // classic Prism; 2 (and 3, by choice) compare in Prism; 3 also offers Synthesize; 4+ synthesize.
-  const SYNTHESIS_MIN_SOURCES = 3; // synth available as a choice from here
-  const SYNTHESIS_AUTO_SOURCES = 4; // synth is the automatic default from here
-  const openExplode = useCallback((docs: Attachment[]) => {
-    // Prism reads a picture (mapClaims routes it down the vision path); a Synthesis corpus does not
-    // — mapCorpus extracts text and would hand a PNG to the PDF reader. So a pile counts only the
-    // sources Synthesis can actually read when deciding which surface opens.
-    const corpusReadable = docs.filter((d) => !isImage(d));
-    if (corpusReadable.length >= SYNTHESIS_AUTO_SOURCES) setSynthesis(corpusReadable);
-    else if (docs.length > 0) setPrismDocs(docs);
-  }, []);
+  // Set when a door that opens documents (⌘K, the launcher, its picker) met three of them: there is
+  // no right answer to pick for the reader, so the Compare / Synthesize choice takes focus instead.
+  const [explodeAsk, setExplodeAsk] = useState(false);
+  const clearExplodeAsk = useCallback(() => setExplodeAsk(false), []);
+  const visionCaps = getAdapter(cfg.provider).capabilities.vision;
+  // Every door (⌘K, the launcher card, the wizard's picker) hands over the files as staged and
+  // counts them through `explodeSources`, the same set both strips count, so a choice asked for
+  // here is always a choice a strip is showing.
+  const openExplode = useCallback(
+    (files: readonly Attachment[]) => {
+      const { docs, readable } = explodeSources(files, visionCaps);
+      const route = explodeRoute(readable.length);
+      if (route === 'synthesis') setSynthesis(readable);
+      else if (route === 'choose') setExplodeAsk(true);
+      else if (docs.length > 0) setPrismDocs(docs);
+    },
+    [visionCaps],
+  );
   // Ripple — the code/ship companion. Null = closed; a ShipModel = the open overlay. For now it
   // opens the worked example; real ingestion (paste a diff / connect a repo) lands in a later pass.
   const [ripple, setRipple] = useState<ShipModel | null>(null);
-  // The flagship's Ripple "See it live" (which can't deep-link a tour chapter — Ripple was cut from
-  // the walkthrough) hands off through a one-shot flag: open Ripple's own overlay on mount, seeded
-  // with its demo ship, so the preview honestly shows Ripple rather than dropping into the tour.
+  // `#/live?ripple=1` opens Ripple's own overlay on mount, seeded with its demo ship.
   useEffect(() => {
-    if (peekOpenRipple()) {
-      clearOpenRipple();
-      setRipple(SEED_SHIP);
-    }
+    if (peekOpenRipple()) setRipple(SEED_SHIP);
   }, []);
   // The read-only "Watch Me Think" map re-opened from a chat. `spec` is kept while closing so the
   // drawer still has content during its slide-out.
@@ -808,14 +835,14 @@ export function LiveApp(): ReactElement {
     open: false,
     spec: null,
   });
-  // Present mode: chrome falls away, the Focus stage fills the room, the mic stays live.
+  // Present mode: chrome falls away and the deck fills the room; the mic stays as it was.
   // Frames born while presenting are room questions — the rail labels them honestly.
   const [presenting, setPresenting] = useState(false);
   const presentingRef = useRef(false);
   presentingRef.current = presenting;
   const [presentationPreparing, setPresentationPreparing] = useState(false);
   const presentationRequestRef = useRef(0);
-  const openPresentation = useCallback(() => {
+  const openPresentation = useCallback((): Promise<void> => {
     const request = ++presentationRequestRef.current;
     setPresentationPreparing(true);
     // Keep the current answer painted while the split deck chunk arrives. Flipping `presenting`
@@ -826,7 +853,7 @@ export function LiveApp(): ReactElement {
       setPresentationPreparing(false);
       setPresenting(true);
     };
-    void presentationDeckLoad.preload().then(enter, enter);
+    return presentationDeckLoad.preload().then(enter, enter);
   }, []);
 
   useEffect(
@@ -862,13 +889,6 @@ export function LiveApp(): ReactElement {
   // Recent turns' finished voice tracks, kept (bounded) so the scrubber works on a chat you've
   // scrolled back to — not just the live head.
   const audioStore = useRef(new TurnAudioStore()).current;
-  // Ghost blocks ("it answers while you talk"): tiny speculative glimpses off the partial
-  // transcript. Off on the 'fast' quality dial — speculation is a spend the user opted into
-  // by choosing a deeper setting. (The hook itself runs below, once the turn it defers to exists.)
-  const ghostCfg = useMemo(
-    () => (modelCallsAllowed && cfg.quality !== 'fast' ? toModelConfig(cfg) : null),
-    [cfg, modelCallsAllowed],
-  );
   // Think-out-loud's "just listening" mode — utterances bank into a ramble instead of
   // answering, until the user says "thoughts?".
   const [justListen, setJustListen] = useState(false);
@@ -896,6 +916,13 @@ export function LiveApp(): ReactElement {
   // the timer must read it through a ref to see the current phase + a stable onSpeechEnd).
   const mindShapeRef = useRef(mindShape);
   mindShapeRef.current = mindShape;
+  // While the map is up it is what the reader is looking at, so Present and Share act on it rather
+  // than on the answer behind it. Stamped once per map, so Share's cut is not rebuilt every render.
+  const mapInView = watchThinking && mindShape.spec?.atoms.length ? mindShape.spec : null;
+  const mapFrame = useMemo(
+    () => (mapInView ? mapAsFrame(mapInView, Date.now()) : null),
+    [mapInView],
+  );
   // Watch Me Think resolves ("settle") when the user has been quiet a beat longer than a normal
   // between-thoughts pause. This holds that pending timer.
   const settleTimerRef = useRef<number | null>(null);
@@ -947,6 +974,7 @@ export function LiveApp(): ReactElement {
   const [pastOpen, setPastOpen] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const settingsScrim = useBackdropDismiss(() => setShowSettings(false));
   // Which tab the settings modal opens on — the palette's "Connect apps" jumps straight to
   // Actions (the tab is otherwise hidden until something is connected).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>();
@@ -1197,13 +1225,8 @@ export function LiveApp(): ReactElement {
     initial: restoredSession ? hydrateFromSession(restoredSession) : undefined,
   });
 
-  // Speculation stands down while a real turn is in flight: the user keeps talking over the answer
-  // that's already streaming, and guessing at it would bill their key for a preview of what they're
-  // about to see anyway.
-  const ghosts = useGhosts(listening, heard, ghostCfg, turn.busy);
-
   // (The walkthrough driver is built further below, after all the real controls it drives —
-  //  Focus, Present, Share, the palette, the pen, mute — have been declared.)
+  //  the Lens, Present, export, the palette, the pen, mute — have been declared.)
 
   // Hand off from the tour into the REAL surface: reload to a clean #/live (dropping tour mode) so
   // the user's first genuine ask runs for real (or the BYOK setup wizard shows). Replay re-stashes
@@ -1358,7 +1381,7 @@ export function LiveApp(): ReactElement {
   const stageRef = useRef<HTMLDivElement>(null);
   // The tour's scripted-highlighter action, assigned once `userInk` exists below; the tour ops
   // (created earlier in render) call through this ref so they don't reference it before declaration.
-  const scriptedMarkRef = useRef<() => void>(() => {});
+  const scriptedMarkRef = useRef<(signal?: AbortSignal) => void>(() => {});
   // The tour's scripted bend: glide the answer's bend-it slider toward a higher value in small
   // steps, dispatching real input events so React recomputes every derived number live — the
   // exact gesture a person makes, minus the hand. Controlled input, so the native value setter.
@@ -1578,10 +1601,6 @@ export function LiveApp(): ReactElement {
     return m;
   }, [turn.tour, turn.spec]);
 
-  // Focus mode: tapping a filmstrip card has Mavéa talk about it. The hook makes the tap respond
-  // instantly (quiet the running tour, move the real spotlight) but debounces the spoken line, so a
-  // rapid scrub speaks once — about the card you land on — instead of stammering. Tapping the card
-  // Mavéa is on hushes it. `speak` respects mute and arms the mic echo gate.
   // Cards Mavéa has gestured at this turn — the annotation layer draws (and keeps) a stroke
   // on each, so an annotated block stays a shareable artifact until the next answer. The
   // spoken line rides along so the stroke can land on the exact words the voice said.
@@ -1635,10 +1654,9 @@ export function LiveApp(): ReactElement {
     if (failed && !hadErrorRef.current) scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     hadErrorRef.current = failed;
   }, [turn.error]);
-  // Whether the Everything grid has room for the margin-note gutter. Below the threshold the
+  // Whether the board's grid has room for the margin-note gutter. Below the threshold the
   // cards would drop to a cramped column budget just to host notes, so the gutter stays off and
-  // the words keep flowing through the reading ribbon + the pen pill's log (and, in Focus, the
-  // trail column). Observes the canvas scroll container — the same box the grid tiles against.
+  // the words keep flowing through the reading ribbon + the pen pill's log. Observes the canvas scroll container — the same box the grid tiles against.
   const [noteRailFits, setNoteRailFits] = useState(false);
   useEffect(() => {
     const el = scrollRef.current;
@@ -1652,7 +1670,7 @@ export function LiveApp(): ReactElement {
     // mount-time run can find nothing to observe yet.
   }, [turn.turn]);
   // The written asides of this turn's muted walk, in walk order — the gutter rail renders them
-  // beside their cards in Everything, the Focus stage as its trail column. Honors the same
+  // beside their cards on the board, the desk beside its cards. Honors the same
   // eye-toggle as the strokes.
   const walkNotes = useMemo(
     () =>
@@ -1976,9 +1994,13 @@ export function LiveApp(): ReactElement {
   // the answer turn in the first place.
   const studyOpenedRef = useRef<boolean | null>(null);
   if (studyOpenedRef.current === null) studyOpenedRef.current = deskFirst();
+  // Opening the desk is the reader's own gesture, and the one thing that may ask again for notes
+  // whose last call failed. Consumed by the next call the notes effect makes.
+  const studyRetryRef = useRef(false);
   useEffect(() => {
     if (viewMode === 'study') {
       studyOpenedRef.current = true;
+      studyRetryRef.current = true;
       // Persist the habit: the desk is a takeover now, so nothing else remembers it was opened.
       markDeskFirst();
     }
@@ -1989,9 +2011,9 @@ export function LiveApp(): ReactElement {
     if (viewMode !== 'study' && !studyOpenedRef.current) return;
     if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) return;
     if (!studySpec || !studySpecId) return;
-    // Speculative work checks the guard before spending, like every other prefetch. This is a
-    // second request behind every settled answer, and on a key that has just answered 429 it
-    // was the request that kept it there. The desk loses nothing: it derives its notes locally
+    // Speculative work checks the guard before spending. This is a second request behind every
+    // settled answer, and on a key that has just answered 429 it was the request that kept it
+    // there. The desk loses nothing: it derives its notes locally
     // until a later answer buys them.
     if (recentlyRateLimited()) return;
     // Never buy notes for an answer still streaming: every partial would be its own "answer"
@@ -2003,6 +2025,8 @@ export function LiveApp(): ReactElement {
     const unannotatedBlocks = deskObjects(studySpec.blocks).filter((block) => !block.study);
     if (!unannotatedBlocks.length) return;
     const annotationSpec = { ...studySpec, blocks: unannotatedBlocks };
+    const retryFailed = studyRetryRef.current;
+    studyRetryRef.current = false;
     let alive = true;
     const watcher = new AbortController();
     let pendingNotes: Map<string, BlockStudy> | null = null;
@@ -2032,6 +2056,7 @@ export function LiveApp(): ReactElement {
           cfg.explainLevel,
           take,
           watcher.signal,
+          { retryFailed },
         ),
       )
       .then((notes) => {
@@ -2140,8 +2165,8 @@ export function LiveApp(): ReactElement {
   const studyAsidesAuthored = studyAsideBundle?.authoredIds;
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
-  // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
-  // Focus is theirs to pick. What mute changes is the FEEL (calm face, a centred reading caption),
+  // whichever view is up — the board keeps the whole living canvas (the point of the app), and the
+  // desk is theirs to open. What mute changes is the FEEL (calm face, a centred reading caption),
   // not the layout. See the muted centred caption + the calm-face mapping below.
   // A monotonically increasing generation for the annotation layer: bumped once per ACTUAL
   // viewMode transition (everything ↔ focus ↔ canvas), so a stale portal host gets re-located
@@ -2261,9 +2286,38 @@ export function LiveApp(): ReactElement {
     setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
   }, []);
 
+  /** Glide the canvas to its top, then run `then` — so a scripted mark lands on a page at rest.
+   *  `keep` names what the marks will be drawn on: when that sits below the fold at the top (a
+   *  phone, where the caption and the dock leave a short band), the canvas stops as little below
+   *  its top as shows it whole, rather than drawing where nobody can see. `signal` is the driver
+   *  step's: a step left (dismissed, skipped, unmounted) mid-glide draws nothing. */
+  const toTopThen = (
+    then: () => void,
+    signal?: AbortSignal,
+    keep?: () => readonly Element[],
+  ): Promise<void> => {
+    if (signal?.aborted) return Promise.resolve();
+    const scroller = scrollRef.current;
+    const top =
+      scroller && keep
+        ? revealTop(
+            keep().map((el) => el.getBoundingClientRect()),
+            scroller.getBoundingClientRect(),
+            scroller.scrollTop,
+            scroller.clientHeight,
+          )
+        : 0;
+    const glide = scroller
+      ? glideScroll(scroller, top, { instant: prefersReducedMotion(), signal })
+      : Promise.resolve();
+    return glide.then(() => {
+      if (!signal?.aborted) then();
+    });
+  };
+
   // Everything a scripted driver needs to drive THIS real surface — the closures behind the
   // first-run walkthrough AND the demo replay (only one is ever active per boot). Declared
-  // here, below every setter it exposes, so a driver can fire Focus / Present / Share / the
+  // here, below every setter it exposes, so a driver can fire the Lens / Present / export / the
   // palette / the pen / mute / voice for real.
   const liveOps: TourOps = {
     isBusy: () => turn.busy || walkActive.current,
@@ -2278,6 +2332,7 @@ export function LiveApp(): ReactElement {
         interrupt: false,
         revealNow: mutedRef.current,
         silent: opts?.silent,
+        prior: opts?.prior,
       });
     },
     typeInto: setValue,
@@ -2299,8 +2354,9 @@ export function LiveApp(): ReactElement {
       if (!askedView.current) showViewMode(mode);
     },
     setInkArmed,
-    setPresenting,
-    setShareOpen,
+    // The same door the Share menu's Present uses, so a run never shows the theatre before the
+    // deck it frames has loaded.
+    present: openPresentation,
     // The driver toggles the palette (its ⌘K chapter); compose the boolean setter from the hook.
     setPaletteOpen: (on: boolean) => (on ? openPalette() : closePalette()),
     // Press the named Keep-going chip for real (the .kg-tour-press class plays the tap), so the
@@ -2311,6 +2367,17 @@ export function LiveApp(): ReactElement {
       if (!btn) return;
       btn.classList.add('kg-tour-press');
       window.setTimeout(() => btn.classList.remove('kg-tour-press'), 620);
+    },
+    // The replay opens the Lens the way a reader does, by pressing the card's own control, so it
+    // shows the gesture the app actually offers rather than a view it no longer has a door to.
+    openLens: (id) => {
+      const card = document.querySelector(`[data-spot-id="${CSS.escape(id)}"]`);
+      card?.querySelector<HTMLButtonElement>('.block-lens')?.click();
+    },
+    closeLens: () => {
+      document
+        .querySelector<HTMLButtonElement>('.zoom-sheet [aria-label="Back to the board"]')
+        ?.click();
     },
     pinFirstBlock: () => {
       // Timed tour actions can run after showFrame has replaced the canvas. Read the live ref,
@@ -2401,8 +2468,8 @@ export function LiveApp(): ReactElement {
       featureActionsRef.current[featureId]?.run();
     },
     setSpot: (id) => turn.setSpot(id),
-    scriptedMark: () => scriptedMarkRef.current(),
-    drawPenTourStep: (step) => {
+    scriptedMark: (signal) => scriptedMarkRef.current(signal),
+    drawPenTourStep: (step, signal) => {
       // The tour demonstrates Mavéa's own orange annotation layer. Keep this separate from the
       // user's Highlight tool, which creates a question target instead of explaining the answer.
       enablePenForRun();
@@ -2410,15 +2477,22 @@ export function LiveApp(): ReactElement {
         // Keep the answer header in view while the strokes land below it. Centering the card with
         // turn.setSpot would scroll the sticky Pen underneath the app bar, where its tour ring can
         // look as though it belongs to the neighboring Share control.
-        scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-        ink(
-          'live-1',
-          'After thirty years, the investment reaches seventy-six thousand one hundred twenty-three dollars.',
-          { kind: 'circle', at: '$76,123', color: 'key' },
-          false,
-          undefined,
-          5600,
-          1,
+        // The pen starts once the answer has come to rest at the top — a mark drawn while the
+        // canvas is still sliding under it reads as the hand chasing the page.
+        void toTopThen(
+          () =>
+            ink(
+              'live-1',
+              'After thirty years, the investment reaches ' +
+                'seventy-six thousand one hundred twenty-three dollars.',
+              { kind: 'circle', at: '$76,123', color: 'key' },
+              false,
+              undefined,
+              5600,
+              1,
+            ),
+          signal,
+          () => cardText('live-1', ['$76,123', '7.6x']),
         );
       } else {
         ink(
@@ -2432,14 +2506,13 @@ export function LiveApp(): ReactElement {
         );
       }
     },
-    drawPenOnFirstBlock: () => {
+    drawPenOnFirstBlock: (signal) => {
       const block = turn.spec?.blocks.find((b) => !!b.id);
       if (!block?.id) return;
       enablePenForRun();
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       // Generous mode resolves the block's own spoken note or its stamped salient value, so this
       // works on any recorded answer without pretending a hard-coded number belongs to it.
-      ink(block.id, block.note, undefined, true, undefined, 3200);
+      void toTopThen(() => ink(block.id, block.note, undefined, true, undefined, 3200), signal);
     },
     openDashboards: () => {
       const id = ensureTourDashboard();
@@ -2453,16 +2526,6 @@ export function LiveApp(): ReactElement {
       setShowSettings(true);
     },
     openExport: () => setExportOpen(true),
-    // The reel's Remix — a genuinely different cut of the same conversation.
-    shareRemix: () => {
-      document.querySelector<HTMLButtonElement>('.shm-remix')?.click();
-    },
-    sharePalette: (label) => {
-      const chip = Array.from(document.querySelectorAll<HTMLButtonElement>('.shm-chip')).find(
-        (b) => b.textContent?.trim().toLowerCase() === label.toLowerCase(),
-      );
-      chip?.click();
-    },
     // Walk the export studio for real: flip formats and templates via their own buttons.
     exportSetFormat: (f) => {
       document.querySelector<HTMLButtonElement>(`[data-export-format="${f}"]`)?.click();
@@ -2477,10 +2540,6 @@ export function LiveApp(): ReactElement {
       if (b) addToFlashcard(b);
     },
     openTourCourse: () => openTourCourseRef.current(),
-    fireMemoryGlow: () => {
-      setMemorySaved(true);
-      window.setTimeout(() => setMemorySaved(false), 2600);
-    },
     stopRevealWalk: () => {
       tourDismissed.current = true;
     },
@@ -2495,13 +2554,16 @@ export function LiveApp(): ReactElement {
       setInkArmed(false);
       clearInkRef.current();
       // The pen's drawn marks belong to the chapter that drew them — leaving them in `inked`
-      // past a chapter change (e.g. the 'mark' or 'focus' chapters, which reuse whatever canvas
+      // past a chapter change (e.g. the 'mark' chapter, which reuses whatever canvas
       // is already up rather than requesting a fresh one) lets a stale mark try to re-resolve
       // its host against a since-changed card and redraw in the wrong place.
       setInked([]);
       setDrawnInk(new Set());
       setHiddenSpots(new Set());
       setTrackVisible(false);
+      // A deck still loading must not open over the next chapter.
+      presentationRequestRef.current += 1;
+      setPresentationPreparing(false);
       setPresenting(false);
       setShareOpen(false);
       closePalette();
@@ -2806,11 +2868,14 @@ export function LiveApp(): ReactElement {
     // Light one stop — spotlight, caption, and its pen marks. The visual half of a beat, kept
     // separate from the pacing so a spoken stop can apply it at the exact moment its own audio
     // starts (never before — lighting on enqueue is how the spotlight used to outrun the voice).
+    /** Lights a stop and starts its pen. Returns when (performance.now() time) its last stroke will
+     *  have finished drawing, so the walk can hold the stop open until the pen lifts. */
     const applyStop = (
       spot: string | null | undefined,
       line: string | undefined,
       idx?: number,
-    ): void => {
+    ): number => {
+      let penLiftsAt = 0;
       if (spot !== undefined) turn.setSpot(spot ?? null);
       // The speak strip follows the walk — always the SHOWN caption; the voice twin
       // ("five thousand dollars") is for the TTS engine only, never the screen.
@@ -2846,6 +2911,8 @@ export function LiveApp(): ReactElement {
           // A lone mark just draws — the numbered chip only earns its keep once there's an
           // actual order to show (2+ marks reading as a step-by-step walk).
           const sequence = stopMarks.length > 1;
+          penLiftsAt =
+            performance.now() + (stopMarks.length - 1) * step + MARK_DRAW_MS + INK_SETTLE_MS;
           for (let mi = 0; mi < stopMarks.length; mi++) {
             const delayMs = mi * step;
             // Only the last mark in a sequence carries the extended badge duration, since
@@ -2863,8 +2930,10 @@ export function LiveApp(): ReactElement {
           }
         } else if (teachSurface) {
           ink(spot, line, undefined, teachSurface);
+          penLiftsAt = performance.now() + MARK_DRAW_MS + INK_SETTLE_MS;
         }
       }
+      return penLiftsAt;
     };
     // Once this stop's own line finishes, hand off to a claimed diagram's build (if this
     // stop's block registered one — see stepDriver.ts) before moving to the next stop, then
@@ -2886,7 +2955,10 @@ export function LiveApp(): ReactElement {
     // never tighter than the hand's own MARK_STEP_MS floor.
     const markStepFor = (lineText: string | undefined, count: number): number =>
       count > 1
-        ? Math.max(MARK_STEP_MS, (spokenMs(lineText ?? '') - MARK_DRAW_MS) / (count - 1))
+        ? Math.max(
+            MARK_STEP_MS,
+            (spokenMs(lineText ?? '') - MARK_DRAW_MS - INK_SETTLE_MS) / (count - 1),
+          )
         : 0;
     const advance = (spot: string | null | undefined): void => {
       const claimed =
@@ -2950,6 +3022,9 @@ export function LiveApp(): ReactElement {
     // the block WITH the audio, advance when the line has finished. On a slow machine the old
     // poll's fixed cap fired while Kokoro was still synthesizing — the spotlight marched on and
     // every queued line landed a stop late, compounding for the rest of the turn.
+    // The last lit stop's pen: resolves once its strokes have finished drawing. Chained ahead of
+    // the next stop's glide and the walk's end — never ahead of a line.
+    let penDown: Promise<void> = Promise.resolve();
     const runSpokenStop = async (
       beat: (typeof beats)[number],
       idx: number,
@@ -2958,8 +3033,39 @@ export function LiveApp(): ReactElement {
       spokenLine: string | undefined,
     ): Promise<void> => {
       const estimateMs = beat.ms ?? 1700;
+      // Resolves once this stop's card has glided to rest; nothing is drawn on it before then.
+      let landed: Promise<void> = Promise.resolve();
+      // When this stop's last stroke finishes drawing — the stop stays open until then, so the
+      // next stop's glide (or the next answer) never scrolls or replaces a card mid-stroke.
+      let penLiftsAt = 0;
+      const penLifted = (): Promise<void> =>
+        spot
+          ? awaitPenLift({
+              drawing: () => inkStillDrawing(spot),
+              pending: () => inkPending(spot),
+              pendingChanged: pendingInkChanged,
+              ceilingAt: penLiftsAt,
+              reducedMotion: prefersReducedMotion(),
+              signal: walkController.signal,
+            })
+          : Promise.resolve();
+      /** Lights the stop and starts its pen, remembering the pen's ceiling for `penLifted`. */
+      const lightStop = (shownLine: string | undefined): void => {
+        penLiftsAt = applyStop(spot, shownLine, idx);
+      };
+      // The line is primed first so its synthesis runs while the card settles.
       const prepareStop = async (text: string): Promise<void> => {
         primeLine(text, 'mavea');
+        await settleStop();
+      };
+      // Bring the stop's card into view before anything is drawn on it. Every stop does this —
+      // the spotlight's own glide effect stands down for a spoken walk, so a stop that skipped it
+      // (one with a caption but no voice line) was lit wherever it happened to sit, sometimes
+      // half under the bar. Awaiting this waits only for the card to paint; the glide itself runs
+      // under the line's first syllables (see `landed`), so moving the camera adds no silence
+      // between two lines — it used to be a jump cut for exactly that reason.
+      const settleStop = async (): Promise<void> => {
+        landed = Promise.resolve();
         if (spot) turn.setSpot(spot);
         await awaitFirstPaint(
           () => scrollRef.current,
@@ -2972,19 +3078,19 @@ export function LiveApp(): ReactElement {
         const host = scrollRef.current;
         const target = spot ? host?.querySelector(`[data-spot-id="${CSS.escape(spot)}"]`) : null;
         if (host && target && !target.closest('.study-stage')) {
-          const bounds = target.getBoundingClientRect();
-          const top = bounds.top - host.getBoundingClientRect().top;
-          host.scrollTo({
-            top: Math.max(0, host.scrollTop + top - (host.clientHeight - bounds.height) / 2),
-            behavior: 'instant',
+          // The camera moves only once the previous stop's pen has lifted; this stop's line is
+          // already free to start, so a slow stroke delays the glide, never the voice.
+          landed = penDown.then(() => {
+            if (bail()) return;
+            const bounds = target.getBoundingClientRect();
+            const delta = spotScrollDelta(bounds, host.getBoundingClientRect(), host.clientHeight);
+            return glideScroll(host, host.scrollTop + delta, {
+              instant: prefersReducedMotion(),
+              signal: walkController.signal,
+            });
           });
-          await awaitFirstPaint(
-            () => host,
-            `[data-spot-id="${CSS.escape(spot!)}"] .card`,
-            undefined,
-            walkController.signal,
-            true,
-          );
+        } else {
+          landed = penDown;
         }
       };
       // Stop 0 carries the opener, already queued sentence-by-sentence while the answer
@@ -3026,15 +3132,21 @@ export function LiveApp(): ReactElement {
           if (bail()) return;
           const handle = speak(ownLine);
           const heard = await waitLineStart(handle, undefined, walkController.signal);
+          const lineStartedAt = performance.now();
+          await landed;
           if (bail()) return;
-          applyStop(spot, shown ?? ownLine, idx);
+          lightStop(shown ?? ownLine);
           primeNextSpoken(idx);
           if (heard) {
             await waitLineEnd(handle, spokenMsUncapped(ownLine), undefined, walkController.signal);
           } else {
             cancelSpeech();
-            await delay(spokenMs(ownLine), walkController.signal);
+            await delay(
+              spokenMs(ownLine) - (performance.now() - lineStartedAt),
+              walkController.signal,
+            );
           }
+          penDown = penLifted();
           const verdict = await pauseVerdict();
           if (verdict === 'abort') return;
           if (verdict === 'replay') {
@@ -3048,13 +3160,17 @@ export function LiveApp(): ReactElement {
         return;
       }
       if (!spokenLine) {
-        applyStop(spot, line, idx);
+        await settleStop();
+        await landed;
+        if (bail()) return;
+        lightStop(line);
         primeNextSpoken(idx);
         await waitQueueQuiet({
           floorMs: MIN_STOP_MS,
           capMs: finishCapMs(estimateMs),
           signal: walkController.signal,
         });
+        penDown = penLifted();
         if (bail()) return;
         {
           const verdict = await pauseVerdict();
@@ -3069,9 +3185,11 @@ export function LiveApp(): ReactElement {
         if (bail()) return;
         const handle = speak(spokenLine);
         const heard = await waitLineStart(handle, undefined, walkController.signal);
+        const lineStartedAt = performance.now();
+        await landed;
         if (bail()) return;
         // Re-applying on a replay is safe by design: ink() dedupes per (block, gesture).
-        applyStop(spot, line, idx);
+        lightStop(line);
         // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
         // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
         // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
@@ -3082,8 +3200,10 @@ export function LiveApp(): ReactElement {
           cancelSpeech();
           // This line will never be heard (voice down, or hard-stopped) — dwell for the
           // caption's own reading length instead of sprinting through the remaining stops.
-          await delay(estimateMs, walkController.signal);
+          // Counted from the line's start, so the glide the pen waited for is not added on top.
+          await delay(estimateMs - (performance.now() - lineStartedAt), walkController.signal);
         }
+        penDown = penLifted();
         // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
         // stop — until the transcript decides. Filler re-speaks this stop's line (its PCM is
         // cached, so the replay is instant and free); a real question ends the walk.
@@ -3100,7 +3220,9 @@ export function LiveApp(): ReactElement {
     };
     const step = (): void => {
       if (cancelled || i >= beats.length) {
-        finish();
+        // The last stroke finishes before the walk hands the canvas on to whatever comes next.
+        if (cancelled) finish();
+        else finishOnceInked(penDown, () => cancelled, finish);
         return;
       }
       // A manual dismiss ends the walk early and leaves the canvas at rest (spot cleared).
@@ -3192,7 +3314,7 @@ export function LiveApp(): ReactElement {
   // delay lets the .spotlit class + layout settle before we measure (same as the demo).
   // The card can also legitimately not exist yet — its family chunk still mounting on a slow
   // machine — so a miss retries on the same cadence (bounded) instead of silently skipping
-  // the glide and leaving the narrated card off-screen. In Focus/Canvas view the grid isn't
+  // the glide and leaving the narrated card off-screen. In the Study or the spatial canvas the grid isn't
   // the scroller, so the retries just run out quietly — same no-op as before, now time-capped.
   useEffect(() => {
     const spot = turn.spot;
@@ -3217,7 +3339,7 @@ export function LiveApp(): ReactElement {
       }
       const cRect = cont.getBoundingClientRect();
       const eRect = el.getBoundingClientRect();
-      let delta = eRect.top - cRect.top - (cont.clientHeight - eRect.height) / 2;
+      let delta = spotScrollDelta(eRect, cRect, cont.clientHeight);
       // A "connect" stop points at a DIFFERENT card — bias the scroll toward both cards'
       // midpoint so the arrow's far end has a chance of landing on screen, rather than always
       // dead-centering just the near one and leaving the connector pointing off-page.
@@ -3242,6 +3364,9 @@ export function LiveApp(): ReactElement {
     id = window.setTimeout(attempt, 90);
     return () => window.clearTimeout(id);
   }, [turn.spot, turn.spec, tourMarksById]);
+  // …and keep it there when the window changes shape under it (a rotation, a drag), which moves
+  // every card above it while the scroll offset holds still.
+  useKeepSpotInView(scrollRef, !!turn.spot);
 
   // Dismiss the guided spotlight: end the walk early and clear the dimmed state so the
   // whole canvas is interactive again. Safe to call when nothing is spotlit (no-op).
@@ -3340,7 +3465,7 @@ export function LiveApp(): ReactElement {
   // A new turn also closes the evidence panel (it belongs to the answer that opened it).
   useEffect(() => setProofOpen(false), [turn.turn]);
   // Pinned elements belong to the answer they came from — a new turn replaces that canvas, so
-  // clear them (submit already clears on send; this covers chip/prefetch-driven turns too).
+  // clear them (submit already clears on send; this covers chip-driven turns too).
   useEffect(() => setPinned([]), [turn.turn]);
   // Mobile: a new answer should take the stage — fold the conversation sheet back down.
   useEffect(() => setChatOpen(false), [turn.turn]);
@@ -3396,15 +3521,19 @@ export function LiveApp(): ReactElement {
   // gesture, minus a hand. No model; reuses the live ink resolver. The loop aims at the card's
   // biggest numeric line (its stat), not the card's geometric middle, which can fall on the
   // whitespace between lines and read as a miss ("nothing to grab there").
-  scriptedMarkRef.current = () => {
+  scriptedMarkRef.current = (signal) => {
     const stage = stageRef.current;
     const target = stage?.querySelector('[data-spot-id]') as HTMLElement | null;
     if (!stage || !target) return;
     // The viewport may be scrolled well past the first card by now (the ask chapter types into
     // the composer at the bottom) — bring the card on screen FIRST, then stroke where it lands;
-    // measuring before the scroll would draw the mark into empty off-screen space.
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    window.setTimeout(() => scriptedMarkStroke(stage, target), 560);
+    // measuring before the scroll would draw the mark into empty off-screen space. The glide is
+    // the step's, so a step left mid-glide draws nothing.
+    void toTopThen(
+      () => scriptedMarkStroke(stage, target),
+      signal,
+      () => [target],
+    );
   };
   const scriptedMarkStroke = (stage: HTMLElement, target: HTMLElement): void => {
     const svg = stage.querySelector('.ink-user-overlay') as SVGElement | null;
@@ -3780,8 +3909,6 @@ export function LiveApp(): ReactElement {
   // Whether the connected model can actually see a file. Images/PDFs only reach a
   // vision-capable provider as real parts; without it, attaching is disabled (the model
   // would only get a text note — surfaced honestly in the tooltip rather than silently).
-  const visionCaps = getAdapter(cfg.provider).capabilities.vision;
-
   // Share-to-Mavéa: paste or drop a link / screenshot ANYWHERE on the surface and it becomes
   // a fact-check intake — a shared link prefills the claim-check ask; an image stages as an
   // attachment with the same ask. Text fields are left completely alone (normal paste).
@@ -3857,18 +3984,10 @@ export function LiveApp(): ReactElement {
     };
   }, [onFiles]);
 
-  // Present mode: hold the Focus stage while it lasts (the prior view returns on exit),
-  // go fullscreen best-effort, and let Esc end the show. The mic stays however it was.
-  const viewModeRef = useRef(viewMode);
-  viewModeRef.current = viewMode;
-  // Entering and leaving the show. The view to hand back is captured ONCE here rather than read at
-  // cleanup, because by then the presented view is the current one — and it is captured in this
-  // effect rather than the surface effect below so that switching surfaces mid-show cannot be
-  // mistaken for an exit (which would drop fullscreen and remember the wrong view).
-  const restoreViewRef = useRef<ViewMode>('board');
+  // Present mode: go fullscreen best-effort, and let Esc end the show. The deck covers the canvas,
+  // so the view underneath is left exactly as it was. The mic stays however it was.
   useEffect(() => {
     if (!presenting) return;
-    restoreViewRef.current = viewModeRef.current;
     void document.documentElement.requestFullscreen?.().catch(() => {});
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setPresenting(false);
@@ -3876,16 +3995,9 @@ export function LiveApp(): ReactElement {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      setViewMode(restoreViewRef.current);
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
-  }, [presenting, setViewMode]);
-
-  // The deck covers the canvas, so it parks the answer in Focus underneath while it runs.
-  useEffect(() => {
-    if (!presenting) return;
-    setViewMode('focus');
-  }, [presenting, setViewMode]);
+  }, [presenting]);
 
   // Frames born while presenting are questions from the room — remember which, so the
   // rail can say so.
@@ -4181,6 +4293,7 @@ export function LiveApp(): ReactElement {
       srsOpen,
       zoomLevel,
       mindViewOpen: mindView.open,
+      lensOpen: lensedId !== null,
     });
   // Published to the window-level Escape handlers declared above, which run before this point in
   // the file but need the same single notion of "an overlay is on top".
@@ -4406,7 +4519,6 @@ export function LiveApp(): ReactElement {
   // rest and on a strict cadence. `interjecting` re-centres the face the same way the cold-open does.
   const interject = useInterjections({
     speak,
-    cancelSpeak: cancelSpeech,
     isSpeaking,
     muted,
     turnCount: turn.frames.length,
@@ -4456,8 +4568,19 @@ export function LiveApp(): ReactElement {
       celebratedRef.current = turn.spec;
       emotion = 'celebrate';
     }
-    return livePresence(turn.status, listening, interjecting, emotion, muted, transcribing);
-  }, [turn.status, listening, interjecting, turn.spec, muted, transcribing]);
+    // Glancing toward the cards a follow-up is adding is a movement, so it goes under reduced
+    // motion; the composing line still says it.
+    const extending = turn.boardCue === 'extend' && !prefersReducedMotion();
+    return livePresence(
+      turn.status,
+      listening,
+      interjecting,
+      emotion,
+      muted,
+      transcribing,
+      extending,
+    );
+  }, [turn.status, listening, interjecting, turn.spec, muted, transcribing, turn.boardCue]);
   const presenceStyle = useMemo(
     () =>
       automaticPresenceStyle({
@@ -4724,6 +4847,9 @@ export function LiveApp(): ReactElement {
     if (turn.status === 'showing') return [pendingCard(turn.pendingShape)];
     return skeletonPlan(lastAsk ?? '', turn.history);
   }, [turn.busy, turn.status, turn.pendingShape, lastAsk, turn.history]);
+  // Where a follow-up's added cards land: the working column sits after the board, which is
+  // exactly where an augment appends them — the "Adding below" pill scrolls here.
+  const workingColRef = useRef<HTMLDivElement>(null);
   // The speaking state: the voice is audibly playing, and the line it's reading. Tour stops
   // update spokenNow as they fire; the opener falls back to the turn's narration.
   const speakingNow = useSpeaking();
@@ -4840,7 +4966,7 @@ export function LiveApp(): ReactElement {
   }, [watchThinking, justListen, sttOk, value, voice, turn.spec, turn.busy]);
 
   // ── The living answer, as a VIEW ────────────────────────────────────────────────────────────
-  // 'world' is a view of the current answer, peer to Focus and the spatial Canvas and driven by the
+  // 'world' is a view of the current answer, peer to the Study and the spatial Canvas and driven by the
   // same view-mode store — so the header switcher, the palette and the world card all arrive
   // through one door. The card lives in the block registry, which knows nothing about live/, so its
   // request comes through the openWorld module registry rather than a prop chain.
@@ -4941,7 +5067,7 @@ export function LiveApp(): ReactElement {
   const buyExpansion = modelCallsAllowed ? expandWorldNode : undefined;
 
   // The registry resolved to live actions + availability. One map so the palette and the menu
-  // can never disagree about what exists. Behavioral/automatic features (whisper, ghost, focus)
+  // can never disagree about what exists. Behavioral/automatic features (whisper, focus)
   // teach via a soft notice rather than forcing a manual trigger.
   const featureActions: Record<
     string,
@@ -4954,15 +5080,14 @@ export function LiveApp(): ReactElement {
       preload: atlasViewLoad.preload,
     },
     'pdf-world': {
-      available: attached.some(isExplodable),
+      available: explodeSources(attached, visionCaps).docs.length > 0,
       reason:
         'Attach a PDF, Office doc, image, or data file (CSV, text, JSON) to split it into a map',
       run: () => {
         // Explode every attached document together — a few compare in Prism, a pile fuses into the
         // Synthesis World (openExplode routes by count).
-        const docs = attached.filter(isExplodable);
-        if (docs.length > 0) {
-          openExplode(docs);
+        if (explodeSources(attached, visionCaps).docs.length > 0) {
+          openExplode(attached);
           return;
         }
         // Invoked from the palette / Explore menu with nothing to split yet: don't no-op. Point the
@@ -4981,12 +5106,12 @@ export function LiveApp(): ReactElement {
       // The explicit-intent version of the attach-strip's own Synthesis button: fuse the attached
       // pile if there are ≥2, else open the upload-first standalone surface so it's never a no-op.
       run: () => {
-        const docs = attached.filter(isExplodable);
-        if (docs.length >= 2) setSynthesis(docs);
+        const { readable } = explodeSources(attached, visionCaps);
+        if (readable.length >= 2) setSynthesis(readable);
         else window.location.hash = '#/synthesis';
       },
       preload: () =>
-        attached.filter(isExplodable).length >= 2
+        explodeSources(attached, visionCaps).readable.length >= 2
           ? synthesisOverlayLoad.preload()
           : warmRoute('#/synthesis'),
     },
@@ -5033,7 +5158,7 @@ export function LiveApp(): ReactElement {
       preload: recapLoad.preload,
     },
     present: {
-      available: !!turn.spec,
+      available: !!turn.spec || !!mapFrame,
       reason: 'Once there is an answer',
       run: () => openPresentation(),
       preload: presentationDeckLoad.preload,
@@ -5045,7 +5170,7 @@ export function LiveApp(): ReactElement {
       preload: extractionPreviewLoad.preload,
     },
     share: {
-      available: turn.frames.length > 0,
+      available: turn.frames.length > 0 || !!mapFrame,
       reason: 'Once there is something to share',
       // Video Studio is distinct from document export: Conversation is the default and Reel remains
       // its editorial sibling inside the same lazy surface.
@@ -5062,12 +5187,6 @@ export function LiveApp(): ReactElement {
       available: !!turn.spec,
       reason: 'Once there is an answer',
       run: () => setViewMode('study'),
-    },
-    focus: {
-      available: !!turn.spec,
-      reason: 'Once there is an answer',
-      // Actually enter focus mode — a palette entry should DO the thing, not narrate where it is.
-      run: () => setViewMode('focus'),
     },
     board: {
       available: !!turn.spec,
@@ -5119,19 +5238,6 @@ export function LiveApp(): ReactElement {
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
-    },
-    ghost: {
-      available: sttOk && cfg.quality !== 'fast',
-      // Ghost drafts surface during Just Listen — entering that mode is how you actually use it.
-      // But they're gated off on the 'fast' quality dial (speculation is a spend the user opted
-      // out of), so clicking this on Fast would silently behave exactly like Just Listen with no
-      // explanation. Surface that instead of pretending the click did something distinct.
-      reason: !sttOk
-        ? MIC_UNSUPPORTED_MSG
-        : cfg.quality === 'fast'
-          ? "Needs Balanced quality or higher — you're on Fast"
-          : undefined,
-      run: () => enterListening('listen'),
     },
     delegate: {
       available: true,
@@ -5227,6 +5333,12 @@ export function LiveApp(): ReactElement {
   // a document picked to be split should be replaced by another to split, and a file picked to be
   // asked about by another to ask about.
   const wizardPickedVia = useRef<'attach' | 'prism'>('prism');
+  // Whether the pick in flight replaces what is staged: "Choose a different file" says it does.
+  const wizardReplace = useRef(false);
+  const wizardPick = (via: 'attach' | 'prism', replace: boolean): void => {
+    wizardReplace.current = replace;
+    (via === 'attach' ? wizardAttachRef : wizardFileRef).current?.click();
+  };
 
   // The Go hub's "ways to begin". Built from paletteItems so availability, the "why not yet"
   // reason and the preload are the SAME resolution the ⌘K palette uses — the registry is meant to
@@ -5248,14 +5360,14 @@ export function LiveApp(): ReactElement {
         // Nothing staged: the card IS the picker, since its palette action points at the paperclip
         // — the one control the wizard hides. Something staged: it names that document and opens
         // it. See prismRow for why the naming is the fix, not a flourish.
-        const staged = attached.filter(isExplodable);
-        const row = prismRow(staged);
+        const { docs, readable } = explodeSources(attached, visionCaps);
+        const row = prismRow(docs, readable.length);
         return {
           feature: it.feature,
           available: true,
           blurb: row.blurb,
           preload: it.preload,
-          run: row.opensPicker ? () => wizardFileRef.current?.click() : () => openExplode(staged),
+          run: row.opensPicker ? () => wizardPick('prism', false) : () => openExplode(attached),
         };
       }
       return {
@@ -5342,7 +5454,7 @@ export function LiveApp(): ReactElement {
   const shareMenu: TopbarMenuItem[] = [
     {
       label: 'Present',
-      blurb: 'Fill the room — the chrome falls away, the mic stays live',
+      blurb: 'Fill the room — the chrome falls away and the answer takes the stage',
       onClick: featureActions.present.run,
       preload: featureActions.present.preload,
       show: !!turn.spec,
@@ -5637,10 +5749,10 @@ export function LiveApp(): ReactElement {
               });
             }
           } else if (action === 'share') {
-            // From the "kept this shape" panel — open the share flow on what's on screen.
+            // From the "kept this shape" panel: Share cuts the map itself (see mapFrame).
             setShareOpen(true);
           } else if (action === 'present') {
-            // From "kept this shape" — go straight into Present mode for the current canvas.
+            // From "kept this shape": present the map itself (see mapFrame).
             openPresentation();
           } else if (
             action === 'answer' ||
@@ -5824,9 +5936,9 @@ export function LiveApp(): ReactElement {
               live answer (real-data-only), covering the canvas beneath. */}
           <LazyOverlay>
             <PresentationDeck
-              spec={turn.viewSpec ?? turn.spec}
-              question={hero?.question ?? null}
-              narration={hero?.narration ?? turn.narration}
+              spec={mapFrame?.spec ?? turn.viewSpec ?? turn.spec}
+              question={mapFrame ? mapFrame.question : (hero?.question ?? null)}
+              narration={mapFrame ? mapFrame.narration : (hero?.narration ?? turn.narration)}
               skinId={persona}
               autoAdvanceMs={tourMode.current || demoPersona.current ? 2600 : undefined}
               onExit={() => setPresenting(false)}
@@ -5869,6 +5981,10 @@ export function LiveApp(): ReactElement {
           surface chips, since those need explicit transparency — and once the search resolves,
           the chips name the actual sources being read. */}
       <TurnActivityChips activity={turn.activity} sources={turn.busy ? turn.liveSources : []} />
+      <BoardCuePill
+        target={workingColRef}
+        active={turn.busy && viewingLive && turn.boardCue === 'extend'}
+      />
 
       {/* topbar */}
       <div className="topbar">
@@ -6040,7 +6156,7 @@ export function LiveApp(): ReactElement {
                 {/* PDFs and pictures need a model that can see them; Word/PowerPoint/Excel and
                     plain-text/data files (CSV, TXT, Markdown, JSON, code) are extracted client-side
                     as text, so they explode on any model. */}
-                {(((isPdf(a) || isImage(a)) && visionCaps) || isOffice(a) || isText(a)) && (
+                {explodableOn(a, visionCaps) && (
                   <button
                     type="button"
                     className="attach-explode"
@@ -6062,45 +6178,17 @@ export function LiveApp(): ReactElement {
               </span>
             ))}
             {(() => {
-              // Explodable here = Office + text/data files (any model) + PDFs when the model reads docs.
-              const docs = attached.filter(
-                (a) => isOffice(a) || isText(a) || (isPdf(a) && visionCaps),
+              const sources = explodeSources(attached, visionCaps);
+              return (
+                <ExplodeChoice
+                  sources={sources}
+                  onCompare={() => setPrismDocs(sources.docs)}
+                  onSynthesize={() => setSynthesis(sources.readable)}
+                  // The wizard hides this strip, so its request belongs to the wizard's own strip.
+                  focusRequested={explodeAsk && !inWizard}
+                  onFocusHandled={clearExplodeAsk}
+                />
               );
-              if (docs.length <= 1) return null;
-              const compareBtn = (
-                <button
-                  key="compare"
-                  type="button"
-                  className="attach-explode attach-compare"
-                  aria-label={`Compare ${docs.length} documents — map their claims and find where they agree and contradict`}
-                  title="Explode all documents together and compare them"
-                  onClick={() => setPrismDocs(docs)}
-                >
-                  ⊹ Compare {docs.length} documents
-                </button>
-              );
-              const synthBtn = (
-                <button
-                  key="synth"
-                  type="button"
-                  className="attach-explode attach-compare"
-                  aria-label={`Synthesize ${docs.length} sources — fuse them into one map of themes, contradictions, and gaps`}
-                  title="Fuse all sources into one navigable Synthesis World"
-                  onClick={() => setSynthesis(docs)}
-                >
-                  ⊹ Synthesize {docs.length} sources
-                </button>
-              );
-              // 2 → compare; 3 → offer both; 4+ → synthesize.
-              if (docs.length >= SYNTHESIS_AUTO_SOURCES) return synthBtn;
-              if (docs.length >= SYNTHESIS_MIN_SOURCES)
-                return (
-                  <>
-                    {compareBtn}
-                    {synthBtn}
-                  </>
-                );
-              return compareBtn;
             })()}
             {attachError && (
               <span className="attach-error" role="status">
@@ -6419,7 +6507,6 @@ export function LiveApp(): ReactElement {
           }
         />
       )}
-      {listening && !watchThinking && <GhostRow ghosts={ghosts} />}
 
       {/* The persistent voice-scrubber strip was removed — it was a near-empty bar most of the
           time (only earning its space in long multi-turn sessions) and added dead vertical bulk
@@ -6454,12 +6541,7 @@ export function LiveApp(): ReactElement {
                 : undefined
             }
           >
-            {/* The view is published onto the DOM because the answer page's alignment axis
-                depends on it: Focus keeps a filmstrip beside the reading column, so the surfaces
-                that must line up with that column are narrower there than in any other view. An
-                attribute set here rather than a CSS `:has()` for the same reason FocusStage sets
-                `has-notes` in JS — the layout can then never split from the render condition. */}
-            <div className="topic-wrap" data-view={viewMode}>
+            <div className="topic-wrap">
               {/* Lives INSIDE the scrolled content (not the fixed stage) so strokes and
                   confirm-highlights scroll along with the text they were drawn over instead of
                   staying pinned to the viewport while the answer moves underneath. Pointer events
@@ -6607,11 +6689,10 @@ export function LiveApp(): ReactElement {
                   corrects={
                     (viewingLive ? headFrame : turn.frames[turn.viewIndex ?? -1])?.corrects ?? null
                   }
-                  presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and
                   // they hold for the whole turn. Mute flips after that change sound, never
-                  // layout (mid-walk mute keeps its notes in the pen log + Focus trail instead).
+                  // layout (mid-walk mute keeps its notes in the pen log instead).
                   // Live head only — a scrubbed past frame shows no rail.
                   noteGutter={
                     viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn
@@ -6726,12 +6807,16 @@ export function LiveApp(): ReactElement {
               {turn.busy && viewingLive && (
                 // Same centered column as the answer canvas, so the working state lines up with the
                 // cards above instead of orphaning a skeleton/cue against the far edge.
-                <div className="working-col">
+                <div className="working-col" ref={workingColRef}>
                   <WorkingSkeletons cards={skeletonCards} />
                   {/* The unmistakable "still streaming" cue: keyed straight to busy (no mount
                       delay), so a partial canvas never reads as finished. Says "Thinking…" while a
                       reasoning model is still reasoning, so a long pre-answer phase never looks stuck. */}
-                  <ComposingStatus thinking={turn.reasoning} activity={turn.activity} />
+                  <ComposingStatus
+                    thinking={turn.reasoning}
+                    activity={turn.activity}
+                    cue={turn.boardCue}
+                  />
                 </div>
               )}
               {viewingLive && !turn.busy && (
@@ -6792,7 +6877,7 @@ export function LiveApp(): ReactElement {
             // The composer's own paperclip. The Prism card's picker opens the map; this one stages
             // a file to ride the first question, for the reader who wants to ASK about a document
             // rather than split it — a door the wizard did not have, since it hides the dock.
-            onAttach={() => wizardAttachRef.current?.click()}
+            onAttach={() => wizardPick('attach', false)}
             attachTitle={
               visionCaps
                 ? 'Attach an image or PDF to ask about'
@@ -6825,7 +6910,7 @@ export function LiveApp(): ReactElement {
                     e.target.value = '';
                     if (!files.length) return;
                     wizardPickedVia.current = 'attach';
-                    void onFiles(files);
+                    void onFiles(files, { replace: wizardReplace.current });
                   }}
                 />
                 <input
@@ -6839,9 +6924,10 @@ export function LiveApp(): ReactElement {
                     e.target.value = ''; // re-picking the same file must fire again
                     if (!files.length) return;
                     wizardPickedVia.current = 'prism';
-                    void onFiles(files).then((staged) => {
-                      const docs = staged.filter(isExplodable);
-                      if (docs.length) openExplode(docs);
+                    const replace = wizardReplace.current;
+                    void onFiles(files, { replace }).then((staged) => {
+                      // Route on everything now staged, the set the strip below counts.
+                      if (staged.length) openExplode(replace ? staged : [...attached, ...staged]);
                     });
                   }}
                 />
@@ -6866,15 +6952,25 @@ export function LiveApp(): ReactElement {
                         </li>
                       ))}
                     </ul>
+                    {(() => {
+                      // The wizard hides the dock's attach strip, so three staged documents need
+                      // their choice here, or the launcher's Prism card would have nowhere to ask.
+                      const sources = explodeSources(attached, visionCaps);
+                      if (explodeRoute(sources.readable.length) !== 'choose') return null;
+                      return (
+                        <ExplodeChoice
+                          sources={sources}
+                          onCompare={() => setPrismDocs(sources.docs)}
+                          onSynthesize={() => setSynthesis(sources.readable)}
+                          focusRequested={explodeAsk}
+                          onFocusHandled={clearExplodeAsk}
+                        />
+                      );
+                    })()}
                     <button
                       type="button"
                       className="start-with-another"
-                      onClick={() =>
-                        (wizardPickedVia.current === 'attach'
-                          ? wizardAttachRef
-                          : wizardFileRef
-                        ).current?.click()
-                      }
+                      onClick={() => wizardPick(wizardPickedVia.current, true)}
                     >
                       Choose a different file
                     </button>
@@ -6984,17 +7080,9 @@ export function LiveApp(): ReactElement {
       {!IS_SHOWCASE && showSettings && (
         <div
           role="presentation"
-          onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(var(--scrim-rgb), 0.45)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            paddingTop: 80,
-            zIndex: 50,
-          }}
+          className="ls-scrim"
+          onPointerDown={settingsScrim.onPointerDown}
+          onClick={settingsScrim.onClick}
         >
           <LazyOverlay>
             <LiveSettings
@@ -7023,7 +7111,7 @@ export function LiveApp(): ReactElement {
       {shareOpen && (
         <LazyOverlay>
           <ShareModal
-            frames={turn.frames}
+            frames={mapFrame ? [mapFrame] : turn.frames}
             retainedAudio={(frame) => audioStore.get(turnFrameId(frame))}
             onClose={() => setShareOpen(false)}
             onShared={() => interject.enqueue('clipShared')}
@@ -7056,7 +7144,13 @@ export function LiveApp(): ReactElement {
       {tourDashId && (
         // The walkthrough's finished dashboard — the real DashboardDetail over the real store,
         // in the same full-screen chrome the Canvas takeover uses.
-        <div className="cv-takeover" role="dialog" aria-modal="true" aria-label="Living dashboard">
+        <div
+          ref={tourDashRef}
+          className="cv-takeover"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Living dashboard"
+        >
           <header className="cv-takeover-head">
             <div className="cv-takeover-id">
               <span className="cv-takeover-glyph" aria-hidden="true">
@@ -7068,7 +7162,7 @@ export function LiveApp(): ReactElement {
               </div>
             </div>
             <button type="button" className="cv-takeover-close" onClick={() => setTourDashId(null)}>
-              <span aria-hidden="true">←</span> Back to answer
+              <span aria-hidden="true">←</span> Back to the board
             </button>
           </header>
           <div className="tour-dash-body">

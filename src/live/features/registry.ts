@@ -308,7 +308,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'present',
     label: 'Present',
-    blurb: 'Fill the room — the chrome falls away, the mic stays live',
+    blurb: 'Fill the room — the chrome falls away and the answer takes the stage',
     group: 'This session',
     surface: 'live',
     tourChapter: 'present',
@@ -331,7 +331,7 @@ export const FEATURES: Feature[] = [
     blurb: 'Share a moment, a topic, or the whole conversation',
     group: 'This session',
     surface: 'live',
-    tourChapter: 'share',
+    tourChapter: 'video',
     keywords: ['share', 'video', 'reel', 'conversation', 'export', 'publish'],
   },
   {
@@ -366,15 +366,6 @@ export const FEATURES: Feature[] = [
     surface: 'live',
     tourChapter: 'canvas',
     keywords: ['board', 'spatial', 'canvas', 'spread', 'arrange', 'wander', 'map'],
-  },
-  {
-    id: 'focus',
-    label: 'Focus mode',
-    blurb: 'One card at a time, with a filmstrip of the rest',
-    group: 'This session',
-    surface: 'live',
-    tourChapter: 'focus',
-    keywords: ['focus', 'one card', 'filmstrip', 'zoom'],
   },
   {
     id: 'ink',
@@ -439,17 +430,6 @@ export const FEATURES: Feature[] = [
     tourChapter: 'whisper',
     keywords: ['quiet', 'whisper', 'night', 'silent'],
   },
-  {
-    id: 'ghost',
-    label: 'Ghost answers',
-    // Its action starts Just Listen (where the drafts actually appear) — name that so the outcome
-    // matches the click.
-    blurb: 'Mavéa quietly drafts what it would say — starts Just listen, where the drafts appear',
-    group: 'While listening',
-    surface: 'live',
-    tourChapter: 'ghost',
-    keywords: ['ghost', 'draft', 'preview', 'alternative'],
-  },
 
   // ── Setup (connect, configure, learn the ropes) ─────────────────────────────
   {
@@ -497,6 +477,15 @@ export const FEATURES: Feature[] = [
     surface: 'live',
     tourChapter: 'morning-brief',
     keywords: ['brief', 'briefing', 'morning', 'daily', 'catch up', 'start of day'],
+  },
+  {
+    // Its own route, so it opens in place on and off Live and needs no chapter for a working row.
+    id: 'gallery',
+    label: 'Component gallery',
+    blurb: 'Every chart, diagram and card Mavéa can draw, each on sample data',
+    group: 'Setup',
+    surface: 'both',
+    keywords: ['gallery', 'components', 'catalog', 'examples', 'charts', 'blocks', 'visual'],
   },
   {
     id: 'how',

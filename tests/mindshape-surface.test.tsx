@@ -19,7 +19,6 @@ import {
   markUncertain,
 } from '../src/live/mindshape/useMindShape';
 import { useSignals } from '../src/live/mindshape/useSignals';
-import { mindShapeToSpec } from '../src/live/mindshape/mindShapeToSpec';
 import { settleMindShape, patchMindShape } from '../src/live/mindshape/modelRefine';
 import {
   computeLayout,
@@ -56,9 +55,8 @@ afterEach(() => {
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// useMindShape / mergeDelta / mindShapeToSpec / computeLayout — behavioral tests for
-// useMindShape, MindShapeCanvas, and mindShapeToSpec. Verifies the core invariants without
-// hitting any network calls.
+// useMindShape / mergeDelta / computeLayout — behavioral tests for useMindShape and
+// MindShapeCanvas. Verifies the core invariants without hitting any network calls.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('useMindShape', () => {
@@ -208,6 +206,40 @@ describe('useMindShape', () => {
     expect(settleMindShape).toHaveBeenCalledTimes(1);
     expect(result.current.spec?.atoms.length ?? 0).toBeGreaterThan(0);
     expect(result.current.phase).toBe('listening'); // seeding stays live — it is not the settle
+  });
+
+  it('never re-sends a failed seed for the same words — only new speech asks again', async () => {
+    vi.useFakeTimers();
+    const said = 'a learning roadmap for linear algebra and how to go viral with open source';
+    const { result } = renderHook(() => useMindShape(FAKE_CFG));
+    const settle = async () => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000); // well past the debounce
+      });
+    };
+    await act(async () => {
+      result.current.onTranscript(said);
+    });
+    await settle();
+    expect(settleMindShape).toHaveBeenCalledTimes(1); // the seed went out and came back empty
+
+    // The recogniser re-reports the same words (a final after the interims, a pause): no re-send.
+    for (let i = 0; i < 4; i++) {
+      await act(async () => {
+        result.current.onTranscript(said);
+      });
+      await settle();
+    }
+    expect(settleMindShape).toHaveBeenCalledTimes(1);
+
+    // Real new speech is a new input — one more seed.
+    await act(async () => {
+      result.current.onTranscript(
+        `${said} and then maybe a newsletter every single week for the whole year`,
+      );
+    });
+    await settle();
+    expect(settleMindShape).toHaveBeenCalledTimes(2);
   });
 
   it('removeAtom drops the card and any link touching it', async () => {
@@ -360,76 +392,6 @@ describe('mergeDelta', () => {
     const r = mergeDelta(base(), patch);
     expect(r.atoms).toHaveLength(1);
     expect(r.links).toHaveLength(0);
-  });
-});
-
-// ── mindShapeToSpec ──────────────────────────────────────────────────────
-
-describe('mindShapeToSpec', () => {
-  const SETTLED: MindShapeSpec = {
-    center: 'Is it the right time — or am I just running?',
-    title: 'Seattle offer vs family',
-    atoms: [
-      {
-        id: 'opt1',
-        kind: 'option',
-        label: 'Take the Seattle offer',
-        quote: "there's this offer in Seattle",
-        status: 'stable',
-        confidence: 'said',
-      },
-      {
-        id: 'per1',
-        kind: 'person',
-        label: 'Dad',
-        quote: "Dad's not getting any younger",
-        status: 'stable',
-        confidence: 'said',
-      },
-    ],
-    links: [{ from: 'opt1', to: 'per1', kind: 'tensions', label: 'but' }],
-    unsaid: {
-      label: "Maybe this isn't about the job",
-      why: 'She keeps framing it as career but circles back to fear.',
-      confidence: 'maybe',
-    },
-  };
-
-  it('produces a ConversationSpec with a mindshape block', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.blocks).toHaveLength(1);
-    expect(spec.blocks[0].type).toBe('mindshape');
-  });
-
-  it('preserves center as sub and opener', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.sub).toBe(SETTLED.center);
-    expect(spec.opener).toBe(SETTLED.center);
-  });
-
-  it('preserves atoms, links, and unsaid in block props', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    const props = (spec.blocks[0] as { type: 'mindshape'; props: MindShapeSpec }).props;
-    expect(props.atoms).toHaveLength(2);
-    expect(props.links).toHaveLength(1);
-    expect(props.unsaid?.label).toBe("Maybe this isn't about the job");
-  });
-
-  it('uses spec.title as the ConversationSpec title', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.title).toBe('Seattle offer vs family');
-  });
-
-  it('falls back to a default title when spec.title is absent', () => {
-    const noTitle: MindShapeSpec = { ...SETTLED, title: undefined };
-    const spec = mindShapeToSpec(noTitle);
-    expect(spec.title).toBeTruthy();
-    expect(typeof spec.title).toBe('string');
-  });
-
-  it('block col is 12 (full-width)', () => {
-    const spec = mindShapeToSpec(SETTLED);
-    expect(spec.blocks[0].col).toBe(12);
   });
 });
 

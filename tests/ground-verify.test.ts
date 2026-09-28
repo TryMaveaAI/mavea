@@ -7,7 +7,6 @@ import { gateCitation, canonUrl, hostOf } from '../src/live/ground/citation';
 import { makeTranscriptGrounder, normalizeForMatch } from '../src/live/ground/transcript';
 import { parseAmount, toNumber, digitsOf } from '../src/live/ground/number';
 import { parseLooseJson, extractJsonSlice } from '../src/live/ground/json';
-import { tierToConf } from '../src/live/ground/tier';
 
 describe('verbatim gate', () => {
   it('accepts a real quote and preserves accents/ligatures', () => {
@@ -109,14 +108,5 @@ describe('number + json readers', () => {
     expect(parseLooseJson({ c: 3 })).toEqual({ c: 3 });
     expect(parseLooseJson('not json at all')).toBeNull();
     expect(extractJsonSlice('x {"y":1} z')).toBe('{"y":1}');
-  });
-});
-
-describe('tier → conf bridge', () => {
-  it('maps every tier to a canvas confidence level', () => {
-    expect(tierToConf('T1')).toBe('strong');
-    expect(tierToConf('T2')).toBe('partial');
-    expect(tierToConf('T3')).toBe('inferred');
-    expect(tierToConf('T0')).toBe('unverified');
   });
 });

@@ -479,8 +479,11 @@ export function useMindShape(cfg: ModelConfig | null): UseMindShapeReturn {
       const newAtoms = localNow.filter(
         (a) => !specRef.current?.atoms.some((e) => e.id === a.id),
       ).length;
+      // A seed that already went out for these words (and failed, or found nothing) is never sent
+      // again for the same words: a recogniser re-reporting them is not new input. New speech is.
+      const seededBefore = lastTranscriptRef.current !== '';
       const worthAsking = noAtoms
-        ? wc >= FIRST_REFINE_WORDS
+        ? wc >= FIRST_REFINE_WORDS && (!seededBefore || newWords > 0)
         : wc >= FIRST_REFINE_WORDS && (newWords >= MIN_NEW_WORDS || newAtoms >= MIN_NEW_ATOMS);
 
       if (!worthAsking || overCap) return;

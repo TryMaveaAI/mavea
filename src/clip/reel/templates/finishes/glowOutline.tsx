@@ -26,13 +26,6 @@ export function GlowOutlineSlide({ slots }: SlideProps<'concept'>) {
         animation: 'reel-fade-up 0.7s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        @keyframes glow-outline-pulse {
-          0%, 100% { filter: drop-shadow(0 0 calc(var(--ru) * 2.4) var(--reel-glow)); }
-          50% { filter: drop-shadow(0 0 calc(var(--ru) * 5.2) var(--reel-glow)); }
-        }
-      `}</style>
-
       {/* A soft orb loitering behind the title to give the flat outline some depth. */}
       <div
         aria-hidden="true"

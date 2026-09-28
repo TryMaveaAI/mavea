@@ -279,8 +279,27 @@
   white-space: nowrap;
   transition: filter 140ms ease;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-skip {
+    color: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--ink-on-fill)
+    );
+  }
+}
 .demox-skip:hover {
   filter: brightness(1.08);
+}
+/* Brightening lifts the fill towards a white label; shade it away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-skip:hover {
+    background: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--lift-for-ink)
+    );
+    filter: none;
+  }
 }
 .demox-skip-short {
   display: none;
@@ -412,8 +431,27 @@
   cursor: pointer;
   transition: filter 140ms ease;
 }
+/* White stays where relative colour is unsupported; elsewhere the ink is derived from the fill the
+   text sits on, the way --on-presence is from the accent. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-primary {
+    color: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--ink-on-fill)
+    );
+  }
+}
 .demox-primary:hover {
   filter: brightness(1.08);
+}
+/* Brightening lifts the fill towards a white label; shade it away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-primary:hover {
+    background: color(
+      from color-mix(in oklab, var(--accent) 58%, #0b0f14) srgb-linear var(--lift-for-ink)
+    );
+    filter: none;
+  }
 }
 .demox-ghost {
   padding: 10px 16px;
@@ -472,16 +510,80 @@
   color: #fff;
   background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #000));
 }
+/* Every persona accent is light and carries black, so the shaded stop is lifted no
+   further than that ink needs (--dark-ink-min-l) and the ink is derived from the accent. Where
+   relative colour is unsupported the gradient stays as drawn, in white. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .demox-avatar,
+  .demox-other-avatar {
+    background: linear-gradient(
+      135deg,
+      var(--accent),
+      oklch(from color-mix(in oklab, var(--accent) 55%, #000) max(l, var(--dark-ink-min-l)) c h)
+    );
+    color: color(from var(--accent) srgb-linear var(--ink-on-fill));
+  }
+}
 .demox-other-avatar.emoji {
   font-size: var(--fs-sm);
   color: inherit;
   background: color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
+/* Small screens: the banner packs tight. At desktop size it stood 52px under a 60px bar, over a
+   session row and the transport, and left a 390×844 phone about half its height for the answer.
+   Nothing is dropped — the use case, the persona line (it is where the replay says the persona is
+   fictional) and the badge all stay — the avatar and the type step down and the padding goes, so
+   it stands about two-thirds as tall. A phone on its side is shorter still, so it packs the same. */
+@media (width <= 640px) or (height <= 500px) {
+  .demox-banner {
+    max-width: calc(100vw - var(--rail-w, 0px) - 20px);
+    gap: 8px;
+    padding: 3px 10px 3px 3px;
+  }
+  .demox-banner .demox-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: var(--fs-sm);
+  }
+  .demox-banner .demox-who {
+    min-width: 0;
+    line-height: 1.1;
+  }
+  .demox-banner :is(.demox-name, .demox-role) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded truncation: the same rule ellipsises */
+    white-space: nowrap;
+  }
+  .demox-banner .demox-name {
+    font-size: var(--fs-sm);
+  }
+  .demox-banner .demox-role {
+    font-size: var(--fs-2xs);
+  }
+  .demox-banner .demox-badge {
+    flex: none;
+    margin-left: 0;
+  }
+}
+
+/* A phone on its side: the bar's row has room between the brand and its two controls, and the
+   screen has no height to spare, so the banner rides in that row instead of under it (DemoOverlay
+   then reserves nothing for it). The side margins are the brand's and the controls' footprint. */
+@media (height <= 500px) and (width > 640px) {
+  .demox-banner {
+    top: 12px;
+    left: 50%;
+    translate: -50% 0;
+    max-width: calc(100vw - 440px);
+  }
+}
+
 /* Small screens: the transport tucks tighter and the banner rides higher. */
 @media (width <= 640px) {
   .demox-banner {
-    top: 64px;
     left: 10px;
   }
   .demox-panel {

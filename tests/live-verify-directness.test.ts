@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateLiveResponse } from '../src/engine/liveSchema';
-import { checkConsistency, hasHardIssue, opensWithPreamble } from '../src/live/verify';
+import { checkConsistency, opensWithPreamble } from '../src/live/verify';
 
 function response(narration: string) {
   const result = validateLiveResponse({
@@ -21,7 +21,6 @@ describe('verify — answer-first opener', () => {
     const issues = checkConsistency(response("Sure, let's break this down. The answer is 42."));
 
     expect(issues.map((issue) => issue.code)).toContain('preamble-opener');
-    expect(hasHardIssue(issues)).toBe(false);
   });
 
   it('accepts an opener that commits immediately', () => {

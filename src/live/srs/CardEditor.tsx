@@ -11,6 +11,7 @@ import { addCards, updateCard } from './store';
 import type { AddOpts, SrsCard, SrsSource } from './store';
 import type { DraftCard } from './suggestCards';
 import { useFocusTrap } from '../useFocusTrap';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 interface EditorCard {
   front: string;
@@ -161,13 +162,11 @@ export function CardEditor(p: Props): ReactElement {
   // The scrim stays presentational — a role="button" wrapper around the dialog is a nested
   // interactive, and Escape plus the ✕ button already give the keyboard the same exit. Only a
   // click landing directly on the backdrop closes it; anything on the sheet's content is left alone.
-  const closeOnBackdrop = (e: { target: EventTarget; currentTarget: EventTarget }): void => {
-    if (e.target === e.currentTarget) p.onClose();
-  };
+  const backdrop = useBackdropDismiss(p.onClose);
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-    <div className="fc-scrim" onClick={closeOnBackdrop}>
+    <div className="fc-scrim" onPointerDown={backdrop.onPointerDown} onClick={backdrop.onClick}>
       <div
         className="fc-ed-shell"
         ref={shellRef}

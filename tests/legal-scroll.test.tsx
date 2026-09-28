@@ -1,5 +1,5 @@
-import { cleanup, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { TermsApp } from '../src/legal/TermsApp';
 import { PrivacyApp } from '../src/legal/PrivacyApp';
 import { LegalGate } from '../src/legal/LegalGate';
@@ -129,5 +129,104 @@ describe('legal documents scroll the window whatever else is loaded', () => {
     expect(getComputedStyle(document.body).overflow).toBe('visible');
     expect(getComputedStyle(document.documentElement).overflow).toBe('visible');
     expect(getComputedStyle(document.body).height).toBe('auto');
+  });
+});
+
+/** Continue sat 1.9 screens down a 390x844 phone and 3.4 down a 320px one, under a card that
+ *  nothing said was scrollable. The way forward now lives in a footer that sticks to the bottom of
+ *  the window for as long as the card runs past it — so it is on screen from the first paint, and
+ *  every word above it still is in the page. */
+describe('the acknowledgement gate keeps its way forward on screen', () => {
+  const rule = (selector: string): string => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(gateCss)?.[2] ?? '';
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('puts Continue in the card’s footer, after every statement and both boxes', () => {
+    render(
+      <LegalGate>
+        <p>the product</p>
+      </LegalGate>,
+    );
+    const card = document.querySelector('.legal-gate-card') as HTMLElement;
+    const foot = card.querySelector('.legal-gate-foot') as HTMLElement;
+
+    expect(card.lastElementChild).toBe(foot);
+    expect(within(foot).getByRole('button', { name: /continue to mavéa/i })).toBeDisabled();
+    // The statements are not summarised into the footer: both boxes, with their full text, stay
+    // in the document above it.
+    const body = card.querySelector('.legal-gate-body') as HTMLElement;
+    expect(within(body).getAllByRole('checkbox')).toHaveLength(2);
+    expect(within(foot).queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  it('pins the footer to the window, and keeps focus-scrolling clear of it', () => {
+    expect(rule('.legal-gate-foot')).toMatch(/position:\s*sticky/);
+    expect(rule('.legal-gate-foot')).toMatch(/bottom:\s*0/);
+    // An overflow on the card would make the card the footer's scroller — one that never
+    // scrolls — and the footer would stop sticking to the window.
+    expect(rule('.legal-gate-card')).toMatch(/border-radius/);
+    expect(rule('.legal-gate-card')).not.toMatch(/overflow/);
+    // Sticky is in flow, so it can never sit over the last box once the page reaches its end;
+    // what it CAN cover is a link or a box that focus scrolls to, hence the measured padding.
+    expect(gateCss).toMatch(
+      /html:has\(\.legal-gate\)\s*\{[^}]*scroll-padding-bottom:[^;]*var\(--legal-gate-foot/,
+    );
+  });
+
+  it('the hint beside a disabled Continue takes the reader to the box still waiting', () => {
+    // jsdom has no layout, so it has no scrollIntoView either; the call is the observable part.
+    const scrollIntoView = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+    Element.prototype.scrollIntoView = scrollIntoView;
+    onTestFinished(() => {
+      if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+      else delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
+    render(
+      <LegalGate>
+        <p>the product</p>
+      </LegalGate>,
+    );
+    const [general, speech] = screen.getAllByRole('checkbox');
+
+    fireEvent.click(screen.getByRole('button', { name: /tick both boxes/i }));
+    expect(document.activeElement).toBe(general);
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'center' }));
+
+    fireEvent.click(general);
+    fireEvent.click(screen.getByRole('button', { name: /tick one more box/i }));
+    expect(document.activeElement).toBe(speech);
+
+    fireEvent.click(speech);
+    expect(screen.queryByRole('button', { name: /tick/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /continue to mavéa/i })).toBeEnabled();
+  });
+});
+
+describe('the gate uses a laptop window’s width instead of making the reader scroll', () => {
+  it('sets the points in two columns and the acknowledgements side by side from 1024px', () => {
+    const wide = /@media \(width >= 1024px\) \{([\s\S]*?)\n\}/.exec(gateCss)?.[1] ?? '';
+    expect(wide).toMatch(/\.legal-gate-points\s*\{[^}]*columns:\s*2/);
+    expect(wide).toMatch(/\.legal-gate-consents\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
+    expect(wide).toMatch(/break-inside:\s*avoid/);
+  });
+});
+
+describe('on a laptop the acknowledgement is a sheet inside the window', () => {
+  it('fits the card to the window, scrolls its points inside it, and rests Continue on its edge', () => {
+    const blocks = [...gateCss.matchAll(/@media \(width >= 1024px\) \{([\s\S]*?)\n\}/g)].map(
+      (m) => m[1],
+    );
+    const sheet =
+      blocks.find((b) => /max-height:\s*calc\(100dvh - 2 \* var\(--gate-edge\)\)/.test(b)) ?? '';
+    expect(sheet).toMatch(/\.legal-gate-body\s*\{[^}]*overflow-y:\s*auto/);
+    expect(sheet).toMatch(/\.legal-gate-foot\s*\{[^}]*position:\s*static/);
+    // The margin the card keeps is the one the page pads with, so top and bottom always match.
+    expect(gateCss).toMatch(/\.legal-gate \{[^}]*padding:\s*var\(--gate-edge\)/);
   });
 });

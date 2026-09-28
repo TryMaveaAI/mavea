@@ -27,17 +27,6 @@ export function CountdownSlide({ slots }: SlideProps<'stat'>) {
         textAlign: 'center',
       }}
     >
-      <style>{`
-        @keyframes countdown-glow {
-          0%, 100% { text-shadow: 0 0 calc(var(--ru) * 2) var(--reel-glow), 0 0 calc(var(--ru) * 5) var(--reel-glow); opacity: 1; }
-          50% { text-shadow: 0 0 calc(var(--ru) * 3.2) var(--reel-glow), 0 0 calc(var(--ru) * 9) var(--reel-glow); opacity: 0.92; }
-        }
-        @keyframes countdown-tick {
-          0%, 46%, 100% { opacity: 1; }
-          50%, 96% { opacity: 0.12; }
-        }
-      `}</style>
-
       <span
         style={{
           font: '600 calc(var(--ru) * 2.4)/1 var(--reel-mono)',

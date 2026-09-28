@@ -35,13 +35,15 @@ describe('app-wide important information', () => {
     expect(screen.getByText(/prompts, attachments, conversation context/i)).toBeInTheDocument();
     // The key primer: what is kept, where, who can read it, how to remove it.
     expect(screen.getByRole('heading', { name: 'Important information' })).toBeInTheDocument();
-    expect(screen.getByText(/people who publish Mavéa never receive it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mavéa's maintainers never receive it/i)).toBeInTheDocument();
     expect(screen.getByText(/key the browser will not export/i)).toBeInTheDocument();
     expect(screen.getByText(/whoever runs this deployment/i)).toBeInTheDocument();
     expect(screen.getByText(/extension with access to this site/i)).toBeInTheDocument();
     expect(screen.getByText(/reload the tab to clear it from memory/i)).toBeInTheDocument();
     expect(screen.getByText(/destroys the encryption key/i)).toBeInTheDocument();
-    expect(screen.getByText(/never in a settings export or backup/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/never writes it to disk unencrypted, or into a settings export or backup/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/anything you type, paste, attach, or upload/i)).toBeInTheDocument();
     expect(screen.getByText(/work-related or personal material/i)).toBeInTheDocument();
     expect(screen.getByText(/rights and permission to use/i)).toBeInTheDocument();
@@ -132,6 +134,31 @@ describe('app-wide important information', () => {
     expect(privacy).toMatch(/crash, forced close, or storage failure can interrupt cleanup/i);
     expect(privacy).toMatch(/only Mavéa temporary video files more than 24 hours old/i);
     expect(privacy).toMatch(/up to 60 seconds while the browser takes ownership/i);
+  });
+
+  it('states age, correspondence, and liability limits consistently', () => {
+    const terms = readFileSync(join(__dirname, '../TERMS.md'), 'utf8');
+    const privacy = readFileSync(join(__dirname, '../PRIVACY.md'), 'utf8');
+    const inProduct = [
+      '../src/legal/LegalGate.tsx',
+      '../src/legal/LegalApp.tsx',
+      '../src/legal/featureRiskAudit.ts',
+      '../src/live/setup/ProviderResponsibilityNotice.tsx',
+    ].map((file) => readFileSync(join(__dirname, file), 'utf8'));
+
+    for (const doc of [terms, privacy]) {
+      expect(doc).toContain('Do not let anyone under 18 use Mavéa.');
+      expect(doc).not.toMatch(/child access to connected|under 18 to use connected/i);
+    }
+    expect(privacy).toMatch(/When you email the Maintainers or open an issue/);
+    expect(privacy).toMatch(/does not create a voiceprint or any other biometric identifier/);
+    expect(terms).toMatch(/Nothing in these Terms limits liability for death or personal injury/);
+    // The app is not a legal person, so it is never the one disclaiming liability.
+    for (const source of inProduct) {
+      expect(source.replace(/\s+/g, ' ')).not.toMatch(
+        /Mavéa (?:is|does) not (?:responsible|liable)|Mavéa does not control that and is not liable/,
+      );
+    }
   });
 
   it('keeps the canonical disclaimer current about costs, patents, and asset rights', () => {

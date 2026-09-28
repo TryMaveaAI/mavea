@@ -706,7 +706,9 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--presence-soft);
+  /* The soft accent is a dark-theme shade; leaning it toward the text colour keeps the pill's
+     label readable in light as well. */
+  color: color-mix(in oklab, var(--presence-soft) 50%, var(--text-primary));
   padding: 3px 8px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
@@ -793,7 +795,8 @@
   color: var(--text-primary);
 }
 .tok-comment {
-  color: var(--text-muted);
+  /* The code sits on the recessed surface, where the muted ink falls short of 4.5:1 in light. */
+  color: var(--text-secondary);
   font-style: italic;
 }
 .tok-punct {
@@ -959,6 +962,7 @@
   transform: translateY(-1px);
 }
 .bn-action.done {
+  color: var(--on-insight);
   background: var(--insight);
   pointer-events: none;
 }
@@ -1383,6 +1387,7 @@
   filter: saturate(0.85) brightness(0.95);
 }
 .sp-btn.done {
+  color: var(--on-insight);
   background: var(--insight);
 }
 .sp-btn-spin {
@@ -1422,7 +1427,7 @@
   letter-spacing: 0;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: var(--surface-default);
+  color: var(--on-presence);
 }
 .nf-markall {
   margin-left: auto;
@@ -1616,5 +1621,24 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself, and a hover shades the fill away from that ink. Where relative colour is
+   unsupported the ink and hover above stand, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .bn-action {
+    color: color(from var(--bn-c) srgb-linear var(--ink-on-fill));
+  }
+  .bs-count-badge {
+    color: color(from var(--cnt-c) srgb-linear var(--ink-on-fill));
+  }
+  .sp-btn {
+    color: color(from var(--sp-c) srgb-linear var(--ink-on-fill));
+  }
+  .bn-action:not(.done):hover {
+    background: color(from var(--bn-c) srgb-linear var(--lift-for-ink));
+    filter: none;
   }
 }

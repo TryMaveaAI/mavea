@@ -2,63 +2,64 @@
 
 The [README](../README.md) keeps it to the three things that make people say _whoa_. This is the
 full tour. In the app you don't need to memorize it — press **⌘K** (Ctrl-K) to search the feature
-index, or open the **Explore** menu in the top bar.
+index, or open the **Explore** menu in Live's top bar.
 
 ## The canvas
 
-- 🎨 **A living canvas, not a chatbot** — ordinary Live selection uses **625 component contracts**;
-  `#/gallery` production-renders **all 625 types**, including gated/surface-owned types and the two
-  internal full-frame renderers. Charts, tables, flows, diagrams, documents, and the UI kit are all
-  rendered by the same canvas code used in answers.
+- 🎨 **A living canvas, not a chatbot** — a library of **625 component contracts**, nearly all of
+  them on Live's menu (a handful are mounted only by their own surfaces); `#/gallery`
+  production-renders **all 625 types**, including gated/surface-owned types and the two internal
+  full-frame renderers. Charts, tables, flows, diagrams, documents, and the UI kit are all rendered
+  by the same canvas code used in answers.
 - 📰 **An editorial design language** — the spoken answer leads as a serif headline above the
-  evidence; data sits in mono; provenance reads as designed badges (LIVE / INFERRED / GROUNDED IN).
-  Six **theme templates** (paper, daylight, ink, console, marquee, original), each a complete re-skin
+  evidence; data sits in mono; provenance reads as designed badges (INFERRED / GROUNDED IN). Six
+  **theme templates** (paper, daylight, ink, console, marquee, original), each a complete re-skin
   with its own light **and** dark — same answer, different room.
 - ✨ **Builds a visual when none fits** — when nothing in the library suits an ask, Live can compose
   one on the fly — a freeform diagram, or a custom layout arranged from existing blocks — rendered
-  with the same design tokens and safety boundary. This is on by default; disabling it removes those
-  contracts from the model menu.
+  with the same design tokens and safety boundary. This is on by default.
 - 📖 **The Study** — one object on a lamplit desk, the rest of the answer waiting in a shallow arc
   behind it, and Mavéa's notes in the margin beside it. Four notes per object: what it assumes, the
   pattern in it, what its evidence does and does not back, and a pressure-test. The evidence check
-  is always Mavéa's own reading of the turn's real sources — so a receipt is never invented, and
-  "no sources are attached" is said out loud rather than skipped. The other three she writes herself
-  the first time you open the desk, at whatever Explain level you're set to: one short call,
-  streamed into the margin as each note lands and kept for that answer, so every later visit costs
-  nothing and a reader who never opens the desk is never billed for it. **Guide me** walks the desk
-  object by object, narrating each one; the session notes keep a line for every beat you visited.
+  is always Mavéa's own reading of the turn's real sources — so a receipt is never invented, and "no
+  sources are attached" is said out loud rather than skipped. The other three she writes herself the
+  first time you open the desk, at whatever Explain level you're set to: one short call, streamed
+  into the margin as each note lands and kept for that answer, so every later visit costs nothing
+  and a reader who never opens the desk is never billed for it. **Guide me** opens the desk and
+  **Walk me through** steps it object by object, narrating each one; the session notes keep a line
+  for every beat you visited.
 - 🎯 **Board, Lens, and Guide me** — the whole board rests in view by default. Click a card to open
-  its Lens: a silent close-up with navigation through the other cards. Choose **Guide me** to open
-  the Study desk above and walk through the answer with notes in the margin. Spatial Canvas and
-  Focus remain available through the feature menu.
-- 📽️ **Present mode** — go full theater: the chrome drops entirely, one slide sits on a dark stage
-  with prev/next nav, and the mic stays live so questions from the room become new canvases (tagged
-  _from the room_ in the session rail).
+  its Lens: a close-up with Mavéa's notes beside it and navigation through the other cards. Choose
+  **Guide me** to open the Study desk above and walk through the answer with notes in the margin.
+  Canvas view (also an answer's **View as canvas** button) is in the ⌘K palette too.
+- 📽️ **Present mode** — go full theater: the chrome drops entirely, the answer becomes a full-screen
+  slide deck in one of ten styles with keyboard and swipe navigation, and the mic stays as it was,
+  so questions from the room become new canvases (tagged _from the room_ in the session rail).
 
 ## A friend at the whiteboard
 
-- 🎙️ **It talks — and points while it talks.** The face speaks the headline the instant it streams,
-  its mouth and body tracking the real audio. As it walks the answer, it **draws**: hand-style circles,
-  underlines, and arrows land on the exact figure each spoken line is about (the model names its
-  target; no reason, no ink). A **teach mode** ("walk me through it") draws more generously. Turn
-  off the **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
+- 🎙️ **It talks — and points while it talks.** The face speaks the headline as soon as the first
+  card is on the canvas, its mouth and body tracking the real audio. As it walks the answer, it
+  **draws**: hand-style circles, underlines, and arrows land on the exact figure each spoken line is
+  about (the model names its target; no reason, no ink). With **Pen mode** on (the default) it
+  marks every stop it walks, not just the one figure a line calls out; turn it off in Settings and
+  the pen stays quiet. Turn off the **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
   microphone.
-- 👻 **It answers while you talk** — mid-sentence, dashed _forming / maybe_ ghost cards sketch the
-  answer taking shape behind your words, reshaping as the sentence changes direction (off on the Fast
-  quality dial — speculation is a spend you opt into).
 - ✏️ **Edit its mind** — generated answers can state their read of the constraints as chips
   ("Tokyo trip" · "late April" · "~$2,500 each"). Tap one, fix it, and a correction turn
   re-renders the answer without requiring you to restate the whole ask.
 - ⚡ **Blocks fuse** — pin two or more cards (the per-card **Ask** affordance) and hit **"Fuse N into
   one"** to have Mavéa answer the real relationship across their data, grounded in every pinned
   block's actual props, honest about correlation versus cause.
-- 🌙 **Whisper in, whisper out** — after 10 PM the room dims and the voice drops to an ember ("won't
-  wake anyone"). 🚶 **Think-out-loud** banks a whole ramble without answering, then a single
-  _"thoughts?"_ sorts your own words into decisions, todos, and contradictions.
+- 🌙 **Whisper in, whisper out** — turn on Quiet hours and, from 10 PM to 6 AM, the room dims and the
+  voice drops to an ember ("won't wake anyone"). 🚶 **Think-out-loud** banks a whole ramble without
+  answering, then a single _"thoughts?"_ sorts your own words into decisions, todos, and
+  contradictions.
 - 🗺️ **Watch me think** — talk for a minute and Mavéa maps your thinking as you speak, clustering it
   into the **themes that emerge from your own words** (never a fixed set of categories) with the
-  tension threads between what pulls against what. When you settle the shape, it becomes a kept canvas
-  — ask about it, share it as a Mavéa Story, or let it stay as the prompt for what's next.
+  tension threads between what pulls against what. When you settle the shape, it becomes a kept
+  canvas — ask about it, present it, share it as a video, or let it stay as the prompt for what's
+  next.
 
 ## Time as a medium
 
@@ -68,12 +69,14 @@ index, or open the **Explore** menu in the top bar.
   a waveform; drag it and the blocks un-build to exactly what had been _said_ by that moment, then
   rebuild as the voice replays.
 - 🔭 **Semantic zoom** — pinch out and the session reads as chapters; pinch again and the whole night
-  is one breath. **Recap** ("Tonight, so far.") folds it into one screen of real moments.
+  is one breath. **Recap** folds it into one screen of real moments, titled for the hour ("Tonight,
+  so far.").
 - 🩹 **Self-healing history** — when an answer genuinely reverses an earlier claim it says so, and the
   earlier moment is visibly marked _corrected_ (was → now) instead of history silently disagreeing
   with itself.
-- 🗺️ **Your Atlas** — kept conversations and remembered topics as a flyable map, clustered into
-  neighborhoods named by your own words.
+- 🗺️ **Your Atlas** — the conversations your Library has saved, as a flyable map clustered into
+  neighborhoods named by topic. It is drawn from saved conversations only, so with the Library off
+  there is nothing for it to map.
 
 ## It keeps living
 
@@ -81,29 +84,31 @@ index, or open the **Explore** menu in the top bar.
   moments cards (the ask, findings, and headline stat), searchable and resumable from a welcome hub
   that asks **"What are we figuring out?"** You can disable or clear the library at any time.
 - 📊 **Living dashboards** — turn a conversation into a dashboard that refreshes on its configured
-  cadence while Mavéa is open (`#/dashboards`), with its checks and estimated provider cost visible.
+  cadence while Mavéa is open (`#/dashboards`), with its checks visible and a plain-language
+  estimate of how often it will reach for your key (never a price — that is your provider's to
+  state).
 - 🔄 **Bendable answers** — a calculation answer can carry its model-authored formula; drag the one
   number worth dragging and the outputs recompute in front of you, auditable.
-- 🌍 **View any "why" as a living answer** — an answer about causes opens into the causal web behind it.
-  Press **Walk me through it** and the camera flies from cause to cause while Mavéa narrates each
-  one, drawing the link it is talking about; or read the same web four ways — what led to what, how
-  much each cause was _measured_ to contribute, when each happened, and what each one measured over
-  time. A view is only offered when the world can actually fill it. Every figure on the surface can
-  prove itself (tap it for the quote, the source, and what breaks if it changes), and every arrow
-  states what it does **not** claim. Pull a what-if lever and the world re-weights in place —
-  described in words, never in numbers nobody measured. Break a cause open and its parts are drawn by
-  whichever component the library already has for a shape like that, chosen from the catalog rather
-  than hand-picked — and named in a plain list where nothing measured them, because a chart of
-  invented proportions is a finding nobody made.
+- 🌍 **View any "why" as a living answer** — an answer about causes opens into the causal web behind
+  it. Press **Walk me through it** and the camera flies from cause to cause while Mavéa narrates
+  each one, drawing the link it is talking about; or read the same web five ways — what led to what,
+  how much each cause was _measured_ to contribute, which kinds of force are at work and where the
+  explanation hands off between them, when each happened, and what each one measured over time. A
+  view is only offered when the world can actually fill it. Every figure on the surface can prove
+  itself (tap it for the quote, the source, and what breaks if it changes), and every arrow states
+  what it does **not** claim. Pull a what-if lever and the world re-weights in place — described in
+  words, never in numbers nobody measured. Break a cause open and its parts are drawn by whichever
+  component the library already has for a shape like that, chosen from the catalog rather than
+  hand-picked — and named in a plain list where nothing measured them, because a chart of invented
+  proportions is a finding nobody made.
 - ◌ **The Blank Space** — when an answer turns on something only you can know (a real deadline, your
-  budget, a dealbreaker), Mavéa is designed to leave a glowing
-  hole right in the answer. Fill it by typing, speaking, or dragging a card in, hit **Complete**, and
-  the same answer finishes with your real values. Uncertainty made honest, beautiful, and interactive.
-- ✍️ **Ink is the interface** — mark the answer like a whiteboard: **circle** a value to explain it,
-  **cross out** what to drop, **underline** what matters, draw an **arrow** between two things,
-  **bracket** a group, put a **"?"** where you're lost. Each mark grounds the next turn on exactly that
-  **part** — a single bar, row, or value, not the whole card. A pen draws anywhere; mouse and touch arm
-  the **Mark** tool, and the gesture itself is the message (no typing required).
+  budget, a dealbreaker), Mavéa is designed to leave a glowing hole right in the answer. Fill it by
+  typing, speaking, or dragging a card in, hit **Complete the answer**, and the same answer finishes
+  with your real values. Uncertainty made honest, beautiful, and interactive.
+- ✍️ **Highlight to ask** — drag across any part of the answer and ask about it: the next turn is
+  grounded on exactly that **part** — a single bar, row, or value, not the whole card — while your
+  typed or spoken question says what you want to know. A pen draws anywhere; mouse and touch arm the
+  **Highlight** tool.
 - 🧠 **It can remember you (optional)** — durable facts with per-fact provenance ("you said so" vs
   inferred, with controls intended to keep inferred material distinct), grouped, editable, exportable,
   and stored on this device. While Memory is enabled, relevant facts are included in later requests
@@ -126,11 +131,12 @@ index, or open the **Explore** menu in the top bar.
   quote is in the document word for word: one whose quote is nowhere is dropped, one filed on the
   wrong page is moved to the right one, and the header keeps the count honest (read · grounded ·
   dropped). From there you can **ask** the document a question and get spans back you click to light
-  up the lines, watch a silent captioned **briefing** fly through the argument to its weakest point,
-  make it **check its own numbers** for arithmetic that doesn't add up, **cross-examine** the
+  up the lines, watch a narrated, captioned **briefing** fly through the argument to its weakest
+  point, make it **check its own numbers** for arithmetic that doesn't add up, **cross-examine** the
   load-bearing claims to see which objections the document answers and which it never does, or pull
   **levers** on the model implied underneath it and watch the conclusion recompute. Opened from a
-  conversation with search on, those load-bearing claims can also be checked against live sources.
+  conversation with web search on, those load-bearing claims are also checked against live sources
+  through the configured search provider — Wikipedia, which Settings has no control to change.
 - 🧩 **Synthesis** — the same machinery over a pile instead of a page: a folder or a zip, up to 200
   sources, fused into one map with four lenses — everything, contradictions, gaps, consensus. A
   contradiction survives only when both sides quote their own source verbatim; anything weaker is
@@ -144,10 +150,10 @@ index, or open the **Explore** menu in the top bar.
   file with what it means, and a map of the areas the change reaches and how they call each other.
   The structural read — the changes, the worst-first risks, a flagged migration, the gate — is
   computed from the diff itself and holds up with no model at all; the model layers its explanation
-  on top, streamed in place. Set the altitude — new grad, working, principal — and every line
-  re-pitches. Repo access is read-only and goes straight from your browser to GitHub: public repos
-  need no setup, a private one uses a token encrypted on your device. Ripple will also build the
-  repo's onboarding course, each lesson written only when you open it, quoting the real files.
+  on top, streamed in place. Set who it explains for — onboarding, builder, principal — and every
+  line re-pitches. Repo access is read-only and goes straight from your browser to GitHub: public
+  repos need no setup, a private one uses a token encrypted on your device. Ripple will also build
+  the repo's onboarding course, each lesson written only when you open it, quoting the real files.
 - 🎓 **Courses** — name something you want to learn, pick a starting level or let Mavéa pick, and
   you get a real syllabus — typically five to seven lessons, each with a one-line goal and two to four
   concrete objectives. Lessons are written one at a time, when you open one — a course you abandon
@@ -168,45 +174,48 @@ index, or open the **Explore** menu in the top bar.
   proxy operator can access them in transit; provider privacy, retention, and usage-charge terms
   apply. The Connect step offers fast, lower-cost defaults where available; step up only when a task
   needs it.
-- 🔎 **Search the web when it helps — your choice, your cost** — off, free (keyless Wikipedia), or
-  real-time provider grounding (Gemini's cited Google search), fired only on asks that need it.
-- 🧾 **Share-to-Mavéa, the receipts machine** — paste or drop any link or screenshot and the claim-check
-  ask is ready: what's true, what's shaky, what's missing context, grounded in real sources.
+- 🔎 **Search the web when it helps — your choice, your cost** — off, or **Real-time**: the
+  provider's own cited web search, fired only on asks that need fresh information (on OpenRouter it
+  depends on the model you pick).
+- 🧾 **Share-to-Mavéa, the receipts machine** — paste or drop a link or screenshot onto the Live
+  canvas (not into the composer) and the claim-check ask is ready: what's true, what's shaky, what's
+  missing context, grounded in real sources.
 - 🎭 **The Rehearsal** — prepare a hard conversation before you have it, in whichever seat helps.
   Send your Mavéa: it argues your side against a stand-in grounded in your notes, your stated
   boundaries enforced in code, and a debrief tells you what moved them, where you're exposed, and
   what to open with. Or take the seat yourself: you say your own lines, the counterpart answers in
   character (and out loud), and a coach card between takes says the one thing to change. The
   brief's context is sent to your selected model provider; no outside action is executed.
-- 🎬 **Video** — Video Studio opens on **Conversation**, where you choose the exact turns to
-  keep in chronological order; the current-turn, current-topic, and all-turn presets make the common
-  cuts immediate. The preview plays your cut live — pause it whenever you like, and it holds a
-  still frame instead of looping if your system asks for reduced motion. Narration is required and
-  always on, while captions, spotlights, Mavéa Pen marks, and the face are optional. A conversation cut is plain
-  16:9 screen video — pick the size (1080p 1920×1080 or 720p 1280×720) and a Balanced/High/Ultra
-  quality tier — with a three-minute limit; social aspects live on the Reel tab. Supported
-  browsers produce an easy-to-share MP4 carrying AV1 video with Opus audio,
-  falling back to WebM (VP9/VP8 + Opus); H.264, H.265, AAC, and unspecified codec fallbacks are
-  excluded. Published open-codec patent commitments reduce risk but are not a patent-clearance
+- 🎬 **Video** — Video Studio opens on **Conversation**, where you choose the exact turns to keep in
+  chronological order; the current-turn, current-topic, and all-turn presets make the common cuts
+  immediate. The preview plays your cut live — pause it whenever you like, and it holds a still
+  frame instead of looping if your system asks for reduced motion. Narration is on by default — turn
+  Audio off for a quicker silent cut — while captions, spotlights, Mavéa Pen marks, and the face are
+  optional. A conversation cut is plain 16:9 screen video — pick the size (1080p 1920×1080 or 720p
+  1280×720) and a Balanced/High/Ultra quality tier — with a three-minute limit; social aspects live
+  on the Reel tab. Supported browsers produce an easy-to-share MP4 carrying AV1 video with Opus
+  audio, falling back to WebM (VP9/VP8 + Opus); H.264, H.265, AAC, and unspecified codec fallbacks
+  are excluded. Published open-codec patent commitments reduce risk but are not a patent-clearance
   opinion. The separate **Reel** tab keeps the cinematic editorial recut, but its direction,
   rendering, and encoding are local and never call a configured model provider.
 - 🖨️ **The export studio** — turn an answer, or several ticked off a list, into a **presentation
   deck** or a **designed document**, with a live preview of the real thing in the panel before
   anything is written. Ten deck styles and ten document templates, each with its own type, palette
   and page furniture; Mavéa pre-picks one from the subject and you can override it, along with the
-  accent colour, Letter or A4, and how finely it renders. A deck leaves as a PDF or a real
-  **PowerPoint** file with the speaker notes attached — or straight to the printer as a handout with
-  each slide's notes underneath it. A document leaves as a page-numbered PDF whose text stays
-  selectable and whose links stay clickable, with a contents page once you export more than one
-  answer and a sources appendix when an answer cites more than four. Slides you don't want are
-  skipped from the file but stay in the preview so you can put them back. All of it renders on your
-  machine; the studio never calls a model provider.
+  accent colour, Letter or A4, and how finely it renders. A deck leaves as a PDF or a **PowerPoint**
+  file (each slide a full-bleed image) with the speaker notes attached — or straight to the printer
+  as a handout with each slide's notes underneath it. A document leaves as a page-numbered PDF whose
+  text stays selectable and whose links stay clickable, with a contents page once you export more
+  than one answer and a sources appendix when an answer cites more than four. Slides you don't want
+  are skipped from the file but stay in the preview so you can put them back. All of it renders on
+  your machine; the studio never calls a model provider.
 - 📌 **Ask about this** — pin any block so the next question is grounded in its exact on-screen data.
 - 🔍 **Transparency controls** — confidence labels, source citations, real-data-oriented rules, and
   a measured eval harness ([`pnpm eval`](BENCHMARK.md)). These controls do not guarantee accuracy.
 
 ## Find your way around
 
-- ⌘ **Command palette** — press **⌘K** (or Ctrl-K) anywhere to search the feature index and jump
-  straight to an available action; the **Explore** menu in the top bar opens the same index and surfaces the
-  easily-missed gems (Watch me think, the Rehearsal).
+- ⌘ **Command palette** — press **⌘K** (or Ctrl-K) in Live, on the landing page, or on Dashboards to
+  search the feature index and jump straight to an available action; Live's **Explore** menu opens
+  the same index and surfaces the easily-missed gems (Watch me think, the Atlas), and the
+  **Practice** menu holds the Rehearsal.

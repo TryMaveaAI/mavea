@@ -2,9 +2,10 @@
 // (Connect → Think → Remember → Go); on the last step the orb warms and Mavéa says "I'm awake."
 // once. Every time after, setup persists on this device, so it opens straight on the Go hub with
 // a "What are we figuring out?" hub — no wizard, no audio. The constellation discs and checklist
-// rows are free-navigation shortcuts; editing any step just saves as you go and "Done" returns
-// to the hub. The orb itself is owned by LiveApp (the shared presence layer); this only signals
-// calm-vs-woken to it via a root data attribute, never touching the byte-locked face.
+// rows are free-navigation shortcuts; editing any step just saves as you go, "Continue" walks the
+// ritual on and, when a step was opened from the hub, "Done" returns to it. The orb itself is
+// owned by LiveApp (the shared presence layer); this only signals calm-vs-woken to it via a root
+// data attribute, never touching the byte-locked face.
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Icon } from '../../icons/icons';
 import { hasModelConfigured, resetLiveConfig, useLiveConfig } from '../useLiveConfig';
@@ -132,6 +133,10 @@ export function SetupWizard({
     const el = stageRef.current;
     if (!el) return;
     const root = document.documentElement;
+    // Every step opens at its own top. The stage element outlives the step, so without this the Go
+    // hub inherited however far Remember had been scrolled and opened with "I'm awake." slid up
+    // under the fixed face.
+    el.scrollTop = 0;
     let raf = 0;
     const sync = (): void => {
       raf = 0;
@@ -211,12 +216,16 @@ export function SetupWizard({
 
   const meta = stepMeta(step);
   const onGo = step === 'go';
+  // Connect is two fields side by side under five tiles; at 560px each field's helper wrapped to
+  // seven lines. It takes the hub's width — and so does the footer pinned under it, which is set
+  // from the same measure so the way forward lines up with the card it belongs to.
+  const wide = onGo || step === 'connect';
   const title = onGo && firstRun.current ? GO_FIRST_RUN_TITLE : meta.title;
   const sub =
     onGo && firstRun.current ? (configured ? GO_FIRST_RUN_SUB : GO_FIRST_RUN_SUB_UNSET) : meta.sub;
 
   return (
-    <div className="setup stage" data-active="1">
+    <div className="setup stage" data-active="1" data-wide={wide || undefined}>
       <header className="setup-nav">
         <button type="button" className="setup-back" onClick={goHome}>
           <span aria-hidden>←</span> Back to home
@@ -238,11 +247,7 @@ export function SetupWizard({
           <p className="setup-sub">{sub}</p>
         </div>
 
-        <section
-          key={step}
-          className={'card reveal setup-card' + (onGo ? ' setup-card--wide' : '')}
-          aria-label={meta.label}
-        >
+        <section key={step} className="card reveal setup-card" aria-label={meta.label}>
           {step === 'connect' && <ConnectStep />}
           {step === 'think' && <ThinkStep />}
           {step === 'remember' && <RememberStep />}
@@ -258,17 +263,35 @@ export function SetupWizard({
               launcherSlot={launcherSlot}
             />
           )}
-
-          {!onGo && (
-            <footer className="setup-foot">
-              <span className="setup-foot-note">Changes save as you make them.</span>
-              <button type="button" className="setup-done" onClick={done}>
-                Done <Icon.check />
-              </button>
-            </footer>
-          )}
         </section>
       </div>
+
+      {/* Pinned under the scrolling step, like the Go hub's composer: the way forward is on screen
+          at every size instead of under a long step's last field. It says what the press does —
+          "Continue" walks the ritual on, "Done" only where it truly ends (back to the hub). */}
+      {!onGo && (
+        <footer className="setup-foot">
+          <div className="setup-foot-inner">
+            <p className="setup-foot-note">
+              <span className="setup-foot-step">
+                Step {currentIndex + 1} of {STEPS.length} · {meta.label}
+              </span>
+              <span className="setup-foot-save">Changes save as you make them.</span>
+            </p>
+            <button type="button" className="setup-done" onClick={done}>
+              {editingReturn ? (
+                <>
+                  Done <Icon.check />
+                </>
+              ) : (
+                <>
+                  Continue <Icon.chevR />
+                </>
+              )}
+            </button>
+          </div>
+        </footer>
+      )}
 
       {onGo && (
         <div className="go-composer">
@@ -277,7 +300,8 @@ export function SetupWizard({
               className="go-composer-input"
               type="text"
               aria-label="Ask Mavéa"
-              placeholder="Say it or type it. Try ‘plan a trip’ or ‘compare two options’…"
+              // Short enough to fit whole beside the attach and mic buttons on a 320px phone.
+              placeholder="Ask anything, or try ‘plan a trip’"
               value={typed}
               autoComplete="off"
               spellCheck={false}

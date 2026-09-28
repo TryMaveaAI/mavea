@@ -20,6 +20,8 @@
 // "fixed up" into something dangerous. The whitelist removes every element capable of script,
 // external loads, or namespace confusion, so the sanitized string is safe for innerHTML.
 
+import { parseInert, type SanitizedHtml } from '../../../lib/trustedTypes';
+
 /** Hard cap on input size. Six thousand characters is enough for the intended small explanatory
  *  figure (roughly 1,500 output tokens) while preventing a generated escape-hatch visual from
  *  consuming the answer budget or hiding unverifiable complexity in a giant path. */
@@ -218,7 +220,7 @@ function enforceLegibleText(root: Element, vbW: number, vbH: number): void {
 
 /** Strict, synchronous SVG sanitizer. Returns safe, responsive SVG markup, or null if the input
  *  is empty, oversized, malformed, not rooted in <svg>, or the environment lacks a DOM parser. */
-export function sanitizeSvg(input: unknown): string | null {
+export function sanitizeSvg(input: unknown): SanitizedHtml | null {
   if (typeof input !== 'string') return null;
   const trimmed = input.trim();
   if (!trimmed || trimmed.length > MAX_INPUT) return null;
@@ -228,7 +230,7 @@ export function sanitizeSvg(input: unknown): string | null {
 
   let doc: Document;
   try {
-    doc = new DOMParser().parseFromString(trimmed, 'image/svg+xml');
+    doc = parseInert(trimmed, 'image/svg+xml');
   } catch {
     return null;
   }
@@ -274,7 +276,7 @@ export function sanitizeSvg(input: unknown): string | null {
   if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
 
   try {
-    return new XMLSerializer().serializeToString(root);
+    return new XMLSerializer().serializeToString(root) as SanitizedHtml;
   } catch {
     return null;
   }

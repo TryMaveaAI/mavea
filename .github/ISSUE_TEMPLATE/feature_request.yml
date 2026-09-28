@@ -2,6 +2,9 @@ name: Feature request
 description: Suggest an idea or improvement
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: By posting, you agree to the feedback terms in [TERMS.md §9](https://github.com/TryMaveaAI/mavea/blob/main/TERMS.md#9-ownership-and-feedback).
   - type: textarea
     id: problem
     attributes:

@@ -16,7 +16,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 18px;
-  padding: 12px 24px;
+  /* The header's content sits on the course grid's column, not the window's edges: at 2560 the
+     title and "New course" were 1600px apart over a grid that starts 460px in. The inset is the
+     grid's own centring — (width − column) / 2, where the column is --canvas-col-max plus the main
+     pane's padding on each side. */
+  padding: 12px max(24px, (100% - var(--canvas-col-max)) / 2);
   border-bottom: 1px solid var(--line-soft);
   background: var(--app-bg, var(--surface-default));
 }
@@ -104,11 +108,20 @@
 .cr-btn-primary {
   background: var(--presence);
   border-color: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
 }
 .cr-btn-primary:hover {
   background: color-mix(in oklab, var(--presence) 88%, #000);
   border-color: color-mix(in oklab, var(--presence) 88%, #000);
+}
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .cr-btn-primary:hover {
+    color: color(
+      from color-mix(in oklab, var(--presence) 88%, #000) srgb-linear var(--ink-on-fill)
+    );
+  }
 }
 .cr-btn-wide {
   margin-left: 0;
@@ -148,8 +161,9 @@
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  border: 2px solid color-mix(in oklab, #fff 35%, transparent);
-  border-top-color: #fff;
+  /* It turns inside the primary button, so it is drawn in that button's ink. */
+  border: 2px solid color-mix(in oklab, currentcolor 35%, transparent);
+  border-top-color: currentcolor;
   animation: cr-spin 0.7s linear infinite;
 }
 @keyframes cr-spin {

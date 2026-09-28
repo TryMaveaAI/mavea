@@ -11,6 +11,13 @@ const MAX_FAST_POLLS = 18; // ~1.8s at the fast cadence — generous for a revea
 const MAX_SLOW_POLLS = 12; // then ~6s of slow follow-up before a moving region is left where it is
 const STABLE_STREAK = 2; // this many identical reads in a row reads as "stopped moving"
 const MISSING_STREAK = 2; // two empty reads hide stale ink without blinking on a one-frame swap
+/** The spotlight's lift — `.card-grid > div`'s transform transition in visualizations-extra.css.
+ *  A test holds the two together. */
+export const SPOTLIGHT_LIFT_MS = 520;
+/** Roughly how long after a mark is requested it lands on a card at rest: the spotlight's lift
+ *  plus the confirming reads. A walk budgets its strokes by this much, so the pen is never cut
+ *  off mid-stroke. */
+export const INK_SETTLE_MS = SPOTLIGHT_LIFT_MS + POLL_MS * STABLE_STREAK;
 
 /** Chrome the pen itself renders (or the badge state it stamps on the host) — mutations there
  *  are our own echo, never a reason to re-measure. Without this filter every placement would
@@ -22,8 +29,107 @@ function isInkNode(n: Node): boolean {
   return !!el?.closest(INK_CHROME);
 }
 
+/** Properties whose animation moves or resizes a card — the spotlight's lift, a reveal's rise,
+ *  the Study flying a card to the desk. */
+const MOVING_PROPS =
+  /^(transform|translate|scale|rotate|left|top|right|bottom|width|height|inset)$/;
+
+function movesGeometry(a: Animation): boolean {
+  // An infinite loop (a pulse, a shimmer) never comes to rest, so it cannot be what we wait for.
+  if (a.playState !== 'running' || a.effect?.getComputedTiming().endTime === Infinity) return false;
+  // Duck-typed rather than `instanceof CSSTransition`/`KeyframeEffect`, which not every engine the
+  // tests run in defines.
+  if ('transitionProperty' in a) return MOVING_PROPS.test(String(a.transitionProperty));
+  const keyframes = (a.effect as KeyframeEffect | null)?.getKeyframes?.() ?? [];
+  return keyframes.some((k) => Object.keys(k).some((prop) => MOVING_PROPS.test(prop)));
+}
+
+/** True while the host — or the card it wraps — is part-way through a transition or entrance
+ *  that moves it. A read taken then is a frame of the motion, not where the target will rest.
+ *  The card can sit a wrapper or two below the host (a FitBox, the Study's card face), so the
+ *  whole path from the host down to its card is checked, not just the host's own children. */
+export function isInMotion(host: HTMLElement): boolean {
+  if (typeof host.getAnimations !== 'function') return false;
+  const path: Element[] = [host, ...Array.from(host.children)];
+  for (let el = host.querySelector('.card'); el && el !== host; el = el.parentElement) {
+    path.push(el);
+  }
+  return path.some((el) => el.getAnimations().some(movesGeometry));
+}
+
+/** Marks asked for but not yet on their card, by spot — the pen's intent before its first stroke.
+ *  A card still entering can hold a mark back for longer than any fixed guess, so anything that
+ *  must not cut the pen off (the walk, a replay step) waits on THIS, not on a timer. */
+const pendingInk = new Map<string, number>();
+const pendingWaiters = new Set<() => void>();
+
+function notifyPending(): void {
+  const waiters = [...pendingWaiters];
+  pendingWaiters.clear();
+  for (const w of waiters) w();
+}
+
+/** Records a mark on `spot` as pending until the returned release runs (once: it placed, or its
+ *  poll gave up, or it unmounted). */
+export function holdInkPending(spot: string): () => void {
+  pendingInk.set(spot, (pendingInk.get(spot) ?? 0) + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const n = (pendingInk.get(spot) ?? 1) - 1;
+    if (n > 0) pendingInk.set(spot, n);
+    else pendingInk.delete(spot);
+    notifyPending();
+  };
+}
+
+/** Whether a mark on `spot` — or on any card, with no spot — is still waiting to be placed. */
+export function inkPending(spot?: string): boolean {
+  return spot ? (pendingInk.get(spot) ?? 0) > 0 : pendingInk.size > 0;
+}
+
+/** Resolves the next time any pending mark is placed or given up on, or when `signal` aborts —
+ *  which also drops the waiter, so a wait that timed out does not stay registered until the next
+ *  mark happens to place. */
+export function pendingInkChanged(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = (): void => {
+      pendingWaiters.delete(done);
+      signal?.removeEventListener('abort', done);
+      resolve();
+    };
+    pendingWaiters.add(done);
+    signal?.addEventListener('abort', done, { once: true });
+  });
+}
+
+/** The pen's strokes on `spot`'s card — or on any card, with no spot — that have not finished
+ *  drawing yet (a stroke waiting out its `--ink-delay` counts: it is scheduled, and cutting it off
+ *  is the same fault). */
+export function inkStillDrawing(spot?: string, root: ParentNode = document): Animation[] {
+  const out: Animation[] = [];
+  const selector = spot ? `[data-spot-id="${CSS.escape(spot)}"] .ink-layer` : '.ink-layer';
+  for (const layer of Array.from(root.querySelectorAll(selector))) {
+    if (typeof layer.getAnimations !== 'function') continue;
+    for (const a of layer.getAnimations({ subtree: true })) {
+      if (a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity) {
+        out.push(a);
+      }
+    }
+  }
+  return out;
+}
+
 /** Measure until the result's geometry (per `fingerprint`) stops changing for `STABLE_STREAK` reads
- *  in a row, reporting every successful read along the way via `onResult`. One missing read is
+ *  in a row while its host is not mid-motion, and report ONLY those settled reads via `onResult`.
+ *  Reporting every read along the way is what made the pen look unsure of itself: a mark drawn
+ *  from the first read of a card still flying to the desk, or still lifting under the spotlight,
+ *  was re-plotted every 100ms until the card landed — the stroke visibly started in one place and
+ *  finished in another. Now a mark appears once, where it rests. A region that never settles still
+ *  gets its last read when the poll gives up, so a target that is really there is never left
+ *  undrawn. One missing read is
  *  treated as transient (a card mid-reveal or a host swapping this frame); two consecutive misses
  *  call `onMissing`, because an accordion/tab that closed must not leave its old stroke floating
  *  over blank space. Observers stay armed, so reopening the target redraws it in the new geometry.
@@ -43,6 +149,8 @@ function isInkNode(n: Node): boolean {
  *  finally stops chaining, after which each event buys exactly one read rather than a new burst.
  *  Settling refills the budget, so a card that comes to rest is back on the fast path.
  *
+ *  `onGiveUp` runs when the poll stops chaining without ever having reported a placement.
+ *
  *  Returns a cleanup that stops every timer/observer it started. */
 export function pollUntilSettled<T>(
   measure: () => T | null,
@@ -50,6 +158,7 @@ export function pollUntilSettled<T>(
   hostOf: (result: T) => HTMLElement,
   onResult: (result: T) => void,
   onMissing?: () => void,
+  onGiveUp?: () => void,
 ): () => void {
   let cancelled = false;
   let timer: number | undefined;
@@ -58,6 +167,9 @@ export function pollUntilSettled<T>(
   let attempts = 0;
   let lastKey: string | null = null;
   let streak = 0;
+  /** The fingerprint last handed to `onResult`: a confirming read that reproduces it is
+   *  silent. */
+  let reportedKey: string | null = null;
   let missingStreak = 0;
   let missingReported = false;
   let ro: ResizeObserver | undefined;
@@ -111,18 +223,31 @@ export function pollUntilSettled<T>(
   const tick = (): void => {
     if (cancelled) return;
     const result = measure();
+    let pending: T | null = null;
     if (result) {
+      if (missingReported) {
+        // The target came back after being hidden: it has to hold still again before it redraws.
+        streak = 0;
+        reportedKey = null;
+      }
       missingStreak = 0;
       missingReported = false;
-      armHost(hostOf(result));
-      const key = fingerprint(result);
-      streak = key === lastKey ? streak + 1 : 1;
-      lastKey = key;
-      onResult(result);
-      if (streak >= STABLE_STREAK) {
+      const host = hostOf(result);
+      armHost(host);
+      // A read taken mid-motion never counts toward settling, whatever its fingerprint says —
+      // geometry plotted in the card's own space can match across two frames of a flight.
+      const key = isInMotion(host) ? null : fingerprint(result);
+      streak = key !== null && key === lastKey ? streak + 1 : key === null ? 0 : 1;
+      if (key !== null) lastKey = key;
+      if (streak >= STABLE_STREAK && key !== null) {
+        if (key !== reportedKey) {
+          reportedKey = key;
+          onResult(result);
+        }
         attempts = 0; // at rest: the region earns its fast budget back for the next real move
         return; // settled — a later resize/mutation re-arms us
       }
+      pending = result;
     } else if (lastKey !== null) {
       missingStreak++;
       if (missingStreak >= MISSING_STREAK && !missingReported) {
@@ -135,8 +260,17 @@ export function pollUntilSettled<T>(
     // isn't going to (the model named text this card doesn't carry), and re-measuring a card that
     // will never answer is pure cost. Once something IS placed, a still-moving region is followed
     // at the slow cadence for a while longer before we leave the mark where it is.
-    const ceiling = lastKey === null ? MAX_FAST_POLLS : MAX_FAST_POLLS + MAX_SLOW_POLLS;
-    if (attempts >= ceiling) return; // stop polling; an armed observer can still re-measure later
+    const ceiling = lastKey === null && !pending ? MAX_FAST_POLLS : MAX_FAST_POLLS + MAX_SLOW_POLLS;
+    if (attempts >= ceiling) {
+      // Giving up on a region that never came to rest: draw where it is now rather than not at all.
+      if (pending) {
+        reportedKey = fingerprint(pending);
+        onResult(pending);
+      } else if (reportedKey === null) {
+        onGiveUp?.(); // nothing ever landed, and the poll will not chain again on its own
+      }
+      return; // stop polling; an armed observer can still re-measure later
+    }
     timer = window.setTimeout(tick, nextDelay());
   };
 

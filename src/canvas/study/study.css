@@ -121,6 +121,8 @@
 
 /* The approved design, verbatim: the lamplit parchment desk. */
 :root[data-theme='light'] .study-stage {
+  /* The light desk's amber is deep and carries white (see --hold-for-ink in the tokens). */
+  --hold-for-ink: min(l, var(--white-ink-max-l)) c h;
   --study-bg: #efe7d6;
   --study-glow-1: #faf3e3;
   --study-glow-2: #efe1c4;
@@ -223,6 +225,19 @@
 
 /* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
 
+/* The desk rebinds --presence to its amber, and a custom property is resolved where it is
+   declared: the root's ink was derived from the root's accent and its held stops were held on
+   that accent's side, not this one's. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .study-stage {
+    --on-presence: color(from var(--presence) srgb-linear var(--ink-on-fill));
+    --presence-deep-held: oklch(from var(--presence-deep) var(--hold-for-ink));
+    --presence-soft-held: oklch(from var(--presence-soft) var(--hold-for-ink));
+    --insight-held: oklch(from var(--insight) var(--hold-for-ink));
+  }
+}
+
 .study-desk {
   position: absolute;
   inset: 0;
@@ -254,6 +269,16 @@
   /* No pointer tilt. Rotating this subtree re-composites five blurred cards on every mouse
      move — the most expensive thing on the surface, spent on a three-degree lean. The desk's
      depth comes from the arc's own perspective, which costs nothing after first paint. */
+}
+
+/* The floor gets its own 3-D context, painted before the scene, rather than sharing the scene's.
+   Its plane tilts up toward the reader and crosses the front card's depth, and a plane that
+   crosses another makes the compositor split that one along it and draw each piece clipped to its
+   own box: the pen's scrawls, written in the card's margin outside that box, were cut off at the
+   card's edge ("one / ard" at 1920 and 2560). Under the scene, the floor is still the same plane
+   in the same perspective; it just never sorts against the objects standing on it. */
+.study-floor-plane {
+  pointer-events: none;
 }
 
 /* The floor: a perspective grid receding from under the cards. Decorative; the first thing to
@@ -1602,6 +1627,19 @@
   background: var(--study-amber-press);
 }
 
+/* The desk's amber follows the skin (a template hands it its own accent), so the words on an
+   amber button take an ink derived from the amber they sit on. Cream where that is unsupported. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .study-beat-next,
+  .study-intro-enter {
+    color: color(from var(--study-amber) srgb-linear var(--ink-on-fill));
+  }
+  .study-beat-next:hover,
+  .study-intro-enter:hover {
+    color: color(from var(--study-amber-press) srgb-linear var(--ink-on-fill));
+  }
+}
+
 /* While gathered, every card waits at the centre of the desk, tiny and unlit; entering removes
    the attribute and the ordinary slot transitions fan the cast out — the mockup's assembly. */
 .study-stage[data-gathered] .study-card {
@@ -1936,10 +1974,11 @@
 }
 
 /* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
-   Under 940px of container the 3-D composition has nothing to offer but horizontal cropping.
-   Height never selects this alternate UI: a wide, short laptop keeps the real Study and spends
-   its decorative floor band first. A genuinely narrow Study reflows to a flat reading column — the front card full-width,
-   Mavéa's note beneath it, and one unbroken beat bar. Background objects keep their names in the
+   Under COMPACT_W of container the 3-D composition has nothing to offer but horizontal cropping,
+   and in a window at or under COMPACT_H (820) tall the floored desk cannot show a real card whole —
+   it scrolled inside itself with Mavéa's note across the desk. Either one reflows to a flat
+   reading column: the front card whole, Mavéa's note beside it where there is width (beneath it
+   where there is not), and one unbroken beat bar. Background objects keep their names in the
    navigator, never as unreadable miniatures. The scale hook publishes the attribute because a
    container query cannot switch its own stage from fixed height to content height. */
 .study-stage[data-compact] {
@@ -1966,6 +2005,7 @@
 
 .study-stage[data-compact]
   :is(
+    .study-floor-plane,
     .study-floor,
     .study-pool,
     .study-vignette,
@@ -2030,6 +2070,31 @@
   position: static;
   max-width: none;
   margin: 0 0 14px;
+}
+
+/* A flat column on a laptop is still a wide box — 1066px on a 1366 window — and stacking the note
+   under a full-width card sent Mavéa's note below the fold, away from the object it annotates.
+   Where the column can hold both at a reading measure, the note keeps its place BESIDE the card,
+   as it does on the desk, and stays in view (sticky) while a tall card is read. */
+@container study (width >= 860px) {
+  .study-stage[data-compact] .study-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 30%);
+    column-gap: 14px;
+    align-items: start;
+  }
+
+  .study-stage[data-compact] .study-card.is-front {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .study-stage[data-compact] .study-note-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 14px;
+  }
 }
 
 /* The 3-D stage has stood down to the flat column, so there is no back arc left to collide

@@ -114,16 +114,6 @@
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
-.evidence-file .ficon {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--r-sm);
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
 .evidence-loc {
   font-size: var(--fs-xs);
   color: var(--text-muted);
@@ -133,25 +123,6 @@
 .evidence-rows {
   font-size: var(--fs-sm);
   font-family: var(--mono);
-}
-.evidence-rows .erow {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 12px;
-  padding: 8px 13px;
-  border-bottom: 1px solid var(--line-soft);
-  color: var(--text-secondary);
-}
-.evidence-rows .erow:last-child {
-  border-bottom: 0;
-}
-.evidence-rows .erow.hot {
-  background: rgba(245, 185, 92, 0.1);
-  color: var(--text-primary);
-  box-shadow: inset 2px 0 0 var(--warning);
-}
-.evidence-rows .erow .amt {
-  color: var(--text-primary);
 }
 
 /* A source as a receipt: the title row reuses .evidence-top chrome, and the real fetched

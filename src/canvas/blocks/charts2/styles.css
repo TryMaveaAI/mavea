@@ -10,7 +10,7 @@
    .card-eyebrow is white-space:nowrap, so relax it only for our cards. */
 .c2 .card-eyebrow {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word; /* whole words; only a word wider than the card splits */
   min-width: 0;
 }
 .c2 .insight-summary {
@@ -2446,11 +2446,6 @@
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.erb-tip-ci {
-  fill: var(--text-muted);
-  font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
 }
 

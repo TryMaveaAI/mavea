@@ -15,7 +15,7 @@
 //
 // Exits 1 with a printed report if anything is flagged.
 import { type Page } from 'playwright';
-import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { LEGAL_SEED } from './lib/legalSeed.mts';
 import { CATALOG_FACTS } from '../src/canvas/blocks/catalog';
 import { launchChromium } from './launch-chromium.mts';
 
@@ -290,19 +290,16 @@ async function auditLiveTemplates(
             if (REMOTE_FONT_HOSTS.has(hostOf(request.url()))) remoteFonts.push(request.url());
           });
           await page.addInitScript(
-            ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
+            ({ initialTheme, initialTemplate, legalKey, legalValue }) => {
               localStorage.setItem('mavea-theme', initialTheme);
               localStorage.setItem('mavea-template', initialTemplate);
-              localStorage.setItem(
-                legalKey,
-                JSON.stringify({ version: legalVersion, acceptedAt: '2026-07-16T00:00:00.000Z' }),
-              );
+              localStorage.setItem(legalKey, legalValue);
             },
             {
               initialTheme: theme,
               initialTemplate: template,
-              legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
-              legalVersion: LEGAL_ACCEPTANCE_VERSION,
+              legalKey: LEGAL_SEED.key,
+              legalValue: LEGAL_SEED.value,
             },
           );
           await page.goto(`${baseUrl}/#/live`, { waitUntil: 'load' });
@@ -497,17 +494,23 @@ async function main(): Promise<void> {
               consoleFailures.push(error.message);
             }
           });
-          // Pin the theme before first paint so nothing is measured mid-swap.
-          await page.addInitScript((t) => {
-            // This script also runs in sandboxed preview iframes. Their opaque origins may expose
-            // `localStorage` as null or throw on access; the top-level gallery is the only frame
-            // whose persisted theme matters to this audit.
-            try {
-              window.localStorage?.setItem('mavea-theme', t);
-            } catch {
-              // Browser-enforced iframe isolation, not a renderer failure.
-            }
-          }, theme);
+          // Pin the theme before first paint so nothing is measured mid-swap, and accept the
+          // legal gate: the gallery sits behind it like every connected route, and an audit that
+          // never gets past it waits out its timeout on the acceptance screen.
+          await page.addInitScript(
+            ({ t, legalKey, legalValue }) => {
+              // This script also runs in sandboxed preview iframes. Their opaque origins may
+              // expose `localStorage` as null or throw on access; the top-level gallery is the
+              // only frame whose persisted state matters to this audit.
+              try {
+                window.localStorage?.setItem('mavea-theme', t);
+                window.localStorage?.setItem(legalKey, legalValue);
+              } catch {
+                // Browser-enforced iframe isolation, not a renderer failure.
+              }
+            },
+            { t: theme, legalKey: LEGAL_SEED.key, legalValue: LEGAL_SEED.value },
+          );
           const aggregate: Finding = {
             width,
             theme,

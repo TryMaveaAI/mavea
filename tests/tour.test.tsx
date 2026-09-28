@@ -15,7 +15,7 @@ import { TourEndCard } from '../src/tour/TourEndCard';
 import { ALL_CHAPTERS, TOUR, TOUR_EXTRAS, tourFrame } from '../src/tour/tourPlan';
 import { loadTourCorpus, tourConversation, tourConversations } from '../src/tour/corpus';
 import { loadTourPrism } from '../src/tour/corpus/prism';
-import { focusWalkSchedule, montageSchedule } from '../src/tour/useTourDriver';
+import { lensWalkSchedule, montageSchedule } from '../src/tour/useTourDriver';
 import { QUIET_POLL_MS, QUIET_POLLS, startQuietGate } from '../src/tour/driverKit';
 import { isTourSeen, markTourSeen, resetTourSeen } from '../src/tour/tourSeen';
 import {
@@ -172,7 +172,7 @@ describe('blanks demo — the key-free walkthrough frames', () => {
 });
 
 // The walkthrough's coach line bypasses the per-turn narration walk (it isn't a new answer, so
-// nothing resets or advances `spokenNow`, the state the on-screen SpeakingDock caption reads).
+// nothing resets or advances `spokenNow`, the state the spoken caption reads).
 // A chapter that speaks a coach line directly — e.g. "Make it yours" right after "It draws the
 // answer" — used to leave the dock showing the PREVIOUS answer's narration while the coach's own
 // audio played, a caption/voice mismatch a visitor would notice immediately. The fix: the speak
@@ -182,7 +182,7 @@ describe('blanks demo — the key-free walkthrough frames', () => {
 // This can't be proven by mounting LiveApp (it needs a live tour run — audio unlock, chapter
 // timers, session storage — see live-tour-replay-guard.test.tsx for why that class of tour
 // wiring is asserted by inspecting the source instead of a full render).
-describe('tour coach speech stays in sync with the SpeakingDock caption', () => {
+describe('tour coach speech stays in sync with the spoken caption', () => {
   const src = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
 
   it('passes the scripted drivers a speak() that updates spokenNow before speaking', () => {
@@ -217,8 +217,8 @@ describe('core walkthrough feature scenes', () => {
   it('draws and holds two real Pen strokes during the explanation scene', () => {
     const driver = readFileSync(join(__dirname, '../src/tour/useTourDriver.ts'), 'utf8');
     const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    expect(driver).toMatch(/drawPenTourStep\('result'\)/);
-    expect(driver).toMatch(/drawPenTourStep\('reason'\)/);
+    expect(driver).toMatch(/drawPenTourStep\('result', step\.signal\)/);
+    expect(driver).toMatch(/drawPenTourStep\('reason', step\.signal\)/);
     expect(driver).toMatch(/after\(7200, \(\) => o\.setSpot\(null\)\)/);
     expect(live).toMatch(/kind: 'circle', at: '\$76,123'/);
     expect(live).toMatch(/kind: 'underline', at: '7\.6x'/);
@@ -346,7 +346,7 @@ describe('walkthrough chapters (tourPlan)', () => {
     for (const ch of ALL_CHAPTERS) {
       const a = ch.action;
       const ids =
-        a.kind === 'answer' || a.kind === 'chip' || a.kind === 'canvas' || a.kind === 'focusWalk'
+        a.kind === 'answer' || a.kind === 'chip' || a.kind === 'canvas' || a.kind === 'lensWalk'
           ? [a.convoId]
           : a.kind === 'montage'
             ? a.convoIds
@@ -688,44 +688,34 @@ describe('tour entry flags', () => {
   });
 });
 
-// Regression coverage for chapter 10 ("focus", "One card at a time"): Focus mode used to kick in
-// (dimming everything but the spotlit card) almost immediately after the chapter started, so the
-// viewer never actually saw the normal, unblurred canvas it was transforming. focusWalkSchedule
-// holds on the plain view for a few seconds first, THEN applies Focus, THEN walks the spotlight
-// card by card.
-describe('focusWalkSchedule — the "one card at a time" hold-then-focus beat', () => {
-  it('holds a real beat before Focus mode applies', () => {
-    const { focusAt } = focusWalkSchedule(4, 7200);
-    expect(focusAt).toBeGreaterThanOrEqual(1200);
+// The "lens" chapter shows the reader's own gesture: the plain board first, then a few cards
+// opened in the Lens one after another, then back to the board — never a card flying up the
+// instant the chapter begins, and never one held too briefly to read its notes.
+describe('lensWalkSchedule — the "look closer" chapter', () => {
+  it('holds on the plain board before the first card opens', () => {
+    const { openAt } = lensWalkSchedule(4, 11000);
+    expect(openAt[0]).toBeGreaterThanOrEqual(1200);
   });
 
-  it('never spotlights a card before Focus mode has actually taken over', () => {
-    const { focusAt, spotlightAt } = focusWalkSchedule(4, 14500);
-    for (const t of spotlightAt) expect(t).toBeGreaterThan(focusAt);
+  it('opens at most three cards, in order, each held long enough to read', () => {
+    const { openAt, closeAt } = lensWalkSchedule(6, 11000);
+    expect(openAt).toHaveLength(3);
+    const holds = [...openAt.slice(1), closeAt].map((t, i) => t - openAt[i]);
+    for (const hold of holds) expect(hold).toBeGreaterThanOrEqual(2000);
   });
 
-  it('returns one spotlight delay per card, strictly increasing', () => {
-    const { spotlightAt } = focusWalkSchedule(4, 14500);
-    expect(spotlightAt).toHaveLength(4);
-    for (let i = 1; i < spotlightAt.length; i++)
-      expect(spotlightAt[i]).toBeGreaterThan(spotlightAt[i - 1]);
+  it('closes back to the board before the chapter ends', () => {
+    const { closeAt } = lensWalkSchedule(4, 11000);
+    expect(closeAt).toBeLessThan(11000);
   });
 
-  it('degrades gracefully with zero cards', () => {
-    const { spotlightAt } = focusWalkSchedule(0, 14500);
-    expect(spotlightAt).toEqual([]);
+  it('opens nothing for an answer with no cards', () => {
+    expect(lensWalkSchedule(0, 11000).openAt).toEqual([]);
   });
 
-  it("the tour's own 'focus' chapter gives the walk a real hold on the last card", () => {
-    const focus = ALL_CHAPTERS.find((c) => c.id === 'focus');
-    expect(focus).toBeDefined();
-    if (focus?.action.kind !== 'focusWalk')
-      throw new Error('focus chapter is no longer a focusWalk');
-    // 'money' has 4 cards in the baked corpus — asserted loosely here since the exact count lives
-    // in the corpus fixture, not this plan; the schedule just needs room to breathe either way.
-    const { spotlightAt } = focusWalkSchedule(4, focus.durationMs);
-    const lastCardHold = focus.durationMs - spotlightAt[spotlightAt.length - 1];
-    expect(lastCardHold).toBeGreaterThanOrEqual(900);
+  it("the tour's own 'lens' chapter walks a real answer", () => {
+    const lens = ALL_CHAPTERS.find((c) => c.id === 'lens');
+    expect(lens?.action.kind).toBe('lensWalk');
   });
 });
 

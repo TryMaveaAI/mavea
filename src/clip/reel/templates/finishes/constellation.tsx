@@ -35,7 +35,6 @@ export function ConstellationSlide({ slots }: SlideProps<'conceptmap'>) {
   const centerRy = Math.max(17, (centerLineHeight * centerFit.lines.length) / 2 + 6);
   return (
     <div style={{ width: 'calc(var(--rw) * 96)', maxWidth: '94%' }}>
-      <style>{`@keyframes cst-tw{0%,100%{opacity:.55;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}`}</style>
       {/* Side-padded viewBox + clip so a wide label centred on an edge star stays in the box instead of
           bleeding past the card edge (SVG paint overflow is invisible to FitScale's measure). The
           fitLabel calls above/below size every label to that same box, so this clip stays the
@@ -115,7 +114,10 @@ export function ConstellationSlide({ slots }: SlideProps<'conceptmap'>) {
         <text
           x={cx}
           textAnchor="middle"
-          style={{ font: `700 ${centerFit.size}px var(--reel-sans)`, fill: '#fff' }}
+          style={{
+            font: `700 ${centerFit.size}px var(--reel-sans)`,
+            fill: 'var(--reel-on-accent)',
+          }}
         >
           {centerFit.lines.map((line, li) => (
             <tspan

@@ -1,7 +1,7 @@
 // A concept finish set as a classroom chalkboard: the title in casual chalk-white lettering with a
 // hand-drawn underline that sweeps in, a small chalk doodle sketched alongside, and the subtitle as a
 // fainter chalk line below. The slate green, the wood frame and the two chalk tones are an intrinsic,
-// non-palette identity (a real blackboard isn't tinted by the reel), so they live in a scoped <style>;
+// non-palette identity (a real blackboard isn't tinted by the reel), so they live in finishes.css;
 // only the soft drop shadow leans on the board's wash. The faint dotted texture is chalk dust the
 // eraser never quite clears. The squeak keyframe gives the title a tiny settle, the way chalk catches.
 import type { SlideProps } from '../types';
@@ -30,20 +30,6 @@ export function ChalkboardSlide({ slots }: SlideProps<'concept'>) {
         animation: 'reel-pop 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        .reel[data-palette] {
-          --chalk-slate: #25372e;
-          --chalk-frame: linear-gradient(160deg, #8a5a32 0%, #6f4424 52%, #855531 100%);
-          --chalk-white: #f4f1e6;
-          --chalk-yellow: #f2d36b;
-        }
-        @keyframes chalk-squeak {
-          from { opacity: 0; transform: translateY(calc(var(--ru) * 1.4)) rotate(-0.4deg); }
-          60% { transform: translateY(0) rotate(0.3deg); }
-          to { opacity: 1; transform: translateY(0) rotate(0deg); }
-        }
-      `}</style>
-
       {/* The slate itself: deep green, a soft inner vignette, and faint dotted chalk dust. */}
       <div
         style={{

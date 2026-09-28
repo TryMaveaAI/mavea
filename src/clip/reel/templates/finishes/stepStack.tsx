@@ -47,9 +47,9 @@ export function StepStackSlide({ slots }: SlideProps<'steps'>) {
                 placeItems: 'center',
                 font: '700 calc(var(--ru) * 2.8)/1 var(--reel-mono)',
                 background: active
-                  ? 'rgba(255,255,255,0.22)'
+                  ? 'color-mix(in oklab, var(--reel-on-accent) 22%, transparent)'
                   : 'color-mix(in oklab, var(--reel-accent) 16%, transparent)',
-                color: active ? '#fff' : 'var(--reel-accent)',
+                color: active ? 'var(--reel-on-accent)' : 'var(--reel-accent)',
               }}
             >
               {done ? '✓' : i + 1}
@@ -57,7 +57,7 @@ export function StepStackSlide({ slots }: SlideProps<'steps'>) {
             <span
               style={{
                 font: '600 calc(var(--ru) * 3.1)/1.25 var(--reel-sans)',
-                color: active ? '#fff' : 'var(--reel-ink)',
+                color: active ? 'var(--reel-on-accent)' : 'var(--reel-ink)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',

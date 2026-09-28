@@ -18,6 +18,11 @@
   --bar-glass-bg: var(--surface-default);
   --bar-glass-blur: none;
 }
+/* Every template's light accent is deep and carries white, so a gradient's partner stops are held
+   at or below the lightness white still reads on (see --hold-for-ink). */
+:root[data-template][data-theme='light'] {
+  --hold-for-ink: min(l, var(--white-ink-max-l)) c h;
+}
 :root[data-template] .topbar {
   background: var(--surface-default);
   backdrop-filter: none;
@@ -2267,7 +2272,7 @@
   place-items: center;
   border-radius: 50%;
   background: var(--presence);
-  color: var(--surface-deep);
+  color: var(--on-presence);
   font-size: var(--fs-xs);
   font-weight: 900;
   opacity: 0;

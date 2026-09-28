@@ -14,16 +14,31 @@
 // session-invariant head, then the depth-keyed remainder, then the session-stable menu, and a
 // fourth breakpoint on the last history message caches the replayed conversation — Anthropic's
 // four-breakpoint ceiling, all four spent. The per-turn section (hero picks, count, freshness —
-// changes every turn) rides at the head of the USER turn so it never sits inside a marked
-// prefix. All on a 1h TTL, since a voice session pauses longer than the 5-min default all the
-// time. A caller that passes no split keeps the single-block shape it always had. Extended thinking fires for medium/high-effort
-// turns (hard questions with balanced/thorough quality): adaptive mode lets Claude
-// decide whether to think, display:summarized keeps thinking output lean — thinking only
-// composes with 'auto' tool_choice, which this adapter always uses now, so thinking +
-// web_search + structured output all coexist in one call.
+// changes every turn) rides at the head of the USER turn so it never sits inside a marked prefix.
+// All on a 1h TTL, since a voice session pauses longer than the 5-min default all the time. A
+// caller that passes no split keeps the single-block shape it always had. Extended thinking fires
+// for medium/high-effort turns (hard questions with balanced/thorough quality): adaptive mode lets
+// Claude decide whether to think, display:summarized keeps thinking output lean — thinking only
+// composes with 'auto' tool_choice, which this adapter always uses now, so thinking + web_search +
+// structured output all coexist in one call.
 // Goes through the same-origin /llm/anthropic proxy (key in header, no CORS).
 import type { ModelConfig } from '../../types/mavea';
-import type { ProviderAdapter, LiveRequest, LiveProbe, DeltaFn, RawResult } from './types';
+import type {
+  ProviderAdapter,
+  LiveRequest,
+  LiveProbe,
+  DeltaFn,
+  ProbeOptions,
+  RawResult,
+} from './types';
+import {
+  failedVerdict,
+  forgetVerified,
+  isVerified,
+  readinessFingerprint,
+  rememberAnswered,
+  sharedPaidCheck,
+} from './readiness';
 import {
   fetchWithTimeout,
   providerErrorDetail,
@@ -40,6 +55,7 @@ import { liveJsonSchema } from './schema';
 import { anthropicOutputFormat } from './anthropicFormat';
 import { anthropicUserContent } from './parts';
 import type { GroundingSource, TokenUsage } from './types';
+import { waitReporter } from './wait';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://api.anthropic.com) for Node-side eval runs.
@@ -84,6 +100,61 @@ const noStructuredOutput = new Set<string>();
 /** Models that refuse the extended cache TTL, and models that refuse cache breakpoints at all. */
 const noExtendedCacheTtl = new Set<string>();
 const noCacheControl = new Set<string>();
+
+/** The billed tokens a non-streamed messages reply reports, or nothing if it names none. */
+function probeUsage(body: string): { usage?: TokenUsage } {
+  try {
+    const u = obj(obj(JSON.parse(body) as unknown).usage);
+    if (u.input_tokens === undefined && u.output_tokens === undefined) return {};
+    return {
+      usage: { input: num(u.input_tokens), output: num(u.output_tokens), cachedInput: 0 },
+    };
+  } catch {
+    return {};
+  }
+}
+
+/** The paid half of the readiness probe: a one-token messages call on the configured model. */
+async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProbe> {
+  let gen: Response;
+  try {
+    gen = await fetchWithTimeout(
+      `${base}${MESSAGES}`,
+      {
+        method: 'POST',
+        headers: headers(cfg),
+        body: JSON.stringify({
+          model: cfg.model,
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      },
+      PROBE_TIMEOUT_MS,
+    );
+  } catch {
+    // Sent, and never answered: still an attempt the ledger has to show.
+    return { ok: false, model: false, paid: true };
+  }
+  if (!gen.ok) {
+    return {
+      ok: false,
+      model: false,
+      paid: true,
+      statusCode: gen.status,
+      detail: await providerErrorDetail(gen),
+    };
+  }
+  // The model answered; a body that breaks off mid-read only costs the token count, never the
+  // verdict or the ledger row for a call that was billed.
+  const body = await gen.text().catch(() => '');
+  return {
+    ok: true,
+    model: true,
+    paid: true,
+    statusCode: gen.status,
+    ...probeUsage(body),
+  };
+}
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
 const MIN_THINKING_BUDGET = 1024;
@@ -136,7 +207,7 @@ export const anthropicAdapter: ProviderAdapter = {
     nativeWebSearch: true,
   },
 
-  async probe(cfg: ModelConfig): Promise<LiveProbe> {
+  async probe(cfg: ModelConfig, opts: ProbeOptions = {}): Promise<LiveProbe> {
     try {
       const base = cfg.baseUrl ?? PROXY_BASE;
       // Pass 1 (free): GET /v1/models — catches an unreachable endpoint and an obviously bad
@@ -156,30 +227,18 @@ export const anthropicAdapter: ProviderAdapter = {
         };
       // Pass 2 (paid, ~1 token): a minimal POST /v1/messages. /v1/models can return 200 while
       // the REAL generation endpoint 401s (Anthropic's browser detection blocks /v1/messages
-      // only) — so "Ready" must come from the endpoint a turn actually uses. Probes only fire
-      // on settled key/model changes and explicit Recheck, never per keystroke, so the cost is
-      // a one-token call per probe.
-      const gen = await fetchWithTimeout(
-        `${base}${MESSAGES}`,
-        {
-          method: 'POST',
-          headers: headers(cfg),
-          body: JSON.stringify({
-            model: cfg.model,
-            max_tokens: 1,
-            messages: [{ role: 'user', content: 'ping' }],
-          }),
-        },
-        PROBE_TIMEOUT_MS,
-      );
-      if (!gen.ok)
-        return {
-          ok: false,
-          model: false,
-          statusCode: gen.status,
-          detail: await providerErrorDetail(gen),
-        };
-      return { ok: true, model: true, statusCode: gen.status };
+      // only) — so "Ready" must come from the endpoint a turn actually uses. It runs once per
+      // endpoint + model + key per session unless the reader asks for a fresh check (see
+      // ./readiness), and a failed verdict is kept just as a pass is; its tokens are reported so
+      // they reach the ledger.
+      const fingerprint = await readinessFingerprint(base, cfg);
+      if (fingerprint && !opts.fresh) {
+        if (isVerified(fingerprint)) return { ok: true, model: true, statusCode: res.status };
+        const refused = failedVerdict(fingerprint);
+        if (refused) return refused;
+      }
+      const check = (): Promise<LiveProbe> => generationCheck(base, cfg);
+      return await (fingerprint ? sharedPaidCheck(fingerprint, check) : check());
     } catch {
       return { ok: false, model: false };
     }
@@ -202,6 +261,8 @@ export const anthropicAdapter: ProviderAdapter = {
   },
 
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+    // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+    const onWait = waitReporter(req.onWait);
     const base = cfg.baseUrl ?? PROXY_BASE;
 
     // Prompt caching is PREFIX-based: any uncached bytes poison everything behind them. The
@@ -368,11 +429,11 @@ export const anthropicAdapter: ProviderAdapter = {
           !signal.aborted
         ) {
           const wait = retryAfterMs(res, transientAttempt++, detail);
-          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
           try {
             await sleepAbortable(wait, signal);
           } finally {
-            req.onWait?.(null);
+            onWait(null);
           }
           continue;
         }
@@ -408,6 +469,11 @@ export const anthropicAdapter: ProviderAdapter = {
         if (cacheKnob && !noCacheControl.has(cfg.model)) {
           noCacheControl.add(cfg.model);
           continue;
+        }
+        // Refused for its key or its credit: whatever readiness check passed for this combination
+        // no longer describes it, so Settings must not keep saying "Ready".
+        if (res.status === 400 || res.status === 401 || res.status === 403) {
+          forgetVerified(await readinessFingerprint(base, cfg));
         }
         throw new Error(`anthropic ${res.status}${detail}`);
       }
@@ -465,6 +531,9 @@ export const anthropicAdapter: ProviderAdapter = {
         }
       });
 
+      // Answered in full: whatever readiness check failed for this combination is out of date, so
+      // Settings must not keep saying it cannot answer.
+      rememberAnswered(await readinessFingerprint(base, cfg));
       const sources = grounding.size ? [...grounding.values()] : undefined;
       // Resolve as the parsed object when possible; else hand the raw string to the
       // validator (it tolerates partial/embedded JSON).

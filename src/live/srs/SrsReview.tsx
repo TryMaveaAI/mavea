@@ -15,6 +15,7 @@ import { getStudyQueue } from './queue';
 import type { CardFilter, SrsCard, StudyStyle } from './store';
 import { studyCopy } from './copy';
 import { useFocusTrap } from '../useFocusTrap';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 interface StudyAction {
   key: string;
@@ -206,13 +207,11 @@ export function SrsReview({
   // The scrim stays presentational — a role="button" wrapper around the dialog is a nested
   // interactive, and Escape plus the ✕ button already give the keyboard the same exit. Only a
   // click landing directly on the backdrop closes it; anything on the shell's content is left alone.
-  const closeOnBackdrop = (e: { target: EventTarget; currentTarget: EventTarget }): void => {
-    if (e.target === e.currentTarget) onClose();
-  };
+  const backdrop = useBackdropDismiss(onClose);
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-    <div className="srs-scrim" onClick={closeOnBackdrop}>
+    <div className="srs-scrim" onPointerDown={backdrop.onPointerDown} onClick={backdrop.onClick}>
       <div
         className="srs-shell"
         ref={shellRef}

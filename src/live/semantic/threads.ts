@@ -19,7 +19,7 @@
 //
 // Pure, dependency-free, never throws.
 import type { TurnFrame } from '../history';
-import { topicTokens, SAME_SUBJECT_FLOOR } from '../lifecycle';
+import { topicTokens, SAME_SUBJECT_FLOOR } from '../topicTokens';
 import { cosine } from './encode';
 
 // Tuned against the real potion-base-8M assets over the canonical sequence (question + narration +

@@ -16,11 +16,13 @@ import {
   encryptSecret,
   decryptSecret,
   forgetVaultKeys,
+  vaultForgotten,
   DEVICE_FORGOTTEN_CHANNEL,
 } from './keyVault';
 import type { ModelConfig, ProviderId } from '../types/mavea';
 import { PROVIDERS, providerInfo } from './providers';
 import { modelCanGenerate } from './providers/spendPolicy';
+import { forgetReadiness } from './providers/readiness';
 import type { LiveCaps } from './generateLive';
 import type { SearchProviderId } from './search';
 import type { SearchMode, QualityPref } from './generateLive';
@@ -65,9 +67,10 @@ export interface LiveConfigV2 {
    *  On by default; stored only in this browser and fully user-managed. */
   libraryEnabled: boolean;
   /** Teach mode: Mavéa draws on the canvas — circling, underlining, pointing — at every
-   *  walkthrough stop, not only when a stop deliberately calls out one datum. Off by
-   *  default so the pen stays purposeful rather than constant. Saying "teach me" /
-   *  "walk me through" turns it on for that turn regardless. */
+   *  walkthrough stop, not only when a stop deliberately calls out one datum. It is the other
+   *  half of Pen mode: both toggles write it with `annotationsEnabled`, so it is on by default
+   *  like the toggle that shows it. Saying "teach me" / "walk me through" turns it on for that
+   *  turn regardless. */
   teachMode: boolean;
   /** Let Mavéa draw gestures while it talks — circling, underlining, pointing at chart
    *  elements in sync with its voice. On by default. The gesture track logs each stroke
@@ -131,7 +134,7 @@ const DEFAULT: LiveConfigV2 = {
   // hid the feature from the people who would never think to go looking for it in settings.
   worldEnabled: true,
   libraryEnabled: true,
-  teachMode: false,
+  teachMode: true,
   annotationsEnabled: true,
   morningBrief: false,
   explainLevel: 'standard',
@@ -166,6 +169,20 @@ function coerceMap(v: unknown): Partial<Record<ProviderId, string>> {
 }
 function coerceBool(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback;
+}
+/** Pen mode's two fields. Every control that writes them writes the pair, so a stored "drawing on,
+ *  teach off" is the teach default this build retired, never a reader's choice — it reads as the
+ *  "on" the toggle has always shown. A reader who turned the pen off stored both false, and keeps
+ *  exactly that. */
+function coercePen(
+  o: Record<string, unknown>,
+): Pick<LiveConfigV2, 'annotationsEnabled' | 'teachMode'> {
+  const annotationsEnabled = coerceBool(o.annotationsEnabled, DEFAULT.annotationsEnabled);
+  return {
+    annotationsEnabled,
+    // With the pen off, only an explicit teach flag survives: a pen turned off is never half on.
+    teachMode: annotationsEnabled || coerceBool(o.teachMode, false),
+  };
 }
 /** Clamp a stored/imported voice speed into the supported 0.75×–2× span, else the 1× default. */
 function coerceSpeed(v: unknown): number {
@@ -229,8 +246,7 @@ function fromStorage(): LiveConfigV2 {
       generativeBlocks: coerceBool(o.generativeBlocks, DEFAULT.generativeBlocks),
       worldEnabled: coerceBool(o.worldEnabled, DEFAULT.worldEnabled),
       libraryEnabled: coerceBool(o.libraryEnabled, DEFAULT.libraryEnabled),
-      teachMode: coerceBool(o.teachMode, DEFAULT.teachMode),
-      annotationsEnabled: coerceBool(o.annotationsEnabled, DEFAULT.annotationsEnabled),
+      ...coercePen(o),
       morningBrief: coerceBool(o.morningBrief, DEFAULT.morningBrief),
       explainLevel: coerceExplainLevel(o.explainLevel),
       fontScale: coerceFontScale(o.fontScale),
@@ -264,10 +280,12 @@ export function getLiveConfigV2(): LiveConfigV2 {
   return memory;
 }
 
-function broadcast(cfg: LiveConfigV2): void {
+function broadcast(): void {
   try {
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-      window.dispatchEvent(new CustomEvent(STORAGE_KEY, { detail: cfg }));
+      // A bare signal, not the config: every listener re-reads getLiveConfigV2(), and an event
+      // carrying the keys is readable by any extension with access to this site.
+      window.dispatchEvent(new CustomEvent(STORAGE_KEY));
     }
   } catch {
     /* no window (test/SSR) */
@@ -413,7 +431,7 @@ async function hydrateSecrets(): Promise<void> {
         keys: { ...cur.keys, ...coerceMap(data.keys) },
         searchKeys: { ...cur.searchKeys, ...coerceSearchKeys(data.searchKeys) },
       };
-      broadcast(memory);
+      broadcast();
       reportSecretPersistence('persisted');
     }
   } catch {
@@ -445,7 +463,7 @@ export function setLiveConfigV2(patch: Partial<LiveConfigV2>): LiveConfigV2 {
       !next.rememberKey ? 'not-requested' : hasSecrets(next) ? 'session-only' : 'unavailable',
     );
   }
-  broadcast(next);
+  broadcast();
   return next;
 }
 
@@ -622,8 +640,7 @@ export function importConfigWithSummary(
     generativeBlocks: coerceBool(source.generativeBlocks, DEFAULT.generativeBlocks),
     worldEnabled: coerceBool(source.worldEnabled, DEFAULT.worldEnabled),
     libraryEnabled: coerceBool(source.libraryEnabled, DEFAULT.libraryEnabled),
-    teachMode: coerceBool(source.teachMode, DEFAULT.teachMode),
-    annotationsEnabled: coerceBool(source.annotationsEnabled, DEFAULT.annotationsEnabled),
+    ...coercePen(source),
     morningBrief: coerceBool(source.morningBrief, DEFAULT.morningBrief),
     explainLevel: coerceExplainLevel(source.explainLevel),
     fontScale: coerceFontScale(source.fontScale),
@@ -705,8 +722,13 @@ export function useLiveConfig(): [LiveConfigV2, (patch: Partial<LiveConfigV2>) =
         : new BroadcastChannel(DEVICE_FORGOTTEN_CHANNEL);
     if (forgotten) {
       forgotten.onmessage = () => {
+        // A BroadcastChannel also delivers to this tab's other channel objects, so the tab that
+        // ran the sweep hears its own announcement — and resetting here would write the default
+        // config back after the storage sweep. That tab is already leaving for the landing.
+        if (vaultForgotten()) return;
         forgetVaultKeys();
         resetLiveConfig();
+        forgetReadiness();
         window.location.replace(window.location.pathname);
       };
     }

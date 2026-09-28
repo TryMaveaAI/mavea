@@ -114,6 +114,8 @@ interface Job {
    * uses this to fall back to the browser voice for that line.
    */
   done: (ok: boolean) => void;
+  /** Fires when the line this job belongs to is cancelled on its own (see KokoroLine.cancel). */
+  signal: AbortSignal;
 }
 
 const queue: Job[] = [];
@@ -278,14 +280,23 @@ async function playJob(
     let cached = pcmCacheGet(key);
     if (!cached && prefetchKey === key && prefetchPromise) {
       await prefetchPromise;
-      if (epoch !== cancelEpoch) return false;
+      if (epoch !== cancelEpoch || job.signal.aborted) return false;
       cached = pcmCacheGet(key);
     }
     if (cached) {
       // No synthesis is running during cached playback — prefetch the next line immediately. The
       // line itself is in hand, and the sink says so before it waits its turn on the playhead.
       prefetchNext();
-      if (await playPcmBytes(cached, job.text, () => job.start(true), onScheduled, onAudioInHand))
+      if (
+        await playPcmBytes(
+          cached,
+          job.text,
+          () => job.start(true),
+          onScheduled,
+          onAudioInHand,
+          job.signal,
+        )
+      )
         return true;
     }
     // A prefetch for a DIFFERENT line must never run underneath this line's own synthesis.
@@ -313,6 +324,7 @@ async function playJob(
           noteKokoroAccepted();
         },
         onScheduled,
+        job.signal,
       );
       if (streamed) return true;
       // The server already spent (or is still spending) the synthesis work. A second WAV request
@@ -326,7 +338,7 @@ async function playJob(
   }
   // The stream was refused or died before it was accepted; a cancel in that window already
   // drained the queue, and a fresh WAV fetch for the interrupted line would play late.
-  if (epoch !== cancelEpoch) return false;
+  if (epoch !== cancelEpoch || job.signal.aborted) return false;
   synthActive = true;
   try {
     return await playJobBlob(job, () => {
@@ -352,6 +364,9 @@ async function playJobBlob(job: Job, onAudioInHand?: () => void): Promise<boolea
   let played = false;
   const ac = new AbortController();
   currentFetch = ac;
+  // The line's own cancel stops this clip exactly as a hard stop would, without touching the queue.
+  const stopLine = (): void => ac.abort();
+  job.signal.addEventListener('abort', stopLine, { once: true });
   try {
     const res = await fetch('/tts/v1/audio/speech', {
       method: 'POST',
@@ -405,6 +420,14 @@ async function playJobBlob(job: Job, onAudioInHand?: () => void): Promise<boolea
       };
       audio.onended = () => finish(true);
       audio.onerror = () => finish(false); // decode/playback failure → don't hang the queue
+      ac.signal.addEventListener(
+        'abort',
+        () => {
+          audio.pause();
+          finish(false);
+        },
+        { once: true },
+      );
       // play() can reject (e.g. autoplay policy) — treat as a failed clip so we fall back.
       const p = audio.play();
       if (p && typeof p.then === 'function') {
@@ -420,6 +443,7 @@ async function playJobBlob(job: Job, onAudioInHand?: () => void): Promise<boolea
   } catch {
     /* network/abort — treat as failure (caller falls back) */
   } finally {
+    job.signal.removeEventListener('abort', stopLine);
     if (currentFetch === ac) currentFetch = null;
     releaseCurrentGain();
     revokeCurrentUrl();
@@ -462,7 +486,7 @@ async function pump(): Promise<void> {
         // awaits (probe resolved, fetch not yet in flight) has nothing to abort — the job must
         // notice it was cancelled and settle false rather than playing after the interrupt.
         const epoch = cancelEpoch;
-        if (!(await kokoroAvailable()) || epoch !== cancelEpoch) {
+        if (!(await kokoroAvailable()) || epoch !== cancelEpoch || job.signal.aborted) {
           // Settle guarantee: `started` resolves (latched no-op when playback already fired it)
           // strictly before `finished` — a caller awaiting started can never outlive the line.
           job.start(false);
@@ -477,10 +501,11 @@ async function pump(): Promise<void> {
           };
         });
         const line = playJob(job, scheduled, endSynthPending).then((played) => {
-          const ok = played && epoch === cancelEpoch;
+          const interrupted = epoch !== cancelEpoch || job.signal.aborted;
+          const ok = played && !interrupted;
           // Silent for a reason other than an interrupt: Kokoro was up at the gate and still
           // produced nothing. Re-check before the next line so a mid-session loss isn't invisible.
-          if (!played && epoch === cancelEpoch) markProbeStale();
+          if (!played && !interrupted) markProbeStale();
           job.start(ok);
           job.done(ok);
         });
@@ -500,10 +525,17 @@ async function pump(): Promise<void> {
 /** Both moments of one queued line, as promises that only ever resolve (never reject):
  *  `started` — audio first reached the speakers (true) or never will (false); `finished` —
  *  the clip played end-to-end (true) or was skipped/failed/cancelled (false). `started`
- *  always settles before `finished`. */
+ *  always settles before `finished`. `cancel` stops THIS line — queued, synthesizing or
+ *  sounding — and leaves every other line playing; a no-op once the line has ended. */
 export interface KokoroLine {
   started: Promise<boolean>;
   finished: Promise<boolean>;
+  cancel: () => void;
+}
+
+/** The handle of a line that will never sound. */
+export function silentLine(): KokoroLine {
+  return { started: Promise.resolve(false), finished: Promise.resolve(false), cancel: () => {} };
 }
 
 /**
@@ -517,7 +549,7 @@ export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
   // Strip markup first, then respell the word-acronyms the synthesizer would otherwise spell
   // out (CUDA → "Cooda"). Only the spoken audio changes — captions still show the real text.
   const clean = normalizeForSpeech(text);
-  if (!clean) return { started: Promise.resolve(false), finished: Promise.resolve(false) };
+  if (!clean) return silentLine();
   const chunks = splitSynthesisChunks(clean);
   let resolveStart!: (heard: boolean) => void;
   const started = new Promise<boolean>((resolve) => {
@@ -535,11 +567,13 @@ export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
   let startsRemaining = chunks.length;
   let chunksRemaining = chunks.length;
   let allPlayed = true;
+  const lineAbort = new AbortController();
   const finished = new Promise<boolean>((resolve) => {
     for (const chunk of chunks) {
       queue.push({
         text: chunk,
         voice: VOICE[who] ?? VOICE.mavea,
+        signal: lineAbort.signal,
         start: (heard) => {
           startsRemaining -= 1;
           if (heard) start(true);
@@ -558,7 +592,21 @@ export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
     emitSpeakingChange();
     void pump();
   });
-  return { started, finished };
+  const cancel = (): void => {
+    if (lineAbort.signal.aborted || chunksRemaining === 0) return;
+    // Chunks still waiting their turn never reach pump, so they are settled here; the one pump
+    // has taken up hears the abort through its sink and settles on its own path.
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const job = queue[i];
+      if (job.signal !== lineAbort.signal) continue;
+      queue.splice(i, 1);
+      job.start(false);
+      job.done(false);
+    }
+    lineAbort.abort();
+    emitSpeakingChange();
+  };
+  return { started, finished, cancel };
 }
 
 /**

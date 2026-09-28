@@ -1,10 +1,10 @@
 // live-verify-sparse.test.ts — guards the "too-sparse canvas" check.
 //
 // Rich answers need at least 3 blocks; lean answers need 2; explicitly brief answers need 1.
-// checkConsistency flags `too-sparse` (a HARD issue) below the ask-aware floor, routing to the
-// generateLive repair path only when the answer is genuinely incomplete for that ask.
+// checkConsistency flags `too-sparse` below the ask-aware floor, only when the answer is genuinely
+// incomplete for that ask.
 import { validateLiveResponse } from '../src/engine/liveSchema';
-import { checkConsistency, hasHardIssue, autoFix, HARD_ISSUE_CODES } from '../src/live/verify';
+import { checkConsistency, autoFix } from '../src/live/verify';
 
 function build(blocks: object[]) {
   const resp = validateLiveResponse({
@@ -18,16 +18,11 @@ function build(blocks: object[]) {
 }
 
 describe('verify — sparse canvas', () => {
-  it('lists too-sparse as a HARD issue code', () => {
-    expect(HARD_ISSUE_CODES.has('too-sparse')).toBe(true);
-  });
-
   it('flags a one-block canvas as too-sparse', () => {
     const r = build([{ type: 'insight', props: { title: 'A lone finding' } }]);
     expect(r.blocks.length).toBe(1);
     const issues = checkConsistency(r);
     expect(issues.some((i) => i.code === 'too-sparse')).toBe(true);
-    expect(hasHardIssue(issues)).toBe(true);
   });
 
   it('does NOT flag a multi-block canvas', () => {
@@ -42,10 +37,10 @@ describe('verify — sparse canvas', () => {
 
   it('still flags a lone insight after autoFix (the real "one odd element" path)', () => {
     // autoFix only frames a lone NON-insight; a bare insight survives at length 1, so the
-    // sparse check is what catches it and routes it to a repair.
+    // sparse check is what catches it.
     const fixed = autoFix(build([{ type: 'insight', props: { title: 'Just one card' } }]));
     expect(fixed.blocks.length).toBe(1);
-    expect(hasHardIssue(checkConsistency(fixed))).toBe(true);
+    expect(checkConsistency(fixed).some((i) => i.code === 'too-sparse')).toBe(true);
   });
 
   it('does NOT flag a one-block canvas as too-sparse for a brief ask', () => {
@@ -57,7 +52,7 @@ describe('verify — sparse canvas', () => {
     expect(issues.some((i) => i.code === 'too-sparse')).toBe(false);
   });
 
-  it('does NOT pad a complete two-block lean answer through a repair round-trip', () => {
+  it('does NOT flag a complete two-block lean answer as too sparse', () => {
     const r = build([
       { type: 'insight', props: { title: 'Direct answer' } },
       { type: 'kpi', props: { title: 'Result', items: [{ label: 'Value', value: '42' }] } },

@@ -232,7 +232,7 @@
   border: 1px solid var(--line);
 }
 .ripple-course-step[data-done='true'] {
-  color: #fff;
+  color: var(--on-insight);
   background: var(--insight);
   border-color: transparent;
 }
@@ -431,7 +431,7 @@
   border: 1px solid var(--line);
 }
 .ripple-course-item[data-done='true'] .ripple-course-num {
-  color: #fff;
+  color: var(--on-insight);
   background: var(--insight);
   border-color: transparent;
 }
@@ -564,7 +564,7 @@
 .ripple-course-done {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: #fff;
+  color: var(--on-presence);
   background: var(--presence);
   border: none;
   border-radius: var(--r-sm);

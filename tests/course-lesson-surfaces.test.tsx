@@ -565,6 +565,12 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       expect(within(rail).getByText('Course a')).toBeInTheDocument();
       expect(within(rail).getByText('master idea 1')).toBeInTheDocument();
 
+      // The way back to the courses lives in the surface's top bar (beside Appearance), once —
+      // the bar used to hold Appearance alone, and the rail kept a second copy of the link.
+      const bar = document.querySelector('.clr-top') as HTMLElement;
+      expect(within(bar).getByRole('button', { name: /Courses/ })).toBeInTheDocument();
+      expect(within(rail).queryByRole('button', { name: /^Courses$/ })).toBeNull();
+
       // The lesson canvas rendered its real blocks.
       const canvas = document.querySelector('.clr-canvas') as HTMLElement;
       expect(
@@ -673,6 +679,26 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       ).toBeInTheDocument();
     });
 
+    it('sends a reader with no model to settings instead of a Try again that cannot work', async () => {
+      saveCourse(course('a'));
+      stashCourseLesson({ courseId: 'a', lessonIdx: 0 });
+      mockGenerateLive.mockResolvedValueOnce({
+        spec: lessonSpec('stub'),
+        narration: '',
+        tier: 'frontier',
+        error: {
+          kind: 'auth',
+          message: 'No model is connected yet — add a model and its API key in settings to start.',
+        },
+      });
+
+      render(<CourseLessonReader />);
+
+      const link = await screen.findByRole('link', { name: 'Connect a model' });
+      expect(link).toHaveAttribute('href', '#/live?settings=model');
+      expect(screen.queryByRole('button', { name: /Try again/i })).toBeNull();
+    });
+
     it('treats a collapsed reply as retryable instead of caching a partial lesson', async () => {
       saveCourse(course('a'));
       stashCourseLesson({ courseId: 'a', lessonIdx: 0 });
@@ -718,10 +744,17 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       expect(document.querySelector('.clr-canvas')).toBeNull();
       expect(screen.queryByText(/Building lesson/)).toBeNull();
       expect(mockGenerateLive).not.toHaveBeenCalled();
+      // Build is the page's one primary action while the lesson is held; Next steps back.
+      const next = screen.getByRole('button', { name: /^Next/ });
+      expect(screen.getByRole('button', { name: /Build this lesson/i })).toHaveClass(
+        'clr-btn-primary',
+      );
+      expect(next).not.toHaveClass('cx-btn-primary');
 
       // The reader's own press is what builds it — once.
       fireEvent.click(screen.getByRole('button', { name: /Build this lesson/i }));
       await waitFor(() => expect(document.querySelector('.clr-canvas')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /^Next/ })).toHaveClass('cx-btn-primary');
       expect(mockGenerateLive).toHaveBeenCalledTimes(1);
       expect(mockGenerateLive.mock.calls[0][0]).toContain('Lesson 2');
       expect(screen.queryByRole('button', { name: /Build this lesson/i })).toBeNull();

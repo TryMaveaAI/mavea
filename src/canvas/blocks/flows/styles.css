@@ -853,6 +853,14 @@
   color: var(--surface-deep);
   box-shadow: 0 0 0 5px color-mix(in oklab, var(--c, var(--presence)) 18%, transparent);
 }
+/* The ink is derived from this fill itself, which is not the accent (the plain ink stays where
+   relative colour is unsupported). */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .fl-ms-point.is-on .fl-ms-dot {
+    color: color(from var(--c, var(--presence)) srgb-linear var(--ink-on-fill));
+  }
+}
 .fl-ms-cap {
   display: flex;
   flex-direction: column;
@@ -926,7 +934,7 @@
    connector line, each with an icon, a label, and an always-visible
    detail. Steps flex to fill the card width (no dead space); the row
    scrolls only when too many to fit. Details show without hover, so it
-   reads identically on touch, in Focus mode, and in a Replay capture.
+   reads identically on touch, in the Lens, and in a Replay capture.
    ============================================================ */
 .fl-pf {
   display: flex;
@@ -991,7 +999,7 @@
   place-items: center;
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: var(--surface-deep);
+  color: var(--on-presence);
   background: var(--presence);
 }
 .fl-pf-ico {

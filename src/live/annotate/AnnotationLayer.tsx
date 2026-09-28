@@ -15,14 +15,17 @@ import type { TourMark } from '../../engine/liveSchema';
 import {
   gestureOf,
   labelPlacements,
+  stepChipAt,
+  strokeBounds,
   strokeFor,
   type Gesture,
   type InkStroke,
   type MarkExtra,
   type Rect,
 } from './gesture';
+import { pathsNear } from './geometry';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
-import { measuredLabel, liesFlat } from './measure';
+import { measuredLabel, liesFlat, layoutSize } from './measure';
 import {
   saidTokens,
   findSaidMatch,
@@ -33,7 +36,7 @@ import {
   rowOf,
   type SaidText,
 } from './saidTarget';
-import { pollUntilSettled, lastVisible } from './settle';
+import { pollUntilSettled, lastVisible, holdInkPending } from './settle';
 import { MarginNoteRail } from './MarginNoteRail';
 import './annotate.css';
 
@@ -48,8 +51,9 @@ interface Placed {
    *  mark is part of a numbered sequence) anchors, independent of each gesture kind's own
    *  stroke geometry. */
   anchor: Rect;
-  /** The host's VISUAL size (its on-screen rect) — the SVG's viewBox, so geometry plotted in
-   *  visual space lands on the pixels the reader sees whatever transforms scaled the card. */
+  /** The container's LAYOUT size — the SVG's viewBox. The SVG fills the container at that same
+   *  size and scales with any transform on it, so geometry plotted in layout space lands on the
+   *  pixels the reader sees whatever scale the card is at. */
   view: { w: number; h: number };
   /** Where the numbered step chip may sit — the first clear-space candidate around the target.
    *  Absent when the card is too dense for any spot: the chip stays undrawn (the 900ms draw
@@ -77,6 +81,37 @@ function warmHand(): void {
   } catch {
     /* no font loading API (jsdom, old engines) — the fallback stack still renders. */
   }
+}
+
+/** Two placements a reader could not tell apart: same card and container, the stroke (and its
+ *  arrowhead) within a pixel along its whole path, the same caption written within a pixel of the
+ *  same spot, the same view box, and the step chip (if any) within a pixel too. */
+function sameSpot(a: Placed, b: Placed): boolean {
+  const near = (x: number, y: number): boolean => Math.abs(x - y) <= 1;
+  const chip =
+    a.chip && b.chip ? near(a.chip.x, b.chip.x) && near(a.chip.y, b.chip.y) : !a.chip && !b.chip;
+  const la = a.stroke.label;
+  const lb = b.stroke.label;
+  const label =
+    la && lb
+      ? la.text === lb.text &&
+        la.anchor === lb.anchor &&
+        la.size === lb.size &&
+        near(la.x, lb.x) &&
+        near(la.y, lb.y)
+      : !la && !lb;
+  return (
+    a.host === b.host &&
+    a.container === b.container &&
+    a.stroke.kind === b.stroke.kind &&
+    !!a.stroke.fill === !!b.stroke.fill &&
+    pathsNear(a.stroke.d, b.stroke.d) &&
+    pathsNear(a.stroke.head ?? '', b.stroke.head ?? '') &&
+    label &&
+    near(a.view.w, b.view.w) &&
+    near(a.view.h, b.view.h) &&
+    chip
+  );
 }
 
 /** The step chip's radius — mirrored by `.ink-step-dot`'s r in SpotInk's render below. */
@@ -328,21 +363,26 @@ function measure(
   // inline size below) ignore ancestor transforms — while every measured rect is VISUAL px
   // (getBoundingClientRect bakes the spotlight's 1.03 in). Divide the visual deltas back by the
   // ancestor scale so both live in layout space; without it a spotlit card draws its
-  // inner-scroller ink ~3% oversized and displaced. The card branch needs no correction: its SVG
-  // fills the host (layout size) with a viewBox of the host's VISUAL rect, so the two scales
-  // cancel by construction.
-  const scale =
-    scrRect && scrRect.width > 0 && scroller!.offsetWidth > 0
-      ? scrRect.width / scroller!.offsetWidth
-      : 1;
+  // inner-scroller ink ~3% oversized and displaced. The card branch below does the same.
+  const scrLayoutW = scroller ? layoutSize(scroller).w : 0;
+  const scale = scrRect && scrRect.width > 0 && scrLayoutW > 0 ? scrRect.width / scrLayoutW : 1;
+  // A plain card is plotted in its LAYOUT space too: the visual deltas are divided back by the
+  // card's own transform scale, and the SVG (which fills the card at layout size) carries a viewBox
+  // of that same layout size. Plotting in visual space drew the same mark correctly, but every
+  // stroke parameter measured in px — the loop's padding, the hand's wobble, a note's type size
+  // — then depended on the scale the card happened to be at when it was read. The spotlight lifts
+  // a card to 1.03 and dims its neighbours to 0.984, so each spotlight move rewrote every mark on
+  // the cards it touched, frame by frame through the 520ms lift: the pen visibly re-drawing marks
+  // it had already finished. In layout space a transform cannot change the path at all.
+  const layout = layoutSize(host);
+  const hostScaleX = layout.w > 0 ? hostRect.width / layout.w : 1;
+  const hostScaleY = layout.h > 0 ? hostRect.height / layout.h : 1;
   const box = scroller
     ? { w: scroller.scrollWidth, h: scroller.scrollHeight }
-    : { w: hostRect.width, h: hostRect.height };
-  // For a plain card, geometry lives in VISUAL space via subtraction from the host's rect — any
-  // transform scaling the card scales the ink identically. For a scroller, the same subtraction
-  // runs from the content's top-left (its rect minus its scroll offsets), de-scaled into the
-  // content's own layout space, so a mark on a scrolled-out item lands at the right place in the
-  // content and simply clips until scrolled into view.
+    : { w: hostRect.width / hostScaleX, h: hostRect.height / hostScaleY };
+  // For a scroller, the subtraction runs from the content's top-left (its rect minus its scroll
+  // offsets), de-scaled into the content's own layout space, so a mark on a scrolled-out item lands
+  // at the right place in the content and simply clips until scrolled into view.
   const toLocal = (rect: DOMRect): Rect =>
     scroller && scrRect
       ? {
@@ -352,10 +392,10 @@ function measure(
           height: rect.height / scale,
         }
       : {
-          left: rect.left - hostRect.left,
-          top: rect.top - hostRect.top,
-          width: rect.width,
-          height: rect.height,
+          left: (rect.left - hostRect.left) / hostScaleX,
+          top: (rect.top - hostRect.top) / hostScaleY,
+          width: rect.width / hostScaleX,
+          height: rect.height / hostScaleY,
         };
   const local = toLocal(target.rect);
   const hostBox: Rect = { left: 0, top: 0, width: box.w, height: box.h };
@@ -430,35 +470,22 @@ function measure(
   if (!stroke) return null;
   // The numbered step chip is opaque UI, so it obeys the same law as written words: it sits in
   // the first clear pocket around the target — up-left, beside, up-right, below — and stays
-  // undrawn when every pocket holds content.
-  let chip: { x: number; y: number } | undefined;
-  if (typeof stepNumber === 'number') {
-    const cl = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
-    const cands = [
-      { x: local.left - CHIP_R - 2, y: local.top - CHIP_R - 2 },
-      { x: local.left - CHIP_R - 4, y: local.top + local.height / 2 },
-      { x: local.left + local.width + CHIP_R + 3, y: local.top - CHIP_R - 2 },
-      { x: local.left - CHIP_R - 2, y: local.top + local.height + CHIP_R + 3 },
-    ].map((c) => ({
-      x: cl(c.x, CHIP_R + 1, hostBox.width - CHIP_R - 1),
-      y: cl(c.y, CHIP_R + 1, hostBox.height - CHIP_R - 1),
-    }));
-    // The pocket must clear the card's content AND whatever this stop's earlier marks already
-    // drew — chips are opaque UI, and two of them parked in the same gap (rows 1 and 2 of the
-    // same tight list) read as a scribble, not a sequence.
-    const inked = priorInkRects(container, stepNumber).map(toLocal);
-    chip = cands.find((c) => {
-      const box: Rect = {
-        left: c.x - CHIP_R,
-        top: c.y - CHIP_R,
-        width: CHIP_R * 2,
-        height: CHIP_R * 2,
-      };
-      return (
-        !occupied().some((o) => intersects(box, o, 2)) && !inked.some((o) => intersects(box, o, 2))
-      );
-    });
-  }
+  // undrawn when every pocket holds content. The pocket must clear the card's content and
+  // whatever this stop's earlier marks already drew (two chips parked in the same gap of a tight
+  // list read as a scribble, not a sequence), and it may not sit on this mark's own stroke when
+  // that stroke lives in the MARGIN — a tick. One drawn over its target (a loop, a highlight) is
+  // meant to sit under the chip's corner.
+  const own = strokeBounds(stroke);
+  const chip =
+    typeof stepNumber === 'number'
+      ? stepChipAt(
+          local,
+          hostBox,
+          CHIP_R,
+          [...occupied(), ...priorInkRects(container, stepNumber).map(toLocal)],
+          own && !intersects(own, local, 0) ? own : null,
+        )
+      : undefined;
   return {
     host,
     container,
@@ -517,6 +544,7 @@ function SpotInk({
   stepNumber?: number;
 }): ReactElement | null {
   const [placed, setPlaced] = useState<Placed | null>(null);
+  const placedOnceRef = useRef(false);
   useEffect(() => {
     // Deliberately NOT `setPlaced(null)` here: a dependency change (a revision bump from a view
     // swap, a late-arriving `line`) means the current placement might be stale, but it might also
@@ -524,15 +552,31 @@ function SpotInk({
     // back on together. Keep showing whatever's already placed and only replace it once a fresh
     // measurement actually succeeds; if the old host turns out to be gone, its portal simply
     // renders into a detached node (invisible, harmless) until the new one resolves.
-    return pollUntilSettled(
+    // Until this mark first lands, it is pending: the walk and a replay step wait on that rather
+    // than guess how long a card's entrance will hold it back. A re-measure of a mark already on
+    // screen is not pending — its stroke is drawn.
+    const release = placedOnceRef.current ? () => {} : holdInkPending(spot);
+    const stop = pollUntilSettled(
       () => measure(spot, line, mark, generous, within, stepNumber),
       // The chip joins the fingerprint: a chip that dodged an earlier mark's ink on a later
       // read must count as movement, so the dodge gets its own confirming read before settling.
       (p) => p.stroke.d + (p.chip ? `|${Math.round(p.chip.x)},${Math.round(p.chip.y)}` : ''),
       (p) => p.host,
-      setPlaced,
+      // A re-read that lands within a pixel of the drawn mark keeps the drawn one: sub-pixel
+      // reflow (a transition ending, a font's metrics settling) would otherwise redraw a finished
+      // stroke a hair away from itself.
+      (p) => {
+        placedOnceRef.current = true;
+        release();
+        setPlaced((prev) => (prev && sameSpot(prev, p) ? prev : p));
+      },
       () => setPlaced(null),
+      release,
     );
+    return () => {
+      stop();
+      release();
+    };
     // `residue` flips exactly when the walk's live spot arrives on (or leaves) this block —
     // which on the Study is the moment its card travels to the desk. Re-measuring then is what
     // lets a mark whose earlier poll gave up (its card was scenery) finally land.
@@ -604,13 +648,15 @@ function SpotInk({
       : {}),
   } as React.CSSProperties;
   return createPortal(
-    // viewBox = the container's size; the element fills it (the card, or the full scroll content).
-    // Together they map visual-space geometry back onto the exact on-screen pixels. See measure().
+    // viewBox = the container's layout size; the element fills it (the card, or the full scroll
+    // content) and rides its transforms, so layout-space geometry lands on the on-screen pixels.
     <svg
       className={'ink-layer' + (residue ? ' is-residue' : '')}
       aria-hidden="true"
       style={inkStyle}
-      viewBox={`0 0 ${Math.max(1, Math.round(view.w))} ${Math.max(1, Math.round(view.h))}`}
+      // Unrounded: the SVG fills the card at its fractional layout size, and a rounded viewBox
+      // would stretch every stroke by that fraction.
+      viewBox={`0 0 ${Math.max(1, view.w)} ${Math.max(1, view.h)}`}
       preserveAspectRatio="none"
     >
       {stroke.fill ? (
@@ -685,6 +731,7 @@ function SpotInk({
             y={chip.y}
             textAnchor="middle"
             dominantBaseline="middle"
+            {...(colorAttr ? { 'data-color': colorAttr } : {})}
           >
             {stepNumber}
           </text>
@@ -700,9 +747,8 @@ function SpotInk({
  *  VIEWPORT space against `.card-grid`'s own rect: `getBoundingClientRect()` already bakes in
  *  each card's own CSS scale (spotlit 1.03 / dimmed 0.984 / none), and `.card-grid` itself
  *  carries no transform, so plain subtraction lands correctly — no per-card scale correction
- *  needed the way the single-host `toLocal()` above requires. `.card-grid` doesn't exist in
- *  Focus mode (only the hero card is a real, measurable host there), so a connect mark simply
- *  draws nothing there — same "no reason, no ink" rule as everywhere else. */
+ *  needed the way the single-host `toLocal()` above requires. Where `.card-grid` doesn't exist
+ *  (the desk, the spatial canvas), a connect mark simply draws nothing — same "no reason, no ink" rule as everywhere else. */
 function measureConnect(
   spot: string,
   toSpot: string,
@@ -755,16 +801,27 @@ function ConnectInk({
   onPlaced?: () => void;
 }): ReactElement | null {
   const [placed, setPlaced] = useState<{ grid: HTMLElement; stroke: InkStroke } | null>(null);
+  const placedOnceRef = useRef(false);
   useEffect(() => {
     // See SpotInk's identical effect above: never null the current placement on a dependency
     // change alone — only a fresh, successful measurement ever replaces it.
-    return pollUntilSettled(
+    const release = placedOnceRef.current ? () => {} : holdInkPending(spot);
+    const stop = pollUntilSettled(
       () => measureConnect(spot, toSpot, mark, within),
       (p) => p.stroke.d,
       (p) => p.grid,
-      setPlaced,
+      (p) => {
+        placedOnceRef.current = true;
+        release();
+        setPlaced(p);
+      },
       () => setPlaced(null),
+      release,
     );
+    return () => {
+      stop();
+      release();
+    };
   }, [spot, toSpot, mark, within, revision]);
 
   // Report the first landing, once — see SpotInk's twin.

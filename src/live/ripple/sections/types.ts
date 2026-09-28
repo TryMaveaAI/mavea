@@ -4,7 +4,7 @@ import type {
   Altitude,
   CourseCapstone,
   CourseLesson,
-  LessonDetail,
+  LessonOutcome,
   QuizQuestion,
   ShipCourse,
   ShipModel,
@@ -25,7 +25,7 @@ export interface SectionProps {
     lesson: CourseLesson,
     force?: boolean,
     altitude?: Altitude,
-  ) => Promise<LessonDetail | null>;
+  ) => Promise<LessonOutcome>;
   /** Load a course's closing check (its end-of-week quiz + capstone) on demand — the token-heavy part,
    *  built only when the reader opens that course, cached. Present only with a connected repo; absent →
    *  the course shows its lessons without a quiz/capstone. */

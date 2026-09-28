@@ -125,19 +125,82 @@ describe('mavea CLI server security boundary', () => {
   });
 
   it('keeps HTML unframeable while allowing only a same-origin PDF response in the reader', async () => {
-    await writeFile(join(distDir, 'primer.pdf'), '%PDF-1.7\n%%EOF');
+    const pdfDir = join(distDir, 'demo-assets', 'pdf');
+    await mkdir(pdfDir, { recursive: true });
+    await writeFile(join(pdfDir, 'primer.pdf'), '%PDF-1.7\n%%EOF');
     const port = await start(createMaveaServer({ distDir, proxies: [] }));
 
     const html = await request(port, '/');
     expect(html.headers['x-frame-options']).toBe('DENY');
     expect(html.headers['content-security-policy']).toBe("frame-ancestors 'none'");
 
-    const pdf = await request(port, '/primer.pdf');
+    const pdf = await request(port, '/demo-assets/pdf/primer.pdf');
     expect(pdf.headers['content-type']).toBe('application/pdf');
     expect(pdf.headers['content-disposition']).toBe('inline');
     expect(pdf.headers['x-frame-options']).toBe('SAMEORIGIN');
     expect(pdf.headers['content-security-policy']).toBe("frame-ancestors 'self'");
     expect(pdf.headers['cross-origin-resource-policy']).toBe('same-origin');
+  });
+
+  it('frames no PDF outside the bundled reader assets, the same scope public/_headers grants', async () => {
+    await writeFile(join(distDir, 'stray.pdf'), '%PDF-1.7\n%%EOF');
+    await mkdir(join(distDir, 'demo-assets', 'pdf'), { recursive: true });
+    const port = await start(createMaveaServer({ distDir, proxies: [] }));
+
+    for (const path of ['/stray.pdf', '/demo-assets/pdf/../../stray.pdf']) {
+      const pdf = await request(port, path);
+      expect(pdf.headers['content-type']).toBe('application/pdf');
+      expect(pdf.headers['x-frame-options']).toBe('DENY');
+      expect(pdf.headers['content-security-policy']).toBe("frame-ancestors 'none'");
+      expect(pdf.headers['cross-origin-resource-policy']).toBeUndefined();
+    }
+  });
+
+  it('sends the page’s own CSP as a header, with the frame-ancestors a meta tag cannot carry', async () => {
+    const policy = "default-src 'self'; require-trusted-types-for 'script'";
+    await writeFile(
+      join(distDir, 'index.html'),
+      `<!doctype html><meta\n  http-equiv="Content-Security-Policy"\n  content="${policy}"\n/><title>t</title>`,
+    );
+    await writeFile(join(distDir, 'app.js'), 'export default 1');
+    const port = await start(createMaveaServer({ distDir, proxies: [] }));
+
+    for (const path of ['/', '/app.js', '/#/live']) {
+      const res = await request(port, path);
+      expect(res.headers['content-security-policy']).toBe(`${policy}; frame-ancestors 'none'`);
+      expect(res.headers['x-frame-options']).toBe('DENY');
+    }
+  });
+
+  it('never lets a proxied response replace the local framing or CSP headers', async () => {
+    const upstream = createServer((_req, res) => {
+      res.setHeader('X-Frame-Options', 'ALLOWALL');
+      res.setHeader('Content-Security-Policy', "frame-ancestors *; script-src 'unsafe-inline'");
+      res.setHeader('Permissions-Policy', 'microphone=*');
+      res.setHeader('Referrer-Policy', 'unsafe-url');
+      res.setHeader('X-Content-Type-Options', 'sniff');
+      res.end('ok');
+    });
+    const upstreamPort = await start(upstream);
+    const route = {
+      prefix: '/proxy',
+      target: `http://${LOOPBACK_HOST}:${upstreamPort}`,
+      methods: ['GET'],
+      bodyLimit: 32,
+      responseLimit: 32,
+      requestsPerMinute: 10,
+      timeoutMs: 1_000,
+    };
+    const port = await start(createMaveaServer({ distDir, proxies: [route] }));
+
+    const res = await request(port, '/proxy', {
+      headers: { Origin: `http://${LOOPBACK_HOST}:${port}` },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toBe('ok');
+    for (const [name, value] of Object.entries(LOCAL_SECURITY_HEADERS)) {
+      expect(res.headers[name.toLowerCase()]).toBe(value);
+    }
   });
 
   it('requires a same-origin browser request and forwards only safe headers', async () => {
@@ -185,6 +248,35 @@ describe('mavea CLI server security boundary', () => {
     expect(accepted.headers['set-cookie']).toBeUndefined();
     expect(receivedCookie).toBeUndefined();
     expect(receivedOrigin).toBeUndefined();
+  });
+
+  it('forwards a Gemini request with only the key the page sent, never one from the environment', async () => {
+    const seen: (string | string[] | undefined)[] = [];
+    const upstream = createServer((req, res) => {
+      seen.push(req.headers['x-goog-api-key']);
+      res.end('ok');
+    });
+    const upstreamPort = await start(upstream);
+    const gemini = PROXIES.find((route: { prefix: string }) => route.prefix === '/llm/gemini');
+    const route = { ...gemini, target: `http://${LOOPBACK_HOST}:${upstreamPort}` };
+    const port = await start(createMaveaServer({ distDir, proxies: [route] }));
+    const origin = `http://${LOOPBACK_HOST}:${port}`;
+
+    const previous = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'operator-key';
+    try {
+      const keyless = await request(port, '/llm/gemini/v1beta/models', {
+        headers: { Origin: origin },
+      });
+      const keyed = await request(port, '/llm/gemini/v1beta/models', {
+        headers: { Origin: origin, 'x-goog-api-key': 'reader-key' },
+      });
+      expect([keyless.status, keyed.status]).toEqual([200, 200]);
+    } finally {
+      if (previous === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = previous;
+    }
+    expect(seen).toEqual([undefined, 'reader-key']);
   });
 
   it('enforces route boundaries, methods, body limits, and per-client rate limits', async () => {
@@ -293,11 +385,11 @@ describe('mavea CLI server security boundary', () => {
   });
 
   it('lets the page fan out as far as the app itself does before answering busy', () => {
-    // A turn at the Thorough dial runs the answer, two chip prefetches and the desk's notes at
-    // once (src/live/useLiveTurn.ts CHIP_PREFETCH + the study annotate), and the forecast autopsy
-    // searches up to ten claims in parallel (src/live/prism/autopsy/run.ts). The cap used to sit
-    // at two for model routes: the third call got a 503 and the adapter slept a second per retry,
-    // so an install felt slower than the dev server for no reason the reader could see.
+    // A settled answer can be followed at once by the desk's notes (the study annotate) and a
+    // world or a node breakdown the reader opens, and the forecast autopsy searches up to ten
+    // claims in parallel (src/live/prism/autopsy/run.ts). The cap used to sit at two for model
+    // routes: the third call got a 503 and the adapter slept a second per retry, so an install
+    // felt slower than the dev server for no reason the reader could see.
     const byPrefix = new Map<string, { maxConcurrent: number; requestsPerMinute: number }>(
       PROXIES.map((route: { prefix: string; maxConcurrent: number; requestsPerMinute: number }) => [
         route.prefix,

@@ -146,8 +146,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
-  color: #fff;
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep-held));
+  color: var(--on-presence);
   font-weight: 700;
   font-size: var(--fs-sm);
   display: flex;

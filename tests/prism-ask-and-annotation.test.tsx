@@ -2,8 +2,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ADAPTERS } from '../src/live/providers';
 import { penStrokes, type PenRect } from '../src/live/annotate/penStrokes';
-import { groundSpans, selectPages } from '../src/live/prism/ask';
-import { askDocument, recoverSpans, type AskContext } from '../src/live/prism/ask/ask';
+import {
+  askDocument,
+  groundSpans,
+  recoverSpans,
+  selectPages,
+  type AskContext,
+} from '../src/live/prism/ask/ask';
 import { AskPanel } from '../src/live/prism/ask/AskPanel';
 import { autoAnnotationSteps } from '../src/live/prism/annotation/annotationAuto';
 import {
@@ -18,7 +23,7 @@ import { buildLeverModel, type RawLeverNode } from '../src/live/prism/levers/bui
 import { boundSatisfied, evaluate } from '../src/live/prism/levers/dag';
 import { evalExpr, identifiersIn } from '../src/live/prism/levers/expr';
 import type { Attachment } from '../src/live/attachments';
-import type { AskTurn } from '../src/live/prism/ask';
+import type { AskTurn } from '../src/live/prism/ask/types';
 import type { Placed } from '../src/live/prism/layout';
 import type { LeverNode } from '../src/live/prism/levers/types';
 import type { Claim, ClaimKind, ClaimRole, PrismSpec, Thread } from '../src/live/prism/types';

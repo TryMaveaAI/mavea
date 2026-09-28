@@ -90,9 +90,9 @@ describe('syncDemoUrl — a reload mid-demo must resume, not drop out', () => {
   // `?view=` pin names which view a layout-gate row is measuring; dropping it left three rows
   // measuring whichever view the replay happened to be showing — the same screen, three times.
   it('carries a ?view= pin across the rewrite', () => {
-    window.location.hash = '#/live?demo=dev&view=focus';
+    window.location.hash = '#/live?demo=dev&view=study';
     syncDemoUrl('dev', 3);
-    expect(window.location.hash).toBe('#/live?demo=dev&step=3&view=focus');
+    expect(window.location.hash).toBe('#/live?demo=dev&step=3&view=study');
     expect(peekDemoStep()).toBe(3);
     expect(peekDemoPersona()).toBe('dev');
   });

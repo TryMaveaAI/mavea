@@ -32,7 +32,6 @@ import {
   fetchWithTimeout,
   providerErrorDetail,
   readSSE,
-  isStreamStall,
   retryAfterMs,
   sleepAbortable,
   PROVIDER_BLOCKED,
@@ -48,6 +47,7 @@ import {
 } from './http';
 import { geminiUserParts } from './parts';
 import { thinkingReserve } from './budget';
+import { waitReporter } from './wait';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://generativelanguage.googleapis.com) for Node eval runs.
@@ -267,6 +267,8 @@ export const geminiAdapter: ProviderAdapter = {
   },
 
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+    // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+    const onWait = waitReporter(req.onWait);
     const base = cfg.baseUrl ?? PROXY_BASE;
     const url = `${base}${API_BASE}/models/${encodeURIComponent(cfg.model)}:streamGenerateContent?alt=sse`;
     // Implicit caching needs a BYTE-IDENTICAL prefix turn-to-turn. req.system carries per-turn
@@ -339,98 +341,91 @@ export const geminiAdapter: ProviderAdapter = {
     const capTimer = setTimeout(() => capCtrl.abort(), STREAM_TOTAL_MS);
     const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
     try {
-      // One retry for a stream that went quiet before a single byte. Bounded to the ZERO-byte case
-      // on purpose: once fragments have been streamed the user has seen them and generateLive
-      // salvages what arrived, so re-asking would both double-bill and paint the answer twice.
-      for (let attempt = 0; ; attempt++) {
-        let acc = '';
-        const grounding = new Map<string, GroundingSource>();
-        let usage: TokenUsage | undefined;
-        let finishReason = '';
-        let blockReason = '';
-        try {
-          let res: Response;
-          for (let tries = 0; ; tries++) {
-            res = await fetchWithTimeout(url, requestInit, GEN_TIMEOUT_MS, signal);
-            observeProviderLimits(res);
-            if (res.ok) break;
-            // Even a retried-and-recovered 429 must reach the guard: speculative work checks
-            // recentlyRateLimited() before spending, and quota contention is per-minute.
-            noteRateLimited(res.status);
-            const detail = await errorDetail(res);
-            if (
-              isTransientProviderFailure(res.status, detail) &&
-              tries < TRANSIENT_RETRIES &&
-              !signal.aborted
-            ) {
-              // Say so. This sleep can run to 10s per attempt, and it used to pass in silence
-              // under "Composing your answer" — which reads as the model being slow, when the
-              // model has not been asked yet.
-              const wait = retryAfterMs(res, tries, detail);
-              req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
-              try {
-                await sleepAbortable(wait, signal);
-              } finally {
-                req.onWait?.(null);
-              }
-              continue;
-            }
-            // Not a transient failure and not the user's fault: this model simply has no MINIMAL
-            // tier. Learn it and re-ask at `low` rather than failing a turn over a level nobody
-            // chose — every turn asks for MINIMAL, so without this the model never works at all.
-            if (rejectsMinimal(res.status, detail) && !noMinimal.has(cfg.model)) {
-              rememberNoMinimal(cfg.model);
-              requestInit.body = buildBody();
-              continue;
-            }
-            throw new Error(`gemini ${res.status}${detail}`);
+      // A stream that goes quiet is not re-sent: the provider may already be billing the prompt
+      // it was reading, and a turn is one ask. It fails as a stall, and the reader's Retry asks
+      // again if they choose to.
+      let acc = '';
+      const grounding = new Map<string, GroundingSource>();
+      let usage: TokenUsage | undefined;
+      let finishReason = '';
+      let blockReason = '';
+      let res: Response;
+      for (let tries = 0; ; tries++) {
+        res = await fetchWithTimeout(url, requestInit, GEN_TIMEOUT_MS, signal);
+        observeProviderLimits(res);
+        if (res.ok) break;
+        // Even a retried-and-recovered 429 must reach the guard: speculative work checks
+        // recentlyRateLimited() before spending, and quota contention is per-minute.
+        noteRateLimited(res.status);
+        const detail = await errorDetail(res);
+        if (
+          isTransientProviderFailure(res.status, detail) &&
+          tries < TRANSIENT_RETRIES &&
+          !signal.aborted
+        ) {
+          // Say so. This sleep can run to 10s per attempt, and it used to pass in silence
+          // under "Composing your answer" — which reads as the model being slow, when the
+          // model has not been asked yet.
+          const wait = retryAfterMs(res, tries, detail);
+          onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          try {
+            await sleepAbortable(wait, signal);
+          } finally {
+            onWait(null);
           }
-
-          await readSSE(res, (ev) => {
-            // candidates[0]: text fragments in content.parts[], sources in groundingMetadata.
-            const cand = obj(arr(obj(ev).candidates)[0]);
-            const parts = arr(obj(cand.content).parts);
-            for (const p of parts) {
-              const frag = str(obj(p).text);
-              if (frag) {
-                acc += frag;
-                onDelta?.(frag);
-              }
-            }
-            collectGrounding(cand, grounding);
-            // Why the stream ended, and whether the prompt itself was refused. Only consulted when
-            // no text arrived — a finished answer needs no explanation, and a MAX_TOKENS stop with
-            // real content is generateLive's existing "cut short" salvage, not a failure.
-            finishReason = str(cand.finishReason) || finishReason;
-            blockReason = str(obj(obj(ev).promptFeedback).blockReason) || blockReason;
-            // usageMetadata rides on the final chunk(s); cachedContentTokenCount is the slice
-            // billed at the cheap cached rate (implicit caching — proves the long-convo savings).
-            const u = obj(ev).usageMetadata;
-            if (u) {
-              usage = {
-                // Search grounding bills its tool prompt separately from the turn's own.
-                input: num(obj(u).promptTokenCount) + num(obj(u).toolUsePromptTokenCount),
-                // Gemini reports reasoning apart from the answer text, and bills it at the output
-                // rate — and effort.ts drives thinking on most asks, so leaving thoughts out
-                // understated the expensive half of the reader's own bill.
-                output: num(obj(u).candidatesTokenCount) + num(obj(u).thoughtsTokenCount),
-                cachedInput: num(obj(u).cachedContentTokenCount),
-                // Named apart from the rest of `output` because it is the slice that lands on
-                // time-to-first-byte: the model emits every thought before the first answer token.
-                thinking: num(obj(u).thoughtsTokenCount),
-              };
-            }
-          });
-        } catch (err) {
-          if (attempt === 0 && !acc && isStreamStall(err) && !signal.aborted) continue;
-          throw err;
+          continue;
         }
-        if (!acc) throw emptyResponseError(finishReason, blockReason);
-        const out: RawResult = { raw: acc };
-        if (grounding.size) out.sources = [...grounding.values()];
-        if (usage) out.usage = usage;
-        return out;
+        // Not a transient failure and not the user's fault: this model simply has no MINIMAL
+        // tier. Learn it and re-ask at `low` rather than failing a turn over a level nobody
+        // chose — every turn asks for MINIMAL, so without this the model never works at all.
+        if (rejectsMinimal(res.status, detail) && !noMinimal.has(cfg.model)) {
+          rememberNoMinimal(cfg.model);
+          requestInit.body = buildBody();
+          continue;
+        }
+        throw new Error(`gemini ${res.status}${detail}`);
       }
+
+      await readSSE(res, (ev) => {
+        // candidates[0]: text fragments in content.parts[], sources in groundingMetadata.
+        const cand = obj(arr(obj(ev).candidates)[0]);
+        const parts = arr(obj(cand.content).parts);
+        for (const p of parts) {
+          const frag = str(obj(p).text);
+          if (frag) {
+            acc += frag;
+            onDelta?.(frag);
+          }
+        }
+        collectGrounding(cand, grounding);
+        // Why the stream ended, and whether the prompt itself was refused. Only consulted when
+        // no text arrived — a finished answer needs no explanation, and a MAX_TOKENS stop with
+        // real content is generateLive's existing "cut short" salvage, not a failure.
+        finishReason = str(cand.finishReason) || finishReason;
+        blockReason = str(obj(obj(ev).promptFeedback).blockReason) || blockReason;
+        // usageMetadata rides on the final chunk(s); cachedContentTokenCount is the slice
+        // billed at the cheap cached rate (implicit caching — proves the long-convo savings).
+        const u = obj(ev).usageMetadata;
+        if (u) {
+          usage = {
+            // Search grounding bills its tool prompt separately from the turn's own.
+            input: num(obj(u).promptTokenCount) + num(obj(u).toolUsePromptTokenCount),
+            // Gemini reports reasoning apart from the answer text, and bills it at the output
+            // rate — and effort.ts drives thinking on most asks, so leaving thoughts out
+            // understated the expensive half of the reader's own bill.
+            output: num(obj(u).candidatesTokenCount) + num(obj(u).thoughtsTokenCount),
+            cachedInput: num(obj(u).cachedContentTokenCount),
+            // Named apart from the rest of `output` because it is the slice that lands on
+            // time-to-first-byte: the model emits every thought before the first answer token.
+            thinking: num(obj(u).thoughtsTokenCount),
+          };
+        }
+      });
+      if (!acc) throw emptyResponseError(finishReason, blockReason);
+      const out: RawResult = { raw: acc };
+      if (grounding.size) out.sources = [...grounding.values()];
+      if (usage) out.usage = usage;
+      return out;
     } finally {
       clearTimeout(capTimer);
     }

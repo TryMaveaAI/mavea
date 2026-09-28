@@ -33,6 +33,7 @@ import {
 } from './http';
 import { openaiUserContent, textOnlyUser } from './parts';
 import { isFreeRoute } from './route';
+import { waitReporter } from './wait';
 
 const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
@@ -98,7 +99,7 @@ export function isReasoningModel(model: string): boolean {
  *  nothing competes with the answer for the completion budget. OpenAI shipped this rung as
  *  `minimal` on the first GPT-5 models and renamed it `none` — the whole current family
  *  (gpt-5.6-luna/terra/sol, gpt-5.4 and its mini/nano) documents `none, low, medium, high, xhigh`
- *  and answers a `minimal` request with a 400, so sending the old name broke every glimpse. Our
+ *  and answers a `minimal` request with a 400, so sending the old name broke every small ask. Our
  *  own ThinkingLevel keeps the name `minimal`; only the wire value moved. */
 export const NO_THINKING_EFFORT = 'none';
 
@@ -132,9 +133,9 @@ function gatewayReasoning(
   return undefined;
 }
 
-/** A GLIMPSE: a small, self-sized, disposable ask (the ghost speculation off a half-spoken
- *  sentence, a node breakdown, a grounding resolve). It has to be recognised from the request
- *  alone, so the bar is deliberately high — the caller must have set BOTH dials on purpose:
+/** A GLIMPSE: a small, self-sized ask (a node breakdown, a grounding resolve, a rehearsal line).
+ *  It has to be recognised from the request alone, so the bar is deliberately high — the caller
+ *  must have set BOTH dials on purpose:
  *
  *   · `thinkingLevel: 'minimal'` — it declared that this ask needs no deliberation, and
  *   · `maxTokens` — it sized its own budget rather than taking the adapter's default, and
@@ -143,10 +144,10 @@ function gatewayReasoning(
  *  A search turn is excluded at the call sites, not here: web search is reasoning-gated and does
  *  not engage reliably at the lowest tier, so grounding always outranks the saving.
  *
- *  Why it matters: a glimpse fires up to three times per listen, and on a reasoning model the
- *  1500-token floor below is a licence to think — the "150-token" ghost bills an order of
- *  magnitude more than it asked for. Asking for the minimal tier removes the hidden pass the
- *  floor exists to protect, which is exactly what makes dropping the floor safe here. */
+ *  Why it matters: on a reasoning model the 1500-token floor below is a licence to think, so a
+ *  150-token ask bills an order of magnitude more than it asked for. Asking for the minimal tier
+ *  removes the hidden pass the floor exists to protect, which is exactly what makes dropping the
+ *  floor safe here. */
 export function isMinimalGlimpse(req: LiveRequest, model: string): boolean {
   return (
     req.thinkingLevel === 'minimal' &&
@@ -262,6 +263,8 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
     },
 
     async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+      // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+      const onWait = waitReporter(req.onWait);
       const base = cfg.baseUrl ?? proxyBase;
       const searchTool = webSearchTool && req.tools?.webSearch ? webSearchTool() : undefined;
       const reasoning = isReasoningModel(cfg.model);
@@ -413,11 +416,11 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
             !signal.aborted
           ) {
             const wait = retryAfterMs(res, transientAttempt++, detail);
-            req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+            onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
             try {
               await sleepAbortable(wait, signal);
             } finally {
-              req.onWait?.(null);
+              onWait(null);
             }
             continue;
           }

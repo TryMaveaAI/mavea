@@ -1,4 +1,4 @@
-/* The world view's entrance, sitting in the canvas header beside Focus and "View as canvas".
+/* The world view's entrance, sitting in the canvas header beside "Guide me" and "View as canvas".
    `.canvas-open` (styles/canvas.css) owns the pill — this is its peer, so it wears that class and
    adds only the one state canvas.css never needed: an answer with no causal web to open.
 

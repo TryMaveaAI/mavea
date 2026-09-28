@@ -46,10 +46,11 @@
   min-width: 0;
 }
 .canvas-header > .canvas-header-actions {
-  /* Reading + Focus/Everything + View-as-canvas + a Live headerSlot can all be present on the same
-     answer — that cluster doesn't shrink (buttons losing their labels reads worse than the row
-     wrapping), so on a narrow screen it drops to its own line under the title via .canvas-header's
-     own flex-wrap instead of running past the card's edge. */
+  /* The revision pill, a Live headerSlot, Expand sections, Guide me, the world chip and View as
+     canvas can all be present on the same answer — that cluster doesn't shrink (buttons losing
+     their labels reads worse than the row wrapping), so on a narrow screen it drops to its own
+     line under the title via .canvas-header's own flex-wrap instead of running past the card's
+     edge. */
   flex: 0 0 auto;
   flex-wrap: wrap;
   flex-direction: row;
@@ -174,9 +175,10 @@
   color: var(--text-primary);
   min-width: 0;
 }
-/* The ellipsis has to live on the name, not on the flex row holding it: `text-overflow` does nothing
-   to a flex container, so a long category name kept its full width and shouldered the tag beside it
-   out through the card. Give the name its own box to be truncated in and pin the tag against it. */
+/* The ellipsis has to live on the name, not on the flex row holding it: `text-overflow` does
+   nothing to a flex container, so a long category name kept its full width and shouldered the tag
+   beside it out through the card. Give the name its own box to be truncated in and pin the tag
+   against it. */
 .cat-name {
   min-width: 0;
   overflow: hidden;
@@ -300,7 +302,8 @@
   font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* Each stop sits on the recessed surface, where the muted ink falls short of 4.5:1 in light. */
+  color: var(--text-secondary);
 }
 .tl-title {
   font-size: var(--fs-lg);

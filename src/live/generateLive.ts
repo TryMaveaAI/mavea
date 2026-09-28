@@ -17,6 +17,9 @@ import type {
 } from '../data/conversation';
 import {
   validateLiveResponse,
+  answerContinuity,
+  answerNarration,
+  answerTitle,
   LIVE_SYSTEM_PROMPT,
   liveSystemPromptInvariant,
   liveSystemPromptKeyed,
@@ -37,6 +40,7 @@ import {
   PROVIDER_BLOCKED,
   PROVIDER_EMPTY,
   PROVIDER_THINKING_BUDGET,
+  STREAM_STALLED,
   looksLikeBadKey,
 } from './providers/http';
 // The leaf, not './providers' — the adapter registry is mocked wholesale in tests, and this only
@@ -112,9 +116,9 @@ export type { ChatMessage };
 /** How the user wants answers grounded in the live web (their choice, with cost in mind):
  *  - 'off'      — never search. No extra cost beyond the base model call.
  *  - 'realtime' — grounds through the provider's OWN native search (Gemini google_search,
- *    OpenRouter's web tool: cited + current; free up to the provider's monthly quota, then
- *    per-query). Native-only — a provider without built-in search simply can't ground, even
- *    when this is selected; there is no keyless/keyed app-side fallback.
+ *    OpenRouter's web tool: cited + current; billed on the provider's own terms). Native-only —
+ *    a provider without built-in search simply can't ground, even when this is selected; there
+ *    is no keyless/keyed app-side fallback.
  *  Search only fires when the ask actually needs fresh info, so ordinary turns cost nothing. */
 export type SearchMode = 'off' | 'realtime';
 
@@ -163,9 +167,15 @@ export interface GenerateLiveOpts {
   onActivity?: (activity: LiveActivity) => void;
   /** Progressive reveal: called with a renderable spec each time another block finishes
    *  streaming, so the canvas fills in WITH the voice instead of popping in after. Streaming
-   *  only — the post-stream tail (validate → recovery → repair → re-tile) emits nothing until
+   *  only — the post-stream tail (validate → recovery → autoFix → re-tile) emits nothing until
    *  the final result returns. */
   onPartial?: (partial: { spec: ConversationSpec; narration: string }) => void;
+  /** The answer's framing: fired when its narration, title and continuity hint have all closed
+   *  and its first block has validated — the earliest moment the surface can know what the turn
+   *  will do to the canvas without waiting for the cards — and once more, with a tighter
+   *  `ceiling`, when the blocks array closes. Runs the same block parse onPartial does, but emits
+   *  no canvas: a follow-up must not re-render mid-stream. */
+  onFraming?: (framing: AnswerFraming) => void;
   /** Real search sources, the moment they're known (app-side search resolves before the
    *  model call; native grounding reports after it) — so the surface can name what is
    *  being read while the answer still generates. */
@@ -300,7 +310,7 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       message:
         'Request blocked — your API key may lack permission for this model, or the request was rejected by the provider safety filters.',
     };
-  // 429 is usually a transient per-minute rate limit on the free tier, not a plan
+  // 429 is usually a transient per-minute rate limit, not a plan
   // exhaustion — "check your plan" is wrong and alarming. Distinguish by the provider's own
   // wording (RESOURCE_EXHAUSTED, "exceeded your current quota") vs a plain 429 (rate limited).
   if (status === 429) {
@@ -335,21 +345,58 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
     const providerReason = msg
       .replace(new RegExp(`^${provider}\\s+${status}\\s*(?:—|-)?\\s*`, 'i'), '')
       .replace(/^[A-Z_]+:\s*/i, '')
-      .trim();
+      // The provider's own sentence ends however it ends; the line around it adds its own stop, so
+      // "demand. — try again." and "demand Mavéa already…" never reach the reader.
+      .replace(/[\s.!?;:,]+$/, '');
+    // Only a refusal made before any work (503 overloaded, 529) is re-sent automatically. A timeout
+    // or a server error may arrive after the model already ran and billed the ask, so those are
+    // never re-sent, and their message must not claim a retry happened.
+    if (status === 503 || status === 529) {
+      return {
+        kind: 'http',
+        status,
+        message: providerReason
+          ? `${label} returned ${status}: ${providerReason}. Mavéa already retried with backoff.`
+          : `${label} returned ${status} after Mavéa retried with backoff — ` +
+            'wait a moment, then try again.',
+      };
+    }
+    const timedOut = status === 408 || status === 504 || status === 524;
     return {
       kind: 'http',
       status,
-      message: providerReason
-        ? `${label} returned ${status}: ${providerReason} Mavéa already retried with backoff.`
-        : `${label} returned ${status} after Mavéa retried with backoff — wait a moment, then try again.`,
+      message: timedOut
+        ? `${label} timed out (${status}) before the answer came back — try again.`
+        : providerReason
+          ? `${label} returned ${status}: ${providerReason} — try again.`
+          : `${label} returned ${status} before the answer came back — try again.`,
     };
   }
   if (status)
     return { kind: 'http', status, message: `${label} returned error ${status} — try again.` };
+  // The request reached the provider and the stream then went quiet. Not a connection problem,
+  // and not re-sent behind the reader's back: Retry is theirs to press.
+  if (msg === STREAM_STALLED)
+    return {
+      kind: 'network',
+      message: `${label} stopped responding before the answer arrived — try again.`,
+    };
   return {
     kind: 'network',
     message: `Couldn't reach ${label} — check your connection and try again.`,
   };
+}
+
+/** What an answer has said about itself before its cards land (see `onFraming`). */
+export interface AnswerFraming {
+  narration: string;
+  title: string;
+  continuity?: LiveResult['continuity'];
+  tier: LiveResult['tier'];
+  /** The most blocks this call can hand back — the block cap until the blocks array closes, its
+   *  final count after, plus the one world card that may join — so a caller can rule out an
+   *  outcome by count. */
+  ceiling: number;
 }
 
 /** What generateLive returns: a renderable spec + the one spoken sentence. */
@@ -644,17 +691,18 @@ function fallbackSpec(summary: string): ConversationSpec {
 }
 
 /** A message that is ENTIRELY a "keep going / go deeper" filler — it names NO topic of its own, so
- *  on such a turn "this"/"more"/"deeper" can only mean the thread the user is already reading. We use
- *  this to BOTH lift the depth budget AND lock the topic, so a weak model can't drift to an older,
- *  meatier thread surfaced in the recap (the "more in depth → answers about Kafka" bug). Anchored to
- *  the whole string so a follow-up that NAMES a topic ("go deeper on graphs") is NOT treated as
- *  topic-less and is left free. */
+ *  on such a turn "this"/"more"/"deeper" can only mean the thread the user is already reading. We
+ *  use this to BOTH lift the depth budget AND lock the topic, so a weak model can't drift to an
+ *  older, meatier thread surfaced in the recap (the "more in depth → answers about Kafka" bug).
+ *  Anchored to the whole string so a follow-up that NAMES a topic ("go deeper on graphs") is NOT
+ *  treated as topic-less and is left free. */
 const CONTINUATION_ONLY =
   /^\s*(?:(?:can you |could you |please |now |ok(?:ay)? |and |so )*)(more(?: please)?|more in[- ]?depth|in[- ]?(?:more )?depth|in (?:more )?detail|details?|go (?:on|deeper|ahead|further)|dig(?:ging)? deeper|deeper|expand(?: on (?:that|it|this))?|elaborate|continue|carry on|keep going|keep it going|tell me more|what(?:'s| is)? next|next|and then|why exactly|proceed|further)\s*[.!?]*$/i;
 
 /** The user's most recent SUBSTANTIVE ask — walk history backwards, skipping pure continuation
- *  fillers and any injected recap/lock line, so a topic-less follow-up ("more in depth") still has a
- *  real subject to pin. Reliable even when the prior answer collapsed to the generic fallback title. */
+ *  fillers and any injected recap/lock line, so a topic-less follow-up ("more in depth") still has
+ *  a real subject to pin. Reliable even when the prior answer collapsed to the generic fallback
+ *  title. */
 function lastSubstantiveAsk(history: ChatMessage[]): string {
   for (let i = history.length - 1; i >= 0; i--) {
     const m = history[i];
@@ -1413,8 +1461,7 @@ export async function generateLive(
   // Real-time grounding uses the provider's OWN search (Gemini google_search). We PRE-GATE so
   // obvious no-search turns (a poem, arithmetic) never even offer the tool — then the model's
   // Dynamic Retrieval makes the final call, only actually searching (and only then billing)
-  // when its own confidence says it needs live data. Cost stays proportional to need, and the
-  // monthly free grounding quota covers normal use.
+  // when its own confidence says it needs live data. Cost stays proportional to need.
   const useNativeSearch =
     searchMode === 'realtime' &&
     !!adapter.capabilities.nativeWebSearch &&
@@ -1522,6 +1569,9 @@ export async function generateLive(
   const blockStream = new ArrayStreamScanner('blocks');
   const narrationField = new StringFieldScanner('narration');
   const titleField = new StringFieldScanner('title');
+  const continuityField = new StringFieldScanner('continuity');
+  /** The last ceiling onFraming named (0 = not yet), so it fires only when it has news. */
+  let framedCeiling = 0;
   let lastCount = 0;
   let lastPending: string | null = null;
   // The blocks validated so far (same objects across partials), whether the single allowed
@@ -1549,6 +1599,32 @@ export async function generateLive(
   /** What the parse had already validated when a dead stream ended the turn — see the catch. */
   let streamSalvage: LiveResponse | null = null;
   let thinking = false;
+  /** Name the answer's framing once its first card has validated, and again when the blocks array
+   *  closes and the card count is final. Both are ceilings the settle cannot exceed: the one-shot
+   *  validation of the same reply yields these same blocks (so the collapse recovery, which needs
+   *  zero, cannot run), and only the world card can join after. A small model's hint is never
+   *  read (resolveMode), so only a hint that may still be coming holds the framing back.
+   *  The fields are read off the scanners as they stand, never off the last validated tail: the
+   *  model may write its hint AFTER the blocks, when no tail is left to carry it. */
+  const frame = (): void => {
+    if (!opts.onFraming || streamedBlocks.length === 0) return;
+    const narration = narrationField.value();
+    const title = titleField.value();
+    const hint = continuityField.value();
+    if (narration === null || title === null) return;
+    if (tier !== 'small' && hint === null) return;
+    const ceiling = (blockStream.closed ? streamedBlocks.length : maxBlocks) + 1;
+    if (ceiling === framedCeiling) return;
+    framedCeiling = ceiling;
+    const continuity = answerContinuity(hint ?? '');
+    opts.onFraming({
+      narration: answerNarration(narration),
+      title: answerTitle(title),
+      ...(continuity ? { continuity } : {}),
+      tier,
+      ceiling,
+    });
+  };
   // Wraps the raw delta stream: reasoning tokens drive the "Thinking…" cue and are NEVER buffered
   // (they'd corrupt the answer JSON); content tokens end the thinking phase and feed the
   // progressive-reveal parse. Always a wrapper so reasoning is filtered even on non-streamed turns.
@@ -1566,7 +1642,7 @@ export async function generateLive(
       opts.onThinking?.(false);
     }
     onDelta?.(chunk);
-    if (!opts.onPartial) return;
+    if (!opts.onPartial && !opts.onFraming) return;
     buf += chunk;
     // The scanner walks each delta exactly once (it keeps its cursor and brace/string state
     // between calls, reading only buf's unseen tail), so parsing a whole turn costs one pass
@@ -1589,8 +1665,12 @@ export async function generateLive(
     }
     narrationField.scan(buf);
     titleField.scan(buf);
+    continuityField.scan(buf);
     const rawBlocks = blockStream.items;
-    if (rawBlocks.length <= lastCount) return;
+    if (rawBlocks.length <= lastCount) {
+      frame();
+      return;
+    }
     let tail = rawBlocks.slice(lastCount);
     lastCount = rawBlocks.length;
     // The one-insight rule spans the whole canvas: once the opener has landed, a later raw
@@ -1608,6 +1688,7 @@ export async function generateLive(
       {
         narration: narrationField.value() ?? '',
         title: titleField.value() ?? '',
+        continuity: continuityField.value() ?? '',
         sub: '',
         blocks: remaining > 0 ? tail : [],
       },
@@ -1635,6 +1716,7 @@ export async function generateLive(
     }
     const running = streamedSoFar();
     if (running) emitSpec(running);
+    frame();
   };
 
   // The request the adapter sends. History is the compacted send-history; thinkingLevel and
@@ -1643,11 +1725,16 @@ export async function generateLive(
   // system into a cached first block + uncached per-turn suffix (see anthropic.ts).
   const baseReq: Omit<LiveRequest, 'user'> = {
     usageLabel: 'canvas',
-    // A backoff is the one wait the reader should be told about by name: it is not the model.
-    onWait: (ms, reason) =>
-      opts.onActivity?.(
-        ms == null ? null : reason === 'overload' ? 'provider-busy' : 'rate-limited',
-      ),
+    // A backoff is the one wait the reader should be told about by name: it is not the model. A
+    // caller with no activity line leaves it to the app shell's shared status (providers/wait).
+    ...(opts.onActivity
+      ? {
+          onWait: (ms: number | null, reason?: 'rate-limit' | 'overload') =>
+            opts.onActivity?.(
+              ms == null ? null : reason === 'overload' ? 'provider-busy' : 'rate-limited',
+            ),
+        }
+      : {}),
     system,
     systemInvariant: turnSystem.systemInvariant,
     systemBase: turnSystem.systemBase,
@@ -1714,7 +1801,7 @@ export async function generateLive(
     // blocks — the reader watched them arrive — and replacing them with an error card discards an
     // answer that exists. Keep what streamed, marked honestly as cut short. A turn the USER
     // cancelled is not salvaged: it was superseded, and rendering it would fight the turn after it.
-    const kept = opts.signal?.aborted ? null : streamedSoFar();
+    const kept = opts.signal?.aborted || !opts.onPartial ? null : streamedSoFar();
     if (kept) streamSalvage = { ...kept, sub: CUT_SHORT_SUB };
     // The provider call failed. Mavéa never re-asks on its own — a turn is the one ask the
     // reader made, and a second attempt (grounded or not) is theirs to start. With nothing
@@ -1753,14 +1840,13 @@ export async function generateLive(
       const recoverCap = Math.max(maxBlocks, RECOVERY_MIN_BLOCKS);
       const floor = complexity === 'rich' ? 5 : 3;
       // No streamDelta on the retry: the stream buffer already holds the failed first pass, so
-      // re-streaming would corrupt block parsing — mirror the repair pass (line ~1322) and take the
-      // result whole. Tools off so we don't re-bill a search just to restructure.
+      // re-streaming would corrupt block parsing — take the result whole. Tools off so we don't
+      // re-bill a search just to restructure.
       const out2 = await adapter.generate(
         {
           ...baseReq,
           usageLabel: 'collapse-recovery',
-          // The retry keeps the FULL per-turn system, unlike the repair pass below: a repair
-          // restructures JSON it is handed verbatim, but a recovery RE-COMPOSES the answer, and
+          // The retry keeps the FULL per-turn system: a recovery RE-COMPOSES the answer, and
           // the per-turn directives (today's date, the topic lock, a lesson's spine, the search
           // rules) are part of what composing correctly means. Trimming them was tried and read
           // as a saving; it was a quality cut on exactly the fragile turns.

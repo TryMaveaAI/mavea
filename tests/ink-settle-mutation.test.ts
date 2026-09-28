@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { pollUntilSettled } from '../src/live/annotate/settle';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  inkStillDrawing,
+  isInMotion,
+  pollUntilSettled,
+  SPOTLIGHT_LIFT_MS,
+} from '../src/live/annotate/settle';
 
 // The stale-mark bug: a block that re-sorts its rows or expands inside its own capped scroller
 // changes NOTHING the old triggers could see — the outer box is unchanged (no ResizeObserver),
@@ -86,10 +93,91 @@ describe('pollUntilSettled — content mutations re-arm the measurement', () => 
     await vi.advanceTimersByTimeAsync(700);
     expect(onMissing).toHaveBeenCalledTimes(1);
 
+    const beforeReturn = onResult.mock.calls.length;
     available = true;
     panel.className = 'open';
     await vi.advanceTimersByTimeAsync(700);
-    expect(onResult.mock.calls.length).toBeGreaterThan(2);
+    // Redrawn once it holds still again — once, not on every read.
+    expect(onResult.mock.calls.length).toBe(beforeReturn + 1);
+    stop();
+    host.remove();
+  });
+});
+
+describe('pollUntilSettled — a mark is drawn once, where it comes to rest', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('reports nothing while the geometry changes, then the resting read once', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let y = 0;
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host, y }),
+      (r) => String(r.y),
+      (r) => r.host,
+      onResult,
+    );
+    // A card entering: every read finds it somewhere new.
+    for (let i = 0; i < 5; i++) {
+      y += 12;
+      await vi.advanceTimersByTimeAsync(100);
+    }
+    expect(onResult).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect(onResult.mock.calls[0][0].y).toBe(60);
+    stop();
+    host.remove();
+  });
+
+  it('waits out a transition that moves the card even when the mark reads the same', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let lifting = true;
+    const lift = {
+      playState: 'running',
+      transitionProperty: 'transform',
+      effect: { getComputedTiming: () => ({ endTime: 520 }) },
+    } as unknown as Animation;
+    host.getAnimations = () => (lifting ? [lift] : []);
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host }),
+      () => 'same',
+      (r) => r.host,
+      onResult,
+    );
+    await vi.advanceTimersByTimeAsync(600);
+    expect(onResult).not.toHaveBeenCalled();
+    lifting = false;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(onResult).toHaveBeenCalledTimes(1);
+    stop();
+    host.remove();
+  });
+
+  it('ignores an endless loop, which never comes to rest', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const pulse = {
+      playState: 'running',
+      effect: {
+        getComputedTiming: () => ({ endTime: Infinity }),
+        getKeyframes: () => [{ transform: 'scale(1.02)' }],
+      },
+    } as unknown as Animation;
+    host.getAnimations = () => [pulse];
+    const onResult = vi.fn();
+    const stop = pollUntilSettled(
+      () => ({ host }),
+      () => 'same',
+      (r) => r.host,
+      onResult,
+    );
+    await vi.advanceTimersByTimeAsync(300);
+    expect(onResult).toHaveBeenCalledTimes(1);
     stop();
     host.remove();
   });
@@ -154,5 +242,62 @@ describe('pollUntilSettled — a region that keeps changing is not re-measured f
     expect(measure.mock.calls.length).toBe(total + 1);
     stop();
     host.remove();
+  });
+});
+
+describe('isInMotion — the card can sit below a wrapper', () => {
+  it('sees an entrance running on a card nested inside a FitBox', () => {
+    const host = document.createElement('div');
+    const fit = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'card';
+    fit.appendChild(card);
+    host.appendChild(fit);
+    const rise = {
+      playState: 'running',
+      transitionProperty: 'transform',
+      effect: { getComputedTiming: () => ({ endTime: 600 }) },
+    } as unknown as Animation;
+    for (const el of [host, fit]) el.getAnimations = () => [];
+    let entering = true;
+    card.getAnimations = () => (entering ? [rise] : []);
+    expect(isInMotion(host)).toBe(true);
+    entering = false;
+    expect(isInMotion(host)).toBe(false);
+  });
+});
+
+describe('INK_SETTLE_MS — follows the spotlight it waits out', () => {
+  it('matches the lift transition the stylesheet actually runs', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/visualizations-extra.css'), 'utf8');
+    const rule = /\n\.card-grid > div \{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(Number(/transform (\d+)ms/.exec(rule)?.[1])).toBe(SPOTLIGHT_LIFT_MS);
+  });
+});
+
+describe('inkStillDrawing — what holds a walk or a replay step open', () => {
+  it('lists running strokes on one card, or on any card, and ignores endless loops', () => {
+    const card = document.createElement('div');
+    card.setAttribute('data-spot-id', 'live-1');
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    layer.setAttribute('class', 'ink-layer');
+    card.appendChild(layer);
+    document.body.appendChild(card);
+    const drawing = {
+      playState: 'running',
+      effect: { getComputedTiming: () => ({ endTime: 1000 }) },
+    } as unknown as Animation;
+    const pulse = {
+      playState: 'running',
+      effect: { getComputedTiming: () => ({ endTime: Infinity }) },
+    } as unknown as Animation;
+    let anims = [drawing, pulse];
+    layer.getAnimations = () => anims;
+    expect(inkStillDrawing('live-1')).toEqual([drawing]);
+    expect(inkStillDrawing()).toEqual([drawing]);
+    expect(inkStillDrawing('live-2')).toEqual([]);
+    anims = [pulse];
+    expect(inkStillDrawing()).toEqual([]);
+    card.remove();
   });
 });

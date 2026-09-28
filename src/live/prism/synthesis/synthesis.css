@@ -54,7 +54,7 @@
   place-items: center;
   border-radius: var(--r-full, 999px);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-family: var(--font-data, monospace);
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -67,16 +67,20 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  max-width: 220px;
-  padding: 7px 12px;
-  border-radius: var(--r-full, 999px);
+  /* A label is the object's whole claim ("Sources disagree on annual treatment cost"), so it wraps
+     inside the measure rather than ellipsising the part that says what disagrees. */
+  width: max-content;
+  /* OBJECT_MAX_W in mapFrame.ts frames this width; tests/synthesis-map-labels holds them together. */
+  max-width: 300px;
+  padding: 6px 12px;
+  border-radius: var(--r-md);
   font-size: var(--fs-sm);
   font-weight: 650;
+  line-height: 1.3;
+  text-align: left;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
   cursor: pointer;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   transition:
     opacity 0.2s,
     transform 0.12s;
@@ -130,13 +134,14 @@
 }
 .syn-consensus-badge {
   position: absolute;
+  /* CONSENSUS_BADGE_RISE in mapFrame.ts */
   top: -11px;
   left: 50%;
   transform: translateX(-50%);
   padding: 2px 9px;
   border-radius: var(--r-full, 999px);
   background: var(--insight);
-  color: #fff;
+  color: var(--on-insight);
   font-family: var(--font-data, monospace);
   font-size: var(--fs-2xs);
   font-weight: 700;

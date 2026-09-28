@@ -8,6 +8,7 @@ import { Icon } from '../../icons/icons';
 import { useFocusTrap } from '../useFocusTrap';
 import { countMoments, type Chapter } from './chapters';
 import './scrubber.css';
+import { useBackdropDismiss } from '../../lib/useBackdropDismiss';
 
 interface OverviewProps {
   chapters: Chapter[];
@@ -31,6 +32,7 @@ export function Overview({
   // sequence and yank keyboard focus back to the first moment mid-browse.
   useFocusTrap(panelRef, { onEscape: onClose });
 
+  const backdrop = useBackdropDismiss(onClose);
   if (chapters.length === 0) return null;
   const total = countMoments(chapters);
   const accent = chapters.find((c) => c.moments.some((m) => m.frameIndex === currentIndex))?.color;
@@ -39,7 +41,8 @@ export function Overview({
     <OverlayPortal accent={accent}>
       <div
         className="ovw-scrim"
-        onClick={onClose}
+        onPointerDown={backdrop.onPointerDown}
+        onClick={backdrop.onClick}
         role="button"
         tabIndex={0}
         aria-label="Close conversation overview"

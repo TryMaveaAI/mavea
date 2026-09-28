@@ -727,6 +727,7 @@
   transform: translateY(-1px);
 }
 .es-btn.done {
+  color: var(--on-insight);
   background: var(--insight);
 }
 
@@ -2912,4 +2913,39 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--rfe-c);
+}
+
+/* These fills are a colour the card picks, so the text on them takes an ink derived from the
+   fill itself, and a hover shades the fill away from that ink. Where relative colour is
+   unsupported the ink and hover above stand, as drawn. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .a11-badge {
+    color: color(from var(--a11-c) srgb-linear var(--ink-on-fill));
+  }
+  .bt-stage.done .bt-node,
+  .bt-stage.failed .bt-node {
+    color: color(from var(--st-c) srgb-linear var(--ink-on-fill));
+  }
+  .es-btn {
+    color: color(from var(--es-c) srgb-linear var(--ink-on-fill));
+  }
+  .imc-node.done,
+  .imc-node.failed,
+  .stl-node.done,
+  .stl-node.failed {
+    color: color(from var(--ev-c) srgb-linear var(--ink-on-fill));
+  }
+  .ps-vas-flag {
+    color: color(from var(--ps-c) srgb-linear var(--ink-on-fill));
+  }
+  .step-node.done .step-dot {
+    color: color(from var(--step-c) srgb-linear var(--ink-on-fill));
+  }
+  .uf-badge {
+    color: color(from var(--uf-c) srgb-linear var(--ink-on-fill));
+  }
+  .es-btn:not(.done):hover {
+    background: color(from var(--es-c) srgb-linear var(--lift-for-ink));
+    filter: none;
+  }
 }

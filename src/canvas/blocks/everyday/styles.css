@@ -540,13 +540,6 @@
   font-weight: 600;
   color: var(--text-primary);
 }
-.su-amt {
-  margin-left: auto;
-  font-weight: 800;
-  color: var(--presence);
-  font-size: var(--fs-md, 15px);
-  font-variant-numeric: tabular-nums;
-}
 /* pill variant — compact presence-tinted chip used by the real SettleUp component */
 .su-amt-pill {
   margin-left: auto;
@@ -809,7 +802,7 @@
 }
 .wp-tab.active {
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   border-color: var(--presence);
 }
 .wp-focus {
@@ -1386,7 +1379,7 @@
   height: 24px;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-xs, 12px);
   font-weight: 800;
   display: flex;
@@ -2149,7 +2142,7 @@
 .pl-item.packed .pl-check .ic {
   width: 11px;
   height: 11px;
-  color: #fff;
+  color: var(--on-presence);
 }
 .pl-item.packed .pl-item-label {
   color: var(--text-muted);
@@ -3536,7 +3529,7 @@
 .mn-action.done .mn-action-check {
   background: var(--presence);
   border-color: var(--presence);
-  color: var(--surface-elevated);
+  color: var(--on-presence);
 }
 .mn-action.done .mn-action-check .ic {
   width: 11px;
@@ -4439,8 +4432,8 @@
   justify-content: center;
   font-size: var(--fs-sm, 14px);
   font-weight: 800;
-  color: var(--surface-elevated);
-  background: linear-gradient(160deg, var(--presence), var(--presence-deep));
+  color: var(--on-presence);
+  background: linear-gradient(160deg, var(--presence), var(--presence-deep-held));
 }
 .up-identity {
   display: flex;
@@ -4650,11 +4643,10 @@
   justify-content: center;
   font-size: var(--fs-2xs);
   font-weight: 800;
-  color: var(--surface-elevated);
-  background: var(--presence-soft);
+  color: var(--on-presence);
+  background: var(--presence-soft-held);
   flex-shrink: 0;
 }
-
 /* done: quiet, struck-through */
 .ro-cue--done .ro-dot {
   background: var(--insight);

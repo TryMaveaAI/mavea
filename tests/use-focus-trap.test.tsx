@@ -132,4 +132,38 @@ describe('useFocusTrap', () => {
     expect(document.activeElement).toBe(outside);
     outside.remove();
   });
+
+  it('wraps past a control that CSS has taken out of layout', () => {
+    // A narrow overlay can set its last control aside with display:none. Tab never lands there,
+    // so a cycle closing on it would let Tab walk out of the overlay instead of wrapping.
+    const { getByText } = render(<Trapped />);
+    Object.defineProperty(getByText('last'), 'checkVisibility', { value: () => false });
+    const middle = getByText('middle');
+    middle.focus();
+    fireEvent.keyDown(middle, { key: 'Tab' });
+    expect(document.activeElement).toBe(getByText('first'));
+  });
+
+  it('hands focus to where returnTo points when it lets go, and to the opener when that is null', () => {
+    const opener = document.createElement('button');
+    const current = document.createElement('button');
+    document.body.append(opener, current);
+    function Viewer({ to }: { to: HTMLElement | null }) {
+      const ref = useRef<HTMLDivElement>(null);
+      useFocusTrap(ref, { returnTo: () => to });
+      return (
+        <div ref={ref}>
+          <button>inside</button>
+        </div>
+      );
+    }
+    opener.focus();
+    render(<Viewer to={current} />).unmount();
+    expect(document.activeElement).toBe(current);
+    opener.focus();
+    render(<Viewer to={null} />).unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+    current.remove();
+  });
 });

@@ -12,7 +12,7 @@
 // seeds from, so a read-only migration (the shape `useFocusMode` uses for 'room') would recognise
 // a long-standing desk reader once and forget them the next time they changed anything.
 //
-// Same framework-free store idiom as useBloomMode: an in-session cache + localStorage, never
+// Framework-free store idiom: an in-session cache + localStorage, never
 // throwing. No CustomEvent — the flag only ever goes false → true, and every consumer re-reads it
 // on the next turn anyway.
 import { VIEW_MODE_KEY } from '../../canvas/focus/useFocusMode';

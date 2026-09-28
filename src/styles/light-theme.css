@@ -60,18 +60,26 @@
   background-clip: padding-box;
 }
 
-/* toast */
-#mavea-toasts {
+/* toast — and the app shell's provider-wait line, which wears the same pill (ProviderWaitStatus).
+   Centred by margins rather than a translate, so a long line wraps inside the gutter instead of
+   pushing off the side of a phone. The toasts own the top; the wait line owns the bottom, above
+   whatever band the surface keeps there, so the two can never land on each other. */
+#mavea-toasts,
+.provider-wait {
   position: fixed;
-  left: 50%;
-  top: 70px;
-  transform: translateX(-50%);
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: calc(100% - 32px);
   z-index: 90;
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: center;
   pointer-events: none;
+}
+#mavea-toasts {
+  top: 70px;
 }
 .toast {
   display: inline-flex;
@@ -90,6 +98,44 @@
   transition:
     opacity var(--m-normal) var(--ease-out),
     transform var(--m-normal) var(--ease-out);
+}
+.provider-wait {
+  /* A manual popover where the browser has them (the top layer, above every overlay); the UA's
+     popover box — border, padding, canvas colours, centring by inset — is undone here. */
+  /* Above the bands the surface keeps at the bottom — but never so high that it meets the toasts'
+     first row (top 70px + a ~40px pill + a gap), which on a short landscape phone it would. */
+  inset-block: auto
+    min(
+      calc(
+        max(
+            var(--wait-dock-h, 0px) + var(--wait-demo-h, 0px) + var(--wait-tour-h, 0px) +
+              var(--wait-mobile-rail-h, 0px),
+            env(safe-area-inset-bottom, 0px)
+          ) +
+          12px
+      ),
+      calc(100dvh - 164px)
+    );
+  margin-block: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+}
+.provider-wait:empty {
+  display: none;
+}
+.provider-wait .toast {
+  text-align: center;
+}
+/* The spoken copy of the line: in the accessibility tree, off the screen. */
+.provider-wait-said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .toast.show {
   opacity: 1;

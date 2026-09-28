@@ -40,10 +40,11 @@ let providerPressureUntil = 0;
 let providerPressureObservedAt = 0;
 
 /**
- * Whether a provider rate-limited us inside the given window. Speculative work (chip prefetch,
- * background enrichment) checks this before spending: quotas are per-minute, so a speculative
- * call made in the shadow of a 429 doesn't just fail — it eats the budget the user's NEXT
- * interactive turn needs, which is how one question came to retry three times before landing.
+ * Whether a provider rate-limited us inside the given window. Speculative work (the Study's
+ * prefetched notes, background enrichment) checks this before spending: quotas are per-minute,
+ * so a speculative call made in the shadow of a 429 doesn't just fail — it eats the budget the
+ * user's NEXT interactive turn needs, which is how one question came to retry three times before
+ * landing.
  */
 export function recentlyRateLimited(windowMs = 60_000): boolean {
   if (windowMs <= 0) return false;
@@ -115,14 +116,10 @@ export const STREAM_IDLE_MS = 15_000;
  *  and the retry the user then typed by hand succeeded, because by then the prefix was cached. */
 export const STREAM_FIRST_CHUNK_MS = 25_000;
 
-/** Thrown when a stream goes quiet past its budget. Named so a caller can tell a stall — which is
- *  worth one retry when nothing arrived — from a real provider error, which is not. */
+/** Thrown when a stream goes quiet past its budget. It is never re-sent automatically: the
+ *  provider may already be billing the prompt it was reading, so the turn fails and the reader's
+ *  Retry decides. */
 export const STREAM_STALLED = 'stream stalled';
-
-/** True when `err` is the stall above (and not, say, an abort or an HTTP failure). */
-export function isStreamStall(err: unknown): boolean {
-  return err instanceof Error && err.message === STREAM_STALLED;
-}
 
 /* --- markers for a 200 OK that carried no usable answer ------------------------------------- *
  * A provider can accept a request, return HTTP 200, and stream nothing — safety-blocked, stopped
@@ -150,11 +147,15 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
     const multiplier = unit === 'ms' ? 1 : unit === 'm' ? 60_000 : 1000;
     return Math.min(Number(bodyHint[1]) * multiplier, 30_000);
   }
-  const base = Math.min(900 * 2 ** attempt, 12_000);
+  // The second re-send waits a little longer than a plain doubling: a refusal that repeats after
+  // ~1s is usually a per-minute window still closing, and the extra second is cheaper than a
+  // third refusal the reader has to retry by hand.
+  const base = attempt === 0 ? 900 : Math.min(2_500 * 2 ** (attempt - 1), 12_000);
   return Math.round(base * (0.85 + Math.random() * 0.3));
 }
 
-const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 504, 524, 529]);
+/** Re-sent only when the provider refused before doing any work, so nothing is billed twice. */
+const TRANSIENT_PROVIDER_STATUSES = new Set([429, 503, 529]);
 const NON_RETRYABLE_QUOTA =
   /(?:requests?|tokens?)\s+per\s+day|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
 

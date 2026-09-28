@@ -5,7 +5,7 @@
    .card-eyebrow is white-space:nowrap, so relax it only for our cards. */
 .stats-card .card-eyebrow {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word; /* whole words; only a word wider than the card splits */
   min-width: 0;
 }
 .stats-card .insight-stat .big {

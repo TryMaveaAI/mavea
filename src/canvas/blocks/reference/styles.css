@@ -745,7 +745,7 @@
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 800;
-  fill: var(--surface-elevated);
+  fill: var(--on-presence);
   font-family: var(--font-mono, ui-monospace, monospace);
 }
 .ss-meta {

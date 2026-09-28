@@ -25,8 +25,6 @@ export function BillboardSlide({ slots }: SlideProps<'quote'>) {
         animation: 'reel-fade-up 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`@keyframes billboard-light{0%,100%{box-shadow:0 calc(var(--ru) * 5) calc(var(--ru) * 16) calc(var(--ru) * -6) var(--reel-glow),inset 0 0 calc(var(--ru) * 8) color-mix(in oklab,var(--reel-accent) 18%,transparent)}50%{box-shadow:0 calc(var(--ru) * 5) calc(var(--ru) * 16) calc(var(--ru) * -6) var(--reel-glow),inset 0 0 calc(var(--ru) * 8) color-mix(in oklab,var(--reel-accent) 34%,transparent)}}`}</style>
-
       <span
         style={{
           font: '600 calc(var(--ru) * 2.2)/1 var(--reel-mono)',

@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
+import { FitBox } from '../src/canvas/layout/FitBox';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
 import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
@@ -109,6 +110,17 @@ describe('the Lens gesture', () => {
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
   });
 
+  it('shows each card in the strip as a real miniature, not an icon', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const thumbs = container.querySelectorAll('.lens-strip .filmstrip-thumb');
+    expect(thumbs).toHaveLength(2);
+    // The thumbnail mounts the genuine card component (.card), scaled down inside its frame.
+    for (const thumb of thumbs) {
+      expect(thumb.querySelector('.filmstrip-thumb-design .card')).not.toBeNull();
+    }
+  });
+
   it('walks the board with the arrow keys, clamped rather than wrapping', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
@@ -121,6 +133,57 @@ describe('the Lens gesture', () => {
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+  });
+
+  it('leaves the arrows to a focused region in the card that pans', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const card = document.querySelector('.zoom-sheet .card')!;
+    const pan = document.createElement('div');
+    pan.tabIndex = 0;
+    pan.setAttribute('role', 'region');
+    card.append(pan);
+    Object.defineProperty(pan, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 650 });
+    fireEvent.keyDown(pan, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+    // The zoom chords are not the pan's: Shift+1 still fits the card with the pan focused.
+    expect(fireEvent.keyDown(pan, { key: '!', code: 'Digit1', shiftKey: true })).toBe(false);
+    // With nothing past its edge it is not a pan, and the arrows walk the board again.
+    Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 300 });
+    fireEvent.keyDown(pan, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+  });
+
+  it('walks the board from a control whose label is cut short', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    // A truncated button or link overflows its box too, and it does not pan.
+    const button = document.createElement('button');
+    document.querySelector('.zoom-sheet .card')!.append(button);
+    Object.defineProperty(button, 'clientWidth', { configurable: true, value: 80 });
+    Object.defineProperty(button, 'scrollWidth', { configurable: true, value: 140 });
+    fireEvent.keyDown(button, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+  });
+
+  it('lays the card on stage out on its first frame, not a placeholder the sheet then outgrows', () => {
+    const { container } = mount();
+    // On the board a scrolled-away block may skip layout behind a 200px placeholder; the one
+    // card on the stage is never scrolled away, and a first frame at the placeholder grew the
+    // centred sheet a frame later and moved it on every open.
+    const board = render(
+      <FitBox>
+        <p>x</p>
+      </FitBox>,
+    );
+    expect(board.container.querySelector('.fit-box')!.getAttribute('style')).toMatch(
+      /content-visibility: auto/,
+    );
+    board.unmount();
+    cleanClick(cell0(container, 'a'));
+    const onStage = document.querySelector('.zoom-sheet .fit-box')!;
+    expect(onStage.getAttribute('style') ?? '').not.toMatch(/content-visibility/);
   });
 
   it('keeps magnification as a control ON the stage, not a second pill beside it', () => {
@@ -137,7 +200,7 @@ describe('the Lens gesture', () => {
     const out = screen.getByRole('button', { name: 'Zoom out' }) as HTMLButtonElement;
     expect(out.disabled).toBe(false);
     fireEvent.click(out);
-    expect(container.querySelector('.zoom-sheet-zoom-level')?.textContent).toBe('85%');
+    expect(container.querySelector('.zoom-sheet-zoom-now')?.textContent).toBe('85%');
   });
 });
 
@@ -232,14 +295,17 @@ describe('reaching the rest of the answer', () => {
 });
 
 describe('magnifying the card leaves the controls alone', () => {
-  it('scrolls and scales only the card; the toolbar and the notes sit outside that box', () => {
+  it('scales only the card, and scrolls it with its notes in one box the toolbar sits outside', () => {
     const notes = [{ text: 'a note', kind: 'insight' as const }];
     const { container } = mount({ studyAsides: { a: notes } });
     cleanClick(cell0(container, 'a'));
     const scroll = container.querySelector('.zoom-sheet-scroll')!;
     expect(scroll.contains(container.querySelector('.zoom-sheet-body'))).toBe(true);
     expect(scroll.contains(container.querySelector('.zoom-sheet-toolbar'))).toBe(false);
-    expect(scroll.contains(container.querySelector('.lens-notes'))).toBe(false);
+    // One scroll for the card and the notes: a second box of their own was a nested scroller.
+    const aside = container.querySelector('.lens-notes')!;
+    expect(scroll.contains(aside)).toBe(true);
+    expect(container.querySelector('.zoom-sheet-body')!.contains(aside)).toBe(false);
     // And the zoom is applied to the body alone.
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     const body = container.querySelector('.zoom-sheet-body') as HTMLElement;
@@ -285,6 +351,106 @@ describe('Mavéa\u2019s notes follow the Lens', () => {
   });
 });
 
+describe('the Lens is a modal a keyboard can use', () => {
+  const pill = (name: string) => screen.getByRole('button', { name: `Look closer at ${name}` });
+  const openFromPill = (name: string) => {
+    pill(name).focus();
+    fireEvent.click(pill(name));
+  };
+  const closeButton = () => screen.getByRole('button', { name: 'Back to the board' });
+
+  it('moves focus to the way out, and wraps Tab inside the stage', () => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    expect(document.activeElement).toBe(closeButton());
+    const scrim = container.querySelector('.zoom-scrim')!;
+    // Tab stops only: the strip is a roving group, one stop with the rest parked at -1.
+    const stops = Array.from(
+      scrim.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]'),
+    ).filter((el) => el.tabIndex >= 0);
+    stops.at(-1)!.focus();
+    fireEvent.keyDown(stops.at(-1)!, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+  });
+
+  it('puts the board out of reach while it is open, and hands it back on close', () => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    expect(cell0(container, 'a').closest('[inert]')).not.toBeNull();
+    expect(container.querySelector('.zoom-scrim')!.closest('[inert]')).toBeNull();
+    fireEvent.click(closeButton());
+    expect(container.querySelector('[inert]')).toBeNull();
+  });
+
+  it.each([
+    ['the close button', () => fireEvent.click(closeButton())],
+    ['Escape', () => fireEvent.keyDown(document.activeElement!, { key: 'Escape' })],
+    ['the backdrop', () => cleanClick(document.querySelector('.zoom-scrim') as HTMLElement)],
+  ])('returns focus to the card it opened from when closed by %s', (_, close) => {
+    const { container } = mount();
+    openFromPill('Alpha');
+    close();
+    expect(container.querySelector('.zoom-sheet')).toBeNull();
+    expect(document.activeElement).toBe(pill('Alpha'));
+  });
+
+  it('returns focus to the card it stepped to, not the one it started on', () => {
+    mount();
+    openFromPill('Alpha');
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.click(closeButton());
+    expect(document.activeElement).toBe(pill('Beta'));
+  });
+
+  it('leaves focus where it was when the Lens was opened by a click on the card', () => {
+    const { container } = mount();
+    (document.activeElement as HTMLElement | null)?.blur();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(closeButton());
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+describe('on a narrow sheet the notes fold under the card', () => {
+  const notes = [
+    { text: 'assumes April fares hold', kind: 'caution' as const },
+    { text: 'lodging moves the total', kind: 'insight' as const },
+  ];
+  // jsdom lays nothing out, so the sheet reports a phone's width.
+  const sheetWidth = (w: number) =>
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.classList.contains('zoom-sheet') ? w : 0;
+    });
+
+  it('turns the eyebrow into a fold the reader can close and open again', () => {
+    const spy = sheetWidth(358);
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    const fold = screen.getByRole('button', { name: /Mavéa’s notes/ });
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    fireEvent.click(fold);
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(0);
+    // Folded, it still says how much is there.
+    expect(fold.textContent).toContain('2');
+    fireEvent.click(fold);
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    spy.mockRestore();
+  });
+
+  it('leaves a wide sheet’s notes open, with no fold to press', () => {
+    const spy = sheetWidth(1120);
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    expect(screen.queryByRole('button', { name: /Mavéa’s notes/ })).toBeNull();
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
+    spy.mockRestore();
+  });
+});
+
 describe('surfaces that are not Live', () => {
   // The gallery and the clip/video stage mount TopicCanvas with four props and nothing else.
   // Every Live-only affordance is gated on the presence of a Live-only prop, so they inherit
@@ -304,5 +470,96 @@ describe('surfaces that are not Live', () => {
     const cell = container.querySelector('[data-spot-id="a"]') as HTMLElement;
     expect(() => cleanClick(cell)).not.toThrow();
     expect(container.querySelector('.zoom-sheet')).toBeNull();
+  });
+});
+
+describe('the stage while a narration spotlights another card', () => {
+  it('shows the staged card at full strength, not dimmed by the board', () => {
+    const { container, cell } = mount({ spot: 'b' });
+    cleanClick(cell('a'));
+    const staged = container.querySelector('.zoom-sheet .card');
+    expect(staged).not.toBeNull();
+    expect(staged?.classList.contains('dimmed')).toBe(false);
+    // The board behind it still reads the narration's spotlight.
+    expect(cell('a').querySelector('.card')?.classList.contains('dimmed')).toBe(true);
+  });
+});
+
+describe('stepping through the answer from the stage', () => {
+  // The strip goes on a short window, and arrow keys alone are no way at all for a reader who
+  // does not know they exist — so the toolbar always carries a stepper that says where you are.
+  it('says which card of how many, and steps without leaving the stage', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('1 of 2');
+    const prev = screen.getByRole('button', { name: 'Previous card' });
+    expect(prev.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+    expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('2 of 2');
+    const next = screen.getByRole('button', { name: 'Next card' });
+    expect(next.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous card' }));
+    expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+  });
+
+  it('keeps focus on Next when it reaches the last card, and announces where it is', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const next = screen.getByRole('button', { name: 'Next card' }) as HTMLButtonElement;
+    next.focus();
+    fireEvent.click(next);
+    // Still a focusable button at the end — a `disabled` one would have dropped focus to <body>.
+    expect(next.disabled).toBe(false);
+    expect(document.activeElement).toBe(next);
+    // A press at the end is a no-op, not a wrap.
+    fireEvent.click(next);
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+    expect(container.querySelector('.zoom-sheet-step-at')?.getAttribute('aria-live')).toBe(
+      'polite',
+    );
+  });
+
+  it('shows no stepper for an answer of one card', () => {
+    const { container } = mount({ data: spec([insight('a', 'Alpha')]) });
+    cleanClick(cell0(container, 'a'));
+    expect(screen.queryByRole('button', { name: 'Next card' })).toBeNull();
+  });
+});
+
+describe('fit and actual size', () => {
+  const bodyZoom = (root: HTMLElement) =>
+    (root.querySelector('.zoom-sheet-body') as HTMLElement).style.zoom;
+
+  it('leaves the browser its own zoom keys, and any chord with another modifier', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    for (const mod of [{ metaKey: true }, { ctrlKey: true }, { altKey: true }]) {
+      expect(fireEvent.keyDown(window, { key: '0', code: 'Digit0', ...mod })).toBe(true);
+      expect(fireEvent.keyDown(window, { key: '0', code: 'Digit0', shiftKey: true, ...mod })).toBe(
+        true,
+      );
+    }
+    expect(fireEvent.keyDown(window, { key: '9', code: 'Digit9', metaKey: true })).toBe(true);
+    expect(bodyZoom(container)).toBe('');
+  });
+
+  it('leaves Shift+0 alone while the Lens is closed, and to a field being typed in', () => {
+    const { container } = mount();
+    const chord = { key: ')', code: 'Digit0', shiftKey: true };
+    expect(fireEvent.keyDown(window, chord)).toBe(true);
+    cleanClick(cell0(container, 'a'));
+    const input = document.createElement('input');
+    container.appendChild(input);
+    expect(fireEvent.keyDown(input, chord)).toBe(true);
+    expect(bodyZoom(container)).toBe('');
+  });
+
+  it('puts the notes straight after the card, not at the foot of the window', () => {
+    const notes = [{ text: 'a note', kind: 'insight' as const }];
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    const body = container.querySelector('.zoom-sheet-body');
+    expect(body?.nextElementSibling?.classList.contains('lens-notes')).toBe(true);
   });
 });

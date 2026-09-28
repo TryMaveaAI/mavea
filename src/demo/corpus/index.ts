@@ -6,6 +6,8 @@
 // infers a giant readonly literal from the JSON that doesn't structurally match our unions
 // (e.g. `mode: string` vs the `Mode` union), so we assert the shape the baker generated.
 import { resolvesCellMatrix, resolvesKeyedRows, resolvesTextItems } from '../../canvas/lib/empty';
+import type { Block } from '../../data/conversation';
+import { continueOrder } from '../../live/lifecycle';
 import type { DemoConversation } from './types';
 
 const SHARDS = import.meta.glob('./*.generated.json');
@@ -48,6 +50,32 @@ function usableFrames(convo: DemoConversation): DemoConversation {
   return changed ? { ...convo, frames } : convo;
 }
 
+/** Continue each follow-up's section order after the board it joined, as a live merge does.
+ *  A shard baked before the merge did this numbers every follow-up's sections from 1 again, and
+ *  the canvas sorted them in among the board the reader had scrolled down, moving all of it at
+ *  once. A follow-up only appends, so its first cards are the board it followed: those keep that
+ *  board's order, and the cards after them continue it. */
+function continuedSections(convo: DemoConversation): DemoConversation {
+  let board: readonly Block[] = [];
+  let changed = false;
+  const frames = convo.frames.map((frame) => {
+    const blocks = frame.spec.blocks;
+    const n = board.length;
+    let next = blocks;
+    if (frame.mode !== 'replace' && n > 0 && blocks.length >= n) {
+      const head = blocks
+        .slice(0, n)
+        .map((b, k) => (b.order === board[k].order ? b : { ...b, order: board[k].order }));
+      next = [...head, ...continueOrder(head, blocks.slice(n))];
+    }
+    board = next;
+    if (next.every((b, i) => b === blocks[i])) return frame;
+    changed = true;
+    return { ...frame, spec: { ...frame.spec, blocks: next } };
+  });
+  return changed ? { ...convo, frames } : convo;
+}
+
 /** Load one persona's baked session. Null when the shard doesn't exist or the chunk fetch
  *  fails (offline) — the caller shows an honest error state, never a silent stall. */
 export async function loadDemoConversation(persona: string): Promise<DemoConversation | null> {
@@ -56,7 +84,7 @@ export async function loadDemoConversation(persona: string): Promise<DemoConvers
   try {
     const mod = (await load()) as { default: unknown };
     const convo = (mod.default as DemoConversation) ?? null;
-    return convo ? usableFrames(convo) : null;
+    return convo ? continuedSections(usableFrames(convo)) : null;
   } catch {
     return null;
   }

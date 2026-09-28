@@ -40,6 +40,13 @@ export interface FitTextResult {
 const ADVANCE = 0.55;
 const ADVANCE_BOLD = 0.6;
 
+/** Characters in the longest run a line cannot break inside — a whole figure, or a label's
+ *  longest word. It is what an HTML figure's type is fitted to (the CSS divides its box by it),
+ *  since a figure is never broken to fit. At least 1, so that division is always defined. */
+export function longestRun(text: string): number {
+  return Math.max(1, ...text.split(/\s+/).map((w) => [...w].length));
+}
+
 /** Estimated rendered width of `text` at `fontSize`. */
 export function estimateTextWidth(text: string, fontSize: number, bold = false): number {
   return text.length * fontSize * (bold ? ADVANCE_BOLD : ADVANCE);

@@ -2,7 +2,7 @@
 //
 // 'board' is where the canvas rests: the whole answer at once, nothing staged, nothing to pick.
 // It is the ONLY value that persists. Everything else is a takeover of ONE answer — the Study's
-// lamplit desk, Focus's single card, the spatial board, the causal world — entered by a control
+// lamplit desk, the spatial canvas, the causal world — entered by a control
 // and left by one, never carried into the next session. Reading closer is a gesture on the board
 // (a card comes forward with Mavéa's notes beside it), not a mode you set, so the reader is never
 // asked to name how they want to read before they have read anything.
@@ -19,7 +19,7 @@ export const VIEW_MODE_KEY = 'mavea-view-mode';
  *  exported names is a thing a reader has to check rather than read. */
 export const VIEW_MODE_EVENT = 'mavea-view-mode:changed';
 
-export type ViewMode = 'board' | 'study' | 'focus' | 'canvas' | 'world';
+export type ViewMode = 'board' | 'study' | 'canvas' | 'world';
 
 const DEFAULT: ViewMode = 'board';
 
@@ -28,20 +28,18 @@ const DEFAULT: ViewMode = 'board';
  * written to storage — and none is read back from it, so a value left by an older build (or a
  * hand-edited key) can only ever restore into the resting board.
  *
- * Study and Focus joined this set when the view toggle became a single door: both are things you
- * ask for and leave, and Present drives Focus as choreography (LiveApp restores the standing view
- * on exit). While Focus persisted, a reader who closed the tab mid-presentation kept it as their
- * standing view forever.
+ * The Study joined this set when the view toggle became a single door: it is a thing you ask for
+ * and leave, never a standing preference.
  */
-const TRANSIENT: ReadonlySet<string> = new Set<ViewMode>(['study', 'focus', 'canvas', 'world']);
+const TRANSIENT: ReadonlySet<string> = new Set<ViewMode>(['study', 'canvas', 'world']);
 
 function isViewMode(v: unknown): v is ViewMode {
-  return v === 'board' || v === 'study' || v === 'focus' || v === 'canvas' || v === 'world';
+  return v === 'board' || v === 'study' || v === 'canvas' || v === 'world';
 }
 
 /**
  * What a preference written by an older build means now. All four resolve to the board: 'room' and
- * 'study' named the desk, 'focus' the single card, 'everything' the resting grid this renamed.
+ * 'study' named the desk, 'focus' the single-card view that was retired, 'everything' the resting grid this renamed.
  * Migrated on read only; none is ever written back.
  *
  * A reader who chose the desk is not forgotten — `study/deskHabit` reads the SAME key to recognise

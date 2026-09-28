@@ -26,24 +26,19 @@ export type TourAction =
   | { kind: 'export' } // open the export-to-document overlay
   | { kind: 'mark' } // arm the pen (setInkArmed)
   | { kind: 'penDemo' } // draw with Mavéa's real answer-annotation Pen
-  | { kind: 'ask' } // point at a card's Ask affordance (needs a canvas)
   | { kind: 'askMulti' } // select two cards and compose one grounded follow-up across both
-  | { kind: 'focus' } // setViewMode('focus')
   | { kind: 'listen' } // Watch-me-think (spotlight/explain)
-  | { kind: 'memory' } // fire the "saved to memory" face glow
   | { kind: 'atlas' } // seed + open Atlas (explored topics as a wanderable place)
   | { kind: 'prism' } // open a baked Prism analysis of a real public document
   | { kind: 'canvas'; convoId: string } // seed a board answer, then flip it into the spatial Canvas
-  | { kind: 'focusWalk'; convoId: string } // seed an answer, enter Focus, walk the spotlight card-by-card
+  | { kind: 'lensWalk'; convoId: string } // seed an answer, then open cards in the Lens as a reader does
   | { kind: 'flashcards' } // turn a card into a flashcard (the capture flow)
   | { kind: 'course' } // seed + open a real course lesson in-place (the CourseRail over its canvas)
   | { kind: 'connect' } // open the real Model settings with all five providers + the BYOK field
-  | { kind: 'present' } // setPresenting(true)
-  | { kind: 'share' } // setShareOpen(true) → Reel
+  | { kind: 'present' } // present through the Share menu's own path
   | { kind: 'palette' } // openPalette (⌘K)
   | { kind: 'showcase'; featureId: string } // seed + open a feature on the real surface (generic demo)
-  | { kind: 'blanksDemo' } // show a hand-authored answer with holes, then its completed twin
-  | { kind: 'none' };
+  | { kind: 'blanksDemo' }; // show a hand-authored answer with holes, then its completed twin
 
 export interface TourChapter {
   id: string;
@@ -72,7 +67,7 @@ export interface TourChapter {
 
 // The FAST core — the eleven chapters a first-time visitor sees, in order. It's built to be amazing
 // but quick: about two minutes end to end. It tells four stories — the answer experience
-// (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and Share.
+// (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and publishing.
 // Everything else the product does lives in TOUR_EXTRAS below, one tap away from the end card, so
 // nothing is lost by keeping the first run short. Coach lines are deliberately terse: the
 // auto-advance waits for speech, so short lines are what keep the clock honest.
@@ -279,19 +274,18 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'See the visual range',
   },
   {
-    id: 'focus',
-    title: 'One card at a time',
+    id: 'lens',
+    title: 'Look closer',
     mode: 'explain',
-    coach: 'Feeling overwhelmed? Focus puts one card center stage, one at a time.',
-    // No spotlight: Focus is something the walkthrough SHOWS rather than a control to point at —
-    // the ring would have nothing to sit on now the view switch is a single door to the desk.
+    coach: 'Any card comes forward on its own for a closer look, with my notes beside it.',
+    // No spotlight: the chapter performs the gesture itself — it presses a card's own "Look
+    // closer" control — so the ring would only sit on top of the thing being shown.
     spotlight: undefined,
-    action: { kind: 'focusWalk', convoId: 'money' },
-    // Room for the hold-then-transform beat before Focus dims the canvas (see useTourDriver's
-    // 'focusWalk' handling) plus the per-card walk after it.
+    action: { kind: 'lensWalk', convoId: 'money' },
+    // Room to see the plain board first, then a few cards on the stage (see lensWalkSchedule).
     durationMs: 11000,
-    glyph: '🎯',
-    hook: 'One card at a time, center stage',
+    glyph: '🔍',
+    hook: 'Click any card to look closer',
   },
   {
     id: 'think',
@@ -323,6 +317,18 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     needsCanvas: true,
     glyph: '📄',
     hook: 'Any answer becomes a deck or document',
+  },
+  {
+    id: 'video',
+    title: 'Share it as a video',
+    mode: 'explain',
+    coach:
+      'The video studio cuts a moment, a topic, or the whole conversation into a video you can share.',
+    action: { kind: 'showcase', featureId: 'share' },
+    durationMs: 9000,
+    needsCanvas: true,
+    glyph: '🎬',
+    hook: 'A moment or the whole conversation, as video',
   },
   {
     id: 'flashcards',
@@ -496,16 +502,6 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     hook: "Everything we've covered, at a glance",
   },
   {
-    id: 'ghost',
-    title: 'Ghost answers',
-    mode: 'explain',
-    coach: 'While you listen, I quietly draft a response, so it is ready when you want it.',
-    action: { kind: 'showcase', featureId: 'ghost' },
-    durationMs: 9000,
-    glyph: '👻',
-    hook: 'I draft what I would say, quietly',
-  },
-  {
     id: 'whisper',
     title: 'Whisper mode',
     mode: 'explain',
@@ -542,7 +538,7 @@ const LOCAL_TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'Chapter view',
     mode: 'explain',
     coach:
-      'Zoom deck pulls back from the cards to the whole session, with every topic shown as a chapter.',
+      'Chapter view pulls back from the cards to the whole session, with every topic shown as a chapter.',
     action: { kind: 'showcase', featureId: 'zoom-deck' },
     durationMs: 10000,
     glyph: '📖',

@@ -199,14 +199,6 @@ export function deriveChapters(
   return chapters;
 }
 
-/** The moment currently on screen — the one whose frame the canvas is showing. */
-export function currentMoment(chapters: readonly Chapter[], currentIndex: number): Moment | null {
-  for (const ch of chapters) {
-    for (const m of ch.moments) if (m.frameIndex === currentIndex) return m;
-  }
-  return null;
-}
-
 /** Total moments across all chapters (the Overview header count). */
 export function countMoments(chapters: readonly Chapter[]): number {
   return chapters.reduce((n, ch) => n + ch.moments.length, 0);

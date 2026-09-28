@@ -4,6 +4,7 @@
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
+import { longestRun } from './lib/fitText';
 import type { KpiGridProps } from '../data/conversation';
 
 type Props = KpiGridProps & { delay?: number };
@@ -27,6 +28,10 @@ export function KpiGrid({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark;
+  // The longest runs in the whole grid: a tile narrower than these can only clip them, so the
+  // grid gives up a column before it gets there (see `.kpi-grid`).
+  const valRun = Math.max(1, ...kpis.map((k) => longestRun(String(k.val))));
+  const labelRun = Math.max(1, ...kpis.map((k) => longestRun(k.label)));
   return (
     <div
       className="card reveal kpi-card"
@@ -37,22 +42,47 @@ export function KpiGrid({
       </div>
       <div
         className="kpi-grid"
-        style={{ '--kpi-cols': cols ?? balancedCols(kpis.length) } as CSSProperties}
+        style={
+          {
+            '--kpi-cols': cols ?? balancedCols(kpis.length),
+            '--kpi-val-run': valRun,
+            '--kpi-label-run': labelRun,
+          } as CSSProperties
+        }
       >
-        {kpis.map((k, i) => (
-          <div key={i} className="kpi">
-            {/* the lead stat is the one Mavéa's drawn gesture underlines */}
+        {kpis.map((k, i) => {
+          const val = String(k.val);
+          const whole = !/\s/.test(val.trim());
+          return (
             <div
-              className={'kpi-val tab-num' + (String(k.val).length > 8 ? ' kpi-val--long' : '')}
-              data-mark={i === 0 ? 'underline' : undefined}
-              style={k.color ? { color: k.color } : undefined}
+              key={i}
+              className="kpi"
+              // The longest unbreakable run in each line, so the type can be sized to hold it
+              // whole in the tile it gets (the CSS does the fitting — no measuring pass).
+              style={
+                {
+                  '--kpi-val-chars': longestRun(val),
+                  '--kpi-label-chars': longestRun(k.label),
+                } as CSSProperties
+              }
             >
-              {k.val}
+              {/* the lead stat is the one Mavéa's drawn gesture underlines */}
+              <div
+                className={
+                  'kpi-val tab-num' +
+                  (val.length > 8 ? ' kpi-val--long' : '') +
+                  (whole ? ' kpi-val--whole' : '')
+                }
+                data-mark={i === 0 ? 'underline' : undefined}
+                style={k.color ? { color: k.color } : undefined}
+              >
+                {k.val}
+              </div>
+              <div className="kpi-label">{k.label}</div>
+              {k.sub && <div className="kpi-sub">{k.sub}</div>}
             </div>
-            <div className="kpi-label">{k.label}</div>
-            {k.sub && <div className="kpi-sub">{k.sub}</div>}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {footer && (
         <div className="insight-summary" style={{ marginTop: 12 }}>

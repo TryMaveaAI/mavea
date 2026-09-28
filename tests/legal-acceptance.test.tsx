@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  APP_RELEASE,
+  acceptanceRecord,
   LEGAL_ACCEPTANCE_STORAGE_KEY,
   LEGAL_ACCEPTANCE_VERSION,
   acceptLegalTerms,
@@ -10,6 +12,7 @@ import {
 } from '../src/legal/acceptance';
 import { LegalGate } from '../src/legal/LegalGate';
 import { isLegalGateBypassed } from '../src/legal/routePolicy';
+import { PUBLIC_ROUTES } from '../src/routeTable';
 
 beforeEach(() => {
   localStorage.clear();
@@ -36,10 +39,18 @@ describe('versioned legal acknowledgement', () => {
     expect(acceptLegalTerms(new Date('2026-07-16T12:00:00.000Z'))).toBe(true);
     expect(JSON.parse(localStorage.getItem(LEGAL_ACCEPTANCE_STORAGE_KEY)!)).toEqual({
       version: LEGAL_ACCEPTANCE_VERSION,
+      release: APP_RELEASE,
       acceptedAt: '2026-07-16T12:00:00.000Z',
     });
     resetLegalAcceptance();
     expect(hasLegalAcceptance()).toBe(false);
+  });
+
+  it('asks again on every new release, even when the documents did not change', () => {
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord('0.0.1'));
+    expect(hasLegalAcceptance()).toBe(false);
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord());
+    expect(hasLegalAcceptance()).toBe(true);
   });
 
   it('rejects malformed, incomplete, and stale records', () => {
@@ -82,13 +93,20 @@ describe('LegalGate', () => {
 
     expect(screen.queryByText('Connected product mounted')).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(screen.getByText(/Mavéa uses AI and third-party services/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Microphone audio is sent to the speech-transcription endpoint/i),
+      screen.getByText(/Mavéa relies on artificial intelligence and on third-party services/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/I have read and agree to the Terms of Use/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/responsible for avoiding sensitive conversations/i),
+      screen.getByText(
+        /though it may be a remote service\), and the resulting transcript may be sent/i,
+      ),
+    ).toBeInTheDocument();
+    // The box covers what the reader was just shown, not only the documents behind the links.
+    expect(
+      screen.getByText(/I have read and understand the points above, I agree to the Terms of Use/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/I alone am responsible for avoiding sensitive conversations/i),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Terms of use' })).toHaveAttribute(
       'href',
@@ -179,10 +197,7 @@ describe('LegalGate', () => {
     expect(screen.queryByText('Connected product mounted')).toBeNull();
 
     // Another tab writes the acceptance; this tab only hears about it via the storage event.
-    localStorage.setItem(
-      LEGAL_ACCEPTANCE_STORAGE_KEY,
-      JSON.stringify({ version: LEGAL_ACCEPTANCE_VERSION, acceptedAt: new Date().toISOString() }),
-    );
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord());
     fireEvent(window, new StorageEvent('storage', { key: LEGAL_ACCEPTANCE_STORAGE_KEY }));
 
     expect(screen.getByText('Connected product mounted')).toBeInTheDocument();
@@ -203,24 +218,63 @@ describe('LegalGate', () => {
 });
 
 describe('legal-gate route policy', () => {
-  it('keeps documents and prerecorded examples public while protecting connected surfaces', () => {
+  const OPEN = new Set(['#/terms', '#/privacy', '#/legal']);
+
+  it('leaves only the landing and the documents open', () => {
     expect(isLegalGateBypassed('')).toBe(true);
-    expect(isLegalGateBypassed('#/legal')).toBe(true);
-    expect(isLegalGateBypassed('#/terms')).toBe(true);
-    expect(isLegalGateBypassed('#/privacy')).toBe(true);
-    expect(isLegalGateBypassed('#/gallery')).toBe(true);
+    expect(isLegalGateBypassed('#/')).toBe(true);
+    for (const doc of OPEN) expect(isLegalGateBypassed(doc)).toBe(true);
+  });
 
-    window.location.hash = '#/live?tour=1';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(true);
-    window.location.hash = '#/live?demo=pm';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(true);
-    window.location.hash = '#/live?demo=not-a-real-persona';
-    expect(isLegalGateBypassed(window.location.hash)).toBe(false);
+  it('gates every other public route, so a new one is gated by default', () => {
+    for (const { prefix } of PUBLIC_ROUTES) {
+      if (OPEN.has(prefix)) continue;
+      expect(isLegalGateBypassed(prefix), prefix).toBe(false);
+    }
+  });
 
-    expect(isLegalGateBypassed('#/deepzoom?demo=1')).toBe(true);
-    expect(isLegalGateBypassed('#/synthesis?demo=1')).toBe(true);
+  it('gates prerecorded examples and the tour, however they are reached', () => {
+    for (const hash of [
+      '#/live?demo=pm',
+      '#/live?tour=1',
+      '#/live?demo=pm&settings=model',
+      '#/live?ripple=1',
+      '#/deepzoom?demo=1',
+      '#/synthesis?demo=1',
+      '#/gallery',
+    ]) {
+      window.location.hash = hash;
+      expect(isLegalGateBypassed(hash), hash).toBe(false);
+    }
+    // A handoff left in session storage by an in-app link is not a way past it either.
+    sessionStorage.setItem('mavea-demo-persona', 'pm');
+    sessionStorage.setItem('mavea-tour-mode', '1');
     expect(isLegalGateBypassed('#/live')).toBe(false);
-    expect(isLegalGateBypassed('#/courses')).toBe(false);
-    expect(isLegalGateBypassed('#/ripple')).toBe(false);
+    sessionStorage.clear();
+  });
+});
+
+describe('the gate says what kind of visit this is', () => {
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it('welcomes a first visit, and says the terms changed only to someone who accepted before', () => {
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Welcome to Mavéa')).toBeInTheDocument();
+    cleanup();
+
+    localStorage.setItem(
+      LEGAL_ACCEPTANCE_STORAGE_KEY,
+      JSON.stringify({ version: '2026-01-01-older', acceptedAt: '2026-01-01T00:00:00.000Z' }),
+    );
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Our terms have changed')).toBeInTheDocument();
+    cleanup();
+
+    localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, acceptanceRecord('0.0.1'));
+    render(<LegalGate>{null}</LegalGate>);
+    expect(screen.getByText('Mavéa has been updated')).toBeInTheDocument();
   });
 });

@@ -5,7 +5,7 @@ authorized code maintainers are Akash Maitra (`@amaitra218`) and Aryan Chordia
 (`@aryanchordia`). External users may open an issue to report a bug or suggest a feature, but must
 not include code, secrets, personal data, trade secrets, or other confidential material.
 
-This applies everywhere, not just to pull requests. Issues, GitHub Discussions, and email are for
+This applies everywhere, not just to pull requests. Issues and email are for
 describing a problem or an idea in words. Code, diffs, patches, or documentation text posted in any
 of them will not be read into the project or used, and posting it creates no contribution and no
 rights in Mavéa. If you have written something, keep it — do not paste it here.

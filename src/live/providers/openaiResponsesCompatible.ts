@@ -47,6 +47,7 @@ import {
   supportsNoThinkingTier,
 } from './openaiCompatible';
 import { liveJsonSchema } from './schema';
+import { waitReporter } from './wait';
 
 const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
@@ -190,6 +191,8 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
     },
 
     async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
+      // A backoff is always shown: inline by a caller that asked to show it, else by the app shell.
+      const onWait = waitReporter(req.onWait);
       const base = cfg.baseUrl ?? proxyBase;
       const searchTool = webSearchTool && req.tools?.webSearch ? webSearchTool() : undefined;
       const reasoning = isReasoningModel(cfg.model) || isConfigurableGrokModel(id, cfg.model);
@@ -385,7 +388,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
         }),
       });
       // A 429 (rate limit) is transient — a burst of dashboard refreshes, or a bumped-effort search
-      // turn, can briefly exceed the org's tokens-per-minute. Retry a few times (honoring Retry-After)
+      // turn, can briefly exceed the org's tokens-per-minute. Retry twice (honoring Retry-After)
       // so the turn rides out the spike instead of failing; any other non-OK status is a real error.
       let res: Response;
       for (let rlAttempt = 0; ; rlAttempt++) {
@@ -407,11 +410,11 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // Say so: this sleep runs to 10s an attempt, and under "Composing" or "Building" it
           // reads as the model being slow when the model has not been asked yet.
           const wait = retryAfterMs(res, rlAttempt, detail);
-          req.onWait?.(wait, res.status === 429 ? 'rate-limit' : 'overload');
+          onWait(wait, res.status === 429 ? 'rate-limit' : 'overload');
           try {
             await sleepAbortable(wait, req.signal);
           } finally {
-            req.onWait?.(null);
+            onWait(null);
           }
           continue;
         }

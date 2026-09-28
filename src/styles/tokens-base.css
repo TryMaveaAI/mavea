@@ -50,13 +50,11 @@
        width:  360 small phone · 430 phone · 480 phone landscape · 560 large phone ·
                640 phablet / narrow window · 720 small tablet · 768 tablet portrait ·
                900 laptop compact · 1024 tablet landscape · 1200 small laptop ·
-               1280 laptop · 1600 desktop · 1920 wide
-       height: 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
+               1280 laptop · 1600 desktop · 1920 wide · 2560 ultrawide
+       height: 500 phone on its side · 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference · 1500 display at 4K
      1200, not 1280, is where a "compact" treatment must stop: a 1280px window resolves to ~1265
      CSS px once the scrollbar is counted, so `width <= 1280px` would hand the most common laptop
-     the phone layout. Rules meant for tablets end at 1200.
-     Two Live thresholds (920/921 and 1259/1260, voice.css ↔ focus.css) are measured layout
-     pairs pinned by tests and stay off the ladder, each carrying its disable comment. */
+     the phone layout. Rules meant for tablets end at 1200. */
   --content-max: 68ch; /* one reading column — prose measure, not a pixel width */
   --tap-min: 44px; /* the smallest hit box a thumb lands on reliably (audit:surfaces enforces it) */
 
@@ -157,6 +155,49 @@
   --presence: #6e8cff; /* the face / actions */
   --presence-soft: #8aa0ff;
   --presence-deep: #4458c9;
+  /* Text on --presence and on --insight. White where relative colour is unsupported; everywhere
+     else derived from the fill (the @supports block after this rule) rather than chosen. */
+  --on-presence: #fff;
+  --on-insight: #fff;
+  /* The srgb-linear channels of the ink with the higher contrast on a fill, read as
+     color(from <fill> srgb-linear var(--ink-on-fill)). It steps on the fill's WCAG luminance Y,
+     with nothing blended between, from white to black where the two inks' contrasts cross:
+     (Y + 0.05)² = 1.05 × 0.05, so Y = 0.1791, and either ink reads 4.58:1 there. Every fill
+     therefore gets an ink of at least 4.58:1. Any ink lighter than black opens a band around the
+     crossing where neither clears 4.5:1; a near-black at linear 0.0041 leaves every fill with Y
+     between 0.183 and 0.194 short. */
+  --ink-on-fill: var(--ink-level) var(--ink-level) var(--ink-level);
+  --ink-level: clamp(0, sign(0.1791 - var(--fill-y)), 1);
+  --fill-y: (0.2126 * r + 0.7152 * g + 0.0722 * b);
+  /* A deeper shade of a fill that keeps the fill's own ink, for the far stop of a gradient whose
+     origin is set per card: color(from <fill> srgb-linear var(--deepen-for-ink)). It scales the
+     linear channels (hue kept), to 55% on a fill that carries white and no further than the
+     crossing on one that carries black. */
+  --deepen-for-ink: calc(r * var(--deepen-k)) calc(g * var(--deepen-k)) calc(b * var(--deepen-k));
+  --deepen-k: max(
+    0.55,
+    clamp(0, sign(var(--fill-y) - 0.1791) + 1, 1) * 0.1791 / max(var(--fill-y), 0.001)
+  );
+  /* A hover shade of a fill that moves AWAY from the fill's ink: lighter under black, deeper
+     under white, so a hover only ever adds contrast. brightness() lightens both kinds, which
+     takes a fill that carries white towards it. */
+  --lift-for-ink: calc(r * var(--lift-k)) calc(g * var(--lift-k)) calc(b * var(--lift-k));
+  --lift-k: calc(1.16 - 0.3 * var(--ink-level));
+  /* The OKLCH lightness that keeps a stop on one side of the crossing: at or above
+     --dark-ink-min-l black clears 4.5:1 on it, at or below --white-ink-max-l white does. Lightness rather than luminance so a held stop keeps its hue and chroma; both were
+     measured across the accents' hues, whose luminance at one lightness differs. */
+  --dark-ink-min-l: 0.61;
+  --white-ink-max-l: 0.52;
+  /* The relative-colour channels that hold a stop on the side of the band where the accent's own
+     ink reads: oklch(from <stop> var(--hold-for-ink)). The stock accent carries black; a
+     scope whose accent carries white restates this as min(l, var(--white-ink-max-l)). */
+  --hold-for-ink: max(l, var(--dark-ink-min-l)) c h;
+  /* The accent's gradient partners, held that way, so --on-presence reads at every stop of a
+     gradient between them and the accent. Plain without relative colour, where the ink is white
+     and so are the gradients it was designed on. */
+  --presence-deep-held: var(--presence-deep);
+  --presence-soft-held: var(--presence-soft);
+  --insight-held: var(--insight);
   --insight: #3ed8a6; /* findings / verified */
   --insight-soft: #6fe8c0;
   --warning: #f5b95c; /* risk / inferred / uncertainty */
@@ -241,14 +282,6 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
-  /* Focus keeps a filmstrip beside the answer, so its reading column is this much narrower than
-     the measure above. It lives here rather than on `.focus-stage` because the surfaces that must
-     line up with that column — the scrubber, the canvas header, the footer — are its SIBLINGS,
-     and a sibling cannot read a variable declared on the stage. One source, two readers. */
-  --focus-rail-w: 268px;
-  --focus-rail-gap: 28px;
-  /* …and the note trail Focus adds on the LEFT during a live turn, for the same reason. */
-  --focus-notes-w: 216px;
 
   /* --- motion --- */
   --m-instant: 80ms;
@@ -285,6 +318,24 @@
   --slide-bg: linear-gradient(150deg, #11182a, #0a0e15);
   --replay-bg: linear-gradient(165deg, #15122a, #0a0e15);
   --replay-stage-bg: radial-gradient(80% 80% at 50% 30%, #1a2342, #0a0e15);
+}
+
+/* Every template x theme restates --presence on this same element, so ONE derived declaration
+   serves them all: a light accent (every dark theme's) takes black and a deep one
+   (the light templates') takes white. A scope that rebinds --presence below the root (the Study
+   desk, an embedded figure) must restate these, or it keeps the root's ink.
+   The probe asks for arithmetic on a channel and for sign(), not just the syntax: an engine that
+   parses relative colour but reads l as a percentage finds max(l, 0.61) invalid, and a held stop
+   that is invalid takes the whole gradient that reads it down with it. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  :root {
+    --on-presence: color(from var(--presence) srgb-linear var(--ink-on-fill));
+    --on-insight: color(from var(--insight) srgb-linear var(--ink-on-fill));
+    --presence-deep-held: oklch(from var(--presence-deep) var(--hold-for-ink));
+    --presence-soft-held: oklch(from var(--presence-soft) var(--hold-for-ink));
+    --insight-held: oklch(from var(--insight) var(--hold-for-ink));
+  }
 }
 
 /* Query containers. A block answers to the box it is drawn in, never to the window: the same

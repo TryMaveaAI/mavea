@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useDashboards } from './useDashboards';
 import { useLedger } from './useLedger';
-import { useBriefing } from './briefing';
+import { useBriefing, useBriefingMissedOn } from './briefing';
 import { useDashSettings, budgetState } from './budget';
 import { BriefingHero } from './BriefingHero';
 import { FeaturedLiveCard } from './FeaturedLiveCard';
@@ -94,6 +94,8 @@ export function DashboardHome(): ReactElement {
     [dashboards, now],
   );
   const showBriefing = briefing !== null && briefing.date === todayISO(now);
+  const missedOn = useBriefingMissedOn();
+  const briefingMissed = !showBriefing && settings.briefingEnabled && missedOn === todayISO(now);
   const budget = useMemo(
     () => budgetState(ledger, settings.dailySearchBudget, now),
     [ledger, settings.dailySearchBudget, now],
@@ -132,6 +134,22 @@ export function DashboardHome(): ReactElement {
       }
     } finally {
       setCheckingAll(false);
+    }
+  };
+
+  // A missed briefing is asked for again only from here — the loop never re-sends it on its own.
+  const [retryingBriefing, setRetryingBriefing] = useState(false);
+  const [briefingNote, setBriefingNote] = useState<string | null>(null);
+  const handleRetryBriefing = async (): Promise<void> => {
+    setRetryingBriefing(true);
+    setBriefingNote(null);
+    try {
+      const { composeBriefingNow } = await import('./useDashboardLoop');
+      const outcome = await composeBriefingNow();
+      if (outcome === 'failed') setBriefingNote('It didn’t come through this time either.');
+      else if (outcome !== 'done') setBriefingNote(searchBlockLine(outcome));
+    } finally {
+      setRetryingBriefing(false);
     }
   };
 
@@ -184,6 +202,21 @@ export function DashboardHome(): ReactElement {
           ) : (
             <>
               {showBriefing && briefing && <BriefingHero briefing={briefing} />}
+              {briefingMissed && (
+                <div className="dash-connect-banner" role="status">
+                  <span className="dash-connect-banner-text">
+                    Today’s briefing didn’t come through.{briefingNote ? ` ${briefingNote}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="dash-connect-banner-link"
+                    disabled={retryingBriefing}
+                    onClick={() => void handleRetryBriefing()}
+                  >
+                    {retryingBriefing ? 'Asking…' : 'Try again'}
+                  </button>
+                </div>
+              )}
               {featured && <FeaturedLiveCard dashboard={featured} now={now} />}
             </>
           )}

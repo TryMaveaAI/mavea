@@ -25,6 +25,7 @@ import {
 import { useLiveConfig, type LiveConfigV2 } from './useLiveConfig';
 import { useFontScaleStamp } from './fontScale';
 import { useFocusTrap } from './useFocusTrap';
+import { useBackdropDismiss } from '../lib/useBackdropDismiss';
 
 const FONT_SCALES: LiveConfigV2['fontScale'][] = ['smaller', 'normal', 'larger'];
 const FONT_SCALE_LABEL: Record<LiveConfigV2['fontScale'], string> = {
@@ -315,6 +316,7 @@ export function TemplatePicker({
 
   const current = TEMPLATES.find((template) => template.id === active) ?? TEMPLATES[0];
 
+  const backdrop = useBackdropDismiss(close);
   return (
     <div className="tpl-picker appearance-picker" ref={rootRef}>
       <button
@@ -337,7 +339,8 @@ export function TemplatePicker({
           <button
             className="appearance-backdrop"
             type="button"
-            onClick={close}
+            onPointerDown={backdrop.onPointerDown}
+            onClick={backdrop.onClick}
             aria-label="Close appearance"
           />
           <AppearancePanel

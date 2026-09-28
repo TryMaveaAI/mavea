@@ -50,10 +50,10 @@ export function ProviderResponsibilityNotice(): ReactElement | null {
         those requests while Mavéa is open. AI output can be incomplete, inaccurate, offensive, or
         unsafe; accuracy, quality, and availability are not guaranteed. Verify important information
         independently. Mavéa is not medical, legal, financial, safety, or other professional advice,
-        or an emergency or monitoring service. To the fullest extent permitted by law, Mavéa and its
-        outputs are provided “as is,” without warranties; you use them at your own risk, and Mavéa
-        is not responsible for decisions, actions, losses, harm, or provider charges arising from
-        their use.
+        or an emergency or monitoring service. As far as the law allows, Mavéa and its outputs are
+        provided “as is,” without warranties; you use them at your own risk, and the people who
+        publish Mavéa are not responsible for decisions, actions, losses, harm, or provider charges
+        arising from their use.
       </p>
       <p>
         Anything you type, paste, attach, or upload—including work-related, personal, identifiable,
@@ -64,11 +64,12 @@ export function ProviderResponsibilityNotice(): ReactElement | null {
       </p>
       <p>
         Encryption at rest is a convenience, not a security guarantee: an unlocked, shared, lost, or
-        compromised device, browser profile, or extension can still expose or misuse keys, and Mavéa
-        is not responsible for key theft, unauthorized use, or resulting charges. Keeping keys
-        secure is your responsibility — use restricted, revocable keys with spending caps on trusted
-        devices you control, revoke a key with its provider immediately if you suspect exposure, and
-        monitor your provider account. Keys pass through this deployment’s request proxy when used.
+        compromised device, browser profile, or extension can still expose or misuse keys, and, as
+        far as the law allows, Mavéa's maintainers are not responsible for key theft, unauthorized
+        use, or resulting charges. Keeping keys secure is your responsibility — use restricted,
+        revocable keys with spending caps on trusted devices you control, revoke a key with its
+        provider immediately if you suspect exposure, and monitor your provider account. Keys pass
+        through this deployment’s request proxy when used.
       </p>
       <nav className="provider-responsibility-links" aria-label="Terms and privacy documents">
         <a className="provider-responsibility-link" href="#/terms?from=live">

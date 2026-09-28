@@ -12,8 +12,6 @@ export function DeparturesSlide({ slots }: SlideProps<'ranked'>) {
   const items = slots.items.slice(0, 5);
   return (
     <div className="reel-fade" style={{ width: 'calc(var(--rw) * 84)', maxWidth: '92%' }}>
-      <style>{`@keyframes dep-flap{from{opacity:0;transform:rotateX(-90deg)}to{opacity:1;transform:rotateX(0deg)}}`}</style>
-
       <div
         style={{
           display: 'flex',

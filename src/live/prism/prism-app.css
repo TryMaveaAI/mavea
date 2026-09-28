@@ -236,7 +236,7 @@
   border-radius: var(--r-md);
   border: none;
   background: var(--presence);
-  color: #fff;
+  color: var(--on-presence);
   font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
@@ -246,6 +246,13 @@
 }
 .prism-confirm-btn:hover {
   opacity: 0.88;
+}
+/* Fading the button fades its label with it; shade the fill away from its ink instead. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .prism-confirm-btn:hover {
+    opacity: 1;
+    background: color(from var(--presence) srgb-linear var(--lift-for-ink));
+  }
 }
 .prism-confirm-btn:active {
   transform: translateY(1px);

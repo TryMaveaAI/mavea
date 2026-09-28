@@ -278,22 +278,6 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-
-/* ===================== HERO ===================== */
-.fl-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 760px;
-  margin: 0 auto;
-  padding-top: 30px;
-}
-/* Room for the hero mascot — she's the opening statement now (the old eyebrow line repeated
-   the H1), so give the full jelly, trailing curtains included, space to hang. */
-.fl-hero-orbspace {
-  height: clamp(118px, 16dvh, 154px);
-}
 .fl-hero-title {
   font-family: var(--font-voice);
   font-weight: 400;
@@ -323,145 +307,11 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.fl-hero-lede {
-  margin-top: 16px;
-  max-width: 60ch;
-  font-size: var(--fs-lg);
-  line-height: 1.52;
-  color: var(--text-secondary);
-  text-wrap: pretty;
-}
-
-/* hero composer */
-.fl-composer {
-  /* max-width keeps the pill inside the section's padding box — 94vw alone ignores the 48px
-     of section gutter and near-full-bleeds at 320px. */
-  width: min(680px, 94vw);
-  max-width: 100%;
-  margin-top: 22px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 8px 8px 20px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  /* Frosted glass over the hero flow, biased to the solid surface so the bar stays crisp
-     and high-contrast in light mode (a pure glass tint washes out on the pale page). The
-     blur+saturate pair lives in one local var — a compound can't read the shared blur tokens
-     (`none saturate(...)` is invalid), and perf-lite already kills this property wholesale. */
-  --fl-composer-frost: blur(20px) saturate(1.1);
-  background: color-mix(in oklab, var(--surface-elevated) 86%, transparent);
-  backdrop-filter: var(--fl-composer-frost);
-  -webkit-backdrop-filter: var(--fl-composer-frost);
-  box-shadow: var(--shadow-floating);
-}
-/* the input itself has no border to hang a ring on, so the whole pill takes it — the input's
-   own outline:none (below) would otherwise silently defeat the app-wide :focus-visible rule
-   with no replacement, leaving the main composer with no visible keyboard focus at all. */
-.fl-composer:focus-within {
-  outline: 2px solid var(--presence-soft);
-  outline-offset: 2px;
-}
-.fl-composer-field {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-}
-.fl-composer-input {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  outline: none;
-  font: var(--fs-lg) var(--font);
-  color: var(--text-primary);
-}
-/* The example prompt is an overlay span, not the placeholder attribute, so each rotation
-   cross-fades in (keyed remount) instead of hard-cutting every few seconds. */
-.fl-composer-ghost {
-  position: absolute;
-  inset: 0;
-  align-content: center;
-  color: var(--text-muted);
-  font: var(--fs-lg) var(--font);
-  pointer-events: none;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  animation: fl-ghosttext 260ms var(--ease-out);
-}
 @keyframes fl-ghosttext {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
-}
-.fl-composer-actions {
-  display: flex;
-  gap: 8px;
-  flex: none;
-}
-.fl-composer-btn {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    transform var(--m-fast);
-}
-.fl-composer-btn svg {
-  width: 18px;
-  height: 18px;
-}
-.fl-composer-btn:hover {
-  background: color-mix(in oklab, var(--presence) 18%, transparent);
-  color: var(--text-primary);
-}
-.fl-composer-btn.primary {
-  border: none;
-  color: #fff;
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-  box-shadow: 0 8px 20px -6px var(--glow-presence);
-}
-.fl-composer-btn.primary:hover {
-  transform: scale(1.06);
-}
-.fl-hero-hint {
-  font-family: var(--font-data);
-  margin-top: 14px;
-  font-size: var(--fs-sm);
-  color: var(--text-faint);
-}
-.fl-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 9px;
-  margin: 14px 0 0;
-}
-.fl-chip {
-  padding: 8px 14px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  font: var(--fs-sm) var(--font);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    color var(--m-fast);
-}
-.fl-chip:hover {
-  background: color-mix(in oklab, var(--presence) 16%, transparent);
-  color: var(--text-primary);
 }
 
 /* Explore dropdown — nav entry that reveals standalone features without a conversation */
@@ -934,19 +784,6 @@
 .fl-map-zoom span:first-child {
   border-bottom: 1px solid var(--line-soft);
 }
-.fl-pin {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: #fff;
-  background: var(--tone, var(--presence));
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
 .fl-map-attr {
   position: absolute;
   right: 6px;
@@ -997,24 +834,6 @@
 .fl-reveal.in .fl-canvas .fl-dock {
   transition-delay: 1.2s;
 }
-.fl-map .fl-pin {
-  opacity: 0;
-}
-.fl-reveal.in .fl-map .fl-pin {
-  animation: fl-pindrop 480ms var(--ease-out) forwards;
-  animation-delay: calc(0.75s + var(--pin-i, 0) * 0.12s);
-}
-.fl-pin.ring::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid var(--tone, var(--presence));
-  opacity: 0;
-}
-.fl-reveal.in .fl-pin.ring::after {
-  animation: fl-pinring 1s var(--ease-out) 1.35s;
-}
 .fl-canvas .fl-bar-fill {
   width: 0;
   transition: width 0.7s var(--ease-out);
@@ -1043,26 +862,6 @@
 .fl-reveal.in .fl-canvas .fl-tip svg path {
   stroke-dashoffset: 0;
   transition-delay: calc(1.55s + var(--tip-i, 0) * 0.15s);
-}
-@keyframes fl-pindrop {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes fl-pinring {
-  0% {
-    opacity: 0.8;
-    transform: scale(0.6);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.8);
-  }
 }
 
 /* mini cards inside the canvas */
@@ -1153,30 +952,6 @@
   backdrop-filter: var(--glass-blur-soft);
   -webkit-backdrop-filter: var(--glass-blur-soft);
   box-shadow: var(--shadow-floating);
-}
-.fl-dock-mic,
-.fl-dock-send {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: #fff;
-}
-.fl-dock-mic {
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-}
-.fl-dock-send {
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue) 80%);
-}
-.fl-dock-mic svg,
-.fl-dock-send svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
 }
 .fl-dock-text {
   flex: 1;
@@ -1675,82 +1450,6 @@
 .fl-reveal.in .fl-instrument {
   animation: fs-pop 420ms var(--ease-out) forwards;
   animation-delay: calc(var(--in-i, 0) * 90ms);
-}
-
-/* ghost */
-.fl-ghostwrap {
-  min-height: 230px;
-}
-.fl-ghost-said {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.fl-wave {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 22px;
-  flex: none;
-}
-.fl-wave i {
-  width: 3px;
-  height: 20px;
-  border-radius: var(--r-full);
-  background: var(--presence-soft);
-  transform: scaleY(0.3);
-  /* 1.6s, not 1s — at 1s the bars twitch; speech has a slower envelope. */
-  animation: fl-wave 1.6s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.08s);
-  animation-play-state: var(--ambient-play, running);
-}
-.fl-ghost-words {
-  font-size: var(--fs-md);
-  color: var(--text-primary);
-}
-.fl-ghost-cards {
-  display: flex;
-  gap: 12px;
-}
-.fl-ghost {
-  flex: 1;
-  border: 1.5px dashed color-mix(in oklab, var(--presence) 50%, transparent);
-  border-radius: var(--r-md);
-  padding: 14px;
-  animation: fl-ghostform 2.6s ease-in-out infinite;
-  animation-play-state: var(--ambient-play, running);
-  min-width: 0;
-}
-.fl-ghost.delay {
-  border-color: color-mix(in oklab, var(--fl-blue) 50%, transparent);
-  animation-delay: 0.5s;
-}
-.fl-ghost-tag {
-  font-family: var(--font-data);
-  font-size: var(--fs-2xs);
-  color: var(--text-faint);
-  margin-bottom: 8px;
-}
-.fl-ghost-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  height: 50px;
-}
-.fl-ghost-bars i {
-  flex: 1;
-  background: color-mix(in oklab, var(--presence) 50%, transparent);
-  border-radius: 3px 3px 0 0;
-}
-.fl-ghost svg {
-  width: 100%;
-  height: 50px;
-}
-.fl-ghost svg polyline {
-  fill: none;
-  stroke: color-mix(in oklab, var(--fl-blue) 60%, transparent);
-  stroke-width: 2.5;
 }
 
 /* mind-map */
@@ -2336,6 +2035,23 @@
     color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
   );
 }
+/* A persona accent is light and carries black, so the shaded stop is lifted no
+   further than that ink needs (--dark-ink-min-l) and the ink is derived from the accent. Where
+   relative colour is unsupported the gradient stays as drawn, in white. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .fl-demo-avatar {
+    background: linear-gradient(
+      135deg,
+      var(--accent, var(--presence)),
+      oklch(
+        from color-mix(in oklab, var(--accent, var(--presence)) 66%, black)
+          max(l, var(--dark-ink-min-l)) c h
+      )
+    );
+    color: color(from var(--accent, var(--presence)) srgb-linear var(--ink-on-fill));
+  }
+}
 .fl-demo-avatar.emoji {
   font-size: var(--fs-xl);
   color: var(--text-primary);
@@ -2420,98 +2136,6 @@
   animation: spin 0.8s linear infinite;
 }
 
-/* ===================== TWO SURFACES ===================== */
-.fl-surfaces {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-.fl-surface {
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
-}
-.fl-surface.live {
-  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
-  background: linear-gradient(
-    160deg,
-    color-mix(in oklab, var(--presence) 18%, transparent),
-    color-mix(in oklab, var(--insight) 8%, transparent)
-  );
-}
-.fl-surface-tag {
-  font-family: var(--font-data);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.fl-surface-tag.insight {
-  color: var(--fl-ink-insight);
-}
-.fl-surface-tag.live {
-  color: var(--fl-ink-presence);
-}
-.fl-surface-title {
-  font-weight: 700;
-  font-size: var(--fs-xl);
-  letter-spacing: -0.01em;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-}
-.fl-surface-body {
-  font-size: var(--fs-md);
-  line-height: 1.55;
-  color: var(--text-secondary);
-  margin-bottom: 18px;
-}
-/* Shared by both cards — the demo's category row and the live card's provider row are the same
-   pill so the two pitches read as one balanced pair rather than one card looking unfinished. */
-.fl-surface-chips {
-  display: flex;
-  flex-wrap: wrap;
-  /* Centered so an odd count (five providers) wraps as a balanced cluster instead of a lonely
-     orphan chip hanging under a full row. */
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.fl-surface-chip {
-  font-family: var(--font-data);
-  font-size: var(--fs-xs);
-  padding: 6px 11px;
-  border-radius: var(--r-sm);
-  background: var(--surface-glass-strong);
-  border: 1px solid var(--line);
-  color: var(--text-secondary);
-}
-.fl-ghost-btn {
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 13px 22px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-glass);
-  color: var(--text-primary);
-  cursor: pointer;
-  font: 600 var(--fs-md) var(--font);
-  transition: background var(--m-fast);
-}
-.fl-ghost-btn:hover {
-  background: color-mix(in oklab, var(--presence) 14%, transparent);
-}
-.fl-ghost-btn.live {
-  /* The same box as the ghost button beside it: dropping the border made this pill shorter and
-     narrower by the border's width, so the pair sat at two heights. */
-  border: 1px solid transparent;
-  color: #fff;
-  background: linear-gradient(120deg, var(--presence), var(--fl-blue));
-  box-shadow: 0 8px 22px -8px var(--glow-presence);
-}
-
 /* ===================== CTA ===================== */
 .fl-cta {
   text-align: center;
@@ -2588,44 +2212,6 @@
 .fl-cta-title em {
   font-style: italic;
 }
-.fl-cta-btn {
-  margin-top: 36px;
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  padding: 19px 34px;
-  border-radius: var(--r-full);
-  border: none;
-  cursor: pointer;
-  font: 700 var(--fs-lg) var(--font);
-  color: #fff;
-  /* Same lit-from-above ramp as .fl-nav-cta — the two "Open Mavéa" buttons must read as one. */
-  background: linear-gradient(
-    180deg,
-    var(--presence-soft),
-    var(--presence) 52%,
-    var(--presence-deep)
-  );
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
-    0 18px 44px -10px var(--glow-presence);
-  transition:
-    transform var(--m-normal),
-    box-shadow var(--m-normal);
-}
-.fl-cta-btn svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.3;
-}
-.fl-cta-btn:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
-    0 26px 58px -10px var(--glow-presence);
-}
 .fl-cta-note {
   margin-top: 88px;
   font: var(--fs-xs)/1.5 var(--font);
@@ -2675,12 +2261,12 @@
   border: none;
   cursor: pointer;
   font: 700 var(--fs-sm) var(--font);
-  color: #fff;
+  color: var(--on-presence);
   background: linear-gradient(
     180deg,
-    var(--presence-soft),
+    var(--presence-soft-held),
     var(--presence) 52%,
-    var(--presence-deep)
+    var(--presence-deep-held)
   );
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
@@ -2760,24 +2346,6 @@
   background: var(--surface-elevated);
 }
 
-/* Glass pills vanish on the pale page (the known --surface-glass gotcha — a 4.5% tint over the
-   aurora wash reads as a bare outline). Frost them white the same way .fl-composer already
-   biases itself to a solid surface. */
-:root[data-theme='light']
-  .fl-landing
-  :is(
-    .fl-chip,
-    .fl-composer-btn:not(.primary),
-    .fl-blank-btn,
-    .fl-dock-mark,
-    .fl-rail-chip,
-    .fl-ghost-btn:not(.live),
-    .fs-after-item
-  ) {
-  background: color-mix(in oklab, #ffffff 72%, transparent);
-  border-color: var(--line-strong);
-}
-
 /* ===================== responsive ===================== */
 /* Monitors and ultrawides: the type clamps hit their px caps by ~1370px, so beyond that the
    page froze at "1440 size" inside an ever-larger frame. One deliberate tier scales the column,
@@ -2790,17 +2358,8 @@
   .fl-section {
     margin-top: 128px;
   }
-  .fl-hero {
-    max-width: 880px;
-  }
-  .fl-hero-orbspace {
-    height: clamp(170px, 16dvh, 230px);
-  }
   .fl-hero-title {
     font-size: clamp(92px, min(5vw, 10dvh), 116px);
-  }
-  .fl-hero-lede {
-    font-size: var(--fs-xl);
   }
   .fl-title {
     font-size: clamp(52px, 2.6vw, 62px);
@@ -2824,44 +2383,14 @@
    pushing the page's primary input below the first screen. Keep the face's reserved slot intact,
    then compress the surrounding rhythm and let the headline respond to BOTH axes. */
 @media (width > 768px) and (height <= 900px) {
-  .fl-hero {
-    padding-top: 40px;
-  }
-  .fl-hero-orbspace {
-    height: 150px;
-  }
   .fl-hero-title {
     font-size: clamp(50px, min(6vw, 9dvh), 72px);
-  }
-  .fl-hero-lede {
-    margin-top: 16px;
-    font-size: var(--fs-lg);
-    line-height: 1.48;
-  }
-  .fl-composer {
-    margin-top: 22px;
   }
 }
 
 @media (width > 768px) and (height <= 650px) {
-  .fl-hero {
-    padding-top: 32px;
-  }
-  .fl-hero-orbspace {
-    /* The face ends around 220px in this tier; this reserve keeps its trailing curtains clear of
-       the first line while the smaller headline still recovers enough height for the composer. */
-    height: 162px;
-  }
   .fl-hero-title {
     font-size: clamp(46px, min(5.6vw, 9dvh), 58px);
-  }
-  .fl-hero-lede {
-    margin-top: 14px;
-    font-size: var(--fs-lg);
-    line-height: 1.42;
-  }
-  .fl-composer {
-    margin-top: 20px;
   }
 }
 
@@ -2903,7 +2432,6 @@
   }
   .fl-compare,
   .fl-trust,
-  .fl-surfaces,
   .fl-cardrow {
     grid-template-columns: 1fr;
   }
@@ -2988,9 +2516,6 @@
   .fl-caret,
   .fl-hl-sweep,
   .fl-hl-chip,
-  .fl-composer-ghost,
-  .fl-wave i,
-  .fl-ghost,
   .fl-mindmap-links path,
   .fl-node,
   .fl-blank-hole,
@@ -3028,8 +2553,7 @@
     animation: none !important;
   }
   /* the signature-window choreography rests at its finished frame */
-  .fl-canvas :is(.fl-finding, .fl-fig, .fl-mini, .fl-dock, .fl-tip),
-  .fl-map .fl-pin {
+  .fl-canvas :is(.fl-finding, .fl-fig, .fl-mini, .fl-dock, .fl-tip) {
     opacity: 1;
     transform: none;
     transition: none;
@@ -3042,9 +2566,6 @@
   .fl-canvas .fl-tip svg path {
     stroke-dashoffset: 0;
     transition: none;
-  }
-  .fl-pin.ring::after {
-    display: none;
   }
   /* the see-don't-read transformation rests at its finished frame — wall receded and marked,
      chart grown — which is itself the argument, statically */
@@ -3129,29 +2650,9 @@
     opacity: 1;
   }
 }
-@keyframes fl-ghostform {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: translateY(6px) scale(0.99);
-  }
-  50% {
-    opacity: 0.9;
-    transform: none;
-  }
-}
 @keyframes fl-dash {
   to {
     stroke-dashoffset: -32;
-  }
-}
-@keyframes fl-wave {
-  0%,
-  100% {
-    transform: scaleY(0.22);
-  }
-  50% {
-    transform: scaleY(1);
   }
 }
 @keyframes fl-float {
@@ -3887,142 +3388,6 @@
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
-}
-
-/* Hero: the watch-it-work CTA sits beside the hint line. */
-.fl-hero-watch {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 18px;
-  padding: 11px 20px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  color: var(--text-primary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    border-color var(--m-fast),
-    background var(--m-fast),
-    transform 160ms var(--ease-out);
-}
-.fl-hero-watch:hover {
-  border-color: var(--presence);
-  background: color-mix(in oklab, var(--presence) 7%, var(--surface-elevated));
-  transform: translateY(-1px);
-}
-.fl-hero-watch .fl-hero-watch-glyph,
-.fl-tour-invite-play .fl-hero-watch-glyph {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--presence);
-  color: #fff;
-  font-size: var(--fs-2xs);
-}
-.fl-hero-watch .fl-hero-watch-time {
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: var(--fs-sm);
-}
-
-/* Hero: the first-run tour invite — a dismissible offer in the exact slot "Watch it work" holds
-   afterward, so nothing shifts when it retires. Either choice ("Play the tour" or "I'll explore on
-   my own") marks it seen for good; the tour stays reachable from the nav, ⌘K, and ?tour=1. */
-.fl-tour-invite {
-  margin-top: 18px;
-  padding: 14px 18px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
-  max-width: 480px;
-}
-.fl-tour-invite-text {
-  margin: 0 0 12px;
-  font-size: var(--fs-md);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-.fl-tour-invite-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* Column gap unchanged — the pills sit 10px apart on a line, as designed. The ROW gap is bigger
-     because this row WRAPS on a phone, and 10px between stacked controls is inside the reach of the
-     thumb aimed at either one: a press meant for the lower edge of one lands on its neighbour.
-     Measured with the tap audit's own probe at 390×844 — 3 of 4 reachable at 10px, 4 of 4 at 18. */
-  column-gap: 10px;
-  row-gap: 18px;
-}
-/* Both pills in this row are 9px of padding around 13.5px type — 35px tall, under the 44px floor
-   the tap audit enforces for a thumb. The floor is a MINIMUM, not a new height: the padding stays,
-   so on a pointer the pill looks as it did, and on a touch screen the box grows to something a
-   finger can actually land on. Raised together because they sit side by side and a 44px pill beside
-   a 35px one reads as a mistake. */
-.fl-tour-invite-play,
-.fl-tour-invite-world {
-  min-height: 44px;
-}
-
-.fl-tour-invite-play {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--presence);
-  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
-  color: var(--text-primary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    background var(--m-fast),
-    transform 160ms var(--ease-out);
-}
-.fl-tour-invite-play:hover {
-  background: color-mix(in oklab, var(--presence) 20%, var(--surface-elevated));
-  transform: translateY(-1px);
-}
-/* A lighter, outlined pill — a taste of one feature, not the full guided tour "Play the tour"
-   already offers, so it reads as the secondary choice. */
-.fl-tour-invite-world {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text-secondary);
-  font: 600 var(--fs-md)/1 var(--font);
-  cursor: pointer;
-  transition:
-    border-color var(--m-fast),
-    color var(--m-fast);
-}
-.fl-tour-invite-world svg {
-  width: 15px;
-  height: 15px;
-}
-.fl-tour-invite-world:hover {
-  border-color: var(--presence);
-  color: var(--text-primary);
-}
-.fl-tour-invite-skip {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 4px 2px;
-  color: var(--text-muted);
-  font: 500 var(--fs-sm)/1 var(--font);
-  cursor: pointer;
-  transition: color var(--m-fast);
-}
-.fl-tour-invite-skip:hover {
-  color: var(--text-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {

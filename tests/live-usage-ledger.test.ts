@@ -33,6 +33,8 @@ describe('usage ledger', () => {
       // reader of the ledger never has to guess whether a blank means "none" or "not measured".
       thinking: 0,
       ms: 0,
+      outcome: 'ok',
+      reported: true,
     });
     expect(entries[1].label).toBe('consistency-repair');
   });
@@ -42,9 +44,16 @@ describe('usage ledger', () => {
     expect(getUsageLedger()[0].cachedInput).toBe(4200);
   });
 
-  it('silently ignores a provider that reports no usage (call sites need no guard)', () => {
-    recordUsage('canvas', undefined);
-    expect(getUsageLedger()).toHaveLength(0);
+  it('records a call with no usage as an attempt whose token counts are unknown', () => {
+    recordUsage('canvas', undefined, 1000, 900, 'failed');
+    recordUsage('study-notes', undefined, 2000, 50, 'cancelled');
+    recordUsage('canvas', undefined, 3000, 400);
+    expect(getUsageLedger()).toEqual([
+      expect.objectContaining({ label: 'canvas', outcome: 'failed', reported: false, input: 0 }),
+      expect.objectContaining({ label: 'study-notes', outcome: 'cancelled', reported: false }),
+      expect.objectContaining({ label: 'canvas', outcome: 'ok', reported: false, ms: 400 }),
+    ]);
+    expect(getUsageSummary()).toMatchObject({ calls: 3, unfinished: 2, input: 0, output: 0 });
   });
 
   it('caps at 50 entries, evicting the oldest', () => {
@@ -56,9 +65,9 @@ describe('usage ledger', () => {
   });
 
   it('totals the whole session, including the calls the capped list has dropped', () => {
-    // Fifty billed calls is an ordinary session (a Prism map bills one per page, glimpses up to
-    // three an utterance), and the panel's headline read "this session" while it was really
-    // summing a bounded tail — so the number shrank as new calls arrived.
+    // Fifty billed calls is an ordinary session (a Prism map bills one per page), and the panel's
+    // headline read "this session" while it was really summing a bounded tail — so the number
+    // shrank as new calls arrived.
     for (let i = 0; i < 60; i++) recordUsage('canvas', usage(10, 1, 4), i);
     const totals = getUsageSummary();
     expect(getUsageLedger()).toHaveLength(50);

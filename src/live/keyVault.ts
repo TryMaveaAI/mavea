@@ -2,13 +2,15 @@
 // everything else Live persists.
 //
 // The user's API keys are their own and live client-side. When "Remember keys" is on they must
-// survive a restart, but writing them as plaintext to localStorage exposes them to anything with
-// same-origin storage access — other browser extensions, disk/backup imaging, profile sync. This
+// survive a restart, but writing them as plaintext to localStorage exposes them to anything that
+// reads the disk — backups, imaging, profile sync. This
 // vault encrypts them with an AES-GCM key that is generated once and kept **non-extractable** in
 // IndexedDB: the raw key never exists in JS and can't be exported even by code, so what lands in
 // localStorage is ciphertext only. There is NO passphrase — the user does nothing but provide the
-// key; decryption is automatic on this device. (It is not a defense against active same-origin XSS,
-// which the CSP + render-boundary sanitizing address; it removes plaintext-at-rest exfil.)
+// key; decryption is automatic on this device. It is NOT a defense against anything that runs as
+// this origin — injected script, or an extension with access to the site, can open the same
+// database and use the same key to decrypt (scripts/extension-probe.mts shows it). It removes
+// plaintext at rest, nothing more.
 //
 // Secrets aren't the only thing worth this: conversation content, remembered facts, and saved
 // work are just as readable to the same passive attacker (a bypassed sanitizer, a nosy extension,
@@ -107,6 +109,11 @@ function getKey(keyId: string): Promise<CryptoKey> {
 
 /** Drop every cached device key. Deleting the vault database on its own is not enough: a key
  *  already resolved in memory would keep sealing and unsealing until the page went away. */
+/** Whether this tab has already forgotten the device. */
+export function vaultForgotten(): boolean {
+  return forgotten;
+}
+
 export function forgetVaultKeys(): void {
   keyPromises.clear();
   forgotten = true;

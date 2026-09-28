@@ -8,7 +8,14 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactEle
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
 import { statusVar, statusLabel } from './colors';
 import { findImpactPath, traceImpact, type TraceDirection } from './impactTrace';
-import { layoutImpact, NODE_W, NODE_H, type PlacedNode } from './layout';
+import {
+  DEFAULT_VERB_FONT_PX,
+  layoutImpact,
+  NODE_W,
+  NODE_H,
+  placeVerbs,
+  type PlacedNode,
+} from './layout';
 import type { Altitude, ChangeDelta, ShipChange, ShipEdge, ShipNode } from './model';
 
 export interface ImpactMapProps {
@@ -70,7 +77,34 @@ export function ImpactMap({
     const visibleEdges = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
     return { nodes: visibleNodes, edges: visibleEdges };
   }, [nodes, edges, crossRepoOnly]);
-  const view = useMemo(() => layoutImpact(visibleGraph.nodes, visibleGraph.edges), [visibleGraph]);
+  // The size a verb label actually renders at, read off a hidden label in the world layer (so it is
+  // in world units, before the camera scales it). The viewport's type scale and the reader's text
+  // size both move it; the probe's box moves with it, which is what the observer answers to.
+  const verbProbe = useRef<HTMLSpanElement>(null);
+  const [verbFontPx, setVerbFontPx] = useState(DEFAULT_VERB_FONT_PX);
+  useEffect(() => {
+    const el = verbProbe.current;
+    if (!el) return;
+    const read = (): void => {
+      const px = parseFloat(getComputedStyle(el).fontSize);
+      if (Number.isFinite(px) && px > 0) {
+        setVerbFontPx((prev) => (Math.abs(prev - px) < 0.05 ? prev : px));
+      }
+    };
+    read();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const view = useMemo(
+    () => layoutImpact(visibleGraph.nodes, visibleGraph.edges, verbFontPx),
+    [visibleGraph, verbFontPx],
+  );
+  const verbSpots = useMemo(
+    () => placeVerbs(view.nodes, visibleGraph.edges, verbFontPx),
+    [view, visibleGraph.edges, verbFontPx],
+  );
 
   const placedById = useMemo(() => {
     const m = new Map<string, PlacedNode>();
@@ -165,7 +199,8 @@ export function ImpactMap({
   // The floor is derived, not chosen: 9px legibility ÷ the ramp's 10px smallest label. Below it a
   // fitted map paints its verbs and status lines under 9px; the camera stops there and the map
   // pans instead, the same rule the living world's camera follows.
-  const spatial = useSpatialCanvas({ clamp: { min: 0.9, max: 2.2 }, margin: 56 });
+  // A map the floor cannot fit opens at its top row, not a slice of its middle.
+  const spatial = useSpatialCanvas({ clamp: { min: 0.9, max: 2.2 }, margin: 56, tall: 'top' });
   const { fitTo, flying, endFlight } = spatial;
   useEffect(() => {
     fitTo(view.bbox);
@@ -384,47 +419,38 @@ export function ImpactMap({
         </section>
       )}
 
-      <div className="ripple-impact-controls">
-        {hasTraffic && (
-          <div className="ripple-lens" role="group" aria-label="Map lens">
-            <button
-              type="button"
-              data-active={lens === 'severity' ? 'true' : undefined}
-              onClick={() => setLens('severity')}
-            >
-              Severity
-            </button>
-            <button
-              type="button"
-              data-active={lens === 'traffic' ? 'true' : undefined}
-              onClick={() => setLens('traffic')}
-            >
-              Traffic
-            </button>
-          </div>
-        )}
-        {hasCrossRepo && (
-          <label className="ripple-crossrepo">
-            <input
-              type="checkbox"
-              checked={crossRepoOnly}
-              onChange={(e) => setCrossRepoOnly(e.target.checked)}
-            />
-            Cross-repo only
-          </label>
-        )}
-        <div className="ripple-zoombtns">
-          {/* ⊡ — content inside a frame; ⤢/⤡ mean full-screen expand/collapse elsewhere. */}
-          <button
-            type="button"
-            onClick={() => fitTo(view.bbox)}
-            title="Fit the whole map"
-            aria-label="Fit"
-          >
-            ⊡
-          </button>
+      {(hasTraffic || hasCrossRepo) && (
+        <div className="ripple-impact-controls">
+          {hasTraffic && (
+            <div className="ripple-lens" role="group" aria-label="Map lens">
+              <button
+                type="button"
+                data-active={lens === 'severity' ? 'true' : undefined}
+                onClick={() => setLens('severity')}
+              >
+                Severity
+              </button>
+              <button
+                type="button"
+                data-active={lens === 'traffic' ? 'true' : undefined}
+                onClick={() => setLens('traffic')}
+              >
+                Traffic
+              </button>
+            </div>
+          )}
+          {hasCrossRepo && (
+            <label className="ripple-crossrepo">
+              <input
+                type="checkbox"
+                checked={crossRepoOnly}
+                onChange={(e) => setCrossRepoOnly(e.target.checked)}
+              />
+              Cross-repo only
+            </label>
+          )}
         </div>
-      </div>
+      )}
 
       <div
         className={'ripple-stage' + (panning ? ' is-panning' : '')}
@@ -434,6 +460,21 @@ export function ImpactMap({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
+        {/* The fit control lives on the frame it acts on. In a row of its own above the stage it
+            sat outside the map, alone, reading as a stray button. Its press must not start a pan:
+            the stage captures the pointer, which would retarget the click away from the button. */}
+        <div className="ripple-zoombtns">
+          {/* ⊡ — content inside a frame; ⤢/⤡ mean full-screen expand/collapse elsewhere. */}
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => fitTo(view.bbox)}
+            title="Fit the whole map"
+            aria-label="Fit"
+          >
+            ⊡
+          </button>
+        </div>
         <div
           className="ripple-world"
           data-animate={animate ? 'true' : undefined}
@@ -517,11 +558,22 @@ export function ImpactMap({
             })}
           </svg>
 
+          {/* measures the rendered verb size for the layout; never seen */}
+          <span
+            ref={verbProbe}
+            className="ripple-edge-verb ripple-edge-verb-probe"
+            aria-hidden="true"
+          >
+            m
+          </span>
+
           {/* edge verb labels */}
           {visibleGraph.edges.map((edge, index) => {
             const from = placedById.get(edge.from);
             const to = placedById.get(edge.to);
             if (!from || !to) return null;
+            const at = verbSpots[index];
+            if (!at) return null;
             const active = trace.edgeIndexes.has(index);
             return (
               <div
@@ -529,8 +581,8 @@ export function ImpactMap({
                 className="ripple-edge-verb"
                 data-active={active ? 'true' : undefined}
                 style={{
-                  left: (from.x + to.x) / 2,
-                  top: (from.y + to.y) / 2,
+                  left: at.x,
+                  top: at.y,
                   color: statusVar(to.node.status),
                 }}
               >

@@ -17,6 +17,10 @@ import type { Dashboard } from './types';
 const STORAGE_KEY = 'mavea-dash-briefing-v1';
 export const BRIEFING_EVENT = STORAGE_KEY;
 const GATE_KEY = 'mavea-dash-briefing-date';
+/** The day a briefing was asked for and did not come back. Held apart from GATE_KEY, which only a
+ *  grounded briefing may close: a missed day shows as missed rather than as done. */
+const MISSED_KEY = 'mavea-dash-briefing-missed';
+const MISSED_EVENT = MISSED_KEY;
 
 export interface BriefChip {
   dashboardId: string;
@@ -157,8 +161,52 @@ export function briefingNeededToday(now: number): boolean {
   return gateRead() !== todayISO(now);
 }
 
+// Held in memory as well as on disk: with storage refused, the disk copy alone would read as
+// "never missed" and the next tick would ask again.
+let missedInTab: string | null = null;
+
+function missedRead(): string | null {
+  let stored: string | null = null;
+  try {
+    stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(MISSED_KEY);
+  } catch {
+    /* storage refused — the in-tab copy stands in */
+  }
+  if (stored === null) return missedInTab;
+  if (missedInTab === null) return stored;
+  return stored > missedInTab ? stored : missedInTab;
+}
+
+/** Whether the automatic loop should still ask for today's briefing: not composed yet, and not
+ *  already asked for and missed. A briefing that failed or came back empty is asked for once a
+ *  day; asking again is the reader's Try again, never the next tick. */
+export function briefingDueToday(now: number): boolean {
+  return briefingNeededToday(now) && missedRead() !== todayISO(now);
+}
+
+/** Record that today's briefing was asked for and did not come back. */
+export function markBriefingMissed(now: number): void {
+  missedInTab = todayISO(now);
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(MISSED_KEY, missedInTab);
+  } catch {
+    /* quota / private mode — the in-tab copy still holds for this session */
+  }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(MISSED_EVENT));
+}
+
+function subscribeMissed(onStoreChange: () => void): () => void {
+  window.addEventListener(MISSED_EVENT, onStoreChange);
+  return () => window.removeEventListener(MISSED_EVENT, onStoreChange);
+}
+
+/** The day a briefing was last missed (YYYY-MM-DD), live-updating, or null. */
+export function useBriefingMissedOn(): string | null {
+  return useSyncExternalStore(subscribeMissed, missedRead, () => null);
+}
+
 /** Mark today done. Call ONLY on a grounded success (recordBriefing does this) — a failed or
- *  ungrounded attempt must leave the gate open so the next due batch retries. */
+ *  ungrounded attempt leaves it open and is recorded by markBriefingMissed instead. */
 function markBriefingShown(now: number): void {
   gateWrite(todayISO(now));
 }

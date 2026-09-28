@@ -1,7 +1,7 @@
 // Answer cache: identical re-asks must hit the cache and never invoke the model a second time
-// (zero extra tokens on the user's own key) — in the session, across a "New session", and
-// against a speculative chip answer that is still arriving. And, just as load-bearing: an answer
-// must never be replayed for a question asked somewhere else in the conversation.
+// (zero extra tokens on the user's own key) — in the session and across a "New session". And,
+// just as load-bearing: an answer must never be replayed for a question asked somewhere else in
+// the conversation. A follow-up chip is never answered before it is tapped.
 // Search cache: the same query fetched within the TTL must skip the network round-trip.
 // All unit-tested here against mocked dependencies — no live API calls.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -15,22 +15,14 @@ const gen = {
   callCount: 0,
   asked: [] as string[],
   result: null as LiveResult | null,
-  /** Answers for specific asks (a failing turn, a chip's own answer). */
+  /** Answers for specific asks (a chip's own answer). */
   byText: new Map<string, LiveResult>(),
-  /** An ask that HANGS until the test releases it — how a chip prefetch is held in flight. */
-  holdText: null as string | null,
-  release: null as ((r: LiveResult) => void) | null,
 };
 
 vi.mock('../src/live/generateLive', () => ({
   generateLive: vi.fn(async (text: string) => {
     gen.callCount += 1;
     gen.asked.push(text);
-    if (gen.holdText === text) {
-      return await new Promise<LiveResult>((resolve) => {
-        gen.release = resolve;
-      });
-    }
     return gen.byText.get(text) ?? gen.result;
   }),
 }));
@@ -69,7 +61,7 @@ function okResult(): LiveResult {
   };
 }
 
-/** An answer with chips, so the turn's tail prefetches them on the 'thorough' dial. */
+/** An answer with follow-up chips under it. */
 function withChips(...labels: string[]): LiveResult {
   const base = okResult();
   return {
@@ -85,11 +77,10 @@ const thorough = { quality: 'thorough' } as ReturnType<
   NonNullable<Parameters<typeof useLiveTurn>[0]['getCaps']>
 >;
 
-/** How many times this exact question was put to the model. Counted per question rather than in
- *  total, because every answered turn buys its own chips in the tail. */
+/** How many times this exact question was put to the model. */
 const timesAsked = (text: string): number => gen.asked.filter((t) => t === text).length;
 
-/** Let the turn's untracked tail (the chip prefetches) run to completion. */
+/** Let anything a settled turn might still start run to completion. */
 async function flush(): Promise<void> {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 0));
@@ -101,8 +92,6 @@ beforeEach(async () => {
   gen.asked = [];
   gen.result = okResult();
   gen.byText.clear();
-  gen.holdText = null;
-  gen.release = null;
   vi.clearAllMocks();
   // The persisted answers are device-local and deliberately outlive a session, so each test
   // starts from an empty store rather than inheriting the one before it.
@@ -320,16 +309,12 @@ describe('session answer cache', () => {
   });
 });
 
-// On 'thorough', each answer buys up to two whole speculative turns for the chips under it. They
-// used to be wiped at the top of the NEXT run() whatever it was — so unless the reader tapped one
-// straight away, the tokens were spent and thrown away. Now they live in the same cache as every
-// other answer, keyed by the question AND the conversation, which is what makes keeping them safe.
-describe('chip prefetch — bought once, never twice, never for the wrong moment', () => {
-  it('survives a turn that failed: the chips are still on screen, and still free', async () => {
-    gen.result = withChips('How much would it cost?');
-    gen.byText.set('this one fails', { ...okResult(), error: { kind: 'network', message: 'x' } });
-    // The chip's own answer offers a different follow-up, so its tail doesn't re-ask the label.
-    gen.byText.set('How much would it cost?', withChips('And in a smaller kitchen?'));
+// A follow-up chip costs nothing until the reader taps it, on every quality dial, and a tap
+// generates exactly like typing the same words.
+describe('follow-up chips', () => {
+  it('are never answered ahead of the tap, even on Thorough', async () => {
+    gen.result = withChips('How much would it cost?', 'And in a smaller kitchen?');
+    gen.byText.set('How much would it cost?', withChips('Compare the two'));
     const { result } = renderHook(() =>
       useLiveTurn({ getConfig: () => cfg, getCaps: () => thorough }),
     );
@@ -338,81 +323,22 @@ describe('chip prefetch — bought once, never twice, never for the wrong moment
       await result.current.run('plan a kitchen refit');
     });
     await flush();
-    expect(timesAsked('How much would it cost?')).toBe(1); // bought speculatively
+    expect(gen.asked).toEqual(['plan a kitchen refit']);
 
-    // A failed turn answers nothing and changes no history — the canvas, and its chips, stay put.
-    await act(async () => {
-      await result.current.run('this one fails');
-    });
-
-    // Tapping a chip must still be free. The old cache had been wiped by the failed run(), so the
-    // reader paid twice for one answer.
     await act(async () => {
       await result.current.run('How much would it cost?');
     });
+    await flush();
     expect(timesAsked('How much would it cost?')).toBe(1);
-  });
-
-  it('a tap on a chip still generating rides that call instead of paying twice', async () => {
-    gen.result = withChips('What about winter?');
-    gen.holdText = 'What about winter?';
-    const { result } = renderHook(() =>
-      useLiveTurn({ getConfig: () => cfg, getCaps: () => thorough }),
-    );
-
-    await act(async () => {
-      await result.current.run('how do heat pumps work?');
-    });
-    await flush();
-    expect(timesAsked('What about winter?')).toBe(1); // in flight, not yet answered
-    expect(gen.release).toBeTruthy();
-
-    // The reader taps the chip while its speculative turn is mid-generation. Aborting it and
-    // asking the identical question again is two full turns billed for one answer.
-    await act(async () => {
-      const tapped = result.current.run('What about winter?');
-      gen.release?.(okResult());
-      await tapped;
-    });
-    expect(timesAsked('What about winter?')).toBe(1);
-  });
-
-  it('never answers a later question with a chip bought for an earlier one', async () => {
-    // The chip label is generic ("Tell me more") on purpose: keyed on text alone it would match
-    // at any depth, and the reader would get an answer about the wrong subject, instantly.
-    gen.result = withChips('Tell me more');
-    // The next turn offers a different chip, so the only 'Tell me more' on file is the stale one.
-    gen.byText.set('and what about Soyuz?', withChips('Compare the two'));
-    gen.byText.set('Tell me more', withChips('Go on'));
-    const { result } = renderHook(() =>
-      useLiveTurn({ getConfig: () => cfg, getCaps: () => thorough }),
-    );
-
-    await act(async () => {
-      await result.current.run('tell me about the Apollo program');
-    });
-    await flush();
-    expect(timesAsked('Tell me more')).toBe(1); // bought against the Apollo answer
-
-    // The conversation moves on — the prefetched answer belongs to the moment before this one.
-    await act(async () => {
-      await result.current.run('and what about Soyuz?');
-    });
-    await flush();
-
-    // "Tell me more" now means something else entirely, so it has to be asked for real.
-    await act(async () => {
-      await result.current.run('Tell me more');
-    });
-    expect(timesAsked('Tell me more')).toBe(2);
+    expect(timesAsked('And in a smaller kitchen?')).toBe(0);
+    expect(timesAsked('Compare the two')).toBe(0);
   });
 });
 
-describe('speculation never spends in the shadow of a rate limit', () => {
-  // Quotas are per-minute. Measured on a free-tier key: one answer's chip prefetches exhausted
-  // it, and the user's NEXT question 429'd three times before landing — the speculative calls
-  // were taxing the interactive one. A recent 429 skips the prefetch round; taps generate fresh.
-  it('skips the prefetch round after a provider 429', async () => {
+describe('the rate-limit guard speculative work reads', () => {
+  // Quotas are per-minute. A background call made in the shadow of a 429 eats the budget the
+  // reader's next question needs, so the Study's prefetched notes check this before spending.
+  it('reports a recent provider 429, and only within its window', async () => {
     const { providerErrorDetail, recentlyRateLimited } = await import('../src/live/providers/http');
     expect(recentlyRateLimited()).toBe(false);
     await providerErrorDetail(
@@ -421,7 +347,6 @@ describe('speculation never spends in the shadow of a rate limit', () => {
       }),
     );
     expect(recentlyRateLimited()).toBe(true);
-    // The window is a minute — the next turn's own tail checks it fresh.
     expect(recentlyRateLimited(0)).toBe(false);
   });
 });

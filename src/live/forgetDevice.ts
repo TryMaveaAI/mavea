@@ -13,6 +13,7 @@
 // clip or dashboard modules in here would split them out of the chunks that load them today.
 import { DEVICE_FORGOTTEN_CHANNEL, forgetVaultKeys } from './keyVault';
 import { resetLiveConfig } from './useLiveConfig';
+import { forgetReadiness } from './providers/readiness';
 import { isMaveaStoreKey } from '../lib/localBudget';
 
 /** Every IndexedDB database the app opens, by the names their modules export (a test pins the
@@ -23,6 +24,14 @@ export const FORGOTTEN_DATABASES: readonly string[] = [
   'mavea-key-vault',
   'mavea-ripple',
   'mavea-dashboards',
+];
+
+/** Keys an older build wrote without the `mavea` prefix, which the name rule cannot find. The
+ *  app still reads them (so nobody sees a first-run moment twice), so they are swept by name; a
+ *  test fails on any unprefixed key the app reads that is missing here. */
+export const LEGACY_UNPREFIXED_KEYS: readonly string[] = [
+  'ripple.seenWorkedExample',
+  'ripple.hint.fastModel.dismissed',
 ];
 
 /** How long a database deletion may wait on another tab's open connection before it is reported
@@ -50,7 +59,7 @@ function clearMaveaKeys(storage: Storage | undefined): void {
   const owned: string[] = [];
   for (let i = 0; i < storage.length; i += 1) {
     const key = storage.key(i);
-    if (key && isMaveaStoreKey(key)) owned.push(key);
+    if (key && (isMaveaStoreKey(key) || LEGACY_UNPREFIXED_KEYS.includes(key))) owned.push(key);
   }
   for (const key of owned) storage.removeItem(key);
 }
@@ -122,6 +131,8 @@ export async function forgetDevice(): Promise<ForgetDeviceSummary> {
   await attempt('secrets', () => {
     forgetVaultKeys();
     resetLiveConfig();
+    // Which key and model passed a paid readiness check is knowledge about a forgotten key.
+    forgetReadiness();
   });
   // Before the stores go, not after: removing the legal acknowledgement below puts the gate up in
   // every other tab, which unmounts the surface holding the listener — the message would arrive

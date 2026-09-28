@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { BreadcrumbProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useBackdropDismiss } from '../../../lib/useBackdropDismiss';
 
 type Props = BreadcrumbProps & { delay?: number };
 
@@ -52,6 +53,7 @@ export function Breadcrumb({
     </span>
   );
 
+  const backdrop = useBackdropDismiss(() => setOpenOverflow(false));
   return (
     <div
       className="card reveal"
@@ -89,7 +91,9 @@ export function Breadcrumb({
               <>
                 <div
                   className="bc-pop-backdrop"
-                  onClick={() => setOpenOverflow(false)}
+                  data-interactive
+                  onPointerDown={backdrop.onPointerDown}
+                  onClick={backdrop.onClick}
                   role="button"
                   tabIndex={0}
                   aria-label="Close"

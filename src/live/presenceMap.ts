@@ -33,6 +33,10 @@ export function livePresence(
   // while the person waits, reading as "it stopped paying attention". Defaults false (existing
   // callers unchanged).
   transcribing = false,
+  // A follow-up is certain to add to the board below (the turn's `boardCue`), so while it works
+  // the face looks down toward where the cards will land. The caller drops it under reduced
+  // motion, since the glance is a movement. Defaults false (existing callers unchanged).
+  extending = false,
 ): PresenceLook {
   if (listening) return { state: 'listening', emotion: 'neutral', gaze: 'center' };
   // Stepping in uninvited is a small plot twist — the wide-eyed face says "oh — this
@@ -49,12 +53,12 @@ export function livePresence(
     case 'thinking':
       // The radiating ring (not the think-ring shimmer) so loading reads as a living, alert
       // face — eyes forward, glow up — rather than a spinner.
-      return { state: 'loading', emotion: 'neutral', gaze: 'center' };
-    case 'speaking':
+      return { state: 'loading', emotion: 'neutral', gaze: extending ? 'down' : 'center' };
+    case 'speaking': {
       // Muted → read along (attentive, no lip-sync); unmuted → the talking face.
-      return muted
-        ? { state: 'showing', emotion, gaze: 'center' }
-        : { state: 'speaking', emotion, gaze: 'center' };
+      const gaze = extending ? 'down' : 'center';
+      return muted ? { state: 'showing', emotion, gaze } : { state: 'speaking', emotion, gaze };
+    }
     case 'showing':
       return { state: 'showing', emotion, gaze: 'right' };
     default:

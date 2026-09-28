@@ -130,10 +130,12 @@ describe('the desk habit cannot silently revert to a view comparison', () => {
     const union = /export type ViewMode =([^;]+);/.exec(src)?.[1] ?? '';
     expect(union).toContain("'board'");
     expect(union).not.toContain("'everything'");
-    // Both must stay in TRANSIENT: Focus persisted once, and a reader who closed the tab
+    // Focus was retired; a stored 'focus' reads as the board through the migration instead.
+    expect(union).not.toContain("'focus'");
+    // Every takeover stays in TRANSIENT: Focus persisted once, and a reader who closed the tab
     // mid-presentation kept it as their standing view forever.
     const transient = /const TRANSIENT[^=]*=([^;]+);/.exec(src)?.[1] ?? '';
-    for (const takeover of ['study', 'focus', 'canvas', 'world']) {
+    for (const takeover of ['study', 'canvas', 'world']) {
       expect(transient).toContain(`'${takeover}'`);
     }
   });

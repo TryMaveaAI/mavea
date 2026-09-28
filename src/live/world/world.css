@@ -102,7 +102,7 @@
 }
 .wo-chip[aria-selected='true'] {
   background: var(--presence);
-  color: var(--surface-default);
+  color: var(--on-presence);
 }
 
 /* The lone reading. Most worlds hold more than one view, but a quarter of them hold exactly one —
@@ -445,7 +445,7 @@
 }
 
 .wo-play[data-inviting] {
-  color: var(--surface-default);
+  color: var(--on-presence);
   background: var(--presence);
   border-color: transparent;
 }

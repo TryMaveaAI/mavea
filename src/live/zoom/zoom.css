@@ -57,7 +57,7 @@
 
 .zoom-level.active {
   background: var(--presence);
-  color: var(--surface-elevated);
+  color: var(--on-presence);
 }
 
 .zoom-level:not(.active):hover {

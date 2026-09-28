@@ -30,7 +30,7 @@ function makeLine(): {
   const finished = new Promise<boolean>((r) => {
     end = r;
   });
-  return { handle: { started, finished }, start, end };
+  return { handle: { started, finished, cancel: () => {} }, start, end };
 }
 
 describe('walkSync', () => {

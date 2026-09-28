@@ -713,10 +713,18 @@
 }
 
 /* Quote reveal: slides open on [data-open='true'] */
+/* Closed, the quote is hidden, not merely squeezed to nothing: a zero-height box still painted a
+   sliver of "you said" and kept the words in reach of find-in-page. Open, it takes its own height
+   rather than an 80px cap that cut a long quote mid-line; `interpolate-size` lets that height
+   animate where the browser can, and it simply snaps open where it cannot. */
 .ms-card-quote {
-  max-height: 0;
+  interpolate-size: allow-keywords;
+  height: 0;
   overflow: hidden;
-  transition: max-height 0.28s ease;
+  visibility: hidden;
+  transition:
+    height 0.28s ease,
+    visibility 0.28s;
   font-size: calc(var(--fs-2xs) * var(--ms-card-scale, 1));
   line-height: 1.45;
   color: var(--text-muted);
@@ -724,7 +732,8 @@
 }
 
 .ms-card[data-open='true'] .ms-card-quote {
-  max-height: 80px;
+  height: auto;
+  visibility: visible;
   margin-top: 5px;
 }
 
@@ -841,11 +850,20 @@
 .ms-action-primary {
   background: var(--insight, #5b63e8);
   border-color: var(--insight, #5b63e8);
-  color: #fff;
+  color: var(--on-insight);
 }
 
 .ms-action-primary:hover {
   background: color-mix(in oklab, var(--insight, #5b63e8) 85%, #000);
+}
+/* The hover fill is darker than the rest fill, so its ink is derived from it, not inherited. */
+@supports (color: oklch(from red calc(l - 0.5) c h)) and
+  (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .ms-action-primary:hover {
+    color: color(
+      from color-mix(in oklab, var(--insight, #5b63e8) 85%, #000) srgb-linear var(--ink-on-fill)
+    );
+  }
 }
 /* the plan's "Make it real" waits while no step is wanted — quiet, not gone */
 .ms-action-btn:disabled {

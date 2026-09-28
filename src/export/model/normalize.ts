@@ -927,6 +927,16 @@ const core: Partial<Record<string, CoreExtractor>> = {
     const regions = (propsOf(b).regions as { block: Block }[]) ?? [];
     return regions.flatMap((r) => (r?.block ? extractBlock(r.block) : []));
   },
+
+  // A Watch Me Think map. It is drawn by the surface, never picked from the catalog, so there is
+  // no catalog entry for `embedClass` to route by, yet it is a picture like any diagram: flattened,
+  // presenting a map would show its title and nothing of the map.
+  mindshape: (b) => {
+    const p = propsOf(b);
+    if (!Array.isArray(p.atoms) || p.atoms.length === 0) return [];
+    const heading = plain(p.center as string) || undefined;
+    return [{ kind: 'figure', data: { block: b, embed: 'fluid', heading } }];
+  },
 };
 
 /** Heatmap cell → a level number. Accepts a bare number, null, or `{ lvl }`. */

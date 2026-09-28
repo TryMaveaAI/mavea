@@ -3,8 +3,10 @@
 // scanning the source text, the same idiom canvas-svg-label-patterns.test.ts uses for a layout bug
 // that's likewise invisible to a jsdom render.
 import { fontSizeFloorPx } from './helpers/fluidType';
+import { BREAKPOINT_HEIGHTS, BREAKPOINT_WIDTHS } from '../scripts/breakpoints.mjs';
 import {
   CARD_W,
+  COMPACT_H,
   COMPACT_W,
   FRONT_SLOT,
   STUDY_FIT_FLOOR,
@@ -42,6 +44,50 @@ describe('Flagship — section compositions keep a shared alignment and focal po
     expect(label).toMatch(/width:\s*clamp\(/);
     expect(label).not.toMatch(/right:\s*0/);
   });
+
+  it('sizes sections 04 and 05 against the window height too, so a laptop reads a spread', () => {
+    // Width-only padding (7vw) and full-width illustrations left a 1366×657 window ~200px of
+    // paper between the two and each picture taller than the window.
+    const spacing =
+      /\.ob-page \.ob-world-section,\s*\.ob-page \.ob-after\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(spacing).toMatch(/padding-block:\s*clamp\([^;]*min\(7vw, \d+svh\)/);
+    expect(css).toMatch(/\.ob-world-art svg\s*\{[^}]*max-height:\s*\d+svh/);
+    // …but never so short the film's text drops under the 9px floor (1366x620 painted 8.6px).
+    expect(css).toMatch(
+      /\.ob-after \.feature-film-art svg\s*\{[^}]*max-height:\s*max\(\d+svh, 25rem\)/,
+    );
+  });
+});
+
+describe('landing illustration — its numerals leave rather than paint under 9px', () => {
+  const css = read('src/flagship/observatory.css');
+  const tsx = read('src/flagship/sections/AnswerObservatory.tsx');
+
+  // The numerals are viewBox user units: they paint at (size × the box's scale), and the box is
+  // wider than the view, so its HEIGHT sets the scale. Under the query's width even the largest of
+  // them would be squinted at, so the rule hides them — and the threshold has to be where the
+  // smallest one crosses the floor, or the rule hides them too late.
+  it('hides the node and stop numerals below the width where the smallest crosses 9px', () => {
+    const rule = /@container \(width < (\d+)px\)\s*\{([^{}]*\{[^}]*\}[^{}]*)\}/.exec(css);
+    expect(rule, 'no width container query on the illustration').not.toBeNull();
+    const [, width, body] = rule!;
+    expect(body).toMatch(/\.ob-node text,\s*\.ob-map-stop text\s*\{\s*display:\s*none;/);
+
+    const [vw, vh] = /viewBox="0 0 (\d+) (\d+)"/.exec(tsx)!.slice(1).map(Number);
+    const [aw, ah] = /\.ob-universe\s*\{[^}]*aspect-ratio:\s*(\d+)\s*\/\s*(\d+)/
+      .exec(css)!
+      .slice(1)
+      .map(Number);
+    const sizeOf = (sel: string) =>
+      Number(new RegExp(`\\${sel} text\\s*\\{[^}]*font-size:\\s*(\\d+)px`).exec(css)?.[1]);
+    const smallest = Math.min(sizeOf('.ob-node'), sizeOf('.ob-map-stop'));
+    expect(smallest).toBeGreaterThan(0);
+    // The box is wider than the view (aw/ah > vw/vh), so its height is what the view fills.
+    expect(aw / ah).toBeGreaterThan(vw / vh);
+    const paintedAt = (w: number) => (smallest * (w * (ah / aw))) / vh;
+    expect(paintedAt(Number(width))).toBeGreaterThanOrEqual(9);
+    expect(paintedAt(Number(width) - 10)).toBeLessThan(9);
+  });
 });
 
 describe('The Study — a compact lesson stays inside the viewport', () => {
@@ -61,6 +107,17 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(/height:\s*100dvh/);
   });
 
+  it('keeps the note beside the card when the flat column is laptop-wide', () => {
+    // Stacked under a full-width card, Mavéa's note fell below the fold on a 1366px window. A
+    // wide flat column is a two-track grid with the note in its own track, held in view.
+    const wide = /@container study \(width >= 860px\) \{[\s\S]*?\n\}/.exec(css)?.[0] ?? '';
+    expect(wide).toMatch(/\.study-stage\[data-compact\] \.study-scene\s*\{[^}]*display:\s*grid/);
+    const note =
+      /\.study-stage\[data-compact\] \.study-note-wrap\s*\{[^}]*\}/.exec(wide)?.[0] ?? '';
+    expect(note).toMatch(/grid-column:\s*2/);
+    expect(note).toMatch(/position:\s*sticky/);
+  });
+
   it('lets the beat bar take the width its beats need before the strip scrolls', () => {
     // A chip is an object's whole name, and the strip fades a chip it cannot show whole. With a
     // fixed cap the third of three chips sat cut mid-word under the fade on a 1680px window that
@@ -77,6 +134,20 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     // decorative band; the floor grid is the sacrifice, the arc is not.
     const shallow = /\.study-stage\[data-shallow\] \.study-floor\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(shallow).toMatch(/display:\s*none/);
+  });
+
+  it('keeps the tilted floor out of the scene the cards stand in', () => {
+    // Sharing the scene's 3-D context, the floor's plane crossed the front card's depth; the
+    // compositor split the card along it and clipped each piece to the card's box, which cut the
+    // pen's margin scrawls off at the card's edge. The floor gets its own context under the scene.
+    const stage = read('src/canvas/study/StudyStage.tsx');
+    const scene = stage.slice(stage.indexOf('<div className="study-scene">'));
+    expect(scene).not.toMatch(/className="study-floor"/);
+    expect(stage).toMatch(
+      /<div className="study-canvas study-floor-plane"[^>]*>\s*<div className="study-floor" \/>/,
+    );
+    // …and it stands down with the rest of the desk in the flat column.
+    expect(css).toMatch(/\.study-stage\[data-compact\]\s*:is\(\s*\.study-floor-plane,/);
   });
 
   it('derives the scale floor from the legibility floor rather than choosing it', () => {
@@ -139,10 +210,10 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(scene).toMatch(/COMPACT_W = 1120/);
   });
 
-  it('does not replace a wide Study with the flat fallback merely because the window is short', () => {
-    const scale = read('src/canvas/study/useStudyScale.ts');
-    expect(scale).toMatch(/const compact = !full && w <= COMPACT_W/);
-    expect(scale).not.toMatch(/const compact =[^;]*\|\|[^;]*h/);
+  it('takes the short-window cutoff for the flat column from the height ladder', () => {
+    // Which windows get the column is pinned by behaviour in study-scale-fit.test.ts; this only
+    // holds the cutoff to a named rung, so it moves with the ladder and never with a guess.
+    expect(BREAKPOINT_HEIGHTS).toContain(COMPACT_H);
   });
 
   it('returns the compact front card to flow POSITIONED and with the desk slot cleared', () => {
@@ -488,7 +559,6 @@ describe('landing hero — short laptop windows keep the primary input in the op
 
   it('also bounds ultrawide hero scaling by viewport height', () => {
     const wide = css.slice(css.indexOf('@media (width > 1920px)'));
-    expect(wide).toMatch(/height:\s*clamp\(170px,\s*16dvh,\s*230px\)/);
     expect(wide).toMatch(/font-size:\s*clamp\(92px,\s*min\(5vw,\s*10dvh\),\s*116px\)/);
   });
 });
@@ -616,7 +686,21 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
 
   it('states the body width in the body’s own box, so `zoom` has a length to multiply', () => {
     const body = /\.zoom-sheet-body\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(body).toMatch(/width:\s*calc\(var\(--zoom-sheet-w\)/);
+    expect(body).toMatch(/width:\s*calc\(\s*\(var\(--zoom-sheet-w\)/);
+  });
+
+  it('sets the notes beside the card at the width the canvas folds them from', async () => {
+    // The CSS lays them out, the canvas decides whether a narrow sheet folds them: one number.
+    const { LENS_BESIDE_PX } = await import('../src/canvas/TopicCanvas');
+    const beside = /@container lens \(width >= (\d+)px\)/.exec(css)?.[1];
+    expect(Number(beside)).toBe(LENS_BESIDE_PX);
+  });
+
+  it('keeps the way out on the first row of a narrow sheet, and the controls on the next', () => {
+    const narrow = /@container lens \(width < 600px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(narrow).toMatch(/\.zoom-sheet-tools\s*\{[^}]*order:\s*3[^}]*flex-basis:\s*100%/);
+    const x = /\.zoom-sheet-x\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(x).toMatch(/margin-left:\s*auto/);
   });
 
   it('drives every width on the stage from one custom property, so they cannot drift', () => {
@@ -630,7 +714,7 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     const strip = /\.lens-strip\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(strip).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
     // The pan the magnified block needs lives in its own box, not on the sheet: the sheet is a
-    // clipped column so the toolbar above and the notes below never scroll with the card.
+    // clipped column so the toolbar above never scrolls with the card.
     const scroll = /\.zoom-sheet-scroll\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(scroll).toMatch(/overflow:\s*auto/);
     expect(sheet).toMatch(/overflow:\s*hidden/);
@@ -643,10 +727,11 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     // keeps its own height and goes entirely where a laptop window is too short for both.
     const scrim = /\.zoom-scrim\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(scrim).not.toMatch(/--dock-h/);
-    // Filled, not content-sized: the card's scroll box is then the room the card may be fitted
-    // into, where a box as tall as the card it holds could never let a shrunk card grow back.
+    // The sheet hugs its card and states the room as a percentage cap, which is what FitBox fits
+    // a tall card to (tests/lens-stage-hugs.test.tsx mounts the stage and checks the fit).
     const sheet = /\.zoom-sheet\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(sheet).toMatch(/flex:\s*1 1 auto/);
+    expect(sheet).toMatch(/flex:\s*0 1 auto/);
+    expect(sheet).toMatch(/max-height:\s*100%/);
     expect(sheet).toMatch(/min-height:\s*0/);
     expect(sheet).not.toMatch(/max-height:\s*[\d.]+dvh/);
     expect(css).toMatch(/@media \(height <= 820px\)\s*\{\s*\.lens-strip\s*\{\s*display:\s*none/);
@@ -740,84 +825,12 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     ).toBe(true);
   });
 
-  it('Focus caps its rails against the canvas column, not the window', () => {
-    // `100vh - 140px` measured a box roughly three times the one the sticky rail actually has
-    // (the real container was 253px tall), so neither list ever scrolled.
-    const css = read('src/canvas/focus/focus.css');
-    expect(css).toMatch(/--focus-col-h:\s*calc\(100dvh - 92px - var\(--dock-h, 76px\)\)/);
-    expect(css).not.toMatch(/max-height:\s*calc\(100vh/);
-    expect(/\.filmstrip-rail\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
-      true,
-    );
-    expect(/\.focus-notes-list\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
-      true,
-    );
-  });
-
   it('Deep zoom scrolls a level too tall for the window rather than stranding its last lines', () => {
     const css = read('src/live/deepzoom/deepzoom.css');
     expect(/\.dz-levels\s*\{[^}]*overflow:\s*hidden auto/.test(css)).toBe(true);
     // `align-self: center` would push the opening lines above the scrollport, out of reach.
     expect(css).not.toMatch(/align-self:\s*center;\n\s*transform-origin/);
     expect(/\.dz-level\s*\{[^}]*align-self:\s*safe center/.test(css)).toBe(true);
-  });
-
-  it('Focus keeps the answer page on ONE alignment axis, rail included', () => {
-    // The stage was the only primary answer surface missing from the shared axis, and its reading
-    // column is narrower than the measure because the filmstrip takes the right 268px + 28px gap.
-    // So the scrubber above the hero and the footer below it ran ~296px past the card — read as
-    // the card being misaligned, and with a note trail on the left it was inset on both sides.
-    const voice = read('src/live/voice/voice.css');
-    const tokens = read('src/styles/tokens-base.css');
-    const focus = read('src/canvas/focus/focus.css');
-    const live = read('src/live/LiveApp.tsx');
-
-    // The rail measure is shared, because a SIBLING cannot read a variable set on the stage.
-    expect(tokens).toMatch(/--focus-rail-w:\s*268px/);
-    expect(tokens).toMatch(/--focus-rail-gap:\s*28px/);
-    expect(focus).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) var\(--focus-rail-w, 268px\)/);
-
-    // The stage joins the axis rather than sprawling past the measure on a wide display.
-    expect(voice).toMatch(
-      /\.mavea-app\.live-voice \.focus-stage[\s\S]{0,120}?max-width:\s*var\(--live-content-max\)/,
-    );
-
-    // …and in Focus the siblings step back by exactly the rail column, off the SAME base the
-    // stage resolves against — `min(100%, measure)`, not the measure alone, or they sit 3px wide.
-    expect(voice).toMatch(/\[data-view='focus'\]/);
-    expect(voice).toMatch(
-      /min\(100%, var\(--live-content-max\)\) - var\(--focus-rail-w\) - var\(--focus-rail-gap\)/,
-    );
-    // Aligned to the STAGE's left edge, not the wrapper's. The stage is on the shared axis, so it
-    // centres itself once .topic-wrap is wider than the measure; a sibling pinned flush left then
-    // sits left of the card by half that spare space — a gap down one side and none down the
-    // other. Both rules therefore carry the stage's own centring term, and the notes rule adds the
-    // trail's column on top. Measured at 1920 and 1661, with the trail and without: 0px each side.
-    expect(voice).toMatch(/\(100% - min\(100%, var\(--live-content-max\)\)\) \/ 2/);
-    expect(voice).not.toMatch(/margin-inline:\s*0 auto/);
-    // Below 921px the rail stacks under the hero, so the correction must stop there.
-    expect(voice).toMatch(/@media \(width >= 921px\)/);
-    expect(focus).toMatch(/@media \(width <= 920px\)/);
-
-    // The view has to reach the DOM for any of it to apply — a class set in JS rather than a CSS
-    // `:has()`, the same reason FocusStage sets `has-notes` itself.
-    expect(live).toMatch(/className="topic-wrap" data-view=\{viewMode\}/);
-
-    // A live turn with a muted walk adds a THIRD column on the LEFT, so the reading column is
-    // inset as well as narrowed. walkNotes only reaches TopicCanvas when the reader is on a live
-    // turn, so no demo replay can render this shape — which is exactly how it went unhandled.
-    expect(tokens).toMatch(/--focus-notes-w:\s*216px/);
-    expect(voice).toMatch(/\[data-view='focus'\]:has\(\.focus-notes\)/);
-    expect(voice).toMatch(
-      /var\(--focus-notes-w\) - var\(--focus-rail-w\) - 2 \*\s*var\(--focus-rail-gap\)/,
-    );
-    // The notes rule carries the same centring term, plus the trail's own column on top.
-    expect(voice).toMatch(/var\(--focus-notes-w\) \+\s*var\(--focus-rail-gap\)/);
-    // …and it must stop where the trail itself does: below 1260px the column is display:none but
-    // the aside is still in the DOM, so correcting for it put every sibling 244px right of the
-    // hero. Measured at 1100px before this bound was added.
-    expect(voice).toMatch(/@media \(width >= 1260px\)/);
-    expect(focus).toMatch(/@media \(width <= 1259px\)/);
   });
 
   it('the Study note carries its own fit rather than being cropped by the frame', () => {
@@ -970,15 +983,6 @@ describe('demo gallery — a card’s parts line up with the cards beside it', (
   });
 });
 
-describe('two surfaces — the pair of buttons share one box', () => {
-  it('keeps the Live button’s border, transparent, so it is not shorter than the ghost beside it', () => {
-    const css = read('src/flagship/flagship.css');
-    const live = /\.fl-ghost-btn\.live\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
-    expect(live).toMatch(/border:\s*1px solid transparent/);
-    expect(live).not.toMatch(/border:\s*none/);
-  });
-});
-
 describe('coarse-pointer hit rescue — chrome is rescued, canvas content is left alone', () => {
   const css = read('src/styles/mobile.css');
   const coarse = css.slice(css.indexOf('@media (pointer: coarse)'));
@@ -991,7 +995,6 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
   /** Every host a `Block` is drawn into, and the module that puts it in the DOM. */
   const HOSTS: Record<string, string> = {
     'card-grid': 'src/canvas/TopicCanvas.tsx',
-    'focus-hero-card': 'src/canvas/focus/FocusStage.tsx',
     'cv-node-inner': 'src/canvas/focus/CanvasView.tsx',
     'study-card-face': 'src/canvas/study/StudyStage.tsx',
     'zoom-sheet-body': 'src/canvas/TopicCanvas.tsx',
@@ -1030,7 +1033,7 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
   });
 
   it('keeps the chrome beside a card rescued — its action cluster, a section’s controls', () => {
-    // These sit in the grid cell or the Focus hero next to the card, not inside it, and on touch
+    // These sit in the grid cell next to the card, not inside it, and on touch
     // they are shown at rest; excluding the whole host would take the finger floor off every one.
     expect(
       rescued(
@@ -1040,11 +1043,6 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
     expect(
       rescued(
         '<div class="card-grid"><section class="depth-section"><button>Go deeper</button></section></div>',
-      ),
-    ).toBe(true);
-    expect(
-      rescued(
-        '<div class="focus-hero-card"><div class="card reveal"></div><div class="block-actions"><button>Ask</button></div></div>',
       ),
     ).toBe(true);
   });
@@ -1075,5 +1073,118 @@ describe('Ripple — the provenance banner keeps a readable measure at phone wid
     // A character-relative basis, not a px one: what makes a line unreadable is how few words fit.
     expect(text).toMatch(/flex:\s*1\s+1\s+\d+ch/);
     expect(text).toMatch(/min-width:\s*0/);
+  });
+});
+
+describe('Onboarding on a phone — the primary action and its targets stay reachable', () => {
+  it('turns Settings into a full-height sheet on a phone or a short window', () => {
+    // A floating card with a fixed-height body left dead space under it at 390x844 and a 170px
+    // body in landscape. Below the breakpoint the body flexes into every pixel the sheet has.
+    const css = read('src/styles/wow-polish.css');
+    const sheet =
+      /@media \(width <= 560px\), \(height <= 650px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(sheet).toMatch(/\.ls-card\s*\{[^}]*height:\s*100dvh/);
+    expect(sheet).toMatch(/\.ls-body\s*\{[^}]*flex:\s*1[^}]*max-height:\s*none/);
+    expect(sheet).toMatch(/\.ls-close\s*\{[^}]*width:\s*var\(--tap-min\)/);
+    expect(sheet).toMatch(/\.ls-tab\s*\{[^}]*min-height:\s*var\(--tap-min\)/);
+    // And the card's box is a class, not an inline style an @media rule could never outrank.
+    expect(read('src/live/LiveSettings.tsx')).toMatch(/className="ls-card"/);
+  });
+
+  it('sizes the Deep Zoom start column to the row, not to its widest line', () => {
+    // margin-inline:auto in a flex column made the column content-sized, so the notice's single
+    // clamped line set its width and pushed the hero off a 320px screen.
+    const css = read('src/live/deepzoom/deepzoom.css');
+    expect(/\.dz-start-body\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(/width:\s*100%/);
+    expect(/\.dz-start-body > \.feature-use-notice\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(
+      /min-width:\s*0/,
+    );
+    expect(css).toMatch(/@media \(height <= 650px\)\s*\{\s*\.dz-start-body\s*\{/);
+  });
+
+  it('pins the wizard step footer outside the scrolling stage, at thumb size', () => {
+    const css = read('src/styles/setup-wizard.css');
+    expect(/\n\.setup-done\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(/min-height:\s*var\(--tap-min\)/);
+    // The provider choice is one compact row of pills on a phone, with the company kept in the
+    // accessible name rather than removed.
+    const phone = /@media \(width <= 560px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(phone).toMatch(/\.provider-tiles\s*\{[^}]*display:\s*flex/);
+    expect(phone).toMatch(/\.provider-sub\s*\{[^}]*clip-path/);
+    expect(phone).not.toMatch(/\.provider-sub\s*\{[^}]*display:\s*none/);
+  });
+
+  it('gives the course rail’s text actions a full tap target under a thumb', () => {
+    const css = read('src/live/course/courseRail.css');
+    const touch = /@media \(pointer: coarse\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    for (const cls of ['.cx-link', '.cx-zoom-link', '.cx-deck-link', '.cx-back']) {
+      expect(touch).toContain(cls);
+    }
+    expect(touch).toMatch(/min-height:\s*var\(--tap-min\)/);
+  });
+});
+
+describe('a feature notice reads as one bar in every one-line state', () => {
+  const css = readFileSync('src/legal/feature-use-notice.css', 'utf8');
+  it('puts the actions at the end and lets every clamped line run up to them', () => {
+    expect(css).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+    // A clamp is a one-line (or phone two-line) state wherever it comes from — a standing
+    // notice's default, a short window, a phone — and each one lifts the reading measure. Only
+    // the collapsed kind once did, so a short window's clamp stopped the line mid-bar.
+    const clamps = [...css.matchAll(/([^{}]+)\{([^{}]*-webkit-line-clamp:\s*\d[^{}]*)\}/g)];
+    expect(clamps.length).toBeGreaterThan(2);
+    for (const [, selector, body] of clamps) {
+      expect(selector).toMatch(/:not\(\[data-open\]\)/);
+      if (!/^\s*-webkit-line-clamp:\s*\d;\s*$/.test(body))
+        expect(body).toMatch(/max-width:\s*none/);
+    }
+  });
+
+  it('centres the dot and the actions on the first line, whatever the line count', () => {
+    const bar = /(?:^|\n)\.feature-use-notice \{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(bar).toMatch(/align-items:\s*start/);
+    expect(bar).toMatch(/text-align:\s*start/);
+    // The pull never exceeds the padding, so no target hangs outside the bar.
+    expect(bar).toMatch(/padding:\s*max\(9px, calc\(\(var\(--tap-min\) - 1lh\) \/ 2\)\)/);
+    expect(css).toMatch(/\.feature-use-notice-dot \{[^}]*margin-top:\s*calc\(\(1lh - 6px\) \/ 2\)/);
+    expect(css).toMatch(
+      /\.feature-use-notice-actions \{[^}]*margin-block:\s*calc\(\(1lh - var\(--tap-min\)\) \/ 2\)/,
+    );
+  });
+});
+
+// An ultrawide window stranded a sectioned answer in one 1640px column with a third of the screen
+// empty either side. Sections go two abreast from the 2560 rung only, in row-major (reading, tab
+// and walk) order, and below it nothing about the board changes.
+describe('board — an ultrawide window sets a sectioned answer two abreast', () => {
+  const rail = read('src/styles/side-rail.css');
+  const wide = /@media \(width >= 2560px\)\s*\{[\s\S]*?\n\}/.exec(rail)?.[0] ?? '';
+
+  it('pairs sections only from the 2560 rung, as grid cells in DOM order', () => {
+    expect(BREAKPOINT_WIDTHS).toContain(2560);
+    expect(wide).toMatch(
+      /\.with-rail \.card-grid:has\(> \.depth-section ~ \.depth-section\) > \.depth-section\s*\{\s*grid-column:\s*span 6;/,
+    );
+    // A lone or trailing section is never re-placed: centring it made the last section jump from
+    // the middle to the left cell the moment its partner streamed in.
+    expect(wide).not.toMatch(/nth-child|grid-column:\s*\d+ \//);
+    // Row-major grid placement keeps reading order; a multi-column flow would read DOWN each
+    // column and walk the spotlight out of the order the narration speaks it.
+    expect(wide).not.toMatch(/column-count|columns:/);
+    // Outside the rung a section still spans the whole grid.
+    expect(read('src/canvas/depth/depth.css')).toMatch(
+      /\.card-grid > \.depth-section\s*\{\s*grid-column:\s*1 \/ -1;/,
+    );
+  });
+
+  it('widens only the sectioned board, never the shared answer measure', () => {
+    expect(wide).toMatch(
+      /\.with-rail \.card-grid:has\(> \.depth-section ~ \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
+    );
+    expect(wide).toMatch(
+      /\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section ~ \.depth-section\)/,
+    );
+    expect(read('src/styles/tokens-base.css')).toMatch(
+      /--canvas-col-max: clamp\(1280px, 84vw, 1640px\)/,
+    );
   });
 });

@@ -127,8 +127,8 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
     steps: [
       {
         ask: "Explain how OAuth login works, step by step. I'm adding it to our app.",
-        beats: [{ kind: 'focus', atMs: 1200, walk: true }],
-        note: 'Focus mode: one card at a time, everything else dims.',
+        beats: [{ kind: 'lens', atMs: 1200, walk: 2 }],
+        note: 'Any card comes forward for a closer look, with Mavéa’s notes right beside it.',
         expect: { minBlocks: 3, suggests: true },
       },
       {
@@ -162,7 +162,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         ask: 'How do we plan a great day trip to Sintra on Saturday?',
         beats: [{ kind: 'canvas', atMs: 1000 }],
-        note: 'The spatial canvas: the whole trip on one board.',
+        note: 'The spatial canvas lays the whole trip out in space.',
         expect: { minBlocks: 2 },
       },
       {

@@ -36,8 +36,6 @@ export function ReceiptTapeSlide({ slots }: SlideProps<'recap'>) {
   const metrics = slots.metrics.slice(0, 4);
   return (
     <div className="reel-fade" style={{ width: 'calc(var(--rw) * 62)', maxWidth: '90%' }}>
-      <style>{`.reel[data-palette] { --rt-paper: #f6f1e2; }`}</style>
-
       <div
         style={{
           clipPath: TORN_CLIP,

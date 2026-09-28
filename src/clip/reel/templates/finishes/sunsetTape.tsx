@@ -2,7 +2,7 @@
 // sun orb bobbing on the horizon, the title split across two big lines with a magenta/cyan offset
 // (the chromatic fringe of a worn VHS tape), and a perspective grid floor scrolling toward the
 // vanishing point. The sunset, neon sun and grid magenta are an intrinsic 80s identity — a real
-// synthwave frame isn't tinted by the reel's palette — so those few colors live in a scoped <style>;
+// synthwave frame isn't tinted by the reel's palette — so those few colors live in finishes.css;
 // only the soft drop leans on the board's wash. sun-bob floats the orb; grid-move scrolls the floor.
 import type { SlideProps } from '../types';
 import { fitText, HERO_TIERS, BODY_TIERS } from '../fitText';
@@ -39,19 +39,6 @@ export function SunsetTapeSlide({ slots }: SlideProps<'concept'>) {
         animation: 'reel-fade-up 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards',
       }}
     >
-      <style>{`
-        .reel[data-palette] {
-          --tape-sky: linear-gradient(180deg, #2b1055 0%, #6a1f8f 34%, #d63c87 64%, #ff8a3d 100%);
-          --tape-sun-1: #ffe16b;
-          --tape-sun-2: #ff5d8f;
-          --tape-magenta: #ff36c8;
-          --tape-cyan: #3df0ff;
-          --tape-ink: #fff4ff;
-        }
-        @keyframes sun-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(calc(var(--ru) * -2.2)); } }
-        @keyframes grid-move { from { background-position: 0 0; } to { background-position: 0 calc(var(--ru) * 8); } }
-      `}</style>
-
       {/* The sun: a neon gradient disc bobbing on the horizon, its lower banding cut by the grid glow. */}
       <div style={{ display: 'grid', placeItems: 'center', marginBottom: 'calc(var(--ru) * 3)' }}>
         <div

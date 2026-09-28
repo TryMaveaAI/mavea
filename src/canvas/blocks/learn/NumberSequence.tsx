@@ -80,7 +80,7 @@ export function NumberSequence({
                     className="lr-ns-connector m-stagger-item m-fade-rise"
                     style={{ ['--i' as string]: i } as CSSProperties}
                   >
-                    <span className="lr-ns-delta">
+                    <span className="lr-ns-delta tab-num">
                       {delta >= 0 ? '+' : '−'}
                       {formatValue(Math.abs(delta), { compact: true })}
                     </span>
@@ -88,7 +88,7 @@ export function NumberSequence({
                   </span>
                 )}
                 <span
-                  className="lr-ns-item m-stagger-item m-scale-in"
+                  className="lr-ns-item tab-num m-stagger-item m-scale-in"
                   style={{ ['--i' as string]: i, width: px, height: px } as CSSProperties}
                   title={formatValue(v)}
                 >
