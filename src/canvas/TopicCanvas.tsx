@@ -786,10 +786,13 @@ export function TopicCanvas({
   // can drop out later (unrenderable) — and every flip re-parents each mounted card between
   // SectionGroup and the plain grid: a full remount that replays every entrance. Latch
   // sticky-true per answer instead: once an answer has shown sections it stays sectioned until
-  // a new data.id re-decides. Guarded render-phase set, so the latch lands in the same pass.
+  // the next answer re-decides. Keyed on the answer epoch too, because a live spec's id is the
+  // constant 'live' — on the id alone, one sectioned answer left every later one sectioned.
+  // Guarded render-phase set, so the latch lands in the same pass.
+  const sectionKey = `${data.id}#${studyAnswerEpoch ?? ''}`;
   const [sectionedAnswer, setSectionedAnswer] = useState<string | null>(null);
-  if (sectionedAnswer !== data.id && hasSections(displayBlocks)) setSectionedAnswer(data.id);
-  const useSections = sectionedAnswer === data.id;
+  if (sectionedAnswer !== sectionKey && hasSections(displayBlocks)) setSectionedAnswer(sectionKey);
+  const useSections = sectionedAnswer === sectionKey;
   // The takeovers unmount the grid, so the flag includes them: coming back re-attaches the packing
   // to the grid element that is mounted then.
   useSectionMasonry(gridRef, useSections && sections.length >= 2 && !inStudy && !canvasView);

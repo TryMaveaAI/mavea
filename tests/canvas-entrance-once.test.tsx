@@ -108,6 +108,31 @@ describe('a streamed answer inserts each card exactly once', () => {
     expect(cell(container, 'b1')).toBe(first);
   });
 
+  it('re-decides sections for each live answer, though every one is id "live"', () => {
+    // A live spec's id is the constant 'live', so a latch keyed on the id alone left one
+    // sectioned answer sectioning every later answer of the session.
+    const { container, rerender } = render(
+      <TopicCanvas
+        data={spec([block('b1', 'One'), block('b2', 'Two', 'Concept')], 'live')}
+        studyAnswerEpoch={1}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+      />,
+    );
+    expect(container.querySelector('.depth-section')).not.toBeNull();
+    rerender(
+      <TopicCanvas
+        data={spec([block('b1', 'Plain'), block('b2', 'Answer')], 'live')}
+        studyAnswerEpoch={2}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+      />,
+    );
+    expect(container.querySelector('.depth-section')).toBeNull();
+  });
+
   it('leaves the fresh-answer remount to the epoch key upstream, not to itself', () => {
     // Block ids are POSITIONAL (`live-1`, `live-2`…), so a new answer landing on the same shape
     // reconciles in place here by design. The clean reveal for a genuinely new answer comes from
