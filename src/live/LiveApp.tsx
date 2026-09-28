@@ -278,6 +278,7 @@ import { MindShapeCanvas } from './mindshape/MindShapeCanvas';
 import { registerWorldOpener } from './world/openWorld';
 import './world/worldChip.css';
 import { mindShapeToPrompt } from './mindshape/mindShapeToPrompt';
+import { mapAsFrame } from './mindshape/mapAsAnswer';
 import { completeWordsOnly, countThoughts } from './mindshape/localExtract';
 import { joinRamble } from './mindshape/joinRamble';
 import type { MindShapeSpec } from './mindshape/types';
@@ -913,6 +914,13 @@ export function LiveApp(): ReactElement {
   // the timer must read it through a ref to see the current phase + a stable onSpeechEnd).
   const mindShapeRef = useRef(mindShape);
   mindShapeRef.current = mindShape;
+  // While the map is up it is what the reader is looking at, so Present and Share act on it rather
+  // than on the answer behind it. Stamped once per map, so Share's cut is not rebuilt every render.
+  const mapInView = watchThinking && mindShape.spec?.atoms.length ? mindShape.spec : null;
+  const mapFrame = useMemo(
+    () => (mapInView ? mapAsFrame(mapInView, Date.now()) : null),
+    [mapInView],
+  );
   // Watch Me Think resolves ("settle") when the user has been quiet a beat longer than a normal
   // between-thoughts pause. This holds that pending timer.
   const settleTimerRef = useRef<number | null>(null);
@@ -5146,7 +5154,7 @@ export function LiveApp(): ReactElement {
       preload: recapLoad.preload,
     },
     present: {
-      available: !!turn.spec,
+      available: !!turn.spec || !!mapFrame,
       reason: 'Once there is an answer',
       run: () => openPresentation(),
       preload: presentationDeckLoad.preload,
@@ -5158,7 +5166,7 @@ export function LiveApp(): ReactElement {
       preload: extractionPreviewLoad.preload,
     },
     share: {
-      available: turn.frames.length > 0,
+      available: turn.frames.length > 0 || !!mapFrame,
       reason: 'Once there is something to share',
       // Video Studio is distinct from document export: Conversation is the default and Reel remains
       // its editorial sibling inside the same lazy surface.
@@ -5731,10 +5739,10 @@ export function LiveApp(): ReactElement {
               });
             }
           } else if (action === 'share') {
-            // From the "kept this shape" panel — open the share flow on what's on screen.
+            // From the "kept this shape" panel: Share cuts the map itself (see mapFrame).
             setShareOpen(true);
           } else if (action === 'present') {
-            // From "kept this shape" — go straight into Present mode for the current canvas.
+            // From "kept this shape": present the map itself (see mapFrame).
             openPresentation();
           } else if (
             action === 'answer' ||
@@ -5918,9 +5926,9 @@ export function LiveApp(): ReactElement {
               live answer (real-data-only), covering the canvas beneath. */}
           <LazyOverlay>
             <PresentationDeck
-              spec={turn.viewSpec ?? turn.spec}
-              question={hero?.question ?? null}
-              narration={hero?.narration ?? turn.narration}
+              spec={mapFrame?.spec ?? turn.viewSpec ?? turn.spec}
+              question={mapFrame ? mapFrame.question : (hero?.question ?? null)}
+              narration={mapFrame ? mapFrame.narration : (hero?.narration ?? turn.narration)}
               skinId={persona}
               autoAdvanceMs={tourMode.current || demoPersona.current ? 2600 : undefined}
               onExit={() => setPresenting(false)}
@@ -7100,7 +7108,7 @@ export function LiveApp(): ReactElement {
       {shareOpen && (
         <LazyOverlay>
           <ShareModal
-            frames={turn.frames}
+            frames={mapFrame ? [mapFrame] : turn.frames}
             retainedAudio={(frame) => audioStore.get(turnFrameId(frame))}
             onClose={() => setShareOpen(false)}
             onShared={() => interject.enqueue('clipShared')}
