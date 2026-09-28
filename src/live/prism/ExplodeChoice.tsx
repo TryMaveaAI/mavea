@@ -35,7 +35,8 @@ export function ExplodeChoice({
   if (compare <= 1) return null;
   const route = explodeRoute(synthesize);
   return (
-    <>
+    // A group, so focus landing on the first choice announces what the choice is about.
+    <div className="explode-choice" role="group" aria-label={`Map ${compare} documents`}>
       {route !== 'synthesis' && (
         <button
           ref={first}
@@ -60,6 +61,6 @@ export function ExplodeChoice({
           ⊹ Synthesize {synthesize} sources
         </button>
       )}
-    </>
+    </div>
   );
 }

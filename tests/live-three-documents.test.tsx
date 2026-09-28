@@ -57,6 +57,7 @@ describe('ExplodeChoice', () => {
       '⊹ Compare 3 documents',
       '⊹ Synthesize 3 sources',
     ]);
+    expect(screen.getByRole('group', { name: 'Map 3 documents' })).toBeInTheDocument();
     rerender(<ExplodeChoice sources={sourcesOf(2)} onCompare={noop} onSynthesize={noop} />);
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
       '⊹ Compare 2 documents',
