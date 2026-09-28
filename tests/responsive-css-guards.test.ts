@@ -1179,7 +1179,15 @@ describe('board — an ultrawide window sets a sectioned answer two abreast', ()
   it('gives the page ONE width, widened on the window alone and capped at two columns', () => {
     // The width may not switch on the answer's shape: a width keyed on the section count widened
     // the board alone, and would change the page's width from one turn to the next.
-    expect(rail).not.toMatch(/:has\([^{]*\{[^}]*--live-content-max\s*:/);
+    expect(rail).not.toMatch(/:has\([^)]*depth-section[^{]*\{[^}]*--live-content-max\s*:/);
+    // The one exception is a VIEW, not an answer: the Study takes the single column back, so the
+    // chrome lines up with the desk (capped at --canvas-col-max) instead of running ~1,000px past it.
+    expect(wide).toMatch(
+      /\.mavea-app\.live-voice\.with-rail:has\(\.study-stage\)\s*\{\s*--live-content-max:\s*var\(--canvas-col-max\);/,
+    );
+    expect(read('src/canvas/study/study.css')).toMatch(
+      /\.study-stage\s*\{[^}]*max-width:\s*var\(--canvas-col-max\)/,
+    );
     const token = /\.mavea-app\.live-voice\.with-rail\s*\{([^}]*)\}/.exec(wide)?.[1] ?? '';
     expect(token).toMatch(/--board-col-max:\s*1280px/);
     expect(token).toMatch(

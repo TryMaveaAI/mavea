@@ -133,6 +133,13 @@
     --live-content-max: calc(2 * var(--board-col-max) + var(--board-col-gap));
   }
 
+  /* The Study is a desk at a reading size, not a board: while it is up the page takes the single
+     column again, so the hero, the controls, the footer and the dock line up with the desk. It is
+     a view the reader opens and closes, not a turn, so a new answer still never moves the page. */
+  .mavea-app.live-voice.with-rail:has(.study-stage) {
+    --live-content-max: var(--canvas-col-max);
+  }
+
   .with-rail .card-grid:has(> .depth-section ~ .depth-section) {
     column-gap: var(--board-col-gap);
     align-items: start;
