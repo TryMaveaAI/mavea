@@ -6325,73 +6325,6 @@ export function LiveApp(): ReactElement {
             ask the composer is a plain pill, so the wrapper is a display:contents passthrough that
             doesn't touch layout. */}
         <div className={dockCapsule ? 'voice-capsule' : 'composer-passthrough'}>
-          {dockCapsule && dockHasStatus && (
-            <div className="voice-strip">
-              {/* The transcript always shows the current answer's line — the subtitle stays put
-                  whether Mavéa is voicing it or muted (a muted turn lands silently, but the line is
-                  still worth reading, and the row's width is already reserved). The pulsing
-                  "Speaking" pill earns its place ONLY while she's actually voicing; the settings on
-                  the right (voice, model) stay anchored regardless. Clicking the pill interrupts. */}
-              {walkPaused ? (
-                /* The interrupt is acknowledged ON SCREEN through the whole listen +
-                   transcription wait — without this, barging in meant she stopped dead and
-                   nothing happened for seconds, indistinguishable from a crash. */
-                <div className="vc-status vc-paused" role="status">
-                  <span className="vc-orb" aria-hidden="true">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                  <span className="vc-status-label">Paused — listening</span>
-                </div>
-              ) : speakingSticky && !voicePreparing ? (
-                <button
-                  type="button"
-                  className="vc-status"
-                  onClick={showAll}
-                  title="Tap to stop and show the whole answer at once"
-                  aria-label="Stop speaking and show the whole answer"
-                >
-                  <span className="vc-orb" aria-hidden="true">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                  <span className="vc-status-label">Speaking</span>
-                </button>
-              ) : walkPreparing && !muted ? (
-                /* The pre-walk barrier is holding (cold voice, chunks still landing) — an honest
-                   "getting ready" beat in the same pill, so the pause before the walk never
-                   reads as a dead canvas. Never says "Speaking": nothing is audible yet. */
-                <div className="vc-status vc-preparing" role="status" aria-busy="true">
-                  <span className="vc-orb" aria-hidden="true">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                  <span className="vc-status-label">Preparing voice…</span>
-                </div>
-              ) : voicePreparing && !muted ? (
-                /* A stop's line is still synthesizing (seconds of engaged-but-silent queue on a
-                   slow machine). The barrier's pill above already taught the words once this
-                   turn; repeating text at every stop would nag, so this recurring beat is the
-                   same held orb with no label — quiet, honest, still announced to a screen
-                   reader. */
-                <div
-                  className="vc-status vc-preparing vc-quiet"
-                  role="status"
-                  aria-busy="true"
-                  aria-label="Preparing voice"
-                >
-                  <span className="vc-orb" aria-hidden="true">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          )}
           <CommandComposer
             value={value}
             onChange={(v) => {
@@ -6445,9 +6378,71 @@ export function LiveApp(): ReactElement {
             // to mark — so a resting canvas isn't cluttered by an orphaned bar.
             tools={
               <>
+                {/* Mavéa's voice status lives IN the input row, never in a strip of its own: the dock
+                    measures its height into --dock-h and the Study column, canvas padding and pen
+                    marks are all laid out against it, so a row that appears while she speaks moves
+                    the whole stage mid-walk. Clicking the pill interrupts. */}
+                {walkPaused ? (
+                  /* The interrupt is acknowledged ON SCREEN through the whole listen +
+                     transcription wait — without this, barging in meant she stopped dead and
+                     nothing happened for seconds, indistinguishable from a crash. */
+                  <div className="vc-status vc-paused" role="status">
+                    <span className="vc-orb" aria-hidden="true">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </span>
+                    <span className="vc-status-label">Paused — listening</span>
+                  </div>
+                ) : speakingSticky && !voicePreparing ? (
+                  <button
+                    type="button"
+                    className="vc-status"
+                    onClick={showAll}
+                    title="Tap to stop and show the whole answer at once"
+                    aria-label="Stop speaking and show the whole answer"
+                  >
+                    <span className="vc-orb" aria-hidden="true">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </span>
+                    <span className="vc-status-label">Speaking</span>
+                  </button>
+                ) : walkPreparing && !muted ? (
+                  /* The pre-walk barrier is holding (cold voice, chunks still landing) — an honest
+                     "getting ready" beat in the same pill, so the pause before the walk never
+                     reads as a dead canvas. Never says "Speaking": nothing is audible yet. */
+                  <div className="vc-status vc-preparing" role="status" aria-busy="true">
+                    <span className="vc-orb" aria-hidden="true">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </span>
+                    <span className="vc-status-label">Preparing voice…</span>
+                  </div>
+                ) : voicePreparing && !muted ? (
+                  /* A stop's line is still synthesizing (seconds of engaged-but-silent queue on a
+                     slow machine). The barrier's pill above already taught the words once this
+                     turn; repeating text at every stop would nag, so this recurring beat is the
+                     same held orb with no label — quiet, honest, still announced to a screen
+                     reader. */
+                  <div
+                    className="vc-status vc-preparing vc-quiet"
+                    role="status"
+                    aria-busy="true"
+                    aria-label="Preparing voice"
+                  >
+                    <span className="vc-orb" aria-hidden="true">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </span>
+                  </div>
+                ) : null}
                 {turn.spec && <MarkToggle armed={inkArmed} onToggle={setInkArmed} />}
                 {dockCapsule && (
-                  <DockSettings>
+                  <DockSettings active={dockHasStatus}>
                     {/* Her voice: an explicit labeled switch, never a bare icon that could read as the
                         mic (which is untouched). */}
                     <button

@@ -83,13 +83,6 @@
 }
 
 /* ---- status strip: the top row (kept trim — idle, it's just the two settings on the right) ---- */
-.live-voice .voice-strip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 16px 8px 14px;
-  border-bottom: 1px solid var(--line-soft);
-}
 /* Status pill: the equalizer orb + one-word state (Speaking / Mavéa), a soft indigo tint. */
 .live-voice .vc-status {
   flex-shrink: 0;
@@ -183,6 +176,38 @@
   /* REACTIVE loop — pausable only while unseen. */
   animation-play-state: var(--reactive-play, running);
 }
+/* The status pill sits in the input row: it must never change the dock's height. */
+.live-voice .voice-capsule .composer .vc-status {
+  flex: none;
+  align-self: center;
+}
+.dock-settings-btn.has-status {
+  position: relative;
+}
+.dock-settings-btn.has-status::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: vc-orb-pulse 1.8s infinite;
+  animation-play-state: var(--reactive-play, running);
+}
+@media (width > 430px) {
+  /* The pill carries the state on a wide row, so the button needs no dot. */
+  .dock-settings-btn.has-status::after {
+    display: none;
+  }
+}
+@media (width <= 430px) {
+  .live-voice .voice-capsule .composer .vc-status {
+    display: none;
+  }
+}
+
 /* Settings popover: the four dock controls (voice, speed, level, model) behind one button in the
    input row, opening upward like the mic-mode menu. */
 .dock-settings {
@@ -268,11 +293,6 @@
    speaker icon + toggle, cap the model name, and pull the row's padding in — so the capsule
    stays clean and never overflows on a narrow screen. */
 @media (width <= 560px) {
-  .live-voice .voice-strip {
-    padding: 8px 12px;
-    gap: 6px;
-    justify-content: flex-end;
-  }
   /* The current spoken line is already rendered immediately above the dock. In the status row it
      collapsed to a few orphaned letters between four fixed controls on phones, which looked like
      broken input. Keep the desktop glanceable transcript and give mobile chrome a clean row. */

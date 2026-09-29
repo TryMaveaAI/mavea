@@ -19,11 +19,11 @@ describe('the unified capsule holds Mavéa’s output settings, not the topbar',
   const topbarEnd = src.indexOf('</div>', topbarStart);
   const topbar = src.slice(topbarStart, topbarEnd);
 
-  const stripStart = src.indexOf('<div className="voice-strip">');
-  const stripEnd = src.indexOf('<CommandComposer', stripStart);
+  const stripStart = src.indexOf('{walkPaused ? (');
+  const stripEnd = src.indexOf('<MarkToggle', stripStart);
   const strip = src.slice(stripStart, stripEnd);
 
-  const settingsStart = src.indexOf('<DockSettings>');
+  const settingsStart = src.indexOf('<DockSettings active');
   const settings = src.slice(settingsStart, src.indexOf('</DockSettings>', settingsStart));
 
   it('no longer renders the model chip, mic-mode toggle, or voice controls in the topbar', () => {
@@ -32,15 +32,19 @@ describe('the unified capsule holds Mavéa’s output settings, not the topbar',
     expect(topbar).not.toMatch(/voice-switch/);
   });
 
-  it('the status strip appears only while there is a voice status — and mute never hides the settings', () => {
+  it('has no status strip of its own — the pill lives in the input row so the dock never changes height', () => {
+    // --dock-h feeds the Study column, canvas padding and pen-mark layout; a row that mounts while
+    // Mavéa speaks moves the stage mid-walk.
+    expect(src).not.toMatch(/className="voice-strip"/);
     expect(src).toMatch(/dockCapsule \? 'voice-capsule' : 'composer-passthrough'/);
-    expect(src).toMatch(/\{dockCapsule && dockHasStatus && \(\s*<div className="voice-strip">/);
+    expect(stripStart, 'status pills not found').toBeGreaterThan(-1);
+    expect(stripStart).toBeLessThan(stripEnd);
     expect(src).toMatch(
       /const dockHasStatus =\s*walkPaused \|\| speakingSticky \|\| \(!muted && \(walkPreparing \|\| voicePreparing\)\);/,
     );
+    expect(src).toMatch(/<DockSettings active=\{dockHasStatus\}>/);
     expect(settingsStart, 'DockSettings not found').toBeGreaterThan(-1);
     expect(settings).not.toMatch(/muted \?\s*null/);
-    expect(src).toMatch(/\{dockCapsule && \(\s*<DockSettings>/);
   });
 
   it('the mute control always shows the words "Mavéa\'s voice" — never a bare icon', () => {

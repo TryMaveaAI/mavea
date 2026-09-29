@@ -4,7 +4,15 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Icon } from '../../icons/icons';
 
-export function DockSettings({ children }: { children: ReactNode }): ReactElement {
+export function DockSettings({
+  children,
+  active = false,
+}: {
+  children: ReactNode;
+  /** Mavéa is speaking, preparing or paused. The status pill has no room on a phone row, so the
+   *  button carries a pulsing dot instead. */
+  active?: boolean;
+}): ReactElement {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -32,7 +40,9 @@ export function DockSettings({ children }: { children: ReactNode }): ReactElemen
       <button
         ref={triggerRef}
         type="button"
-        className={'mark-toggle dock-settings-btn' + (open ? ' on' : '')}
+        className={
+          'mark-toggle dock-settings-btn' + (open ? ' on' : '') + (active ? ' has-status' : '')
+        }
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Voice, speed, explanation level and model"
