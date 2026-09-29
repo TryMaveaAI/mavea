@@ -60,6 +60,8 @@ export type FailedTurn = LiveError & {
   attachments?: Attachment[];
   selectedBlocks?: Block[];
   inkIntents?: InkIntent[];
+  /** The reader asked this turn without Search, so Retry must keep asking that way. */
+  withoutSearch?: boolean;
 };
 
 export interface ShowFrameOptions {
@@ -971,6 +973,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         attachments,
         selectedBlocks,
         inkIntents,
+        withoutSearch: opts?.withoutSearch,
       };
       cancelSpeak?.();
       // Snapshot the canvas BEFORE this turn streams/replaces it — that's the one to keep

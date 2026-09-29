@@ -80,16 +80,27 @@ function keyHeader(cfg: ModelConfig): Record<string, string> {
  *  quota it names (`…PerMinute…` / `…PerDay…`, the one thing that tells a wait-a-moment limit from a
  *  spent day) and, for a per-minute one, how long Google says to wait. */
 function quotaHint(details: unknown): string {
-  const list: Record<string, unknown>[] = Array.isArray(details) ? details : [];
-  const id = list
-    .flatMap((d) => (Array.isArray(d?.violations) ? d.violations : []))
-    .map((v) => v?.quotaId)
-    .find((q) => typeof q === 'string');
+  const list = (Array.isArray(details) ? details : []).filter(
+    (d): d is Record<string, unknown> => typeof d === 'object' && d !== null,
+  );
+  const ids = list
+    .flatMap((d) => (Array.isArray(d.violations) ? d.violations : []))
+    .map((v: unknown) => (typeof v === 'object' && v !== null ? Reflect.get(v, 'quotaId') : null))
+    .filter((q): q is string => typeof q === 'string');
+  // A body naming several violations is a spent day if ANY of them is the daily one.
+  const id = ids.find((q) => /per.?day/i.test(q)) ?? ids[0];
   const wait = list
-    .map((d) => d?.retryDelay)
-    .find((t) => typeof t === 'string' && /^[\d.]+s$/.test(t));
+    .map((d) => d.retryDelay)
+    .find((t): t is string => typeof t === 'string' && /^[\d.]+s$/.test(t));
   return `${id ? ` [${id.slice(0, 80)}]` : ''}${wait && !/per.?day/i.test(id ?? '') ? ` retry in ${wait}` : ''}`;
 }
+
+/** What is left of a 429's message once Google's fixed sentences and links are removed. A refused
+ *  Search is a body with nothing else in it; any other wording (a legacy "resource has been
+ *  exhausted", a depleted balance, a named quota) is a different problem and must not be reported
+ *  as Search being withheld. */
+const QUOTA_BOILERPLATE =
+  /you exceeded your current quota|please check your plan and billing details|for more information on this error, head to:|to monitor your current usage, head to:|https?:\/\/\S+|[\s.,]+/gi;
 
 /** Pull the short reason out of a Gemini error body so the thrown message can distinguish a
  *  transient per-minute rate limit from grounding-not-available-on-this-tier — both arrive as
@@ -127,9 +138,6 @@ async function errorDetail(res: Response, grounded = false): Promise<string> {
         retryAfterMs: res.headers.get('retry-after-ms'),
       });
     }
-    // RESOURCE_EXHAUSTED on a grounded request = the separately-metered Search grounding quota;
-    // surface that word so describeLiveError can tell the user grounding isn't available, not
-    // that their whole key is dead.
     // For auth/config failures (403 PERMISSION_DENIED, 400 INVALID_ARGUMENT), the STATUS alone
     // ("PERMISSION_DENIED") is opaque — Google's message says *why* ("API key not valid", "API not
     // enabled for project…"). Append a trimmed message so the cause is actionable, never the key.
@@ -137,13 +145,16 @@ async function errorDetail(res: Response, grounded = false): Promise<string> {
     // hit, and the part that says which one (or when to retry) comes after the 160-char cut. Read it
     // from the structured details instead, and drop the boilerplate that reads as a spent account.
     let quota = status === 'RESOURCE_EXHAUSTED' ? quotaHint(body.error?.details) : '';
-    // A grounded request refused with no quota named and no wait offered is Search grounding being
-    // withheld from this key: a bare 429 that no amount of waiting clears.
+    // A grounded request refused with nothing in the body but the boilerplate — no quota named, no
+    // wait offered — is Search grounding being withheld from this key: a bare 429 that no amount of
+    // waiting clears. describeLiveError reads the marker so it can say so, instead of that the
+    // whole key is spent.
     if (
       grounded &&
       status === 'RESOURCE_EXHAUSTED' &&
       !quota &&
-      !/retry in|per.?(?:minute|day)/i.test(msg)
+      msg.trim() !== '' &&
+      msg.replace(QUOTA_BOILERPLATE, '') === ''
     )
       quota = ' [search grounding refused]';
     const shown = msg.replace(/,?\s*please check your plan and billing details\.?/i, '');

@@ -1260,7 +1260,7 @@ describe('gemini answers with 200 OK and nothing in it', () => {
     expect(limited).toHaveBeenCalledTimes(3);
   });
 
-  // Google's real 429 body (captured from the free tier): "billing" leads, the quota is named only
+  // Google's real 429 body (captured live): "billing" leads, the quota is named only
   // in the structured details, and "retry in" sits beyond the adapter's 160-character cut.
   const quota429 = (quotaId: string) =>
     new Response(
@@ -1335,6 +1335,46 @@ describe('gemini answers with 200 OK and nothing in it', () => {
     refused.mockClear();
     await geminiAdapter.generate(req, cfg).catch(() => undefined);
     expect(refused).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    ['the legacy capacity body', 'Resource has been exhausted (e.g. check quota).'],
+    [
+      'a depleted balance',
+      'Your prepayment credits are depleted. Please go to AI Studio to top up.',
+    ],
+  ])('does not call %s on a grounded request a refused Search', async (_name, message) => {
+    const other = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message } }),
+          { status: 429, headers: { 'retry-after-ms': '1' } },
+        ),
+    );
+    vi.stubGlobal('fetch', other);
+    const err = await geminiAdapter
+      .generate({ ...req, tools: { webSearch: true } }, cfg)
+      .catch((e: Error) => e);
+    expect((err as Error).message).not.toMatch(/search grounding refused/);
+    expect(describeLiveError(err, 'gemini').searchRefused).toBeUndefined();
+  });
+
+  it('reads a body that names a per-minute and a per-day violation as a spent day', async () => {
+    const both = vi.fn(async () => {
+      const body = (await quota429('GenerateRequestsPerMinutePerProjectPerModel').json()) as {
+        error: { details: { violations?: unknown[] }[] };
+      };
+      const violations = body.error.details.find((d) => d.violations)?.violations ?? [];
+      violations.push({ quotaId: 'GenerateRequestsPerDayPerProjectPerModel' });
+      return new Response(JSON.stringify(body), {
+        status: 429,
+        headers: { 'retry-after-ms': '1' },
+      });
+    });
+    vi.stubGlobal('fetch', both);
+    const err = await geminiAdapter.generate(req, cfg).catch((e: Error) => e);
+    expect(both).toHaveBeenCalledTimes(1);
+    expect(describeLiveError(err, 'gemini').message).toMatch(/daily quota is full/);
   });
 
   it('still calls a genuine per-day 429 a full daily quota, without retrying it', async () => {

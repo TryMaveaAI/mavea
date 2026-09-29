@@ -5691,6 +5691,8 @@ export function LiveApp(): ReactElement {
                 undefined,
                 err.inkIntents,
                 err.question,
+                undefined,
+                err.withoutSearch ? { withoutSearch: true } : undefined,
               );
           }}
           disabled={turn.busy}
@@ -5735,7 +5737,7 @@ export function LiveApp(): ReactElement {
                 setShowSettings(true);
               }}
             >
-              Turn off Web search
+              Open Web search setting
             </button>
           </>
         ) : (

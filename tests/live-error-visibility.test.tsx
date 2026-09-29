@@ -12,7 +12,7 @@ import type { Block, ConversationSpec } from '../src/data/conversation';
 // The failure the stand-in reports; a test that needs a different one sets it before it asks.
 const failure = vi.hoisted(() => ({
   error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' } as {
-    kind: 'auth' | 'quota';
+    kind: 'auth' | 'quota' | 'http';
     status: number;
     message: string;
     searchRefused?: true;
@@ -151,7 +151,7 @@ describe('LiveApp — a refused Search is fixed by one switch', () => {
     const panel = document.querySelector('.live-error') as HTMLElement;
     expect(panel.textContent).not.toMatch(/Open settings/);
     const turnOff = Array.from(panel.querySelectorAll('button')).find((b) =>
-      /turn off web search/i.test(b.textContent ?? ''),
+      /web search setting/i.test(b.textContent ?? ''),
     );
     expect(turnOff).toBeTruthy();
 
@@ -195,12 +195,26 @@ describe('LiveApp — a refused Search is fixed by one switch', () => {
       /ask without web search/i.test(b.textContent ?? ''),
     );
     expect(button).toBeTruthy();
+    // The no-Search ask then fails for an unrelated reason: Retry must keep asking without Search,
+    // or it walks the reader straight back into the refusal they just routed around.
+    failure.error = { kind: 'http', status: 503, message: 'Google is busy right now.' };
     await act(async () => {
       fireEvent.click(button as HTMLElement);
       await Promise.resolve();
     });
     await waitFor(() => expect(asked).toHaveBeenCalledTimes(2));
     expect(searchOf(1)).toBe('off');
+
+    await waitFor(() => expect(document.querySelector('.live-error')?.textContent).toMatch(/busy/));
+    const retry = Array.from(document.querySelectorAll('.live-error button')).find((b) =>
+      /^retry$/i.test((b.textContent ?? '').trim()),
+    );
+    await act(async () => {
+      fireEvent.click(retry as HTMLElement);
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(asked).toHaveBeenCalledTimes(3));
+    expect(searchOf(2)).toBe('off');
   });
 
   it('keeps the generic Open settings for every other failure', async () => {
@@ -218,6 +232,6 @@ describe('LiveApp — a refused Search is fixed by one switch', () => {
     await waitFor(() => expect(document.querySelector('.live-error')).toBeTruthy());
     const panel = document.querySelector('.live-error') as HTMLElement;
     expect(panel.textContent).toMatch(/Open settings/);
-    expect(panel.textContent).not.toMatch(/Turn off Web search/);
+    expect(panel.textContent).not.toMatch(/Web search setting/);
   });
 });

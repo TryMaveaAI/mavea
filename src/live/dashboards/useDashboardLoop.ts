@@ -354,8 +354,9 @@ export async function runRefreshBatch(
       // The CALL died (network/quota/auth). Don't stamp lastRefreshedAt — no member was checked —
       // and don't ask again on a backoff: the board says what happened and waits for its next
       // scheduled pass or the reader's Check now. A rejected key, or a Search the provider will not
-      // run for this key, stops the board until the reader changes the connection and checks. The briefing gate stays open too (markBriefingShown only ever fires
-      // from recordBriefing, on success).
+      // run for this key, stops the board until the reader changes the connection and checks. The
+      // briefing gate stays open too (markBriefingShown only ever fires from recordBriefing, on
+      // success).
       const failure = batchResult.failure ?? { kind: 'network' as const };
       eachRun((run) => {
         recordStep(run, 'search', false, { detail: failureLine(failure) });
