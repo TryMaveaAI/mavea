@@ -5697,9 +5697,25 @@ export function LiveApp(): ReactElement {
         >
           Retry
         </button>
-        <button type="button" className="live-error-btn" onClick={() => setShowSettings(true)}>
-          Open settings
-        </button>
+        {turn.error.searchRefused ? (
+          // Land on the switch itself: this failure is fixed by one row, and the generic panel
+          // opens wherever Settings was last left.
+          <button
+            type="button"
+            className="live-error-btn"
+            onClick={() => {
+              setSettingsTab('settings');
+              setRevealSetting('web-search');
+              setShowSettings(true);
+            }}
+          >
+            Turn off Web search
+          </button>
+        ) : (
+          <button type="button" className="live-error-btn" onClick={() => setShowSettings(true)}>
+            Open settings
+          </button>
+        )}
       </div>
     </div>
   ) : null;

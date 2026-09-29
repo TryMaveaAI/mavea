@@ -145,6 +145,7 @@ const FAILURE_KINDS = new Set([
   'no-model',
   'ungrounded',
   'search-off',
+  'search-refused',
   'provider-unavailable',
 ]);
 

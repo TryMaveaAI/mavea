@@ -1304,7 +1304,8 @@ describe('gemini answers with 200 OK and nothing in it', () => {
   });
 
   it('says a grounded request refused with no quota named is Search being withheld, and does not retry it', async () => {
-    // Captured from the free tier: a google_search call answered 429 with only the boilerplate.
+    // Captured live from a key Google withholds Search from: a google_search call answered 429
+    // with only the boilerplate.
     const refused = vi.fn(
       async () =>
         new Response(
@@ -1326,6 +1327,9 @@ describe('gemini answers with 200 OK and nothing in it', () => {
       .catch((e: Error) => e);
     expect(refused).toHaveBeenCalledTimes(1);
     expect(describeLiveError(err, 'gemini').message).toMatch(/refused Search.*Web search off/);
+    // Typed, so a surface can offer the switch (or, where Search is required, say so) without
+    // matching the sentence.
+    expect(describeLiveError(err, 'gemini').searchRefused).toBe(true);
 
     // The same body on an UNgrounded request is an ordinary rate limit and keeps its retries.
     refused.mockClear();
@@ -1340,6 +1344,7 @@ describe('gemini answers with 200 OK and nothing in it', () => {
     expect(spent).toHaveBeenCalledTimes(1);
     expect((err as Error).message).not.toMatch(/retry in/);
     expect(describeLiveError(err, 'gemini').message).toMatch(/daily quota is full/);
+    expect(describeLiveError(err, 'gemini').searchRefused).toBeUndefined();
   });
 
   it('surfaces a non-transient status without retrying', async () => {

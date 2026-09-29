@@ -49,6 +49,9 @@ import { arr, obj } from '../providers/http';
  *  in seconds, a rejected key never drains without the user. */
 function classifyProviderError(err: unknown): TrackerFailure {
   const text = err instanceof Error ? err.message : String(err);
+  // Ahead of the 429 test, which this message also matches: a rate window drains, a refusal
+  // never does without the reader changing the connection.
+  if (/search grounding refused/i.test(text)) return { kind: 'search-refused' };
   if (/\b429\b|rate.?limit/i.test(text)) {
     // Providers state the wait in the message ("try again in 5.146s") far more often than they
     // send a machine-readable header the adapter kept — read it when it is there.

@@ -9,6 +9,16 @@ import type { TurnFrame } from '../src/live/history';
 import type { ChatMessage } from '../src/live/providers/types';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 
+// The failure the stand-in reports; a test that needs a different one sets it before it asks.
+const failure = vi.hoisted(() => ({
+  error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' } as {
+    kind: 'auth' | 'quota';
+    status: number;
+    message: string;
+    searchRefused?: true;
+  },
+}));
+
 vi.mock('../src/live/generateLive', () => ({
   generateLive: vi.fn(async (): Promise<LiveResult> => ({
     spec: {
@@ -27,7 +37,7 @@ vi.mock('../src/live/generateLive', () => ({
     } as unknown as ConversationSpec,
     narration: '',
     tier: 'frontier',
-    error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' },
+    error: failure.error,
   })),
 }));
 
@@ -88,6 +98,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  failure.error = { kind: 'auth', status: 401, message: 'Your API key was rejected.' };
   cleanup();
   localStorage.clear();
   clearSession();
@@ -113,5 +124,56 @@ describe('LiveApp — a failed follow-up is brought into view', () => {
     expect(canvas).toBeTruthy();
     expect(scrollTo.mock.instances).toContain(canvas);
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+  });
+});
+
+describe('LiveApp — a refused Search is fixed by one switch', () => {
+  it('offers the Web search row itself, not a generic settings panel', async () => {
+    failure.error = {
+      kind: 'quota',
+      status: 429,
+      message: 'Google refused Search for this key, and waiting will not change that.',
+      searchRefused: true,
+    };
+    render(<LiveApp />);
+    const input = await waitFor(() => {
+      const el = document.querySelector('.composer-input') as HTMLInputElement | null;
+      if (!el) throw new Error('composer not mounted');
+      return el;
+    });
+    fireEvent.change(input, { target: { value: 'what is the weather in Tokyo this week?' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(document.querySelector('.live-error')).toBeTruthy());
+    const panel = document.querySelector('.live-error') as HTMLElement;
+    expect(panel.textContent).not.toMatch(/Open settings/);
+    const turnOff = Array.from(panel.querySelectorAll('button')).find((b) =>
+      /turn off web search/i.test(b.textContent ?? ''),
+    );
+    expect(turnOff).toBeTruthy();
+
+    fireEvent.click(turnOff as HTMLElement);
+    await waitFor(() => expect(document.getElementById('ls-web-search')).toBeTruthy());
+  });
+
+  it('keeps the generic Open settings for every other failure', async () => {
+    render(<LiveApp />);
+    const input = await waitFor(() => {
+      const el = document.querySelector('.composer-input') as HTMLInputElement | null;
+      if (!el) throw new Error('composer not mounted');
+      return el;
+    });
+    fireEvent.change(input, { target: { value: 'and with monthly contributions?' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(document.querySelector('.live-error')).toBeTruthy());
+    const panel = document.querySelector('.live-error') as HTMLElement;
+    expect(panel.textContent).toMatch(/Open settings/);
+    expect(panel.textContent).not.toMatch(/Turn off Web search/);
   });
 });

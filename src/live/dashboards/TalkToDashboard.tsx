@@ -157,7 +157,17 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
             <div className="dash-talk-thinking">Mavéa is looking at your dashboard…</div>
           ) : turn.result?.error ? (
             <div className="dash-talk-error">
-              That didn’t go through. Check your model in <a href="#/live">Live</a> and try again.
+              {turn.result.error.searchRefused ? (
+                <>
+                  Your provider refused Search for this key, and a dashboard needs it. Check your
+                  provider plan, or <a href="#/live?settings=model">connect a different model</a>.
+                </>
+              ) : (
+                <>
+                  That didn’t go through. Check your model in <a href="#/live">Live</a> and try
+                  again.
+                </>
+              )}
             </div>
           ) : turn.result ? (
             <>

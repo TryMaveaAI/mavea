@@ -85,6 +85,10 @@ export function failureLine(failure: TrackerFailure): string {
       // half that a reader whose model cannot search needs — for them the switch it names does
       // nothing on its own. Only the tracker's own promise is added to it.
       return `${searchBlockLine('search-off')} Then this starts checking.`;
+    case 'search-refused':
+      // Not "turn Web search off", which the chat surface says: a tracker's values are only ever
+      // persisted from a grounded search, so the switch is not an option here.
+      return 'Your provider refused Search for this key, and trackers need it. Check your provider plan, or connect a different model in Live — this checks again once you do.';
     case 'provider-unavailable':
       return (
         'Your model provider is unavailable right now. The next scheduled check tries again, ' +

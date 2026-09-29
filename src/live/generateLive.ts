@@ -240,6 +240,9 @@ export interface LiveError {
   status?: number;
   /** A plain-language, user-facing line ("Your API key was rejected — check it in settings"). */
   message: string;
+  /** The provider refused Search for this key. Waiting cannot change that, so the surface offers
+   *  the switch that does, and a surface where Search is required says so instead. */
+  searchRefused?: true;
 }
 
 /** Display names for the connection-failure message ("Couldn't reach Anthropic"). Local on
@@ -318,6 +321,7 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
       kind: 'quota',
       status,
       message: `${label} refused Search for this key, and waiting won't change that — turn Web search off in settings to ask without it, or check your ${label} plan.`,
+      searchRefused: true,
     };
   if (status === 429) {
     const isExhausted =
