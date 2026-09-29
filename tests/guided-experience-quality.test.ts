@@ -31,8 +31,8 @@ describe('guided experience quality', () => {
     expect(TOUR[1]?.id).toBe('connect');
 
     const draws = TOUR.find((chapter) => chapter.id === 'draws');
-    expect(draws?.spotlight).toBe('.voice-switch');
-    expect(draws?.coach).toContain("voice toggle labeled Mavéa's voice");
+    expect(draws?.spotlight).toBe('.dock-settings-btn');
+    expect(draws?.coach).toContain("Mavéa's voice switch");
     expect(draws?.coach).toContain('reveal everything immediately');
     expect(draws?.coach).toContain('microphone stays unchanged');
 

@@ -183,26 +183,42 @@
   /* REACTIVE loop — pausable only while unseen. */
   animation-play-state: var(--reactive-play, running);
 }
-/* The settings cluster (voice switch + speed chip + model chip) never shrinks — the transcript
-   gives way. */
-.live-voice .voice-strip > .voice-switch,
-.live-voice .voice-strip > .voice-speed,
-.live-voice .voice-strip > .explain-chip,
-.live-voice .voice-strip > .live-model-chip {
-  flex: none;
+/* Settings popover: the four dock controls (voice, speed, level, model) behind one button in the
+   input row, opening upward like the mic-mode menu. */
+.dock-settings {
+  position: relative;
+  display: inline-flex;
 }
-/* One-line transcript, filling the middle. Wraps rather than hard-truncating (it streams; the
-   reader can get ahead of the voice), but stays a single line at rest via the flex row. */
-.live-voice .vc-transcript {
-  flex: 1;
+.dock-settings-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 60;
+  /* Two even columns: voice | speed, level | model. Wrapped chips of four different widths left a
+     ragged block with a hole beside the short ones. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: min(320px, calc(100vw - 28px));
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+}
+.dock-settings-pop > * {
   min-width: 0;
-  font-size: var(--fs-md);
-  line-height: 1.5;
-  color: var(--text-muted);
+  justify-content: center;
+}
+.dock-settings-pop .chip-model {
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded truncation of one model id */
+  white-space: nowrap;
+}
+/* Same lift as the mic menu: the popover must clear the scrubber and canvas chrome above the dock. */
+.live-voice .live-dock:has(.dock-settings-pop) {
+  z-index: 46;
 }
 @keyframes vc-orb-pulse {
   0% {
@@ -260,25 +276,10 @@
   /* The current spoken line is already rendered immediately above the dock. In the status row it
      collapsed to a few orphaned letters between four fixed controls on phones, which looked like
      broken input. Keep the desktop glanceable transcript and give mobile chrome a clean row. */
-  .live-voice .vc-transcript {
-    display: none;
-  }
-  /* A spoken/preparing status plus four fixed setting controls cannot share a phone row with its
-     word label. The animated orb remains visible and the control keeps its complete accessible
+  /* A spoken/preparing status cannot share a phone row with its word label. The animated orb remains visible and the control keeps its complete accessible
      name, so this removes only duplicated visual copy rather than state or functionality. */
   .live-voice .vc-status-label {
     display: none;
-  }
-  .live-voice .voice-switch-label {
-    display: none;
-  }
-  .live-voice .voice-strip > .live-model-chip {
-    min-width: 0;
-    padding-inline: 8px;
-  }
-  .live-voice .voice-strip .chip-model {
-    display: block;
-    max-width: 64px;
   }
 }
 
@@ -296,7 +297,7 @@
 
   .live-voice .voice-capsule .composer {
     display: grid;
-    grid-template-columns: 44px 38px 38px 38px 44px;
+    grid-template-columns: 44px 38px 38px 38px 38px 44px;
     justify-content: space-between;
     column-gap: 0;
     row-gap: 6px;
@@ -310,7 +311,7 @@
     min-height: 30px;
   }
   .live-voice .voice-capsule .send-btn {
-    grid-column: 5;
+    grid-column: 6;
   }
   .live-voice .voice-capsule .mark-toggle {
     width: 38px;
@@ -319,12 +320,6 @@
     padding: 0;
   }
   .live-voice .voice-capsule .mark-toggle-label {
-    display: none;
-  }
-}
-
-@media (width <= 360px) {
-  .live-voice .voice-strip .chip-model {
     display: none;
   }
 }

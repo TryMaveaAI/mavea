@@ -52,11 +52,11 @@
      Each template's --voice-size remains the art-directed ceiling, never a desktop-sized floor —
      it already carries --fs-scale itself, so only the min/preferred terms scale here too. */
   font-size: clamp(
-    calc(18px * var(--fs-scale, 1)),
-    calc((14px + 1.2vw) * var(--fs-scale, 1)),
-    var(--voice-size)
+    calc(16px * var(--fs-scale, 1)),
+    calc((12px + 0.8vw) * var(--fs-scale, 1)),
+    min(var(--voice-size), calc(28px * var(--fs-scale, 1)))
   );
-  line-height: 1.3;
+  line-height: 1.35;
 }
 .live-voice .hero-accent {
   color: var(--presence);

@@ -81,6 +81,7 @@ import { BlockBoundary } from './BlockBoundary';
 import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
 import { LensStrip } from './lens/LensStrip';
+import { ownsClick } from './lens/ownsClick';
 import { skeletonCard, skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
@@ -873,6 +874,9 @@ export function TopicCanvas({
     const sel = typeof window !== 'undefined' ? window.getSelection?.() : null;
     if (sel && !sel.isCollapsed && sel.toString().trim() !== '') return;
     if ((e.target as HTMLElement | null)?.closest(LENS_IGNORE)) return;
+    // Interactive figures (selectable bars, draggable nodes) have no role to match above, but they
+    // all advertise themselves with a pointer/grab cursor. The click was aimed at them.
+    if (ownsClick(e.target as Element | null, e.currentTarget)) return;
     // The Lens has taken this click, so nothing above may also act on it. The surface hangs a
     // click-away dismiss on the scroller — "a click outside the spotlit card puts the board
     // back" — and this click IS outside the previously spotlit card, so without this the two
@@ -1363,7 +1367,13 @@ export function TopicCanvas({
 
       {zoomedBlock &&
         (() => {
-          const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
+          // Only notes the model actually wrote. Mavéa's derived reading re-describes what the card
+          // already shows (and on a 50/50 split called half "the minority"), which on a stage that
+          // has the card right there is noise; the Study desk still pages it.
+          const lensNotes =
+            zoomedBlock.id && studyAsidesAuthored?.has(zoomedBlock.id)
+              ? (studyAsides?.[zoomedBlock.id] ?? [])
+              : [];
           const notesShown = !lensNarrow || (notesOpen ?? !lensFit.spills);
           return (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events

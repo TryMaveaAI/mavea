@@ -213,6 +213,20 @@ describe('clicks the Lens must not take', () => {
     expect(onLens).not.toHaveBeenCalled();
   });
 
+  it('ignores a click on an interactive figure that advertises itself with its cursor', () => {
+    // Selectable bars and draggable nodes carry no role for the selector list to match; the
+    // cursor they declare is the one signal they all share.
+    const { onLens, cell } = mount();
+    const bar = document.createElement('span');
+    bar.style.cursor = 'grab';
+    cell('a').appendChild(bar);
+    cleanClick(bar);
+    expect(onLens).not.toHaveBeenCalled();
+    // The same card, clicked on plain body, still opens.
+    cleanClick(cell('a'));
+    expect(onLens).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores a drag released on the card', () => {
     const { onLens, cell } = mount();
     fireEvent.pointerDown(cell('a'), { button: 0, clientX: 10, clientY: 10 });
@@ -297,7 +311,7 @@ describe('reaching the rest of the answer', () => {
 describe('magnifying the card leaves the controls alone', () => {
   it('scales only the card, and scrolls it with its notes in one box the toolbar sits outside', () => {
     const notes = [{ text: 'a note', kind: 'insight' as const }];
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     const scroll = container.querySelector('.zoom-sheet-scroll')!;
     expect(scroll.contains(container.querySelector('.zoom-sheet-body'))).toBe(true);
@@ -323,7 +337,10 @@ describe('Mavéa\u2019s notes follow the Lens', () => {
   ];
 
   it('writes them on the stage, for the card that is on it', () => {
-    const { container } = mount({ studyAsides: { a: notes, b: notes } });
+    const { container } = mount({
+      studyAsides: { a: notes, b: notes },
+      studyAsidesAuthored: new Set(['a', 'b']),
+    });
     cleanClick(cell0(container, 'a'));
     const panels = container.querySelectorAll('.lens-notes');
     expect(panels).toHaveLength(1);
@@ -332,21 +349,28 @@ describe('Mavéa\u2019s notes follow the Lens', () => {
     expect(container.textContent).toContain('lodging moves the total');
   });
 
+  it('writes nothing for notes the model did not write', () => {
+    // Mavéa's derived reading only re-describes the card sitting beside it.
+    const { container, cell } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell('a'));
+    expect(container.querySelector('.lens-notes')).toBeNull();
+  });
+
   it('is an <aside>, never a div', () => {
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     expect(container.querySelector('.lens-notes')!.tagName).toBe('ASIDE');
   });
 
   it('keeps each voice distinguishable, so the evidence check reads as a receipt', () => {
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     expect(container.querySelector('.lens-note.is-evidence')).not.toBeNull();
     expect(container.querySelector('.lens-note.is-question')).not.toBeNull();
   });
 
   it('writes nothing while the board is at rest', () => {
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     expect(container.querySelector('.lens-notes')).toBeNull();
   });
 });
@@ -426,7 +450,7 @@ describe('on a narrow sheet the notes fold under the card', () => {
 
   it('turns the eyebrow into a fold the reader can close and open again', () => {
     const spy = sheetWidth(358);
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     const fold = screen.getByRole('button', { name: /Mavéa’s notes/ });
     expect(fold.getAttribute('aria-expanded')).toBe('true');
@@ -443,7 +467,7 @@ describe('on a narrow sheet the notes fold under the card', () => {
 
   it('leaves a wide sheet’s notes open, with no fold to press', () => {
     const spy = sheetWidth(1120);
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     expect(screen.queryByRole('button', { name: /Mavéa’s notes/ })).toBeNull();
     expect(container.querySelectorAll('.lens-note')).toHaveLength(2);
@@ -557,7 +581,7 @@ describe('fit and actual size', () => {
 
   it('puts the notes straight after the card, not at the foot of the window', () => {
     const notes = [{ text: 'a note', kind: 'insight' as const }];
-    const { container } = mount({ studyAsides: { a: notes } });
+    const { container } = mount({ studyAsides: { a: notes }, studyAsidesAuthored: new Set(['a']) });
     cleanClick(cell0(container, 'a'));
     const body = container.querySelector('.zoom-sheet-body');
     expect(body?.nextElementSibling?.classList.contains('lens-notes')).toBe(true);

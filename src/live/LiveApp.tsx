@@ -175,6 +175,7 @@ import {
   AnswerHero,
   AnswerFooter,
   DockBar,
+  DockSettings,
   SessionRail,
   TopicSweep,
   heroSource,
@@ -4890,6 +4891,11 @@ export function LiveApp(): ReactElement {
   // file — the largest in the app — on every flip the held value never reflected. Muting drops the
   // pill at once rather than lingering, because muted means there is no voice to hold on for.
   const speakingSticky = useSpeakingHeld() && !muted;
+  // The status strip exists only while Mavéa is actually doing something audible or waiting on
+  // the voice; at rest the capsule is one input row. The spoken line itself is not repeated here:
+  // the canvas already carries it (hero lead, Study voice line).
+  const dockHasStatus =
+    walkPaused || speakingSticky || (!muted && (walkPreparing || voicePreparing));
   // Mute ENDS a running walk: the reader asked for the written answer instead of a paced one, so
   // the spotlight releases and the remaining pen marks land at once (flushWalkRef is set by the
   // walk effect while it runs). Outside a walk this does nothing — mute stays a pure output-gain
@@ -6319,7 +6325,7 @@ export function LiveApp(): ReactElement {
             ask the composer is a plain pill, so the wrapper is a display:contents passthrough that
             doesn't touch layout. */}
         <div className={dockCapsule ? 'voice-capsule' : 'composer-passthrough'}>
-          {dockCapsule && (
+          {dockCapsule && dockHasStatus && (
             <div className="voice-strip">
               {/* The transcript always shows the current answer's line — the subtitle stays put
                   whether Mavéa is voicing it or muted (a muted turn lands silently, but the line is
@@ -6384,55 +6390,6 @@ export function LiveApp(): ReactElement {
                   </span>
                 </div>
               ) : null}
-              <div className="vc-transcript" aria-hidden="true">
-                {spokenNow ?? turn.narration ?? ''}
-              </div>
-              {/* Her voice: an explicit labeled switch, never a bare icon that could read as the
-                  mic (which is untouched). */}
-              <button
-                type="button"
-                onClick={() => setMuted((m) => !m)}
-                title={
-                  muted
-                    ? "Unmute Mavéa's voice — your microphone is unaffected"
-                    : "Mute Mavéa's voice — muted answers land written out at once, with notes and pen marks standing in for the walk. Your microphone is unaffected."
-                }
-                aria-pressed={!muted}
-                className={'voice-switch' + (muted ? ' is-muted' : '')}
-              >
-                {muted ? <Icon.speakerOff /> : <Icon.speaker />}
-                <span className="voice-switch-label">Mavéa's voice</span>
-                <span className="voice-switch-track" aria-hidden="true">
-                  <span className="voice-switch-thumb"></span>
-                </span>
-              </button>
-              {/* How fast she speaks — set it before or during an answer; the next clause adopts it,
-                  and the replay scrubber reads the same value. */}
-              <VoiceSpeedChip />
-              {/* Standard/Simple, without leaving the conversation for Settings. */}
-              <ExplainLevelChip />
-              {/* Which model answers — dot + name + caret, no latency (dropped for compactness;
-                  it lives in the picker / this chip's tooltip). */}
-              <button
-                className="live-model-chip"
-                onClick={() => setShowSettings((s) => !s)}
-                title={
-                  demoPersona.current
-                    ? 'The model that generated this curated prerecorded example'
-                    : latencyLabel
-                      ? `Model settings · last reply ${latencyLabel}`
-                      : 'Model settings'
-                }
-              >
-                <span className="chip-dot" aria-hidden="true" />
-                {/* During a demo replay the chip names the model that produced these baked
-                    answers (shard provenance) — showing the visitor's own configured model
-                    would claim it generated content it never saw. */}
-                <span className="chip-model">
-                  {demoPersona.current ? (demoDrive.model ?? '—') : connected || 'No model'}
-                </span>
-                <span className="chip-caret" aria-hidden="true" />
-              </button>
             </div>
           )}
           <CommandComposer
@@ -6489,6 +6446,56 @@ export function LiveApp(): ReactElement {
             tools={
               <>
                 {turn.spec && <MarkToggle armed={inkArmed} onToggle={setInkArmed} />}
+                {dockCapsule && (
+                  <DockSettings>
+                    {/* Her voice: an explicit labeled switch, never a bare icon that could read as the
+                        mic (which is untouched). */}
+                    <button
+                      type="button"
+                      onClick={() => setMuted((m) => !m)}
+                      title={
+                        muted
+                          ? "Unmute Mavéa's voice — your microphone is unaffected"
+                          : "Mute Mavéa's voice — muted answers land written out at once, with notes and pen marks standing in for the walk. Your microphone is unaffected."
+                      }
+                      aria-pressed={!muted}
+                      className={'voice-switch' + (muted ? ' is-muted' : '')}
+                    >
+                      {muted ? <Icon.speakerOff /> : <Icon.speaker />}
+                      <span className="voice-switch-label">Mavéa's voice</span>
+                      <span className="voice-switch-track" aria-hidden="true">
+                        <span className="voice-switch-thumb"></span>
+                      </span>
+                    </button>
+                    {/* How fast she speaks — set it before or during an answer; the next clause adopts it,
+                        and the replay scrubber reads the same value. */}
+                    <VoiceSpeedChip />
+                    {/* Standard/Simple, without leaving the conversation for Settings. */}
+                    <ExplainLevelChip />
+                    {/* Which model answers — dot + name + caret, no latency (dropped for compactness;
+                        it lives in the picker / this chip's tooltip). */}
+                    <button
+                      className="live-model-chip"
+                      onClick={() => setShowSettings((s) => !s)}
+                      title={
+                        demoPersona.current
+                          ? 'The model that generated this curated prerecorded example'
+                          : latencyLabel
+                            ? `Model settings · last reply ${latencyLabel}`
+                            : 'Model settings'
+                      }
+                    >
+                      <span className="chip-dot" aria-hidden="true" />
+                      {/* During a demo replay the chip names the model that produced these baked
+                          answers (shard provenance) — showing the visitor's own configured model
+                          would claim it generated content it never saw. */}
+                      <span className="chip-model">
+                        {demoPersona.current ? (demoDrive.model ?? '—') : connected || 'No model'}
+                      </span>
+                      <span className="chip-caret" aria-hidden="true" />
+                    </button>
+                  </DockSettings>
+                )}
                 <button
                   type="button"
                   className={'composer-watch' + (watchThinking ? ' on' : '')}

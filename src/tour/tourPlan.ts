@@ -102,8 +102,8 @@ const CORE_TOUR: readonly TourChapter[] = [
     title: 'See the answer',
     mode: 'explain',
     coach:
-      "Ask anything. I build a visual answer while I explain the important parts. The voice toggle labeled Mavéa's voice turns speech off to reveal everything immediately. Your microphone stays unchanged.",
-    spotlight: '.voice-switch',
+      "Ask anything. I build a visual answer while I explain the important parts. Settings, beside the input, holds the Mavéa's voice switch: turn speech off to reveal everything immediately. Your microphone stays unchanged.",
+    spotlight: '.dock-settings-btn',
     action: { kind: 'answer', convoId: 'money', ask: 'How does $10,000 grow at 7% over 30 years?' },
     durationMs: 9000,
   },

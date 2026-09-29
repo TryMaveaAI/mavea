@@ -112,10 +112,10 @@ describe('the desk habit cannot silently revert to a view comparison', () => {
     expect(src).toMatch(/deskFirst\(\)/);
   });
 
-  // The Lens shows Mavéa's notes on any card the reader clicks. Those are the DERIVED voices —
-  // studyVoices fills every slot it has no written note for, so they cost nothing. The written
-  // ones stay behind the desk latch. If the Lens ever armed the paid fetch, every reader who
-  // clicked a card would start buying an annotate call per settled answer, and nothing would fail.
+  // The Lens shows only notes the model wrote, so it never has derived filler to show; the paid
+  // fetch that writes them stays behind the desk latch. If the Lens ever armed that fetch, every
+  // reader who clicked a card would start buying an annotate call per settled answer, and nothing
+  // would fail.
   it('the paid notes fetch is still gated on the desk, not on the Lens', () => {
     const src = read('src/live/LiveApp.tsx');
     const gate = /if \(viewMode !== 'study'\) \{/;

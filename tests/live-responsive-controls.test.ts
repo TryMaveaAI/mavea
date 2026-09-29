@@ -35,19 +35,17 @@ describe('composer — narrow-viewport control sizing', () => {
 
   it('gives typing a full row instead of squeezing it between five phone controls', () => {
     const phone = dockCss.slice(dockCss.indexOf('@media (width <= 430px)'));
-    expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 44px/);
+    expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 38px 44px/);
     expect(phone).toMatch(/grid-column:\s*1 \/ -1/);
     expect(phone).toMatch(/\.mark-toggle-label\s*\{[^}]*display:\s*none/s);
     expect(phone).toMatch(/\.explain-chip-tag\s*\{[^}]*display:\s*none/s);
   });
 
-  it('makes the model label width-constrained before hiding it on the narrowest phones', () => {
-    const compact = dockCss.slice(dockCss.indexOf('@media (width <= 560px)'));
-    expect(compact).toMatch(/\.vc-transcript\s*\{[^}]*display:\s*none/s);
-    expect(compact).toMatch(/\.chip-model\s*\{[^}]*display:\s*block[^}]*max-width:\s*64px/s);
-    expect(compact).toMatch(
-      /@media \(width <= 360px\)[\s\S]*\.chip-model\s*\{[^}]*display:\s*none/,
-    );
+  it('lays the settings popover out as two even columns that truncate a long model id', () => {
+    const pop = dockCss.slice(dockCss.indexOf('.dock-settings-pop {'));
+    expect(pop).toMatch(/grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(pop).toMatch(/width:\s*min\(320px, calc\(100vw - 28px\)\)/);
+    expect(pop).toMatch(/\.chip-model\s*\{[^}]*text-overflow:\s*ellipsis/s);
   });
 });
 
