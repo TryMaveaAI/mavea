@@ -1244,7 +1244,10 @@ async function maybeOfferVoice() {
       console.log('  Docker is installed but not ready. Start its engine, then re-run Mavéa.');
       console.log('  Docker Desktop may require a paid subscription for some commercial users.');
     } else {
-      console.log('  Install Podman Desktop (Apache-2.0): https://podman-desktop.io/downloads');
+      console.log('  No container runtime found. Mavéa still runs with the canvas, captions and');
+      console.log('  typing, but without spoken replies or local mic transcription.');
+      console.log('  For the full experience, we recommend installing Podman Desktop (Apache-2.0)');
+      console.log('  and re-running Mavéa: https://podman-desktop.io/downloads');
       console.log('  Docker also works when its license permits your use.');
     }
     return;

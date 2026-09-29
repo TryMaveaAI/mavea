@@ -79,10 +79,12 @@ key that sealed it, and everything else Mavéa stored in your browser. Full opti
 produce is yours: publishing a transcript, or a video spoken in Mavéa's voices, owes no fee and no
 credit line — those licenses cover the software, not its output. The defaults run on your machine through
 loopback-only proxies; a deployment that overrides `WHISPER_URL` sends microphone audio to that
-configured endpoint. [Podman](https://podman.io/) is the recommended open-source
-container runtime. Docker also works, but Docker Desktop has separate commercial subscription
-terms. Without the configured services, captions and typing still work; audio is never handed to a
-browser-vendor speech service as a fallback.
+configured endpoint. Mavéa runs without the voice services, with the canvas, captions and typing
+intact, but you will not get spoken replies or local mic transcription. For the full experience,
+install a container runtime and let `npx @mavea/mavea` or `pnpm dev` start the two services.
+[Podman](https://podman.io/) is the recommended open-source runtime; Docker also works (Docker
+Desktop is licensed separately). Audio is never handed to a browser-vendor speech service as a
+fallback.
 
 During a conversation, the **Mavéa's voice** toggle turns output speech off without changing the
 microphone. A paced answer then reveals in full immediately, with captions, notes, and Pen marks in
