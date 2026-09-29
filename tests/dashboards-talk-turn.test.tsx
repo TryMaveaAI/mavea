@@ -234,6 +234,36 @@ describe('TalkToDashboard — command-like phrasing auto-adds, a question still 
     ).not.toBeInTheDocument();
   });
 
+  it('says a refused Search cannot be waited out, and where to go instead', async () => {
+    render(<TalkToDashboard dashboard={dash('A')} />);
+    ask('what is NVDA trading at?');
+    await land({
+      ...okResult(),
+      error: {
+        kind: 'quota',
+        status: 429,
+        message: 'Google refused Search for this key.',
+        searchRefused: true,
+      },
+    });
+
+    expect(screen.getByText(/refused Search for this key, and a dashboard needs it/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'connect a different model' })).toHaveAttribute(
+      'href',
+      '#/live?settings=model',
+    );
+    expect(screen.queryByText(/That didn’t go through/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the generic line for any other failed ask', async () => {
+    render(<TalkToDashboard dashboard={dash('A')} />);
+    ask('what is NVDA trading at?');
+    await land(erroredResult());
+
+    expect(screen.getByText(/That didn’t go through/)).toBeVisible();
+    expect(screen.queryByText(/a dashboard needs it/)).not.toBeInTheDocument();
+  });
+
   it('never auto-pins a result with no blocks, even for command-like phrasing', async () => {
     render(<TalkToDashboard dashboard={dash('A')} />);
     ask('add nothing useful');

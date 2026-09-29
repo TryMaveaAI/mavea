@@ -97,10 +97,18 @@ describe('state transitions', () => {
       'no-model',
       'ungrounded',
       'search-off',
+      'search-refused',
       'provider-unavailable',
     ] as const) {
       expect(failureLine({ kind }).length).toBeGreaterThan(10);
     }
+  });
+
+  it('tells a refused Search to change the plan or model, not to turn Search off', () => {
+    // Trackers only persist grounded values, so the chat surface's advice would strand the reader.
+    const line = failureLine({ kind: 'search-refused' });
+    expect(line).toMatch(/plan/i);
+    expect(line).not.toMatch(/turn (?:web )?search off/i);
   });
 
   it('maps refresh outcomes to the failure that explains them', () => {

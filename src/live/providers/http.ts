@@ -163,7 +163,7 @@ export function retryAfterMs(res: Response, attempt: number, detail = ''): numbe
 /** Re-sent only when the provider refused before doing any work, so nothing is billed twice. */
 const TRANSIENT_PROVIDER_STATUSES = new Set([429, 503, 529]);
 const NON_RETRYABLE_QUOTA =
-  /(?:requests?|tokens?)\s+per\s+day|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
+  /(?:requests?|tokens?)\s+per\s+day|per.?day|search grounding refused|daily quota|billing|credit balance|insufficient[_ ](?:quota|funds)|monthly.?limit|spend.?limit/i;
 
 /** Whether another bounded attempt can plausibly help. Daily/spend exhaustion is deliberately not
  * retried: it wastes the very allowance the user is trying to protect. */

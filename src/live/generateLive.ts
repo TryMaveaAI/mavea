@@ -240,6 +240,9 @@ export interface LiveError {
   status?: number;
   /** A plain-language, user-facing line ("Your API key was rejected — check it in settings"). */
   message: string;
+  /** The provider refused Search for this key. Waiting cannot change that, so the surface offers
+   *  the switch that does, and a surface where Search is required says so instead. */
+  searchRefused?: true;
 }
 
 /** Display names for the connection-failure message ("Couldn't reach Anthropic"). Local on
@@ -257,7 +260,7 @@ const PROVIDER_LABELS: Record<string, string> = {
  *  apart — and "wait a moment and try again" is exactly the wrong advice for a user who has to go top
  *  up. The adapters carry the provider's error body into the thrown message so this can match on it. */
 const SPENT_ACCOUNT =
-  /daily quota|requests? per day|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|spend.?limit|billing/i;
+  /daily quota|requests? per day|per.?day|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|spend.?limit|billing/i;
 
 /** Map a provider failure to a plain-language LiveError. Adapters throw `Error('<provider> <status>
  *  — <reason from the body>')` on HTTP failure, so the status is parsed from the message; no status
@@ -313,6 +316,13 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
   // 429 is usually a transient per-minute rate limit, not a plan
   // exhaustion — "check your plan" is wrong and alarming. Distinguish by the provider's own
   // wording (RESOURCE_EXHAUSTED, "exceeded your current quota") vs a plain 429 (rate limited).
+  if (status === 429 && /search grounding refused/i.test(msg))
+    return {
+      kind: 'quota',
+      status,
+      message: `${label} refused Search for this key, and waiting won't change that — turn Web search off in settings to ask without it, or check your ${label} plan.`,
+      searchRefused: true,
+    };
   if (status === 429) {
     const isExhausted =
       SPENT_ACCOUNT.test(msg) && !/(?:per.?minute|\bRPM\b|\bTPM\b|retry in)/i.test(msg);

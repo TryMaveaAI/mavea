@@ -552,9 +552,15 @@ export function TopicCanvas({
   // the fit (so the picture carries on from it), 1 at actual size (the card's own layout).
   const [layoutFit, setLayoutFit] = useState(1);
   const zoomBy = (d: number): void => {
-    if (fitted) setLayoutFit(fitScale);
     const from = fitted ? fitScale : zoomLevel;
-    setZoomLevel(Math.min(ZOOM_MAX, Math.max(zoomFloor, +(from + d).toFixed(2))));
+    let to = +(from + d).toFixed(2);
+    // A fit is rarely a round number (105%), so stepping from it by a fixed amount steps over
+    // actual size and the reader never sees 100%. A step that would cross it lands on it, laid
+    // out as the card's own layout the way the readout's 100% is.
+    if ((from - 1) * (to - 1) < 0) to = 1;
+    if (to === 1) setLayoutFit(1);
+    else if (fitted) setLayoutFit(fitScale);
+    setZoomLevel(Math.min(ZOOM_MAX, Math.max(zoomFloor, to)));
   };
   const actualSize = (): void => {
     setLayoutFit(1);
@@ -840,7 +846,10 @@ export function TopicCanvas({
     setBoardDiagramPx(cell ? diagramLabelPx(cell) : new Map());
     setNotesOpen(null);
     setZoomedBlock(b);
-    setZoomLevel('fit');
+    // A card opened from the board is fitted. Stepping to another card keeps the magnification the
+    // reader set: each card's fit differs, so resetting on every step made the readout change
+    // under a value they had just chosen.
+    if (!zoomedBlock) setZoomLevel('fit');
   };
   // Every card the Lens can step to, in reading order: one object at a time, and the others still
   // within reach without leaving the stage.

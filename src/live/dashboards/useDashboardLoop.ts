@@ -353,16 +353,19 @@ export async function runRefreshBatch(
     if (!batchResult.ok) {
       // The CALL died (network/quota/auth). Don't stamp lastRefreshedAt — no member was checked —
       // and don't ask again on a backoff: the board says what happened and waits for its next
-      // scheduled pass or the reader's Check now. A rejected key stops the board until the reader
-      // reconnects and checks. The briefing gate stays open too (markBriefingShown only ever fires
-      // from recordBriefing, on success).
+      // scheduled pass or the reader's Check now. A rejected key, or a Search the provider will not
+      // run for this key, stops the board until the reader changes the connection and checks. The
+      // briefing gate stays open too (markBriefingShown only ever fires from recordBriefing, on
+      // success).
       const failure = batchResult.failure ?? { kind: 'network' as const };
       eachRun((run) => {
         recordStep(run, 'search', false, { detail: failureLine(failure) });
         endCheckRun(run, { outcome: 'failed', failure, attempts: batchResult.attempts });
       });
       for (const m of members) {
-        markDataFailed(m.d.id, now, { stop: failure.kind === 'auth' });
+        markDataFailed(m.d.id, now, {
+          stop: failure.kind === 'auth' || failure.kind === 'search-refused',
+        });
         // Say WHICH way it died on the tracker itself, so the card can offer the matching next
         // step instead of a generic "couldn't verify" the reader can do nothing with.
         markTrackerFailure(m.d.id, failure, now);

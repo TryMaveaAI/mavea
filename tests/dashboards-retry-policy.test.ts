@@ -59,6 +59,16 @@ describe('a dead call is classified, not lumped together', () => {
     expect(out.failure).toEqual({ kind: 'rate-limit' });
   });
 
+  it('names a Search the provider refuses as its own failure, not a rate limit that will pass', async () => {
+    // The adapter's wording for a grounded request refused with no quota named; the 429 in it is
+    // what used to send this down the rate-limit path, which is retried and can never succeed.
+    generateMock.mockRejectedValue(
+      new Error('gemini 429 You exceeded your current quota [search grounding refused]'),
+    );
+    const out = await refreshDashboards(buildRefreshBatch([dash()]), cfg);
+    expect(out.failure).toEqual({ kind: 'search-refused' });
+  });
+
   it('names a rejected key as auth — the one failure no amount of retrying fixes', async () => {
     generateMock.mockRejectedValue(new Error("openai 401 — Incorrect API key provided: ''."));
     const out = await refreshDashboards(buildRefreshBatch([dash()]), cfg);

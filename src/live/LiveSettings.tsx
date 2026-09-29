@@ -1110,7 +1110,7 @@ export function LiveSettings({
                 {cfg.searchMode === 'off'
                   ? "Answers from the model's own knowledge — no web calls."
                   : caps.nativeWebSearch
-                    ? 'Grounds fresh asks in live results with citations when a question needs it.'
+                    ? 'Grounds fresh asks in live results with citations when a question needs it. Search depends on your provider plan; if it is refused, this is where to turn it off.'
                     : "This model has no built-in search, so Real-time won't ground anything right now. Pick a search-capable model or leave this off."}
               </span>
             </div>

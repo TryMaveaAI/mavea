@@ -133,8 +133,11 @@ describe('a failed dashboard pass', () => {
     expect(refreshDashboards).toHaveBeenCalledTimes(2);
   });
 
-  it('after a rejected key, spends nothing more until the reader checks again', async () => {
-    refreshDashboards.mockResolvedValue(died({ kind: 'auth' }));
+  it.each([
+    ['a rejected key', { kind: 'auth' }],
+    ['a Search the provider refuses', { kind: 'search-refused' }],
+  ])('after %s, spends nothing more until the reader checks again', async (_n, f) => {
+    refreshDashboards.mockResolvedValue(died(f));
     await tickAt(ticks(T0, T0 + 3 * HOUR));
     // A day of ticks later: still one call.
     await tickAt([T0 + 24 * HOUR]);
