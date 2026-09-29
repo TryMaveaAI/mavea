@@ -525,6 +525,7 @@
 }
 .live-error-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .live-error-btn {

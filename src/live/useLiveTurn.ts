@@ -801,6 +801,9 @@ export interface UseLiveTurn extends LiveTurnState {
       /** Topic Courses: this turn is one lesson in a course — passed straight through to
        *  generateLive's GenerateLiveOpts.lesson (see course/lessonSpine.ts's buildLessonSpine). */
       lesson?: { directive: string; topic: string };
+      /** Answer this ask without Search, whatever the setting says — the reader's choice on a
+       *  refused-Search error. See `run`. */
+      withoutSearch?: boolean;
     },
   ) => Promise<void>;
   reset: () => void;
@@ -937,6 +940,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         freshStart?: boolean;
         force?: boolean;
         lesson?: { directive: string; topic: string };
+        /** Answer THIS ask without Search, whatever the setting says. Chosen by the reader on a
+         *  refused-Search error; never persisted, and the config signature below keeps the answer
+         *  from being filed as, or served in place of, a grounded one. */
+        withoutSearch?: boolean;
       },
     ) => {
       // Recorded tours and demos may mount the real Live surface without accepting the product
@@ -1048,7 +1055,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // lazily-imported engine has loaded. An answer generated under yesterday's provider/model
       // (or with search off) must never stand in for today's just because the text matches.
       const cfg = getConfig();
-      const caps = getCaps?.();
+      const settingCaps = getCaps?.();
+      const caps = opts?.withoutSearch
+        ? { ...settingCaps, searchMode: 'off' as const, webSearch: false }
+        : settingCaps;
       const cfgSig = configSignature(cfg, caps);
       const answerKey = `${userText}::${contextSignature(history, priorWorld, opts?.lesson)}::${cfgSig}`;
       const diskKey = answerDiskKey(answerKey, cfg);

@@ -159,6 +159,50 @@ describe('LiveApp — a refused Search is fixed by one switch', () => {
     await waitFor(() => expect(document.getElementById('ls-web-search')).toBeTruthy());
   });
 
+  it('re-asks the same question without Search when the reader chooses to, and only then', async () => {
+    failure.error = {
+      kind: 'quota',
+      status: 429,
+      message: 'Google refused Search for this key, and waiting will not change that.',
+      searchRefused: true,
+    };
+    setLiveConfigV2({ searchMode: 'realtime' });
+    const { generateLive } = await import('../src/live/generateLive');
+    const asked = vi.mocked(generateLive);
+    asked.mockClear();
+    render(<LiveApp />);
+    const input = await waitFor(() => {
+      const el = document.querySelector('.composer-input') as HTMLInputElement | null;
+      if (!el) throw new Error('composer not mounted');
+      return el;
+    });
+    fireEvent.change(input, { target: { value: 'what is the weather in Tokyo this week?' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(document.querySelector('.live-error')).toBeTruthy());
+
+    // The first ask went out grounded, and nothing re-asked on its own.
+    const searchOf = (i: number): string | undefined => {
+      const opts = asked.mock.calls[i]?.at(-1) as { caps?: { searchMode?: string } } | undefined;
+      return opts?.caps?.searchMode;
+    };
+    expect(asked).toHaveBeenCalledTimes(1);
+    expect(searchOf(0)).toBe('realtime');
+
+    const button = Array.from(document.querySelectorAll('.live-error button')).find((b) =>
+      /ask without web search/i.test(b.textContent ?? ''),
+    );
+    expect(button).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(asked).toHaveBeenCalledTimes(2));
+    expect(searchOf(1)).toBe('off');
+  });
+
   it('keeps the generic Open settings for every other failure', async () => {
     render(<LiveApp />);
     const input = await waitFor(() => {

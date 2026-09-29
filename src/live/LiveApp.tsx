@@ -5698,19 +5698,46 @@ export function LiveApp(): ReactElement {
           Retry
         </button>
         {turn.error.searchRefused ? (
-          // Land on the switch itself: this failure is fixed by one row, and the generic panel
-          // opens wherever Settings was last left.
-          <button
-            type="button"
-            className="live-error-btn"
-            onClick={() => {
-              setSettingsTab('settings');
-              setRevealSetting('web-search');
-              setShowSettings(true);
-            }}
-          >
-            Turn off Web search
-          </button>
+          <>
+            {/* Grounding is the reader's to give up, so this is a click and never a silent re-ask.
+                It answers this one question from the model's own knowledge and leaves the setting
+                alone. */}
+            <button
+              type="button"
+              className="live-error-btn"
+              title="Answers this question from the model’s own knowledge. Your Web search setting stays as it is."
+              onClick={() => {
+                const err = turn.error;
+                if (err)
+                  void turn.run(
+                    err.retry,
+                    err.attachments,
+                    err.selectedBlocks,
+                    undefined,
+                    err.inkIntents,
+                    err.question,
+                    undefined,
+                    { withoutSearch: true },
+                  );
+              }}
+              disabled={turn.busy}
+            >
+              Ask without web search
+            </button>
+            {/* Land on the switch itself: this failure is fixed by one row, and the generic panel
+                opens wherever Settings was last left. */}
+            <button
+              type="button"
+              className="live-error-btn"
+              onClick={() => {
+                setSettingsTab('settings');
+                setRevealSetting('web-search');
+                setShowSettings(true);
+              }}
+            >
+              Turn off Web search
+            </button>
+          </>
         ) : (
           <button type="button" className="live-error-btn" onClick={() => setShowSettings(true)}>
             Open settings
