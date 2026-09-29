@@ -219,7 +219,10 @@ const ROUTE_BUDGETS = [
     // held diagram labels at a legible floor, a third document opened a choice of views, the
     // thought map learned to share and present, and each card began waiting on its own family
     // rather than the answer id. All of it runs on the board itself, so none of it can defer.
-    gzip: 363,
+    // 364 (was 363): measured at 363.0 kB once the Lens kept a chosen magnification while the
+    // reader paged between cards and let a zoom step land on 100%. It is the stage's own state in
+    // TopicCanvas, which the board mounts, so it cannot move to a lazy chunk.
+    gzip: 364,
     files: 105,
   },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
