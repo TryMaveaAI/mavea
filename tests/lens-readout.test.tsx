@@ -141,6 +141,60 @@ describe('fit and actual size', () => {
     expect(readout().getAttribute('aria-label')).toMatch(/Fit to the stage$/);
   });
 
+  it('lands on 100% when a step would jump over it, from a fit that is not a round number', () => {
+    fit.k = 1.05;
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    expect(now(container)).toBe('105%');
+    // 105 → 90 would never show 100: the step stops there instead.
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    expect(now(container)).toBe('100%');
+    expect(bodyZoom(container)).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    expect(now(container)).toBe('85%');
+    // …and the same on the way back up, from below.
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(now(container)).toBe('100%');
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(now(container)).toBe('115%');
+  });
+
+  it('lands on 100% stepping in from a fit just under it', () => {
+    fit.k = 0.95;
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(now(container)).toBe('100%');
+  });
+
+  it('keeps the magnification the reader set while they step between cards', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(readout());
+    expect(now(container)).toBe('100%');
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(screen.getByRole('button', { name: 'Previous card' })).toBeTruthy();
+    expect(now(container)).toBe('100%');
+    expect(bodyZoom(container)).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous card' }));
+    expect(now(container)).toBe('115%');
+  });
+
+  it('keeps fitting each card while the reader has not chosen a number, and fits again on a new open', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(bodyZoom(container)).toBe('');
+    expect(now(container)).toBe('80%');
+    // A chosen number is for this visit: reopening a card from the board starts fitted again.
+    fireEvent.click(readout());
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the board' }));
+    cleanClick(cell0(container, 'b'));
+    expect(bodyZoom(container)).toBe('');
+    expect(now(container)).toBe('80%');
+  });
+
   it('names its press on hover only where a pointer can hover, and on keyboard focus always', () => {
     const css = readFileSync('src/styles/wow-polish.css', 'utf8');
     // Everything outside `@media (hover: hover)` blocks, cut by brace depth.
