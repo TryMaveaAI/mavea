@@ -10,10 +10,8 @@
 //
 //   GEMINI_API_KEY=… npx vite-node scripts/build-tour-prism.mts
 //   ONLY=fomc,react-readme … to bake a subset
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { extractPdf } from './build-media-input';
 import { mapClaims } from '../src/live/prism/mapClaims';
 import type { Attachment } from '../src/live/attachments';
 import type { ModelConfig } from '../src/types/mavea';
@@ -102,40 +100,6 @@ function readKey(): string {
   throw new Error('GEMINI_API_KEY not found');
 }
 
-/** PDF → per-page text via poppler (no pdf.js). */
-function extractPdf(tmp: string, maxPages: number): string[] {
-  let count = maxPages;
-  try {
-    const n = Number(
-      execFileSync('pdfinfo', [tmp])
-        .toString()
-        .match(/Pages:\s+(\d+)/)?.[1] ?? maxPages,
-    );
-    count = Math.min(maxPages, n);
-  } catch {
-    /* default */
-  }
-  const pages: string[] = [];
-  for (let p = 1; p <= count; p++) {
-    try {
-      pages.push(
-        execFileSync('pdftotext', [
-          '-layout',
-          '-f',
-          String(p),
-          '-l',
-          String(p),
-          tmp,
-          '-',
-        ]).toString(),
-      );
-    } catch {
-      pages.push('');
-    }
-  }
-  return pages;
-}
-
 /** Text-native doc → paged into ~2400-char chunks on line boundaries (consistent, so quotes ground). */
 function pageText(text: string, maxPages: number): string[] {
   const lines = text.split('\n');
@@ -163,23 +127,14 @@ async function bakeOne(spec: DocSpec, cfg: ModelConfig): Promise<unknown | null>
           await fetch(spec.url, {
             // Some .gov CDNs reject non-browser agents; a plain browser UA passes.
             headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-          }).then((r) => r.arrayBuffer()),
+          }).then((r) => {
+            if (!r.ok) throw new Error(`document download returned ${r.status}`);
+            return r.arrayBuffer();
+          }),
         );
     let pages: string[];
     if (spec.type === 'pdf') {
-      if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('not a PDF');
-      // pdftotext reads from disk, so the bytes get their own private scratch directory: cleaned
-      // up after the extraction, and never colliding with a parallel bake of the same document.
-      const scratch = mkdtempSync(join(tmpdir(), 'mavea-prism-'));
-      try {
-        // A fixed name inside the private directory: the scratch path is already unique, so the
-        // spec's id has no reason to reach the filesystem at all.
-        const tmp = join(scratch, 'document.pdf');
-        writeFileSync(tmp, bytes);
-        pages = extractPdf(tmp, MAXPAGES);
-      } finally {
-        rmSync(scratch, { recursive: true, force: true });
-      }
+      pages = extractPdf(bytes, MAXPAGES);
     } else {
       const text = bytes.toString('utf8');
       if (text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html')) {

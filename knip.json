@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}", "scripts/**/*.{mts,mjs}"],
+  "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}", "scripts/**/*.{ts,mts,mjs}"],
   "ignore": ["src/canvas/blocks/*/types.ts"],
   "ignoreIssues": {
     "src/live/ripple/cache.ts": ["exports"],

@@ -6,10 +6,10 @@
 //
 // The output is deliberately WebM/Opus: it is broadly playable and remains inside the project's
 // reviewed open-media policy. This ships audio OUTPUT only, never the model or its container.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { encodeNarration } from './build-media-input';
 
 type Frame = { narration?: string };
 type Corpus = { persona: string; frames: Frame[] };
@@ -57,48 +57,26 @@ async function synthesize(text: string): Promise<Uint8Array> {
   return wav;
 }
 
-async function bakeCorpus(file: string, temp: string): Promise<void> {
+async function bakeCorpus(file: string): Promise<void> {
   const corpus = JSON.parse(readFileSync(file, 'utf8')) as Corpus;
-  if (!corpus.persona || !Array.isArray(corpus.frames))
+  if (
+    !['dev', 'pm', 'student', 'traveler'].includes(corpus.persona) ||
+    !Array.isArray(corpus.frames)
+  )
     throw new Error(`invalid demo corpus: ${file}`);
   for (const [index, frame] of corpus.frames.entries()) {
     const narration = frame.narration?.trim();
     if (!narration) throw new Error(`${corpus.persona} turn ${index + 1} has no narration`);
-    const wavPath = join(temp, `${corpus.persona}-${index + 1}.wav`);
     const webmPath = join(OUT_DIR, `${corpus.persona}-${index + 1}.webm`);
-    writeFileSync(wavPath, await synthesize(narration));
-    const encoded = spawnSync(
-      'ffmpeg',
-      [
-        '-hide_banner',
-        '-loglevel',
-        'error',
-        '-y',
-        '-i',
-        wavPath,
-        '-c:a',
-        'libopus',
-        '-b:a',
-        '48k',
-        webmPath,
-      ],
-      { encoding: 'utf8' },
-    );
-    if (encoded.status !== 0) throw new Error(encoded.stderr || `ffmpeg failed for ${webmPath}`);
+    encodeNarration(await synthesize(narration), webmPath);
     console.log(`wrote ${corpus.persona}-${index + 1}.webm`);
   }
 }
 
 async function main(): Promise<void> {
   requireCommand('ffmpeg');
-  const { mkdirSync } = await import('node:fs');
   mkdirSync(OUT_DIR, { recursive: true });
-  const temp = mkdtempSync(join(tmpdir(), 'mavea-demo-narration-'));
-  try {
-    for (const file of sourceFiles()) await bakeCorpus(file, temp);
-  } finally {
-    rmSync(temp, { recursive: true, force: true });
-  }
+  for (const file of sourceFiles()) await bakeCorpus(file);
 }
 
 main().catch((error: unknown) => {
