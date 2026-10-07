@@ -42,6 +42,10 @@ introduces a seam, a dependency, or a new module.
       `<style>` elements
 - [ ] No new network egress or data collection; dependencies are trusted and minimal
 
+### Dependency security
+
+`pnpm check:vulnerabilities` scans the versions reachable through installed dependency links, including build tooling; stale pnpm cache entries are excluded. When an upstream fix is unavailable, a local pnpm patch must include regression tests. The gate recognizes a patched advisory only when the reviewed patch, workspace and lockfile configuration, and every installed patched file match their recorded checksums. Removing or changing the patch blocks the release again.
+
 ### Scalability & performance
 
 - [ ] No needless re-renders, O(n²) loops, or unbounded growth; large lists are bounded/virtualized where needed

@@ -6,6 +6,12 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [2.11.6] - 2026-10-07
 
+### Security
+
+- Updated vulnerable build dependencies and bounded brace-pattern nesting with a reproducible patch where no upstream release is available.
+- Narration and document baking validate downloaded media and feed it directly to the decoders without raw scratch-file writes.
+- The vulnerability gate follows installed dependency links and verifies the local security patch before recognizing its remediation.
+
 ### Fixed
 
 - The conversation settings panel keeps the full Mavéa’s voice label and toggle inside the button at narrow widths.

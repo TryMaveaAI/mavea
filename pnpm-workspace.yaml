@@ -26,15 +26,23 @@ allowBuilds:
 # Floors for transitive packages with published advisories the parents haven't picked up yet
 # (OSV: fast-uri GHSA-4c8g-83qw-93j6/GHSA-v2hh-gcrm-f6hx/GHSA-jqff-g426-hqxp,
 # browserslist GHSA-c83g-rgw3-j3cx, js-yaml GHSA-52cp-r559-cp3m,
-# dompurify GHSA-c2j3-45gr-mqc4, protobufjs GHSA-j3f2-48v5-ccww,
-# brace-expansion GHSA-mh99-v99m-4gvg, postcss GHSA-r28c-9q8g-f849).
+# dompurify GHSA-p98j-92pf-mc4p, undici GHSA-w293-vg96-wgc3 and related 7.29.1 fixes,
+# protobufjs GHSA-j3f2-48v5-ccww,
+# brace-expansion GHSA-q2hr-2g5m-vwhr, postcss GHSA-r28c-9q8g-f849,
+# smol-toml GHSA-r4xh-jqrq-34v2, source-map-js GHSA-68fv-2mgg-jv7q).
 overrides:
   protobufjs: ^7.6.5
-  undici: ^7.29.0
-  fast-uri: ^3.1.7
+  undici: ^7.29.1
+  fast-uri: ^3.1.8
   browserslist: ^4.28.8
   js-yaml: ^4.3.2
-  dompurify: ^3.4.13
-  brace-expansion@1: ^5.0.8
-  brace-expansion@5: ^5.0.8
+  dompurify: ^3.4.16
+  brace-expansion@1: ^5.0.12
+  brace-expansion@5: ^5.0.12
   postcss: ^8.5.18
+  smol-toml: ^1.9.0
+  source-map-js: ^1.2.2
+
+# Bound brace/parenthesis AST depth until braces publishes a fix for GHSA-vfj7-8cjw-p6xm.
+patchedDependencies:
+  braces@3.0.3: patches/braces@3.0.3.patch
