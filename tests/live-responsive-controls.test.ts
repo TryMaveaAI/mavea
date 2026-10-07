@@ -41,9 +41,9 @@ describe('composer — narrow-viewport control sizing', () => {
     expect(phone).toMatch(/\.explain-chip-tag\s*\{[^}]*display:\s*none/s);
   });
 
-  it('lays the settings popover out as two even columns that truncate a long model id', () => {
+  it('keeps the voice control at its content width while a long model id truncates', () => {
     const pop = dockCss.slice(dockCss.indexOf('.dock-settings-pop {'));
-    expect(pop).toMatch(/grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(pop).toMatch(/grid-template-columns:\s*minmax\(max-content, 1fr\) minmax\(0, 1fr\)/);
     expect(pop).toMatch(/width:\s*min\(320px, calc\(100vw - 28px\)\)/);
     expect(pop).toMatch(/\.chip-model\s*\{[^}]*text-overflow:\s*ellipsis/s);
   });

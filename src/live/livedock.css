@@ -219,10 +219,10 @@
   right: 0;
   bottom: calc(100% + 10px);
   z-index: 60;
-  /* Two even columns: voice | speed, level | model. Wrapped chips of four different widths left a
-     ragged block with a hole beside the short ones. */
+  /* Keep the voice label and toggle inside their column; the model column can shrink and
+     truncate its label when the panel gets narrow. */
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 1fr);
   gap: 8px;
   width: min(320px, calc(100vw - 28px));
   padding: 10px;
