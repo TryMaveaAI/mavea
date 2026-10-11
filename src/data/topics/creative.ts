@@ -82,7 +82,7 @@ export const creative: ConversationSpec = {
             span: 2,
             text: 'Calm, vast, green. Let the landscape be the loud thing.',
           },
-          { kind: 'color', swatch: 'var(--presence)', hex: '#2f9e7a', label: 'Caldera green' },
+          { kind: 'color', swatch: 'var(--insight)', hex: '#2f9e7a', label: 'Caldera green' },
           {
             kind: 'image',
             from: 'var(--text-muted)',
@@ -90,7 +90,7 @@ export const creative: ConversationSpec = {
             label: 'Green coast · hydrangeas',
             src: '/demo-assets/images/green-coast.avif',
           },
-          { kind: 'color', swatch: 'var(--insight)', hex: '#6ea8ff', label: 'Atlantic grey-blue' },
+          { kind: 'color', swatch: 'var(--presence)', hex: '#6ea8ff', label: 'Atlantic grey-blue' },
           {
             kind: 'image',
             span: 2,
@@ -774,6 +774,7 @@ export const creative: ConversationSpec = {
           from: 'var(--presence-deep)',
           to: 'var(--presence-soft)',
         },
+        name: 'Nine Craters',
         year: '2018',
         runtime: '1h 32m',
         rating: 'TV-PG',

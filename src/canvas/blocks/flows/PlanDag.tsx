@@ -2,8 +2,13 @@ import { useId, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PlanDagProps, FlowStatus } from './types';
+import { useBoxSize } from '../../lib/useBoxSize';
+import { dagEdgePath } from './planDagLayout';
 
 type Props = PlanDagProps & { delay?: number };
+
+/** Arrowhead length in px. */
+const HEAD = 7;
 
 const statusColor = (s?: FlowStatus) =>
   s === 'done'
@@ -48,8 +53,15 @@ export function PlanDag({
   const H = 100;
   const colGap = W / cols;
   const rowGap = H / rows;
-  const NW = Math.min(colGap * 0.66, 22);
+  // Node width as a share of the stage: most of its column, leaving the rest for the connector.
+  // Labels wrap to a second line before they are cut, so the node's height is a floor, not a box.
+  const NW = Math.min(colGap * 0.76, 24);
   const NH = Math.min(rowGap * 0.5, 13);
+  // Connectors are drawn in px so their heads stay square and stop at a rim; until the stage is
+  // measured the percentages stand in for px.
+  const [stageRef, stage] = useBoxSize<HTMLDivElement>();
+  const PW = stage.w || 100;
+  const PH = stage.h || 100;
 
   const xy = (col: number, row: number) => ({
     x: colGap * col + colGap / 2,
@@ -106,44 +118,43 @@ export function PlanDag({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
       <div className="fl-dag-scroll">
-        <div className="fl-dag">
-          <svg
-            role="img"
-            aria-label={title}
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            className="fl-dag-svg"
-          >
+        <div className="fl-dag" ref={stageRef}>
+          <svg role="img" aria-label={title} viewBox={`0 0 ${PW} ${PH}`} className="fl-dag-svg">
             <defs>
-              <marker id={arrowId} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <path d="M0 0 L6 3 L0 6 Z" fill="var(--grid-strong)" />
-              </marker>
-              <marker
-                id={arrowOnId}
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-              >
-                <path d="M0 0 L6 3 L0 6 Z" fill="var(--presence)" />
-              </marker>
+              {[
+                [arrowId, 'var(--grid-strong)'],
+                [arrowOnId, 'var(--presence)'],
+              ].map(([id, fill]) => (
+                <marker
+                  key={id}
+                  id={id}
+                  markerUnits="userSpaceOnUse"
+                  markerWidth={HEAD}
+                  markerHeight={HEAD}
+                  refX={HEAD}
+                  refY={HEAD / 2}
+                  orient="auto"
+                >
+                  <path d={`M0 0 L${HEAD} ${HEAD / 2} L0 ${HEAD} Z`} fill={fill} />
+                </marker>
+              ))}
             </defs>
             {edges.map((e, i) => {
               const a = pos[e.from];
               const b = pos[e.to];
               if (!a || !b) return null;
               const on = edgeActive(e.from, e.to);
-              const x1 = a.x + NW / 2;
-              const x2 = b.x - NW / 2;
-              const mx = (x1 + x2) / 2;
+              const px = (p: { x: number; y: number }) => ({
+                x: (p.x / 100) * PW,
+                y: (p.y / 100) * PH,
+              });
               return (
                 <path
                   key={i}
-                  d={`M ${x1} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${x2} ${b.y}`}
+                  d={dagEdgePath(px(a), px(b), ((NW / 100) * PW) / 2)}
                   fill="none"
                   stroke={on ? 'var(--presence)' : 'var(--grid-strong)'}
-                  strokeWidth={on ? 1 : 0.6}
+                  strokeWidth={on ? 2 : 1.4}
                   markerEnd={on ? `url(#${arrowOnId})` : `url(#${arrowId})`}
                   opacity={related && !on ? 0.3 : 1}
                   className="fl-dag-edge"
@@ -165,7 +176,7 @@ export function PlanDag({
                     left: p.x + '%',
                     top: p.y + '%',
                     width: NW + '%',
-                    height: NH + '%',
+                    minHeight: NH + '%',
                     ['--c' as string]: statusColor(n.status),
                   } as CSSProperties
                 }

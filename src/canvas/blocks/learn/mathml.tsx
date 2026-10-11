@@ -38,6 +38,57 @@ declare module 'react' {
   }
 }
 
+// Unicode's sub- and superscript letters and digits, and what they stand for. An identifier
+// written "Eₐ" or "x²" is a glyph the font shrinks on its own, then MathML shrinks again for the
+// script level it sits at — in an exponent that is a few pixels tall. Spelled out as <msub> /
+// <msup>, the script is sized by the math, like any other.
+const SUB = '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₒₓₔₕₖₗₘₙₚₛₜᵢᵣᵤᵥⱼ';
+const SUB_PLAIN = '0123456789+-=()aeoxəhklmnpstiruvj';
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁱⁿ';
+const SUP_PLAIN = '0123456789+-=()in';
+
+const SCRIPTED = new RegExp(`^(.+?)([${SUB}]+)?([${SUP}]+)?$`, 'u');
+
+function plain(text: string, from: string, to: string): string {
+  return [...text].map((ch) => to[[...from].indexOf(ch)] ?? ch).join('');
+}
+
+/** An identifier with a run of script characters at its end, split into base and script. */
+function scriptedIdent(v: string): ReactNode | null {
+  const m = SCRIPTED.exec(v);
+  if (!m || (!m[2] && !m[3])) return null;
+  const token = (text: string) =>
+    /^[0-9]+$/.test(text) ? (
+      <mn>{text}</mn>
+    ) : /^\p{L}+$/u.test(text) ? (
+      <mi>{text}</mi>
+    ) : (
+      <mo>{text}</mo>
+    );
+  const base = <mi>{m[1]}</mi>;
+  const sub = m[2] ? token(plain(m[2], SUB, SUB_PLAIN)) : null;
+  const sup = m[3] ? token(plain(m[3], SUP, SUP_PLAIN)) : null;
+  if (sub && sup)
+    return (
+      <msubsup key={nextKey()}>
+        {base}
+        {sub}
+        {sup}
+      </msubsup>
+    );
+  return sub ? (
+    <msub key={nextKey()}>
+      {base}
+      {sub}
+    </msub>
+  ) : (
+    <msup key={nextKey()}>
+      {base}
+      {sup}
+    </msup>
+  );
+}
+
 let keySeq = 0;
 const nextKey = () => `m${keySeq++}`;
 
@@ -49,7 +100,7 @@ function renderNode(node: MathNode): ReactNode {
     case 'num':
       return <mn key={nextKey()}>{node.v}</mn>;
     case 'ident':
-      return <mi key={nextKey()}>{node.v}</mi>;
+      return scriptedIdent(node.v) ?? <mi key={nextKey()}>{node.v}</mi>;
     case 'op':
       return <mo key={nextKey()}>{node.v}</mo>;
     case 'row':

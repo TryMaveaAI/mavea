@@ -59,6 +59,9 @@ export function DoseLadder({
             <span className="dl-calc-formula" title={computed.formula}>
               {computed.formula}
             </span>
+            {/* The rule carries the arrow across to the result, so it points at the dose and
+                not into the empty middle of the box. */}
+            <span className="dl-calc-rule" aria-hidden="true" />
             <Icon.chevR className="ic" />
           </div>
           <div className="dl-calc-side dl-calc-out">

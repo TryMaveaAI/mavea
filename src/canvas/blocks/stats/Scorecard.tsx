@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ScorecardProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { deltaMove } from './deltaMove';
 
 type Props = ScorecardProps & { delay?: number };
 
@@ -47,13 +48,16 @@ export function Scorecard({
                 {t.value}
               </div>
               {t.delta && (
-                <div className={`sc-tile-delta delta ${t.deltaDir || 'up'}`}>
+                <div className="sc-tile-delta">
                   <Icon.arrowUp
                     className="ic"
                     style={{
                       width: 12,
                       height: 12,
-                      transform: t.deltaDir === 'down' ? 'rotate(180deg)' : 'none',
+                      transform:
+                        deltaMove(t.delta, t.deltaDir ?? 'up') === 'down'
+                          ? 'rotate(180deg)'
+                          : 'none',
                     }}
                   />
                   {t.delta}

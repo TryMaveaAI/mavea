@@ -161,7 +161,7 @@ export const healthdash: ConversationSpec = {
           },
           {
             label: 'Cycling',
-            color: 'var(--presence-soft)',
+            color: 'var(--danger)',
             values: [40, 50, 45, 60, 55, 50, 70, 65, 80, 75, 90, 85],
           },
           {
@@ -247,6 +247,7 @@ export const healthdash: ConversationSpec = {
             stat: '54 bpm',
             delta: '-6',
             deltaDir: 'down',
+            good: true,
             color: 'var(--insight)',
           },
           {
@@ -263,6 +264,7 @@ export const healthdash: ConversationSpec = {
             stat: '174 lb',
             delta: '-4',
             deltaDir: 'down',
+            good: true,
             color: 'var(--warning)',
           },
         ],

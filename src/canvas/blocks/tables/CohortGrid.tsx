@@ -88,10 +88,13 @@ export function CohortGrid({
                     <td
                       key={ci}
                       className={`cg-cell tab-num ${on ? 'hot' : ''}`}
-                      style={{
-                        background: `color-mix(in oklab, var(--insight) ${(t * 0.82 + 0.06) * 100}%, transparent)`,
-                        color: t > 0.5 ? 'var(--surface-deep)' : 'var(--text-secondary)',
-                      }}
+                      style={
+                        {
+                          // Opaque (mixed into the card surface) so the stylesheet can derive
+                          // the figure's ink from the fill the reader actually sees.
+                          ['--cg-fill' as string]: `color-mix(in oklab, var(--insight) ${(t * 0.82 + 0.06) * 100}%, var(--surface-elevated))`,
+                        } as CSSProperties
+                      }
                       onMouseEnter={() => setHover({ r: ri, c: ci })}
                       onMouseLeave={() => setHover(null)}
                     >

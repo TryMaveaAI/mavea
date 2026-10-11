@@ -19,25 +19,25 @@ function Cell({
   label,
   accent,
   mark,
-  solo,
+  side,
 }: {
   text: HtmlString;
   label: string;
   accent: string;
   mark: 'check' | 'x' | 'alert';
-  /** the pair has no counterpart, so this cell spans the row */
-  solo: boolean;
+  /** which column the cell belongs to, whether or not its counterpart is present */
+  side: 'do' | 'dont';
 }) {
   const Mark = mark === 'check' ? Icon.check : mark === 'alert' ? Icon.alert : Icon.x;
   return (
     <div
-      className={`lay-dd-cell ${solo ? 'solo' : ''}`}
+      className={`lay-dd-cell lay-dd-cell--${side}`}
       style={{ ['--dd' as string]: accent } as CSSProperties}
     >
       <Mark className="ic lay-dd-mark" />
       <div className="lay-dd-cell-body">
         {/* Always in the DOM; CSS shows it only where the column headers can't name the side —
-            an unpaired row, a one-sided set, or a card too narrow for two columns. */}
+            a one-sided set, or a card too narrow for two columns. */}
         <span className="lay-dd-tag">{label}</span>
         <span className="lay-dd-text" dangerouslySetInnerHTML={richInnerHtml(text)} />
       </div>
@@ -119,10 +119,6 @@ export function DosDonts({
             {rows.map((p, i) => {
               const doText = filled(p.do) ? p.do : null;
               const dontText = filled(p.dont) ? p.dont : null;
-              // A row always has at least one side (see `rows`), so "one side missing" is exactly
-              // "this line has no counterpart". Only meaningful in the two-column layout — in the
-              // single-column one every cell already owns the full row.
-              const solo = !single && (!doText || !dontText);
               return (
                 <li
                   key={i}
@@ -139,7 +135,7 @@ export function DosDonts({
                         label={doLabel}
                         accent="var(--insight)"
                         mark="check"
-                        solo={solo}
+                        side="do"
                       />
                     )}
                     {dontText && (
@@ -148,7 +144,7 @@ export function DosDonts({
                         label={dontLabel}
                         accent={p.hazard ? 'var(--danger)' : 'var(--warning)'}
                         mark={p.hazard ? 'alert' : 'x'}
-                        solo={solo}
+                        side="dont"
                       />
                     )}
                   </div>

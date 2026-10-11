@@ -301,6 +301,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-floating);
   margin-top: 4px;
+  container: appframe / inline-size;
 }
 .appframe-bar {
   display: flex;
@@ -370,6 +371,32 @@
   padding: 14px;
   min-width: 0;
 }
+/* A phone-width frame cannot spare a side rail: it took half the frame, broke the page title
+   mid-word and cut the pipeline's figures off. The rail becomes a row of tabs over the page. */
+@container appframe (width <= 540px) {
+  .appframe-body {
+    flex-direction: column;
+  }
+  .appnav {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 8px 10px;
+  }
+  .appnav-brand {
+    margin: 0 6px 0 0;
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- single term: the app's name, in a row that scrolls */
+    white-space: nowrap;
+  }
+  .appnav-item {
+    width: auto;
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- single term: a tab label, in a row that scrolls */
+    white-space: nowrap;
+  }
+}
 .appmain-top {
   display: flex;
   align-items: baseline;
@@ -387,11 +414,15 @@
 }
 .appkpis {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
 }
+/* Three figures share a row while each still holds its value; on a phone they wrap rather than
+   push the last one out past the frame. */
 .appkpi {
-  flex: 1;
+  flex: 1 1 7em;
+  min-width: 0;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -412,7 +443,7 @@
   grid-template-columns: 1.1fr 1fr;
   gap: 12px;
 }
-@media (width <= 720px) {
+@container appframe (width <= 720px) {
   .appdash {
     grid-template-columns: 1fr;
   }

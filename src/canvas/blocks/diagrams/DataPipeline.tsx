@@ -13,6 +13,18 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
 import { honouredPlacements, honouredSpread } from './placement';
+import {
+  captionAt,
+  columnSpacing,
+  fitCaption,
+  route,
+  LABEL_DY,
+  stackText,
+  SUB_DY,
+  SUB_LINE_H,
+  type Footprint,
+  type TextStack,
+} from './whiteboard';
 import type {
   DataPipelineProps,
   DataPipelineStage,
@@ -41,6 +53,8 @@ const STAGE_BASE_W = 720;
 // visual system when they appear side by side.
 const SHAPE_H = 70;
 const SHAPE_CY_OFFSET = -30;
+/** Half the widest silhouette (the source's rounded rectangle). */
+const SHAPE_HALF_W = NODE_W / 2 - 18;
 
 const KIND_FILL: Record<DataPipelineStageKind, string> = {
   source: 'color-mix(in oklab, var(--presence) 18%, var(--surface-elevated-2))',
@@ -55,11 +69,8 @@ const KIND_STROKE: Record<DataPipelineStageKind, string> = {
   sink: 'var(--insight)',
 };
 
-const LABEL_MAX_CHARS = 17;
-const SUB_MAX_CHARS = 20;
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
+/** Clear air between two neighbouring nodes' text. */
+const TEXT_GUTTER = 24;
 
 interface Placed extends DataPipelineStage {
   cx: number;
@@ -68,6 +79,8 @@ interface Placed extends DataPipelineStage {
 
 interface Figure {
   vbW: number;
+  /** Centre-to-centre column spacing — the width a node's text may use. */
+  colSpacing: number;
   vbH: number;
   placed: Placed[];
   /** The index of the stage an authored edge endpoint names, or null. */
@@ -80,14 +93,18 @@ interface Figure {
  *  at the SVG origin while the card grew a row taller per stage. */
 function layOut(stages: DataPipelineStage[], edges: DataPipelineEdge[]): Figure {
   const at = endpointIndex(stages);
-  if (stages.length === 0) return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at };
+  if (stages.length === 0)
+    return { vbW: VIEW_W, colSpacing: MIN_COL_SPACING, vbH: MIN_VBH, placed: [], at };
 
   const honoured = honouredPlacements(stages);
   const auto = stages.map((_, i) => i).filter((i) => !honoured.has(i));
   const links = resolveLinks(edges, at, (e) => [e?.from, e?.to]);
+  // A column is a shape plus room for the widest caption that has to sit beside it, so a long
+  // step note widens the figure instead of landing on the next stage.
+  const colSpacing = columnSpacing(MIN_COL_SPACING, SHAPE_HALF_W, edges.map(captionOf));
   const plan = planLayered(stages.length, links, {
     placeable: auto,
-    maxColumns: columnsAcross(VIEW_W, PAD, MIN_COL_SPACING),
+    maxColumns: columnsAcross(VIEW_W, PAD, colSpacing),
   });
 
   // The frame has to hold the placements it honoured as well as the layout it planned —
@@ -97,7 +114,7 @@ function layOut(stages: DataPipelineStage[], edges: DataPipelineEdge[]): Figure 
   const columns = Math.max(plan.columns.length, spread.columns);
   const contentH = rows * NODE_H + Math.max(0, rows - 1) * ROW_GAP;
   const vbH = Math.max(MIN_VBH, contentH + PAD * 2);
-  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * MIN_COL_SPACING + PAD * 2);
+  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * colSpacing + PAD * 2);
   const innerW = vbW - PAD * 2;
   const innerH = vbH - PAD * 2;
   const toX = (u: number) => PAD + u * innerW;
@@ -119,50 +136,38 @@ function layOut(stages: DataPipelineStage[], edges: DataPipelineEdge[]): Figure 
       placed[index].cy = toY(rowFraction(plan, column, ri));
     });
   });
-  return { vbW, vbH, placed, at };
+  return { vbW, colSpacing, vbH, placed, at };
 }
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-/** The fixed-radius rim trim (DiagramFlow/SysArchDiagram's own approximation) silently
- *  reverses an arrow's apparent direction once a layout packs columns closer together than
- *  the trim radius — a real case here, not a hypothetical one: a 5+ stage lineage (source →
- *  two or three transforms → a store → a sink) is a perfectly ordinary pipeline, and each
- *  extra rank column narrows the gap between adjacent stages. Capping each end's trim at a
- *  fraction of the actual centre-to-centre distance keeps the two trimmed endpoints from ever
- *  crossing: at the cap, each end eats at most 40% of the gap, leaving a guaranteed 20% of it
- *  between them regardless of how tightly the columns are packed. Wide layouts are unaffected
- *  — the cap only bites once stages sit closer than the shapes are wide. */
-function trimRadii(from: Placed, to: Placed): { rx: number; ry: number } {
-  const dist = Math.hypot(to.cx - from.cx, to.cy - from.cy) || 1;
-  const cap = dist * 0.4;
-  return { rx: Math.min(NODE_W / 2 + 6, cap), ry: Math.min(NODE_H / 2 + 6, cap) };
+/** Each kind's silhouette as a box around its centre — what an edge is trimmed to, so it meets
+ *  the stage it names rather than stopping at a fixed radius out in the air. */
+const KIND_EXTENT: Record<DataPipelineStageKind, { halfW: number; halfH: number }> = {
+  source: { halfW: SHAPE_HALF_W, halfH: SHAPE_H / 2 },
+  transform: { halfW: 66, halfH: 35 },
+  store: { halfW: 58, halfH: SHAPE_H / 2 },
+  sink: { halfW: 58, halfH: SHAPE_H / 2 },
+};
+
+function footprint(p: Placed, text: TextStack): Footprint {
+  return {
+    x: p.cx,
+    y: p.cy + SHAPE_CY_OFFSET,
+    ...(KIND_EXTENT[p.kind ?? 'transform'] ?? KIND_EXTENT.transform),
+    textHalfW: text.halfW,
+    textBottom: text.bottom,
+  };
 }
 
-/** Trim a connection to the rim of each stage's bounding ellipse — the same approximation
- *  DiagramFlow/SysArchDiagram use for their own boxy shapes — so the arrow meets the border,
- *  not the label. */
-function rim(from: Placed, to: Placed): { x: number; y: number } {
-  const dx = to.cx - from.cx;
-  const dy = to.cy - from.cy;
-  const ang = Math.atan2(dy, dx);
-  const { rx, ry } = trimRadii(from, to);
-  return {
-    x: to.cx - Math.cos(ang) * rx,
-    y: to.cy - Math.sin(ang) * ry,
-  };
+function labelOf(p: Placed): string {
+  return typeof p.label === 'string' && p.label.trim() ? p.label.trim() : p.id || 'Stage';
 }
-function rimStart(from: Placed, to: Placed): { x: number; y: number } {
-  const dx = to.cx - from.cx;
-  const dy = to.cy - from.cy;
-  const ang = Math.atan2(dy, dx);
-  const { rx, ry } = trimRadii(from, to);
-  return {
-    x: from.cx + Math.cos(ang) * rx,
-    y: from.cy + Math.sin(ang) * ry,
-  };
+
+function captionOf(e: DataPipelineEdge | undefined): string {
+  return typeof e?.label === 'string' ? e.label.trim() : '';
 }
 
 /** sink and store share the cylinder silhouette; this small glyph is the only thing that tells
@@ -261,44 +266,28 @@ export function DataPipeline({
   const safeStages = useMemo(() => (Array.isArray(stages) ? stages : []), [stages]);
   const safeEdges = useMemo(() => (Array.isArray(edges) ? edges : []), [edges]);
 
-  const { vbW, vbH, placed, at } = useMemo(
+  const { vbW, colSpacing, vbH, placed, at } = useMemo(
     () => layOut(safeStages, safeEdges),
     [safeStages, safeEdges],
   );
   const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
-
-  // A dense linear lineage (5+ sequential stages, an ordinary shape for an ETL chain) packs
-  // columns close enough that an edge's own midpoint can fall inside a neighbouring stage's
-  // shape. Resolving both endpoints once here lets the line and its label share the same
-  // geometry while rendering the label in a SEPARATE pass drawn after every node (below) — so a
-  // tight caption always stays legible on top of the shape it happens to sit near, instead of
-  // being silently painted over by that shape's opaque fill.
-  const routedEdges = useMemo(
-    () =>
-      safeEdges
-        .map((e, i) => {
-          const from = at(e?.from);
-          const to = at(e?.to);
-          if (from === null || to === null) return null;
-          const a = placed[from];
-          const b = placed[to];
-          const s = rimStart(a, b);
-          const t = rim(a, b);
-          const label = typeof e.label === 'string' ? e.label : '';
-          return { key: i, s, t, label };
-        })
-        .filter(
-          (
-            r,
-          ): r is {
-            key: number;
-            s: { x: number; y: number };
-            t: { x: number; y: number };
-            label: string;
-          } => r !== null,
-        ),
-    [safeEdges, placed, at],
+  // Each node's text gets its column's width, less a gutter so neighbours never touch.
+  const stacks = useMemo(
+    () => placed.map((p) => stackText(labelOf(p), p.sub, colSpacing - TEXT_GUTTER, SHAPE_H / 2)),
+    [placed, colSpacing],
   );
+
+  // Resolved once so the line and its caption read the same geometry; the caption is painted in
+  // its own pass after every stage, so no opaque fill can bury it.
+  const routedEdges = useMemo(() => {
+    const prints = placed.map((p, i) => footprint(p, stacks[i]));
+    return safeEdges.flatMap((e, key) => {
+      const from = at(e?.from);
+      const to = at(e?.to);
+      if (from === null || to === null || from === to) return [];
+      return [{ key, ...route(prints[from], prints[to]), label: captionOf(e) }];
+    });
+  }, [safeEdges, placed, stacks, at]);
 
   return (
     <div
@@ -339,7 +328,8 @@ export function DataPipeline({
 
           {placed.map((p, i) => {
             const shapeCy = p.cy + SHAPE_CY_OFFSET;
-            const label = typeof p.label === 'string' && p.label ? p.label : p.id || 'Stage';
+            const label = labelOf(p);
+            const text = stacks[i];
             const kind = p.kind ?? 'transform';
             return (
               <g key={i}>
@@ -352,22 +342,20 @@ export function DataPipeline({
                 </g>
                 <text
                   x={p.cx}
-                  y={shapeCy + SHAPE_H / 2 + 24}
+                  y={shapeCy + SHAPE_H / 2 + LABEL_DY}
                   className="dp-label"
                   textAnchor="middle"
                 >
-                  {label.length > LABEL_MAX_CHARS && <title>{label}</title>}
-                  {truncate(label, LABEL_MAX_CHARS)}
+                  {text.clipped && <title>{[label, p.sub].filter(Boolean).join(' — ')}</title>}
+                  {text.label}
                 </text>
-                {p.sub && (
-                  <text
-                    x={p.cx}
-                    y={shapeCy + SHAPE_H / 2 + 44}
-                    className="dp-sub"
-                    textAnchor="middle"
-                  >
-                    {p.sub.length > SUB_MAX_CHARS && <title>{p.sub}</title>}
-                    {truncate(p.sub, SUB_MAX_CHARS)}
+                {text.sub.length > 0 && (
+                  <text className="dp-sub" textAnchor="middle">
+                    {text.sub.map((ln, li) => (
+                      <tspan key={li} x={p.cx} y={shapeCy + SHAPE_H / 2 + SUB_DY + li * SUB_LINE_H}>
+                        {ln}
+                      </tspan>
+                    ))}
                   </text>
                 )}
               </g>
@@ -377,13 +365,23 @@ export function DataPipeline({
           {/* Edge captions drawn LAST — on top of every node — so a caption on a tightly packed
               column (a normal shape for a 5+ stage lineage) always stays readable instead of
               being painted over by a neighbouring stage's opaque fill. */}
-          {routedEdges.map(({ key, s, t, label }) => {
+          {routedEdges.map(({ key, s, t, length, label }) => {
             if (!label) return null;
-            const mx = (s.x + t.x) / 2;
-            const my = (s.y + t.y) / 2;
+            const fit = fitCaption(label, length);
+            const { x, y0 } = captionAt(s, t, fit);
             return (
-              <text key={key} x={mx} y={my - 8} className="dg-edge-label" textAnchor="middle">
-                {truncate(label, 26)}
+              <text
+                key={key}
+                x={x}
+                className="dg-edge-label"
+                textAnchor="middle"
+                style={{ fontSize: fit.fontSize }}
+              >
+                {fit.lines.map((ln, li) => (
+                  <tspan key={li} x={x} y={y0 + li * fit.lineHeight} dominantBaseline="middle">
+                    {ln}
+                  </tspan>
+                ))}
               </text>
             );
           })}

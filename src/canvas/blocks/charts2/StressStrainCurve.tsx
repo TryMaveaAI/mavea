@@ -7,6 +7,8 @@ import { useId, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
+import { estimateTextWidth } from '../../lib/fitText';
+import { placeClear, type Box, type Pt } from './chartMath';
 import { usePathDraw } from '../../lib/motion';
 import type { StressStrainCurveProps, StressStrainMarker } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -28,14 +30,24 @@ function isFiniteMarker(p: StressStrainMarker | undefined): p is StressStrainMar
   return !!p && Number.isFinite(p.strain) && Number.isFinite(p.stress);
 }
 
-function fmtStrain(v: number): string {
-  const pct = v * 100;
-  return `${Math.abs(pct) < 1 ? pct.toFixed(2) : pct.toFixed(1)}%`;
+const MK_FS = 9; // .c2-ssc-mk
+
+/** Decimals a tick step needs — every label on an axis gets the same count, and no more than
+ *  the step can distinguish (a 100-wide step printed "100.0", a 5% one "5.0%"). */
+function stepDecimals(step: number): number {
+  return step > 0 ? Math.max(0, Math.ceil(-Math.log10(step) - 1e-9)) : 0;
 }
+function fmtStrainTick(v: number, step: number): string {
+  return `${(v * 100).toFixed(stepDecimals(step * 100))}%`;
+}
+function fmtStressTick(v: number, step: number, kilo: boolean): string {
+  return kilo ? `${(v / 1000).toFixed(stepDecimals(step / 1000))}k` : v.toFixed(stepDecimals(step));
+}
+/** A marker's reading, without the padding zeros a fixed precision adds ("250", not "250.0"). */
 function fmtStress(v: number): string {
   const av = Math.abs(v);
-  if (av >= 1000) return `${(v / 1000).toFixed(2)}k`;
-  return av < 10 ? v.toFixed(2) : v.toFixed(1);
+  if (av >= 1000) return `${+(v / 1000).toFixed(2)}k`;
+  return String(+v.toFixed(av < 10 ? 2 : 1));
 }
 function fmtModulus(v: number): string {
   const av = Math.abs(v);
@@ -89,6 +101,8 @@ export function StressStrainCurve({
     const sy = scaleLinear([yMin, yMax], [plotB, plotT]);
 
     const screenPts = pts.map((p) => ({ x: sx(p.strain), y: sy(p.stress) }));
+    const xTicks = sx.ticks(5);
+    const yTicks = sy.ticks(5);
     const pathD = screenPts
       .map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`)
       .join(' ');
@@ -124,13 +138,58 @@ export function StressStrainCurve({
       }
     }
 
-    const markers: (MarkerDef & { point: StressStrainMarker })[] = (
+    const defs: (MarkerDef & { point: StressStrainMarker })[] = (
       [
         { key: 'yield', point: validYield, label: 'Yield', color: 'var(--warning)' },
         { key: 'ultimate', point: validUltimate, label: 'UTS', color: 'var(--presence)' },
         { key: 'fracture', point: validFracture, label: 'Fracture', color: 'var(--danger)' },
       ] as MarkerDef[]
     ).filter((m): m is MarkerDef & { point: StressStrainMarker } => !!m.point);
+
+    // Each callout takes the nearest spot around its point that the trace does not run through
+    // and no earlier callout holds. A fixed up-and-aside offset put "Yield" and "Fracture"
+    // squarely on the curve, which climbs right past one and falls into the other.
+    const bounds: Box = {
+      x: plotL + 2,
+      y: plotT - 12,
+      w: plotR - plotL - 2,
+      h: plotB - plotT + 10,
+    };
+    const taken: Box[] = [];
+    const markers = defs.map((m) => {
+      const text = `${m.label} · ${fmtStress(m.point.stress)}`;
+      const at: Pt = { x: sx(m.point.strain), y: sy(m.point.stress) };
+      const w = estimateTextWidth(text, MK_FS, true);
+      const h = MK_FS + 2;
+      const cands: Box[] = [];
+      for (const d of [14, 26, 40]) {
+        for (const [dx, dy] of [
+          [1, -1],
+          [-1, -1],
+          [1, 1],
+          [-1, 1],
+          [0, -1],
+          [0, 1],
+        ]) {
+          const cx = at.x + dx * d * 0.8 + (dx > 0 ? 0 : dx < 0 ? -w : -w / 2);
+          const cy = at.y + dy * d * 0.6 + (dy < 0 ? -h : 0);
+          cands.push({ x: cx, y: cy, w, h });
+        }
+      }
+      const box = placeClear(
+        cands,
+        bounds,
+        [screenPts],
+        [...taken, { x: at.x - 4, y: at.y - 4, w: 8, h: 8 }],
+      );
+      taken.push(box);
+      // The leader runs from the box's nearest edge point to the marker, and only when the
+      // label has had to stand off far enough that its owner is not obvious.
+      const ex = Math.max(box.x, Math.min(at.x, box.x + box.w));
+      const ey = Math.max(box.y, Math.min(at.y, box.y + box.h));
+      const leader = Math.hypot(ex - at.x, ey - at.y) > 16 ? { x: ex, y: ey } : null;
+      return { ...m, text, box, leader };
+    });
 
     return {
       sx,
@@ -143,8 +202,11 @@ export function StressStrainCurve({
       elasticD,
       modulus,
       markers,
-      xTicks: sx.ticks(5),
-      yTicks: sy.ticks(5),
+      xTicks,
+      yTicks,
+      xStep: xTicks.length > 1 ? xTicks[1] - xTicks[0] : 0,
+      yStep: yTicks.length > 1 ? yTicks[1] - yTicks[0] : 0,
+      kilo: Math.max(Math.abs(yMin), Math.abs(yMax)) >= 10_000,
     };
   }, [curve, yieldPoint, ultimatePoint, fracturePoint]);
 
@@ -161,134 +223,132 @@ export function StressStrainCurve({
 
       {geom ? (
         <div className="c2-ssc-wrap">
-          <svg viewBox={`0 0 ${W} ${H}`} className="c2-ssc-svg" role="img" aria-label={title}>
-            <defs>
-              {geom.markers.map((m) => (
-                <marker
-                  key={m.key}
-                  id={`ssc-arrow-${m.key}-${uid}`}
-                  markerWidth="7"
-                  markerHeight="7"
-                  refX="5.5"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <path
-                    d="M1.2,1.2 L5.5,3.5 L1.2,5.8"
-                    className="c2-ssc-arrowhead"
-                    style={{ stroke: m.color }}
-                  />
-                </marker>
-              ))}
-            </defs>
-
-            {geom.yTicks.map((t, i) => (
-              <line
-                key={`gy${i}`}
-                x1={geom.plotL}
-                y1={geom.sy(t)}
-                x2={geom.plotR}
-                y2={geom.sy(t)}
-                className="c2-ssc-grid"
-              />
-            ))}
-
-            {geom.elasticD && <path d={geom.elasticD} className="c2-ssc-elastic" />}
-
-            <line
-              x1={geom.plotL}
-              y1={geom.plotB}
-              x2={geom.plotR}
-              y2={geom.plotB}
-              className="c2-ssc-axis"
-            />
-            {geom.xTicks.map((t, i) => (
-              <text
-                key={`xt${i}`}
-                x={geom.sx(t)}
-                y={geom.plotB + 13}
-                textAnchor="middle"
-                className="c2-ssc-tick"
-              >
-                {fmtStrain(t)}
-              </text>
-            ))}
-            <line
-              x1={geom.plotL}
-              y1={geom.plotT}
-              x2={geom.plotL}
-              y2={geom.plotB}
-              className="c2-ssc-axis"
-            />
-            {geom.yTicks.map((t, i) => (
-              <text
-                key={`yt${i}`}
-                x={geom.plotL - 5}
-                y={geom.sy(t) + 3}
-                textAnchor="end"
-                className="c2-ssc-tick"
-              >
-                {fmtStress(t)}
-              </text>
-            ))}
-
-            <path ref={curveRef} d={geom.pathD} className="c2-ssc-line" />
-
-            {geom.markers.map((m, i) => {
-              const px = geom.sx(m.point.strain);
-              const py = geom.sy(m.point.stress);
-              const goRight = px < (geom.plotL + geom.plotR) / 2;
-              const lx = goRight
-                ? Math.min(px + 30, geom.plotR - 4)
-                : Math.max(px - 30, geom.plotL + 4);
-              const ly = Math.max(geom.plotT + 8, py - 26);
-              return (
-                <g
-                  key={m.key}
-                  className="m-fade-rise m-stagger-item"
-                  style={{ ['--i' as string]: i } as CSSProperties}
-                >
-                  <circle cx={px} cy={py} r={3.2} fill={m.color} />
-                  <line
-                    x1={lx}
-                    y1={ly}
-                    x2={px}
-                    y2={py}
-                    className="c2-ssc-leader"
-                    style={{ stroke: m.color }}
-                    markerEnd={`url(#ssc-arrow-${m.key}-${uid})`}
-                  />
-                  <text
-                    x={lx}
-                    y={ly - 4}
-                    textAnchor={goRight ? 'start' : 'end'}
-                    className="c2-ssc-mk"
-                    style={{ fill: m.color }}
+          <div className="canvas-figure">
+            <svg viewBox={`0 0 ${W} ${H}`} className="c2-ssc-svg" role="img" aria-label={title}>
+              <defs>
+                {geom.markers.map((m) => (
+                  <marker
+                    key={m.key}
+                    id={`ssc-arrow-${m.key}-${uid}`}
+                    markerWidth="7"
+                    markerHeight="7"
+                    refX="5.5"
+                    refY="3.5"
+                    orient="auto"
                   >
-                    {m.label} · {fmtStress(m.point.stress)}
-                  </text>
-                </g>
-              );
-            })}
+                    <path
+                      d="M1.2,1.2 L5.5,3.5 L1.2,5.8"
+                      className="c2-ssc-arrowhead"
+                      style={{ stroke: m.color }}
+                    />
+                  </marker>
+                ))}
+              </defs>
 
-            <text
-              x={(geom.plotL + geom.plotR) / 2}
-              y={H - 6}
-              textAnchor="middle"
-              className="c2-ssc-axlbl"
-            >
-              Strain
-            </text>
-            <text
-              x={0}
-              y={0}
-              textAnchor="middle"
-              className="c2-ssc-axlbl"
-              transform={`translate(13, ${(geom.plotT + geom.plotB) / 2}) rotate(-90)`}
-            >
-              Stress
-            </text>
-          </svg>
+              {geom.yTicks.map((t, i) => (
+                <line
+                  key={`gy${i}`}
+                  x1={geom.plotL}
+                  y1={geom.sy(t)}
+                  x2={geom.plotR}
+                  y2={geom.sy(t)}
+                  className="c2-ssc-grid"
+                />
+              ))}
+
+              {geom.elasticD && <path d={geom.elasticD} className="c2-ssc-elastic" />}
+
+              <line
+                x1={geom.plotL}
+                y1={geom.plotB}
+                x2={geom.plotR}
+                y2={geom.plotB}
+                className="c2-ssc-axis"
+              />
+              {geom.xTicks.map((t, i) => (
+                <text
+                  key={`xt${i}`}
+                  x={geom.sx(t)}
+                  y={geom.plotB + 13}
+                  textAnchor="middle"
+                  className="c2-ssc-tick"
+                >
+                  {fmtStrainTick(t, geom.xStep)}
+                </text>
+              ))}
+              <line
+                x1={geom.plotL}
+                y1={geom.plotT}
+                x2={geom.plotL}
+                y2={geom.plotB}
+                className="c2-ssc-axis"
+              />
+              {geom.yTicks.map((t, i) => (
+                <text
+                  key={`yt${i}`}
+                  x={geom.plotL - 5}
+                  y={geom.sy(t) + 3}
+                  textAnchor="end"
+                  className="c2-ssc-tick"
+                >
+                  {fmtStressTick(t, geom.yStep, geom.kilo)}
+                </text>
+              ))}
+
+              <path ref={curveRef} d={geom.pathD} className="c2-ssc-line" />
+
+              {geom.markers.map((m, i) => {
+                const px = geom.sx(m.point.strain);
+                const py = geom.sy(m.point.stress);
+                return (
+                  <g
+                    key={m.key}
+                    className="m-fade-rise m-stagger-item"
+                    style={{ ['--i' as string]: i } as CSSProperties}
+                  >
+                    <circle cx={px} cy={py} r={3.2} fill={m.color} />
+                    {m.leader && (
+                      <line
+                        x1={m.leader.x}
+                        y1={m.leader.y}
+                        x2={px}
+                        y2={py}
+                        className="c2-ssc-leader"
+                        style={{ stroke: m.color }}
+                        markerEnd={`url(#ssc-arrow-${m.key}-${uid})`}
+                      />
+                    )}
+                    <text
+                      x={m.box.x}
+                      y={m.box.y + m.box.h - 2}
+                      className="c2-ssc-mk"
+                      style={{ fill: m.color }}
+                    >
+                      {m.text}
+                    </text>
+                  </g>
+                );
+              })}
+
+              <text
+                x={(geom.plotL + geom.plotR) / 2}
+                y={H - 6}
+                textAnchor="middle"
+                className="c2-ssc-axlbl"
+              >
+                Strain
+              </text>
+              <text
+                x={0}
+                y={0}
+                textAnchor="middle"
+                className="c2-ssc-axlbl"
+                transform={`translate(13, ${(geom.plotT + geom.plotB) / 2}) rotate(-90)`}
+              >
+                Stress
+              </text>
+            </svg>
+          </div>
 
           {geom.modulus !== null && (
             <p className="c2-ssc-modulus">

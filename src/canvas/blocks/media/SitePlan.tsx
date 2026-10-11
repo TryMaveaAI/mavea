@@ -3,6 +3,7 @@ import { Icon } from '../../../icons/icons';
 import { extent, formatValue, BlockEmpty } from '../../lib';
 import type { SitePlanProps, SitePoint, SetbackLine, Easement } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { labelStates, placeRingBadges, type Pt } from './sitePlanBadges';
 
 type Props = SitePlanProps & { delay?: number };
 
@@ -163,7 +164,11 @@ export function SitePlan({
   const tx = (x: number) => ox + (x - minX) * k;
   const ty = (y: number) => oy + (y - minY) * k;
   const ptsAttr = (pts: SitePoint[]) => pts.map(([x, y]) => `${tx(x)},${ty(y)}`).join(' ');
-  const [boundCx, boundCy] = centroid(bound);
+  const BADGE_R = 4.2;
+  const toPt = ([x, y]: SitePoint): Pt => ({ x: tx(x), y: ty(y) });
+  const rings = validSetbacks.map((s) => insetRing(bound, s.offset).map(toPt));
+  const easementBadges = validEasements.map((e) => toPt(centroid(e.path)));
+  const setbackBadges = placeRingBadges(rings, footprint.map(toPt), easementBadges, BADGE_R);
 
   return (
     <div
@@ -205,74 +210,31 @@ export function SitePlan({
             rx={2}
           />
 
-          {/* dashed setback rings — behind everything else, a guide, not a real line. Every ring
-              is inset from the SAME boundary, so anchoring every badge to (say) its topmost
-              point would stack them on top of each other; cycling the anchor vertex by index
-              instead spreads the badges around distinct corners. */}
-          {validSetbacks.map((s, i) => {
-            const ring = insetRing(bound, s.offset);
-            const anchor = ring[i % ring.length];
-            const [dx, dy] = [anchor[0] - boundCx, anchor[1] - boundCy];
-            const dlen = Math.hypot(dx, dy) || 1e-6;
-            // nudge the badge a touch further out along its own corner ray so it reads clear of
-            // the dashed line instead of sitting astride it
-            const badgeX = anchor[0] + (dx / dlen) * (dlen * 0.12);
-            const badgeY = anchor[1] + (dy / dlen) * (dlen * 0.12);
-            const color = SETBACK_COLORS[i % SETBACK_COLORS.length];
-            return (
-              <g key={i}>
-                <polygon
-                  points={ptsAttr(ring)}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={0.7}
-                  strokeDasharray="3.2 2.2"
-                />
-                <circle
-                  cx={tx(badgeX)}
-                  cy={ty(badgeY)}
-                  r={4.2}
-                  className="splan-badge"
-                  fill={color}
-                />
-                <text
-                  x={tx(badgeX)}
-                  y={ty(badgeY)}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="splan-badge-text"
-                >
-                  {`S${i + 1}`}
-                </text>
-              </g>
-            );
-          })}
+          {/* dashed setback rings — behind everything else, a guide, not a real line */}
+          {rings.map((ring, i) => (
+            <polygon
+              key={i}
+              points={ring.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke={SETBACK_COLORS[i % SETBACK_COLORS.length]}
+              strokeWidth={0.7}
+              strokeDasharray="3.2 2.2"
+            />
+          ))}
 
           {/* easement strips — hatched, dashed outline so they read as a legal overlay, not a wall */}
           {validEasements.map((e, i) => {
-            const [ecx, ecy] = centroid(e.path);
             const color = EASEMENT_COLORS[i % EASEMENT_COLORS.length];
             return (
-              <g key={i}>
-                <polygon
-                  points={ptsAttr(e.path)}
-                  fill={`url(#splan-hatch-${uid}-${i})`}
-                  fillOpacity={0.55}
-                  stroke={color}
-                  strokeWidth={0.6}
-                  strokeDasharray="1.8 1.4"
-                />
-                <circle cx={tx(ecx)} cy={ty(ecy)} r={4.2} className="splan-badge" fill={color} />
-                <text
-                  x={tx(ecx)}
-                  y={ty(ecy)}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="splan-badge-text"
-                >
-                  {`E${i + 1}`}
-                </text>
-              </g>
+              <polygon
+                key={i}
+                points={ptsAttr(e.path)}
+                fill={`url(#splan-hatch-${uid}-${i})`}
+                fillOpacity={0.55}
+                stroke={color}
+                strokeWidth={0.6}
+                strokeDasharray="1.8 1.4"
+              />
             );
           })}
 
@@ -283,6 +245,33 @@ export function SitePlan({
 
           {/* the parcel outline itself, bold, on top — the figure's one gesture target */}
           <polygon points={ptsAttr(bound)} className="splan-boundary" data-mark="circle" />
+
+          {/* badges last, so neither the building nor the parcel outline is drawn across one */}
+          {[
+            ...setbackBadges.map((p, i) => ({
+              p,
+              code: `S${i + 1}`,
+              color: SETBACK_COLORS[i % SETBACK_COLORS.length],
+            })),
+            ...easementBadges.map((p, i) => ({
+              p,
+              code: `E${i + 1}`,
+              color: EASEMENT_COLORS[i % EASEMENT_COLORS.length],
+            })),
+          ].map((b) => (
+            <g key={b.code}>
+              <circle cx={b.p.x} cy={b.p.y} r={BADGE_R} className="splan-badge" fill={b.color} />
+              <text
+                x={b.p.x}
+                y={b.p.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="splan-badge-text"
+              >
+                {b.code}
+              </text>
+            </g>
+          ))}
         </svg>
       </div>
 
@@ -291,19 +280,25 @@ export function SitePlan({
           {validSetbacks.map((s, i) => (
             <div className="splan-legend-row" key={`s${i}`}>
               <span
-                className="splan-legend-dot"
+                className="splan-legend-key"
                 style={{ background: SETBACK_COLORS[i % SETBACK_COLORS.length] }}
-              />
+              >
+                S{i + 1}
+              </span>
               <span className="splan-legend-label">{s.label || `Setback ${i + 1}`}</span>
-              <span className="splan-legend-val tab-num">{formatValue(s.offset)}</span>
+              {!labelStates(s.label, s.offset) && (
+                <span className="splan-legend-val tab-num">{formatValue(s.offset)}</span>
+              )}
             </div>
           ))}
           {validEasements.map((e, i) => (
             <div className="splan-legend-row" key={`e${i}`}>
               <span
-                className="splan-legend-dot hatched"
+                className="splan-legend-key hatched"
                 style={{ background: EASEMENT_COLORS[i % EASEMENT_COLORS.length] }}
-              />
+              >
+                E{i + 1}
+              </span>
               <span className="splan-legend-label">{e.label || `Easement ${i + 1}`}</span>
             </div>
           ))}

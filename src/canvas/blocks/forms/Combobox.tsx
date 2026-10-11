@@ -112,7 +112,7 @@ export function Combobox({
 
       <div className="cb-root">
         <div className={`cb-input ${open ? 'is-open' : ''}`} ref={inputBoxRef}>
-          <Icon.eye className="ic cb-search" />
+          <Icon.search className="ic cb-search" />
           {!open && cur && CurIc && <CurIc className="ic cb-curic" />}
           <input
             className="cb-control"

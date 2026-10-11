@@ -69,6 +69,17 @@ export function Mentalhealthscreen({
   const matched = validBands.find((b) => safeTotal >= b.lo && safeTotal <= b.hi) ?? null;
   const markerPct = Math.min(100, Math.max(0, (safeTotal / safeMax) * 100));
 
+  // Band labels sit in a grid whose column lines ARE the band edges, so each name centres under
+  // its own segment (wrapping inside it when narrow) instead of flowing in a row from the left.
+  const clampEdge = (v: number) => Math.min(safeMax, Math.max(0, v));
+  const edges = [
+    ...new Set([0, safeMax, ...validBands.flatMap((b) => [clampEdge(b.lo), clampEdge(b.hi)])]),
+  ].sort((a, b) => a - b);
+  const labelCols = edges
+    .slice(1)
+    .map((e, i) => `${Math.max(e - edges[i], 0)}fr`)
+    .join(' ');
+
   return (
     <div
       className="card reveal"
@@ -138,9 +149,16 @@ export function Mentalhealthscreen({
             })}
             <span className="mhs-bar-marker" style={{ left: markerPct + '%' }} />
           </div>
-          <div className="mhs-bar-labels">
+          <div className="mhs-bar-labels" style={{ gridTemplateColumns: labelCols }}>
             {validBands.map((b, i) => (
-              <span key={i} className="mhs-bar-label faint" style={{ color: b.c }}>
+              <span
+                key={i}
+                className="mhs-bar-label faint"
+                style={{
+                  color: b.c,
+                  gridColumn: `${edges.indexOf(clampEdge(b.lo)) + 1} / ${edges.indexOf(clampEdge(b.hi)) + 1}`,
+                }}
+              >
                 {b.label}
               </span>
             ))}

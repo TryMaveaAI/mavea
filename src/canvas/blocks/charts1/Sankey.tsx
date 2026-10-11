@@ -3,13 +3,18 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SankeyProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth, fitText, type FitTextResult } from '../../lib/fitText';
 
 type Props = SankeyProps & { delay?: number };
 
 const W = 540,
   H = 300,
   PAD = 8,
-  NODE_W = 12;
+  NODE_W = 12,
+  LABEL_FS = 11.5,
+  LABEL_GAP = 5,
+  /** Neither outer gutter may take more than this share of the width, however long its names. */
+  GUTTER_MAX = 0.26;
 
 const PALETTE = [
   'var(--presence)',
@@ -34,7 +39,26 @@ export function Sankey({
 
   const model = useMemo(() => {
     const layers = Math.max(0, ...nodes.map((n) => n.layer)) + 1;
-    const colX = (l: number) => PAD + (l / Math.max(1, layers - 1)) * (W - PAD * 2 - NODE_W);
+    const maxLayer = layers - 1;
+
+    // The first column's names go LEFT of their bars and the last column's RIGHT, each in a
+    // gutter sized to its longest name: outside the ribbons, where nothing crosses them. Names in
+    // a middle column have no outside to go to and are haloed over the ribbons instead.
+    const gutterCap = W * GUTTER_MAX;
+    const widest = (layer: number) =>
+      Math.min(
+        gutterCap,
+        Math.max(
+          0,
+          ...nodes
+            .filter((n) => n.layer === layer)
+            .map((n) => estimateTextWidth(n.label, LABEL_FS) + LABEL_GAP + 2),
+        ),
+      );
+    const leftG = layers > 1 ? widest(0) : 0;
+    const rightG = layers > 1 ? widest(maxLayer) : 0;
+    const colX = (l: number) =>
+      PAD + leftG + (l / Math.max(1, layers - 1)) * (W - PAD * 2 - leftG - rightG - NODE_W);
 
     // total throughput per node (max of in/out)
     const flowOut = new Map<string, number>();
@@ -66,7 +90,6 @@ export function Sankey({
     const gapBudget = MIN_GAP * Math.max(0, maxLayerCount - 1);
     const scale = (trackH - gapBudget) / (maxLayerTotal || 1); // px per unit
 
-    const maxLayer = layers - 1;
     const pos = new Map<
       string,
       {
@@ -76,7 +99,8 @@ export function Sankey({
         color: string;
         label: string;
         total: number;
-        isLast: boolean;
+        side: 'left' | 'right' | 'over';
+        fit: FitTextResult;
       }
     >();
     byLayer.forEach((arr, layer) => {
@@ -99,7 +123,21 @@ export function Sankey({
           color: n.color || PALETTE[(layer + i) % PALETTE.length],
           label: n.label,
           total: through(n.id),
-          isLast: layer === maxLayer,
+          side:
+            layers > 1 && layer === 0
+              ? 'left'
+              : layer === maxLayer && layers > 1
+                ? 'right'
+                : 'over',
+          fit: fitText(n.label, {
+            maxWidth:
+              layers > 1 && (layer === 0 || layer === maxLayer)
+                ? Math.max(40, (layer === 0 ? leftG : rightG) - LABEL_GAP - 2)
+                : gutterCap,
+            fontSize: LABEL_FS,
+            minFontSize: 9,
+            maxLines: 2,
+          }),
         });
         y += h + gap;
       });
@@ -163,66 +201,85 @@ export function Sankey({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block' }}
-      >
-        {model.linkGeo.map((l) => {
-          const lit = isLit(l.id, l.source, l.target);
-          return (
-            <path
-              key={l.id}
-              d={l.d}
-              fill="none"
-              stroke={l.color}
-              strokeWidth={l.thick}
-              opacity={lit ? 0.42 : 0.08}
-              style={{ transition: 'opacity var(--m-fast)' }}
-              onMouseEnter={() => setHover(l.id)}
-              onMouseLeave={() => setHover(null)}
-            />
-          );
-        })}
-        {model.pos.map(([id, n]) => {
-          const lit =
-            !hover ||
-            hover === id ||
-            model.linkGeo.some((l) => l.id === hover && (l.source === id || l.target === id));
-          return (
-            <g
-              key={id}
-              onMouseEnter={() => setHover(id)}
-              onMouseLeave={() => setHover(null)}
-              style={{ cursor: 'pointer' }}
-            >
-              <rect
-                x={n.x}
-                y={n.y}
-                width={NODE_W}
-                height={n.h}
-                rx={3}
-                fill={n.color}
-                opacity={lit ? 1 : 0.3}
-                data-mark={id === model.salientId ? 'circle' : undefined}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block' }}
+        >
+          {model.linkGeo.map((l) => {
+            const lit = isLit(l.id, l.source, l.target);
+            return (
+              <path
+                key={l.id}
+                d={l.d}
+                fill="none"
+                stroke={l.color}
+                strokeWidth={l.thick}
+                opacity={lit ? 0.42 : 0.08}
                 style={{ transition: 'opacity var(--m-fast)' }}
+                onMouseEnter={() => setHover(l.id)}
+                onMouseLeave={() => setHover(null)}
               />
+            );
+          })}
+          {model.pos.map(([id, n]) => {
+            const lit =
+              !hover ||
+              hover === id ||
+              model.linkGeo.some((l) => l.id === hover && (l.source === id || l.target === id));
+            return (
+              <g
+                key={id}
+                onMouseEnter={() => setHover(id)}
+                onMouseLeave={() => setHover(null)}
+                style={{ cursor: 'pointer' }}
+              >
+                <rect
+                  x={n.x}
+                  y={n.y}
+                  width={NODE_W}
+                  height={n.h}
+                  rx={3}
+                  fill={n.color}
+                  opacity={lit ? 1 : 0.3}
+                  data-mark={id === model.salientId ? 'circle' : undefined}
+                  style={{ transition: 'opacity var(--m-fast)' }}
+                />
+              </g>
+            );
+          })}
+          {/* Names paint last, above every ribbon, so a crossing flow passes behind a middle
+            column's haloed name rather than through it. */}
+          {model.pos.map(([id, n]) => {
+            const lit =
+              !hover ||
+              hover === id ||
+              model.linkGeo.some((l) => l.id === hover && (l.source === id || l.target === id));
+            const lines = n.fit.lines;
+            const top = n.y + n.h / 2 - ((lines.length - 1) * n.fit.lineHeightPx) / 2 + 4;
+            const x = n.side === 'left' ? n.x - LABEL_GAP : n.x + NODE_W + LABEL_GAP;
+            return (
               <text
-                x={n.isLast ? n.x - 5 : n.x + NODE_W + 5}
-                y={n.y + n.h / 2 + 4}
-                fontSize="11.5"
-                fill="var(--text-secondary)"
-                textAnchor={n.isLast ? 'end' : 'start'}
+                key={`t-${id}`}
+                x={x}
+                fontSize={n.fit.fontSize}
+                className={'c1-sankey-label' + (n.side === 'over' ? ' over' : '')}
+                textAnchor={n.side === 'left' ? 'end' : 'start'}
                 opacity={lit ? 1 : 0.4}
               >
-                {n.label}
+                {lines.map((ln, li) => (
+                  <tspan key={li} x={x} y={top + li * n.fit.lineHeightPx}>
+                    {ln}
+                  </tspan>
+                ))}
               </text>
-            </g>
-          );
-        })}
-      </svg>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 10 }}>
         {hover && model.linkGeo.find((l) => l.id === hover) ? (

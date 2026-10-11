@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { RoutingProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { wireGeometry, type WireGeometry } from './routingWires';
 
 type Props = RoutingProps & { delay?: number };
 
@@ -26,6 +27,50 @@ export function Routing({
 
   const selected = choices[sel];
 
+  const wiresRef = useRef<SVGSVGElement>(null);
+  const sourceRef = useRef<HTMLDivElement>(null);
+  const queryRef = useRef<HTMLDivElement>(null);
+  const choicesRef = useRef<HTMLDivElement>(null);
+  const [wires, setWires] = useState<WireGeometry | null>(null);
+
+  useLayoutEffect(() => {
+    const svg = wiresRef.current;
+    const list = choicesRef.current;
+    const source = queryRef.current ?? sourceRef.current;
+    if (!svg || !list || !source) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const next = wireGeometry(
+        svg.getBoundingClientRect(),
+        source.getBoundingClientRect(),
+        [...list.children].map((el) => el.getBoundingClientRect()),
+      );
+      setWires((prev) =>
+        prev &&
+        next &&
+        prev.height === next.height &&
+        prev.from === next.from &&
+        prev.to.every((y, i) => y === next.to[i])
+          ? prev
+          : next,
+      );
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    ro?.observe(svg);
+    ro?.observe(list);
+    list.addEventListener('scroll', schedule, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      ro?.disconnect();
+      list.removeEventListener('scroll', schedule);
+    };
+  }, [choices.length, query]);
+
   return (
     <div
       className="card reveal"
@@ -36,28 +81,33 @@ export function Routing({
       </div>
 
       <div className="ai-ro">
-        <div className="ai-ro-source">
-          {query && <div className="ai-ro-query">{query}</div>}
+        <div className="ai-ro-source" ref={sourceRef}>
+          {query && (
+            <div className="ai-ro-query" ref={queryRef}>
+              {query}
+            </div>
+          )}
           <div className="ai-ro-classifier">
             <Icon.sparkle className="ic" style={{ color: iconColor }} /> {classifier}
           </div>
         </div>
 
         <svg
-          role="img"
-          aria-label={title}
+          ref={wiresRef}
           className="ai-ro-wires"
-          viewBox="0 0 40 100"
+          viewBox={`0 0 40 ${wires?.height ?? 100}`}
           preserveAspectRatio="none"
           aria-hidden
         >
           {choices.map((c, i) => {
-            const y = ((i + 0.5) / choices.length) * 100;
+            // Until the first measure lands, an even split stands in so nothing flashes empty.
+            const from = wires?.from ?? 50;
+            const y = wires?.to[i] ?? ((i + 0.5) / choices.length) * 100;
             const on = c.taken;
             return (
               <path
                 key={i}
-                d={`M0 50 C 20 50, 20 ${y}, 40 ${y}`}
+                d={`M0 ${from} C 20 ${from}, 20 ${y}, 40 ${y}`}
                 fill="none"
                 stroke={on ? c.color || 'var(--insight)' : 'var(--grid-strong)'}
                 strokeWidth={on ? 2.4 : 1.4}
@@ -67,7 +117,7 @@ export function Routing({
           })}
         </svg>
 
-        <div className="ai-ro-choices">
+        <div className="ai-ro-choices" ref={choicesRef}>
           {choices.map((c, i) => {
             const cc = c.color || (c.taken ? 'var(--insight)' : 'var(--text-muted)');
             return (

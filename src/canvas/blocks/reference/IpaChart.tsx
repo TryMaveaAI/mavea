@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { IpaChartProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { BL, BR, TL, TR, VOWEL_HALO_R, projectVowel, vowelLayout } from './ipaVowels';
 
 type Props = IpaChartProps & { delay?: number };
 
@@ -19,41 +20,6 @@ type Props = IpaChartProps & { delay?: number };
 //
 // The model supplies only which symbols to emphasise (`highlight`) and a few example
 // words; the geometry is computed here from the static linguistic tables below.
-
-/** One vowel: its symbol and its position on the quadrilateral (0 = front/close, 1 = back/open). */
-interface VowelPos {
-  s: string; // IPA symbol
-  back: number; // 0 front … 1 back
-  high: number; // 0 close … 1 open
-  rounded?: boolean; // rounded vowels are drawn to the right of their slot pair
-}
-
-// The canonical cardinal + English vowels, by articulatory position. Coordinates follow the
-// standard IPA quadrilateral (4 height steps × 3 backness columns, plus the central schwa).
-const VOWELS: VowelPos[] = [
-  // close
-  { s: 'i', back: 0, high: 0 },
-  { s: 'y', back: 0, high: 0, rounded: true },
-  { s: 'ɨ', back: 0.5, high: 0 },
-  { s: 'u', back: 1, high: 0, rounded: true },
-  { s: 'ɪ', back: 0.18, high: 0.18 },
-  { s: 'ʊ', back: 0.82, high: 0.18, rounded: true },
-  // close-mid
-  { s: 'e', back: 0, high: 0.34 },
-  { s: 'ø', back: 0, high: 0.34, rounded: true },
-  { s: 'ə', back: 0.5, high: 0.5 },
-  { s: 'o', back: 1, high: 0.34, rounded: true },
-  // open-mid
-  { s: 'ɛ', back: 0.08, high: 0.66 },
-  { s: 'ɜ', back: 0.5, high: 0.66 },
-  { s: 'ʌ', back: 0.78, high: 0.66 },
-  { s: 'ɔ', back: 1, high: 0.66, rounded: true },
-  // open
-  { s: 'a', back: 0.06, high: 1 },
-  { s: 'æ', back: 0.16, high: 0.84 },
-  { s: 'ɑ', back: 0.9, high: 1 },
-  { s: 'ɒ', back: 1, high: 1, rounded: true },
-];
 
 /** Manner rows of the pulmonic consonant grid. */
 const MANNERS = ['Plosive', 'Nasal', 'Fricative', 'Approx.', 'Lateral'] as const;
@@ -138,41 +104,26 @@ export function IpaChart({
 }
 
 // ── the vowel quadrilateral ───────────────────────────────────────────────────────────
-// A trapezoid in a 0..100 × 0..100 viewBox. Front edge (left) is vertical; the back edge
-// (right) slants inward toward the bottom, and the open row is itself indented, so the
-// figure has the classic IPA "kite" silhouette. We map each vowel's (back, high) into that
-// shrinking trapezoid by interpolating the row's left/right bounds at its height.
+// A trapezoid in a 0..100 × 0..100 viewBox. Front edge (left) slants in toward the bottom, the
+// back edge (right) less so, giving the classic IPA silhouette.
 function VowelQuad({ isHot }: { isHot: (s: string) => boolean }) {
-  // Trapezoid corners (viewBox units). Top is wide, bottom is narrower & shifted right.
-  const TL = { x: 12, y: 14 };
-  const TR = { x: 92, y: 14 };
-  const BL = { x: 34, y: 86 };
-  const BR = { x: 80, y: 86 };
-
-  // For a given height t (0 top … 1 bottom) the left/right x are linear interpolations of the
-  // corners — that is what makes a vowel's horizontal slot narrow as it descends.
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-  const project = (back: number, high: number) => {
-    const left = lerp(TL.x, BL.x, high);
-    const right = lerp(TR.x, BR.x, high);
-    const y = lerp(TL.y, BL.y, high);
-    return { x: lerp(left, right, back), y };
-  };
+  const { glyphs, dots } = vowelLayout();
+  const spineTop = projectVowel(0.5, 0);
+  const spineBottom = projectVowel(0.5, 1);
 
   return (
     <div className="ipa-quad">
       <svg viewBox="0 0 104 100" width="100%" role="img" aria-label="IPA vowel quadrilateral">
-        {/* the trapezoid outline */}
         <polygon
           points={`${TL.x},${TL.y} ${TR.x},${TR.y} ${BR.x},${BR.y} ${BL.x},${BL.y}`}
           fill="none"
           stroke="var(--line-strong)"
           strokeWidth={0.8}
         />
-        {/* interior height rules at the three intermediate vowel rows */}
-        {[0.34, 0.5, 0.66].map((t, i) => {
-          const l = project(0, t);
-          const r = project(1, t);
+        {/* the close-mid and open-mid rules */}
+        {[1 / 3, 2 / 3].map((t, i) => {
+          const l = projectVowel(0, t);
+          const r = projectVowel(1, t);
           return (
             <line
               key={i}
@@ -185,44 +136,42 @@ function VowelQuad({ isHot }: { isHot: (s: string) => boolean }) {
             />
           );
         })}
-        {/* a faint central spine (the central-backness column) */}
         <line
-          x1={project(0.5, 0).x}
-          y1={project(0.5, 0).y}
-          x2={project(0.5, 1).x}
-          y2={project(0.5, 1).y}
+          x1={spineTop.x}
+          y1={spineTop.y}
+          x2={spineBottom.x}
+          y2={spineBottom.y}
           stroke="var(--grid-line)"
           strokeWidth={0.5}
         />
 
         {/* axis labels — backness across the top, height rotated up the left edge */}
-        <text x={TL.x} y={9} className="ipa-axis" textAnchor="start">
+        <text x={TL.x} y={6} className="ipa-axis" textAnchor="start">
           Front
         </text>
-        <text x={TR.x} y={9} className="ipa-axis" textAnchor="end">
+        <text x={TR.x} y={6} className="ipa-axis" textAnchor="end">
           Back
         </text>
         {/* rotated axis label: translate to the anchor, THEN rotate (never a bare rotate) */}
-        <text className="ipa-axis" transform="translate(6, 50) rotate(-90)" textAnchor="middle">
+        <text className="ipa-axis" transform="translate(5, 52) rotate(-90)" textAnchor="middle">
           Close → Open
         </text>
 
-        {/* the vowels themselves */}
-        {VOWELS.map((v) => {
-          const p = project(v.back, v.high);
-          // rounded vowels sit just to the right of their unrounded partner's slot
-          const dx = v.rounded ? 3 : 0;
-          const hot = isHot(v.s);
+        {dots.map((d) => (
+          <circle key={`${d.x},${d.y}`} cx={d.x} cy={d.y} r={0.9} className="ipa-vowel-dot" />
+        ))}
+        {glyphs.map((g) => {
+          const hot = isHot(g.s);
           return (
-            <g key={v.s} transform={`translate(${p.x + dx}, ${p.y})`}>
-              {hot && <circle r={4.4} className="ipa-vowel-halo" />}
+            <g key={g.s} transform={`translate(${g.x}, ${g.y})`}>
+              {hot && <circle r={VOWEL_HALO_R} className="ipa-vowel-halo" />}
               <text
                 className="ipa-vowel"
                 textAnchor="middle"
                 dominantBaseline="central"
                 {...(hot ? { 'data-hot': '' } : {})}
               >
-                {v.s}
+                {g.s}
               </text>
             </g>
           );

@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { StackTraceProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { withInlineCode } from '../../lib/inlineCode';
 
 type Props = StackTraceProps & { delay?: number };
 
@@ -36,7 +37,7 @@ export function StackTrace({
       <div className="st-error-block">
         <div className="st-error-type">{errorType}</div>
         <div className="st-error-msg">{message}</div>
-        {cause && <div className="st-cause">Caused by: {cause}</div>}
+        {cause && <div className="st-cause">Caused by: {withInlineCode(cause)}</div>}
       </div>
 
       {frameList.length > 0 && (
@@ -67,7 +68,7 @@ export function StackTrace({
       {fix && (
         <div className="st-fix">
           <div className="st-fix-label">Suggested fix</div>
-          <div>{fix}</div>
+          <div>{withInlineCode(fix)}</div>
         </div>
       )}
 

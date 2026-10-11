@@ -28,26 +28,28 @@ export function StakeholderMap({
 
   return (
     <BriefFrame {...frame} className="brf-stakeholders">
-      <div className="brf-quadrants">
-        {QUADRANTS.map((quadrant) => {
-          const matches = grouped.get(quadrant.key) ?? [];
-          return (
-            <section key={quadrant.label}>
-              <h3>{quadrant.label}</h3>
-              {matches.map((item, index) => (
-                <article key={index}>
-                  <strong>{item.name}</strong>
-                  {item.role && <span>{item.role}</span>}
-                  {item.strategy && <p>{item.strategy}</p>}
-                </article>
-              ))}
-              {matches.length === 0 && <span className="brf-empty">No stakeholders</span>}
-            </section>
-          );
-        })}
+      <div className="brf-matrix">
+        <div className="brf-axis brf-axis--y">Influence →</div>
+        <div className="brf-quadrants">
+          {QUADRANTS.map((quadrant) => {
+            const matches = grouped.get(quadrant.key) ?? [];
+            return (
+              <section key={quadrant.label}>
+                <h3>{quadrant.label}</h3>
+                {matches.map((item, index) => (
+                  <article key={index}>
+                    <strong>{item.name}</strong>
+                    {item.role && <span>{item.role}</span>}
+                    {item.strategy && <p>{item.strategy}</p>}
+                  </article>
+                ))}
+                {matches.length === 0 && <span className="brf-empty">No stakeholders</span>}
+              </section>
+            );
+          })}
+        </div>
       </div>
       <div className="brf-axis brf-axis--x">Interest →</div>
-      <div className="brf-axis brf-axis--y">Influence →</div>
     </BriefFrame>
   );
 }

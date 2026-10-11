@@ -156,6 +156,14 @@ export function SparkTable({
                 {row.delta && (
                   <span
                     className={`sk-delta ${dd === 'down' ? 'down' : dd === 'flat' ? 'flat' : 'up'}`}
+                    // Up is not always good: a rising LDL is the bad news on a blood panel. The
+                    // sign alone cannot say which way is better, but the colour the author gave
+                    // the series can, so the delta wears it and the arrow carries the direction.
+                    style={
+                      row.color
+                        ? { color: `color-mix(in oklab, ${row.color} 82%, var(--text-primary))` }
+                        : undefined
+                    }
                   >
                     {dd === 'down' ? <Icon.arrowDown /> : dd === 'flat' ? null : <Icon.arrowUp />}
                     {row.delta}

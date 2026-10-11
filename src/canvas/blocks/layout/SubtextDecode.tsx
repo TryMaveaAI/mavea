@@ -47,7 +47,6 @@ export function SubtextDecode({
 
       <figure className="sbd-msg">
         <span className="sbd-msg-bar" />
-        <Icon.quote className="ic sbd-msg-mark" style={{ width: 22, height: 22 }} />
         <blockquote className="sbd-msg-text">{message}</blockquote>
       </figure>
 

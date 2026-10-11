@@ -19,16 +19,19 @@ export function Deltacascade({
   const Ic = Icon[icon] || Icon.layers;
   const [hover, setHover] = useState<number | null>(null);
 
-  // running totals; baseline & total are absolute, others accumulate
+  // A baseline sets the running value; every other step adds to it. A total row is the running
+  // value at that point, COMPUTED: its `delta` is whatever the model wrote there (often 0, as a
+  // placeholder), and reading it as the total drew "$0k" under a cascade that summed to $1,376k.
   let running = 0;
   const rows = steps.map((s: CascadeStep) => {
     if (s.isBase) running = s.delta;
-    else if (s.isTotal) running = s.delta;
-    else running += s.delta;
+    else if (!s.isTotal) running += s.delta;
     return { ...s, running };
   });
   const maxAbs = Math.max(...rows.map((r) => Math.abs(r.running)), 1);
-  const fmt = (n: number) => prefix + n.toLocaleString() + suffix;
+  // The sign leads the prefix: "−$940k", not "$-940k".
+  const fmt = (n: number, plus = false) =>
+    (n < 0 ? '−' : plus && n > 0 ? '+' : '') + prefix + Math.abs(n).toLocaleString() + suffix;
   // the isTotal row is the culminating result Mavéa's drawn gesture underlines;
   // fall back to the last row when no explicit total is marked
   const salient = (() => {
@@ -66,7 +69,7 @@ export function Deltacascade({
                   data-mark={i === salient ? 'underline' : undefined}
                   style={{ color: accent }}
                 >
-                  {r.isBase || r.isTotal ? fmt(r.running) : (pos ? '+' : '') + fmt(r.delta)}
+                  {r.isBase || r.isTotal ? fmt(r.running) : fmt(r.delta, true)}
                 </span>
               </div>
               <div className="dc-step-track">

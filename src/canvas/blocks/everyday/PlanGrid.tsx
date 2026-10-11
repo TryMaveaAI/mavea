@@ -2,10 +2,10 @@ import { type CSSProperties, Fragment } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PlanGridProps, PlanCell } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { BlockEmpty } from '../../lib/BlockEmpty';
+import { nameKey, resolvesNamedCells } from '../../lib/empty';
 
 type Props = PlanGridProps & { delay?: number };
-
-const norm = (s: string) => s.trim().toLowerCase();
 
 // A forward-looking days×slots matrix (meal plan, study schedule, habit tracker, weekly routine).
 // Cells name their column, so alignment survives loose model output. Empty slots stay visually quiet;
@@ -25,15 +25,28 @@ export function PlanGrid({
   const cols = columns ?? [];
   const safeRows = rows ?? [];
   const template = `minmax(60px, 0.55fr) repeat(${Math.max(cols.length, 1)}, minmax(78px, 1fr))`;
+  const cardStyle = { ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties;
+  const eyebrow = (
+    <div className="card-eyebrow">
+      <Ic className="ic" style={{ color: iconColor }} /> {title}
+    </div>
+  );
+
+  // A board of nothing but free slots is not a plan: cells that named no column on the grid, or
+  // named one and carried no entry. The shared guard decides, so the validator, the demo loader
+  // and this card refuse the same thing — this is the one that covers a restored or baked frame.
+  if (!resolvesNamedCells('plangrid', { columns: cols, rows: safeRows })) {
+    return (
+      <div className="card reveal" style={cardStyle}>
+        {eyebrow}
+        <BlockEmpty message="No entries to show" />
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="card reveal"
-      style={{ ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties}
-    >
-      <div className="card-eyebrow">
-        <Ic className="ic" style={{ color: iconColor }} /> {title}
-      </div>
+    <div className="card reveal" style={cardStyle}>
+      {eyebrow}
       {caption && <div className="pg-caption">{caption}</div>}
 
       <div className="pg-scroll">
@@ -48,13 +61,13 @@ export function PlanGrid({
           {safeRows.map((row, ri) => {
             const byCol = new Map<string, PlanCell>();
             (row.cells ?? []).forEach((cell) => {
-              if (cell?.col) byCol.set(norm(cell.col), cell);
+              if (cell?.col) byCol.set(nameKey(cell.col), cell);
             });
             return (
               <Fragment key={`r${ri}`}>
                 <div className="pg-slot">{row.slot}</div>
                 {cols.map((c, ci) => {
-                  const cell = byCol.get(norm(c));
+                  const cell = byCol.get(nameKey(c));
                   if (!cell || !cell.label) {
                     return (
                       <div

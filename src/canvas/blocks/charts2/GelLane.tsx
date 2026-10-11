@@ -8,6 +8,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { GelLaneProps, GelLaneRow, GelLadder } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { spreadLabels } from '../../lib/spreadLabels';
 
 type Props = GelLaneProps & { delay?: number };
 
@@ -17,13 +18,17 @@ const WELL_H = 6;
 const TRACK_TOP = 14; // just below the well
 const TRACK_BOTTOM = H - 6;
 const SAMPLE_W = 40;
-// Wide enough for a real size marker at .c2-gel-tick-lbl's 9.5px, measured from the x=18 the
+// Wide enough for a real size marker at .c2-gel-tick-lbl's 9.5px, measured from the x=LABEL_X the
 // labels start at — a lambda ladder's "48,502 bp" is ten characters, not the fixture's eight.
-const LADDER_W = 82;
+const LABEL_X = 24;
+const LADDER_W = 88;
 // Baseline-to-baseline room for a ladder label. The ladder SVG is sized in real pixels, so this is
 // exactly what renders: a 9.5px label's line box is ~12.5px tall, and clearing it needs more than
 // the font size alone — at 11 the boxes still kissed.
 const LADDER_LABEL_GAP = 15;
+// Fanned labels each sit on their own leader, so they only need to clear each other's glyphs
+// (a 9.5px line box is ~12.5px); the extra room above is for labels that sit right on their tick.
+const FAN_GAP = 13;
 
 interface SafeBand {
   pos: number;
@@ -51,7 +56,9 @@ function trackY(pos: number): number {
 /** Log-scaled tick positions for the ladder's marker sizes — larger fragments migrate least, so
  *  they sit near the well; smaller fragments run furthest. Ties/degenerate ranges fall back to
  *  an even spread rather than dividing by zero. */
-function ladderTicks(marks: unknown): { value: number; y: number; showLabel: boolean }[] {
+function ladderTicks(
+  marks: unknown,
+): { value: number; y: number; labelY: number; showLabel: boolean }[] {
   const values = (Array.isArray(marks) ? marks : [])
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
     .sort((a, b) => b - a); // largest (least migration) first
@@ -67,19 +74,28 @@ function ladderTicks(marks: unknown): { value: number; y: number; showLabel: boo
     return { value: v, y: padTop + frac * (padBottom - padTop) };
   });
   // A log scale bunches the high end together — a 1,500…100 bp ladder puts 1,000/900/800/700
-  // within a few units of each other — so a label per tick collides no matter how the ticks are
-  // spaced. Every tick LINE is still drawn at its true position (the marker is the data); the
-  // label is what thins out, keeping the first, the last, and whichever between them clear a
-  // full line. Nudging labels off their ticks instead would misreport where a band sits.
+  // within a few units of each other. Every tick LINE stays at its true position (the marker is
+  // the data). When the lane is tall enough to hold every label a line apart, the labels fan out
+  // to their own rows with a leader back to the tick, the way a printed gel names its ladder, so
+  // no marker is left anonymous.
+  const top = TRACK_TOP + 2;
+  const bottom = TRACK_BOTTOM - 2;
+  if ((placed.length - 1) * FAN_GAP <= bottom - top) {
+    const at = spreadLabels(
+      placed.map((t, i) => ({ id: i, y: t.y })),
+      { gap: FAN_GAP, top, bottom },
+    );
+    return placed.map((t, i) => ({ ...t, labelY: at.get(i) ?? t.y, showLabel: true }));
+  }
+  // Too many markers for the lane: thin the labels instead, keeping the first, the last, and
+  // whichever between them clear a full line. The rest are named on hover.
   let lastLabelled = -Infinity;
   return placed.map((t, i) => {
     const isLast = i === placed.length - 1;
-    // The final marker anchors the bottom of the range, so it keeps its label unless doing so
-    // would sit on the one above it.
     const clears = t.y - lastLabelled >= LADDER_LABEL_GAP;
     const showLabel = i === 0 || clears || (isLast && t.y - lastLabelled >= LADDER_LABEL_GAP * 0.8);
     if (showLabel) lastLabelled = t.y;
-    return { ...t, showLabel };
+    return { ...t, labelY: t.y, showLabel };
   });
 }
 
@@ -160,11 +176,22 @@ function LadderLane({ ladder }: { ladder: GelLadder }) {
             className="m-fade-rise m-stagger-item"
             style={{ ['--i' as string]: i } as CSSProperties}
           >
+            <title>
+              {t.value.toLocaleString()} {unit}
+            </title>
             <line x1={3} y1={t.y} x2={14} y2={t.y} className="c2-gel-tick" />
             {t.showLabel && (
-              <text x={18} y={t.y + 3} className="c2-gel-tick-lbl">
-                {t.value.toLocaleString()} {unit}
-              </text>
+              <>
+                {Math.abs(t.labelY - t.y) > 0.5 && (
+                  <polyline
+                    points={`14,${t.y} 17,${t.y} ${LABEL_X - 3},${t.labelY}`}
+                    className="c2-gel-leader"
+                  />
+                )}
+                <text x={LABEL_X} y={t.labelY + 3} className="c2-gel-tick-lbl">
+                  {t.value.toLocaleString()} {unit}
+                </text>
+              </>
             )}
           </g>
         ))}

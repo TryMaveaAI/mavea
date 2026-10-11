@@ -2,13 +2,23 @@ import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ControlChartProps, ControlChartPoint } from './types';
+import { niceStep, ticks as tickRange } from '../../lib/scale';
+import { estimateTextWidth } from '../../lib/fitText';
 
 type Props = ControlChartProps & { delay?: number };
 
-// Margin layout constants for the SVG drawing area.
-// M.bottom = 60 gives ~54px of clearance below the x-axis rotation anchor so that
-// labels rotated -40° (up to ~84px wide, ≈14 chars at 9.5px) stay inside the viewBox.
-const M = { top: 16, right: 56, bottom: 60, left: 60 };
+// Margin layout constants for the SVG drawing area. The bottom margin is not fixed: it is what
+// the x labels need, flat or rotated (see below).
+const M = { top: 16, right: 56, left: 60 };
+const INNER_H = 164;
+const TICK_FS = 9.5; // .c2-cc-xtick / .c2-cc-ytick
+const ROTATE = 40; // degrees, when the labels are too wide to sit flat
+const MAX_ROTATED_W = 84; // ≈14 chars; longer ones are cut with an ellipsis
+
+/** Decimals a tick step needs, the same on every label of the axis. */
+function stepDecimals(step: number): number {
+  return step > 0 ? Math.max(0, Math.ceil(-Math.log10(step) - 1e-9)) : 0;
+}
 
 function isOutOfControl(pt: ControlChartPoint, ucl: number, lcl: number): boolean {
   return !!(pt.outOfControl || pt.value > ucl || pt.value < lcl);
@@ -31,29 +41,29 @@ export function ControlChart({
   const [hotIdx, setHotIdx] = useState<number | null>(null);
 
   const W = 480;
-  const H = 240;
   const innerW = W - M.left - M.right;
-  const innerH = H - M.top - M.bottom;
+  const innerH = INNER_H;
 
   // Domain: span from below lcl to above ucl, with a 10% cushion
   const allVals = points.map((p) => p.value);
   const dataMin = Math.min(...allVals, lcl);
   const dataMax = Math.max(...allVals, ucl);
   const cushion = (dataMax - dataMin) * 0.12 || 1;
-  const yMin = dataMin - cushion;
-  const yMax = dataMax + cushion;
-  const yRange = yMax - yMin;
+  // Snapped out to round ticks, so every gridline carries a number a reader would write down
+  // (70, 80, 90, 100), not the cushion's arithmetic (68.9, 76.9, 85, 93.1, 101.1).
+  const step = niceStep(dataMax - dataMin + 2 * cushion, 4);
+  const yMin = Math.floor((dataMin - cushion) / step) * step;
+  const yMax = Math.ceil((dataMax + cushion) / step) * step;
+  const yRange = yMax - yMin || 1;
 
   const scaleX = (i: number) =>
     points.length > 1 ? (i / (points.length - 1)) * innerW : innerW / 2;
   const scaleY = (v: number) => innerH - ((v - yMin) / yRange) * innerH;
 
-  // Y-axis tick generation: 5 evenly spaced ticks
-  const tickCount = 5;
-  const ticks = Array.from({ length: tickCount }, (_, i) => {
-    const v = yMin + (yRange / (tickCount - 1)) * i;
-    return v;
-  });
+  const ticks = tickRange(yMin, yMax, step);
+  const kilo = Math.max(Math.abs(yMin), Math.abs(yMax)) >= 10_000;
+  const tickText = (v: number) =>
+    kilo ? `${(v / 1000).toFixed(stepDecimals(step / 1000))}k` : v.toFixed(stepDecimals(step));
 
   // Polyline path for data points
   const linePath = points
@@ -65,9 +75,26 @@ export function ControlChart({
   const yCl = scaleY(centerLine);
   const yLcl = scaleY(lcl);
 
-  // X-axis labels: show all when <= 10, thin out beyond that
+  // X-axis labels: show all when <= 10, thin out beyond that. They lie flat unless the widest
+  // would crowd its neighbour at the shown pitch — a count says nothing about that ("W1" fits
+  // eight abreast many times over; eight dates do not).
   const showEvery = points.length <= 10 ? 1 : Math.ceil(points.length / 10);
-  const rotateLabels = points.length > 7;
+  const widest = Math.max(0, ...points.map((p) => estimateTextWidth(p.label, TICK_FS)));
+  const pitch = points.length > 1 ? (innerW / (points.length - 1)) * showEvery : innerW;
+  const rotateLabels = widest + 8 > pitch;
+  const rad = (ROTATE * Math.PI) / 180;
+  const bottom = rotateLabels
+    ? Math.ceil(10 + Math.min(widest, MAX_ROTATED_W) * Math.sin(rad) + TICK_FS) + 4
+    : 26;
+  const H = M.top + innerH + bottom;
+  const xLabel = (t: string) => {
+    if (!rotateLabels || estimateTextWidth(t, TICK_FS) <= MAX_ROTATED_W) return t;
+    const keep = Math.max(
+      3,
+      Math.floor((MAX_ROTATED_W / estimateTextWidth(t, TICK_FS)) * t.length) - 1,
+    );
+    return t.slice(0, keep).trimEnd() + '…';
+  };
 
   const tooltipPt = hotIdx !== null ? points[hotIdx] : null;
   const tooltipX = hotIdx !== null ? scaleX(hotIdx) : 0;
@@ -174,11 +201,7 @@ export function ControlChart({
             <line className="c2-cc-axis" x1={0} y1={0} x2={0} y2={innerH} />
             {ticks.map((v, i) => (
               <text key={i} className="c2-cc-ytick" x={-6} y={scaleY(v) + 4}>
-                {Math.abs(v) >= 1000
-                  ? (v / 1000).toFixed(1) + 'k'
-                  : v % 1 === 0
-                    ? v.toFixed(0)
-                    : v.toFixed(1)}
+                {tickText(v)}
               </text>
             ))}
             {yLabel && (
@@ -202,11 +225,16 @@ export function ControlChart({
                   key={i}
                   className="c2-cc-xtick"
                   x={scaleX(i)}
-                  y={innerH + (rotateLabels ? 6 : 14)}
+                  // Rotated labels hang from a point clear of the bottom y tick, which sits on
+                  // the same corner as the first label.
+                  y={innerH + (rotateLabels ? 10 : 14)}
                   textAnchor={rotateLabels ? 'end' : 'middle'}
-                  transform={rotateLabels ? `rotate(-40, ${scaleX(i)}, ${innerH + 6})` : undefined}
+                  transform={
+                    rotateLabels ? `rotate(-${ROTATE}, ${scaleX(i)}, ${innerH + 10})` : undefined
+                  }
                 >
-                  {pt.label}
+                  {xLabel(pt.label) !== pt.label && <title>{pt.label}</title>}
+                  {xLabel(pt.label)}
                 </text>
               );
             })}

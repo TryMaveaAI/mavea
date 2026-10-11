@@ -3,6 +3,9 @@ import { Icon } from '../../../icons/icons';
 import { BlockEmpty } from '../../lib';
 import type { SpectrumTableProps, SpectrumTechnique } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { placePeakLabels, scaleTicks } from './spectrumAxis';
 
 type Props = SpectrumTableProps & { delay?: number };
 
@@ -63,6 +66,13 @@ const TECH: Record<SpectrumTechnique, TechMeta> = {
   },
 };
 
+const FALLBACK_AXIS_W = 600;
+const AXIS_PAD = 12;
+const PEAK_FS = 10.5; // .spt-peak-label
+const PEAK_ROW_H = 14;
+const STICK_MAX = 30;
+const STICK_MIN = 6;
+
 function toTechnique(v: unknown): SpectrumTechnique {
   return v === 'nmr-1h' || v === 'nmr-13c' || v === 'ir' || v === 'ms' ? v : 'nmr-1h';
 }
@@ -82,7 +92,7 @@ function clampPct(v: number): number {
 
 // A spectroscopy peak-interpretation table whose columns switch by technique — NMR shows
 // shift/multiplicity/integration/assignment, IR shows wavenumber/intensity/functional-group, MS
-// shows m/z/relative-abundance/fragment — with an optional tick-marked axis strip above it.
+// shows m/z/relative-abundance/fragment — with a stick spectrum of the same peaks above it.
 // Chemistry, analytical/organic-chemistry coursework — "read this spectrum".
 export function SpectrumTable({
   title,
@@ -96,6 +106,7 @@ export function SpectrumTable({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
+  const [axisRef, axisWidth] = useHostWidth<HTMLDivElement>();
   const meta = TECH[toTechnique(technique)];
 
   const valid = (Array.isArray(peaks) ? peaks : []).filter((p) => num(p?.x) != null);
@@ -109,6 +120,45 @@ export function SpectrumTable({
   const capParts = [meta.name, compound, solvent].filter(
     (s): s is string => typeof s === 'string' && s.length > 0,
   );
+
+  // The strip above the table: one stick per peak, as tall as its share of the strongest
+  // (integration for NMR, intensity for IR/MS), its shift printed above it, and a round scale
+  // along the bottom so the sticks can be read without the table.
+  const axisW = axisWidth > 0 ? axisWidth : FALLBACK_AXIS_W;
+  const axisX = (v: number) =>
+    AXIS_PAD + ((meta.descending ? hi - v : v - lo) / span) * (axisW - AXIS_PAD * 2);
+  const strengths = sorted.map((p) => num(meta.showMultInteg ? p.integration : p.intensity));
+  const strongest = Math.max(0, ...strengths.map((v) => v ?? 0));
+  const peakLabels = sorted.map((p) => fmtX(p.x, meta.xDecimals));
+  const placed = placePeakLabels(
+    sorted.map((p) => axisX(p.x)),
+    peakLabels.map((l) => estimateTextWidth(l, PEAK_FS, true)),
+    0,
+    axisW,
+  );
+  const rows = placed[0]?.rows ?? 1;
+  const stickTop = rows * PEAK_ROW_H + 6;
+  const base = stickTop + STICK_MAX;
+  const axis = {
+    w: axisW,
+    h: base + 20,
+    base,
+    ticks: scaleTicks(lo, hi, axisW - AXIS_PAD * 2, 60).map((v) => ({
+      v,
+      x: axisX(v),
+      label: String(v),
+    })),
+    peaks: sorted.map((p, i) => {
+      const share = strongest > 0 && strengths[i] != null ? strengths[i]! / strongest : 0.7;
+      return {
+        x: axisX(p.x),
+        top: base - Math.max(STICK_MIN, share * STICK_MAX),
+        lx: placed[i].x,
+        ly: (placed[i].row + 1) * PEAK_ROW_H - 2,
+        label: peakLabels[i],
+      };
+    }),
+  };
 
   const gridCols = meta.showMultInteg
     ? 'minmax(64px, 0.7fr) minmax(56px, 0.55fr) minmax(56px, 0.55fr) minmax(120px, 2fr)'
@@ -128,24 +178,54 @@ export function SpectrumTable({
         <BlockEmpty message="No peaks to show" />
       ) : (
         <>
-          <div
-            className="spt-axis"
-            role="img"
-            aria-label={`${meta.name} axis from ${fmtX(meta.descending ? hi : lo, 0)} to ${fmtX(meta.descending ? lo : hi, 0)} ${meta.xHeader}`}
-          >
-            <div className="spt-axis-line" />
-            {sorted.map((p, i) => {
-              const t = (p.x - lo) / span;
-              const pct = clampPct((meta.descending ? 1 - t : t) * 100);
-              return <div key={i} className="spt-tick" style={{ left: `${pct}%` }} />;
-            })}
-            <span className="spt-axis-end spt-axis-lo">{fmtX(meta.descending ? hi : lo, 0)}</span>
-            <span className="spt-axis-end spt-axis-hi">{fmtX(meta.descending ? lo : hi, 0)}</span>
+          <div ref={axisRef} className="spt-axis">
+            <svg
+              viewBox={`0 0 ${axis.w} ${axis.h}`}
+              role="img"
+              aria-label={`${meta.name} peaks at ${sorted.map((p) => fmtX(p.x, meta.xDecimals)).join(', ')} ${meta.xHeader}`}
+            >
+              <line
+                className="spt-axis-line"
+                x1={AXIS_PAD}
+                x2={axis.w - AXIS_PAD}
+                y1={axis.base}
+                y2={axis.base}
+              />
+              {axis.ticks.map((t) => (
+                <g key={t.v}>
+                  <line
+                    className="spt-scale-tick"
+                    x1={t.x}
+                    x2={t.x}
+                    y1={axis.base}
+                    y2={axis.base + 4}
+                  />
+                  <text className="spt-scale-label" x={t.x} y={axis.base + 15} textAnchor="middle">
+                    {t.label}
+                  </text>
+                </g>
+              ))}
+              {axis.peaks.map((pk, i) => (
+                <g key={i}>
+                  <line className="spt-stick" x1={pk.x} x2={pk.x} y1={axis.base} y2={pk.top} />
+                  <line
+                    className="spt-leader"
+                    x1={pk.x}
+                    x2={pk.lx}
+                    y1={pk.top - 2}
+                    y2={pk.ly + 3}
+                  />
+                  <text className="spt-peak-label" x={pk.lx} y={pk.ly} textAnchor="middle">
+                    {pk.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
           </div>
 
           <div className="spt-scroll">
             <div className="spt-grid" style={{ gridTemplateColumns: gridCols }} role="grid">
-              <div className="spt-colh" role="columnheader">
+              <div className="spt-colh spt-colh-unit" role="columnheader">
                 {meta.xHeader}
               </div>
               {meta.showMultInteg ? (

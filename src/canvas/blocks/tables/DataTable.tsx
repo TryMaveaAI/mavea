@@ -101,7 +101,7 @@ export function DataTable({
         </div>
         {searchable && (
           <label className="tbl-search">
-            <Icon.eye className="tbl-search-ic" />
+            <Icon.search className="tbl-search-ic" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}

@@ -3,6 +3,9 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
 import type { GeometryCanvasProps, GeoSegment } from './types';
+import { estimateTextWidth } from '../../lib/fitText';
+import { boxesOverlap, labelBox } from './labelPlace';
+import { segmentLabelAt, ticksUnder } from './geometryLabels';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = GeometryCanvasProps & { delay?: number };
@@ -21,6 +24,10 @@ const DEFAULT_LINE = 'var(--text-secondary)';
 // measured pre-render, so a generous per-char width estimate stands in for real metrics.
 const LABEL_FONT = 9;
 const CHAR_W = LABEL_FONT * 0.62;
+// .lr-gc-ann and .lr-gc-tick, for width estimates; ANN_H is one line's box.
+const ANN_FONT = 9;
+const TICK_FONT = 9.25;
+const ANN_H = 11;
 
 /** Estimated on-screen width (SVG units) of a label at the shared point/vector font-size. */
 function labelWidth(label: string): number {
@@ -33,12 +40,14 @@ function labelWidth(label: string): number {
  * without the long one either crowding the dot or, once several points cluster, colliding with
  * a neighbour's label). After the base offset, nearby labels are nudged apart along a small
  * ring of candidate directions so two labels never land on top of each other regardless of how
- * many points are plotted. Finally every box is clamped inside `bounds` — a label chased away
+ * many points are plotted. `obstacles` (angle marks and their labels) count as collisions too, so a
+ * vertex label does not land in its own angle. Finally every box is clamped inside `bounds` — a label chased away
  * from a colliding neighbour can otherwise walk straight past the plot's edge.
  */
 function layoutPointLabels(
   pts: { x: number; y: number; r: number; label: string }[],
   bounds: { left: number; top: number; right: number; bottom: number },
+  obstacles: readonly { x: number; y: number; w: number; h: number }[] = [],
 ): { x: number; y: number; anchor: 'start' | 'middle' | 'end' }[] {
   // Candidate directions (angle from the dot, SVG y-down) tried in order of preference —
   // upper-right first (matches the historical default), then rotating around the dot.
@@ -75,7 +84,7 @@ function layoutPointLabels(
       const boxX = anchor === 'start' ? cx : anchor === 'end' ? cx - w : cx - w / 2;
       const box = clampBox({ x: boxX, y: cy - H_APPROX / 2, w, h: H_APPROX });
 
-      const collisions = placed.reduce(
+      const collisions = [...placed, ...obstacles].reduce(
         (n, o) =>
           n +
           (box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y
@@ -104,6 +113,42 @@ function layoutPointLabels(
     placed.push(clampBox({ x: boxX, y: chosen.y - H_APPROX / 2, w, h: H_APPROX }));
     return chosen;
   });
+}
+
+const ANGLE_R = 13; // AngleArc's radius
+const ANGLE_LBL_GAP = 9; // AngleArc's label distance past the arc
+
+/** The boxes an angle mark covers — the arc's sector, and its label — as obstacles for point
+ *  labels. Mirrors AngleArc's geometry. */
+function angleMarkBoxes(
+  vx: number,
+  vy: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  label: string | undefined,
+): { x: number; y: number; w: number; h: number }[] {
+  const la = Math.hypot(ax - vx, ay - vy) || 1;
+  const lb = Math.hypot(bx - vx, by - vy) || 1;
+  const ux = (ax - vx) / la,
+    uy = (ay - vy) / la;
+  const wx = (bx - vx) / lb,
+    wy = (by - vy) / lb;
+  const ml = Math.hypot(ux + wx, uy + wy) || 1;
+  const xs = [vx, vx + ux * ANGLE_R, vx + wx * ANGLE_R, vx + ((ux + wx) / ml) * ANGLE_R];
+  const ys = [vy, vy + uy * ANGLE_R, vy + wy * ANGLE_R, vy + ((uy + wy) / ml) * ANGLE_R];
+  const x1 = Math.min(...xs),
+    y1 = Math.min(...ys);
+  const boxes = [{ x: x1, y: y1, w: Math.max(...xs) - x1, h: Math.max(...ys) - y1 }];
+  if (label) {
+    const w = labelWidth(label);
+    const h = LABEL_FONT * 1.15;
+    const lx = vx + ((ux + wx) / ml) * (ANGLE_R + ANGLE_LBL_GAP);
+    const ly = vy + ((uy + wy) / ml) * (ANGLE_R + ANGLE_LBL_GAP);
+    boxes.push({ x: lx - w / 2, y: ly - h / 2, w, h });
+  }
+  return boxes;
 }
 
 /** Arrowhead polygon at the tip of a vector. Angle is in SVG radians (y-down). */
@@ -147,7 +192,7 @@ function AngleMark({
   color: string;
   rightAngle?: boolean;
 }) {
-  const r = 13;
+  const r = ANGLE_R;
   const la = Math.hypot(ax - vx, ay - vy) || 1;
   const lb = Math.hypot(bx - vx, by - vy) || 1;
   const ux = (ax - vx) / la,
@@ -185,8 +230,8 @@ function AngleMark({
   const mx = ux + wx,
     my = uy + wy;
   const ml = Math.hypot(mx, my) || 1;
-  const lx = vx + (mx / ml) * (r + 9);
-  const ly = vy + (my / ml) * (r + 9);
+  const lx = vx + (mx / ml) * (r + ANGLE_LBL_GAP);
+  const ly = vy + (my / ml) * (r + ANGLE_LBL_GAP);
 
   return (
     <>
@@ -283,9 +328,100 @@ export function GeometryCanvas({
           .filter((p) => p.label)
           .map((p) => ({ x: sx(p.x), y: sy(p.y), r: p.r ?? 4, label: p.label as string })),
         { left: 2, top: 2, right: W - 2, bottom: H - 2 },
+        angles.flatMap((a) =>
+          angleMarkBoxes(
+            sx(a.vertex.x),
+            sy(a.vertex.y),
+            sx(a.from.x),
+            sy(a.from.y),
+            sx(a.to.x),
+            sy(a.to.y),
+            a.rightAngle ? undefined : a.label,
+          ),
+        ),
       ),
-    [points, sx, sy],
+    [points, angles, sx, sy],
   );
+
+  // Tick label boxes, for keeping authored text off the axis numbers.
+  const tickBoxes = useMemo(() => {
+    const tickW = (t: number) => estimateTextWidth(String(t), TICK_FONT);
+    return {
+      x: xTicks
+        .filter((t) => t !== 0)
+        .map((t) => ({
+          value: t,
+          box: labelBox(sx(t), axisYsvg + 12 - TICK_FONT * 0.35, tickW(t), ANN_H, 'middle'),
+        })),
+      y: yTicks
+        .filter((t) => t !== 0)
+        .map((t) => ({
+          value: t,
+          box: labelBox(axisXsvg - 6, sy(t) + 3 - TICK_FONT * 0.35, tickW(t), ANN_H, 'end'),
+        })),
+    };
+  }, [xTicks, yTicks, sx, sy, axisXsvg, axisYsvg]);
+
+  // Segment length labels sit outside the figure, measured from its middle — unless outside is
+  // the axis's number column, where a side length reads as one more tick; then they sit inside.
+  const segmentLabels = useMemo(() => {
+    const verts = [
+      ...points.map((p) => ({ x: sx(p.x), y: sy(p.y) })),
+      ...polygons.flatMap((pg) => pg.vertices.map((v) => ({ x: sx(v.x), y: sy(v.y) }))),
+      ...segments.flatMap((s) => [
+        { x: sx(s.x1), y: sy(s.y1) },
+        { x: sx(s.x2), y: sy(s.y2) },
+      ]),
+    ];
+    const centroid = verts.length
+      ? {
+          x: verts.reduce((a, v) => a + v.x, 0) / verts.length,
+          y: verts.reduce((a, v) => a + v.y, 0) / verts.length,
+        }
+      : null;
+    const ticks = [...tickBoxes.x, ...tickBoxes.y].map((t) => t.box);
+    return segments
+      .filter((s) => s.label)
+      .map((s) => {
+        const text = s.label as string;
+        const w = estimateTextWidth(text, ANN_FONT);
+        const place = (inward: boolean) => {
+          const at = segmentLabelAt(
+            sx(s.x1),
+            sy(s.y1),
+            sx(s.x2),
+            sy(s.y2),
+            centroid,
+            w,
+            ANN_H,
+            inward,
+          );
+          return { text, ...at, box: labelBox(at.x, at.y, w, ANN_H, 'middle') };
+        };
+        const out = place(false);
+        if (!ticks.some((b) => boxesOverlap(b, out.box, 6))) return out;
+        const inside = place(true);
+        return ticks.some((b) => boxesOverlap(b, inside.box, 6)) ? out : inside;
+      });
+  }, [points, polygons, segments, sx, sy, tickBoxes]);
+
+  // Annotations are placed by the author, so where one lands on an axis number the number
+  // gives way. Each is kept on the canvas, which no longer clips text to the plot.
+  const annotationBoxes = useMemo(
+    () =>
+      annotations.map((a) => {
+        const w = estimateTextWidth(a.text, ANN_FONT);
+        const anchor = a.anchor ?? 'middle';
+        const lead = anchor === 'start' ? 0 : anchor === 'end' ? w : w / 2;
+        const x = Math.min(Math.max(sx(a.x), 2 + lead), W - 2 - (w - lead));
+        return { x, box: labelBox(x, sy(a.y) - ANN_FONT * 0.35, w, ANN_H, anchor) };
+      }),
+    [annotations, sx, sy],
+  );
+  const hiddenTicks = useMemo(() => {
+    const authored = annotationBoxes.map((a) => a.box);
+    return { x: ticksUnder(tickBoxes.x, authored), y: ticksUnder(tickBoxes.y, authored) };
+  }, [annotationBoxes, tickBoxes]);
 
   // SVG path for a segment with optional ray/line extension (clipped by clipPath).
   const segPath = (s: GeoSegment) => {
@@ -347,7 +483,7 @@ export function GeometryCanvas({
 
           {/* Tick labels */}
           {xTicks
-            .filter((t) => t !== 0)
+            .filter((t) => t !== 0 && !hiddenTicks.x.has(t))
             .map((t) => (
               <text
                 key={`xt${t}`}
@@ -360,7 +496,7 @@ export function GeometryCanvas({
               </text>
             ))}
           {yTicks
-            .filter((t) => t !== 0)
+            .filter((t) => t !== 0 && !hiddenTicks.y.has(t))
             .map((t) => (
               <text
                 key={`yt${t}`}
@@ -535,34 +671,36 @@ export function GeometryCanvas({
                 );
               });
             })()}
-
-            {/* Annotations */}
-            {annotations.map((a, i) => (
-              <text
-                key={`ann${i}`}
-                x={sx(a.x)}
-                y={sy(a.y)}
-                fill={a.color || 'var(--text-secondary)'}
-                className="lr-gc-ann"
-                textAnchor={a.anchor ?? 'middle'}
-              >
-                {a.text}
-              </text>
-            ))}
-
-            {/* Segment midpoint labels */}
-            {segments
-              .filter((s) => s.label)
-              .map((s, i) => {
-                const mx = sx((s.x1 + s.x2) / 2);
-                const my = sy((s.y1 + s.y2) / 2);
-                return (
-                  <text key={`sgl${i}`} x={mx} y={my - 5} className="lr-gc-ann" textAnchor="middle">
-                    {s.label}
-                  </text>
-                );
-              })}
           </g>
+          {/* Text is laid out against the whole canvas, not clipped to the plot: an annotation
+              anchored near the frame would otherwise lose its first characters. */}
+          {/* Annotations */}
+          {annotations.map((a, i) => (
+            <text
+              key={`ann${i}`}
+              x={annotationBoxes[i].x}
+              y={sy(a.y)}
+              fill={a.color || 'var(--text-secondary)'}
+              className="lr-gc-ann"
+              textAnchor={a.anchor ?? 'middle'}
+            >
+              {a.text}
+            </text>
+          ))}
+
+          {/* Segment midpoint labels */}
+          {segmentLabels.map((l, i) => (
+            <text
+              key={`sgl${i}`}
+              x={l.x}
+              y={l.y}
+              className="lr-gc-ann"
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {l.text}
+            </text>
+          ))}
         </svg>
       </div>
       {footer && (

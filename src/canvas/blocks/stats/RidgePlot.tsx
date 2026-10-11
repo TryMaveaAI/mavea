@@ -126,29 +126,43 @@ export function RidgePlot({
       )}
 
       {rows.length > 0 && (
-        <svg viewBox={`0 0 ${W} ${H}`} className="rp-svg" role="img" aria-label={title}>
-          {rows.map((r, i) => (
-            <g
-              key={r.key}
-              className="m-fade-rise m-stagger-item"
-              style={{ ['--i' as string]: i } as CSSProperties}
-            >
-              <line
-                x1={LEFT}
-                y1={r.baselineY}
-                x2={W - RIGHT}
-                y2={r.baselineY}
-                className="rp-baseline"
-              />
-              <path d={r.d} fill={r.color} className="rp-area" />
-              <RidgeStroke d={r.strokeD} color={r.color} delay={(delay || 0) + i * 60} />
-              <text x={LEFT - 8} y={r.baselineY + 3} className="rp-label" textAnchor="end">
-                {truncateLabel(r.label) !== r.label && <title>{r.label}</title>}
-                {truncateLabel(r.label)}
-              </text>
-            </g>
-          ))}
-        </svg>
+        <div className="canvas-figure">
+          <svg viewBox={`0 0 ${W} ${H}`} className="rp-svg" role="img" aria-label={title}>
+            {/* Two passes. A ridge rises into the rows above it, so painting each row whole let
+              the next row's fill bury the previous ridge's outline (a flatter curve vanished
+              under a taller one's tail). Fills layer front-to-back first; every outline and
+              label then sits on top of all of them, so each shape stays traceable. */}
+            {rows.map((r, i) => (
+              <g
+                key={`a-${r.key}`}
+                className="m-fade-rise m-stagger-item"
+                style={{ ['--i' as string]: i } as CSSProperties}
+              >
+                <line
+                  x1={LEFT}
+                  y1={r.baselineY}
+                  x2={W - RIGHT}
+                  y2={r.baselineY}
+                  className="rp-baseline"
+                />
+                <path d={r.d} fill={r.color} className="rp-area" />
+              </g>
+            ))}
+            {rows.map((r, i) => (
+              <g
+                key={`s-${r.key}`}
+                className="m-fade-rise m-stagger-item"
+                style={{ ['--i' as string]: i } as CSSProperties}
+              >
+                <RidgeStroke d={r.strokeD} color={r.color} delay={(delay || 0) + i * 60} />
+                <text x={LEFT - 8} y={r.baselineY + 3} className="rp-label" textAnchor="end">
+                  {truncateLabel(r.label) !== r.label && <title>{r.label}</title>}
+                  {truncateLabel(r.label)}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
       )}
 
       {footer && (

@@ -8,6 +8,7 @@ import { Icon } from '../../../icons/icons';
 import type { IconKey } from '../../../icons/icons';
 import type { AccentVar } from '../../../data/conversation';
 import { richInnerHtml } from '../../../lib/richText';
+import { edgeLabelAt } from './trieLayout';
 
 // ── layout constants ────────────────────────────────────────────────────────
 const NODE_R = 14;
@@ -180,8 +181,7 @@ export function Trie({
             const parent = byId.get(p.parentId);
             if (!parent) return null;
             const isActive = highlightIds.has(p.id) && highlightIds.has(p.parentId);
-            const mx = (parent.x + p.x) / 2;
-            const my = (parent.y + p.y) / 2;
+            const { x: mx, y: my } = edgeLabelAt(parent, p, p.edgeChar);
             return (
               <g key={`edge-${p.id}`}>
                 <line

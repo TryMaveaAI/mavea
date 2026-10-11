@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { TrainingCurve } from '../src/canvas/blocks/ai/TrainingCurve';
 
-// Regression coverage for a real bug: the "Best" epoch label was always drawn to the right of
-// its vertical rule (x = bestX + 3, textAnchor default "start"). When the best checkpoint lands
-// near the end of training — a common, not-at-all-edge-case shape — that label's glyphs run past
-// the SVG's own viewBox right edge instead of flipping to sit left of the rule.
+// The "Best" flag once ran past the viewBox when the best checkpoint fell near the end of
+// training, and later sat inside the plot on top of the curves and the legend. It now rides the
+// title row: always inside the figure, never over the panel title. Epochs logged unevenly
+// (1, 4, 7, 12, 20) were also drawn as evenly spaced steps, bending every curve.
 
 function run(n: number) {
   const epochs = Array.from({ length: n }, (_, i) => i + 1);
@@ -14,98 +14,56 @@ function run(n: number) {
   return { epochs, trainLoss, valLoss };
 }
 
+const chartOf = (container: HTMLElement) => container.querySelector('svg[role="img"]')!;
+const widthOf = (svg: Element) => Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+
 describe('TrainingCurve', () => {
-  it('keeps the "Best" label inside the viewBox when the best epoch is near the end', () => {
-    const { epochs, trainLoss, valLoss } = run(25);
-    const { container } = render(
-      <TrainingCurve
-        title="Training"
-        epochs={epochs}
-        trainLoss={trainLoss}
-        valLoss={valLoss}
-        bestEpoch={22} // near the tail, same shape as the mleval demo fixture
-      />,
-    );
-    // Scope to the chart SVG (role="img" + aria-label={title}) — the card also renders an icon
-    // <svg>, which querySelector('svg') would grab first and whose tiny 24×24 viewBox would give
-    // a false pass/fail unrelated to the chart's own coordinate space.
-    const svg = container.querySelector('svg[role="img"]')!;
-    const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
-    const [, , vbWidth] = viewBox;
-
-    const bestLabel = Array.from(container.querySelectorAll('text')).find(
-      (t) => t.textContent === 'Best',
-    )!;
-    expect(bestLabel).toBeTruthy();
-
-    const x = Number(bestLabel.getAttribute('x'));
-    const anchor = bestLabel.getAttribute('text-anchor');
-    // A rough glyph-width estimate for the 4-letter label at 8px font — enough to catch the
-    // regression (unflipped label bleeding well past the edge) without being a pixel-exact test.
-    const approxLabelWidth = 20;
-    const rightEdge = anchor === 'end' ? x : x + approxLabelWidth;
-    expect(rightEdge).toBeLessThanOrEqual(vbWidth);
-    expect(anchor).toBe('end');
-  });
-
-  it('keeps the default right-of-rule placement when the best epoch is not near the edge', () => {
-    const { epochs, trainLoss, valLoss } = run(25);
-    const { container } = render(
-      <TrainingCurve
-        title="Training"
-        epochs={epochs}
-        trainLoss={trainLoss}
-        valLoss={valLoss}
-        bestEpoch={5} // well clear of the right edge
-      />,
-    );
-    const bestLabel = Array.from(container.querySelectorAll('text')).find(
-      (t) => t.textContent === 'Best',
-    )!;
-    const svg = container.querySelector('svg[role="img"]')!;
-    const viewBox = svg.getAttribute('viewBox')!.split(' ').map(Number);
-    const [, , vbWidth] = viewBox;
-    const x = Number(bestLabel.getAttribute('x'));
-
-    expect(bestLabel.getAttribute('text-anchor')).not.toBe('end');
-    expect(x).toBeLessThan(vbWidth - 50);
-  });
-
-  it('never lets the label baseline exceed the viewBox width across the full epoch range', () => {
-    // Sweep every possible best-epoch position (including the very last one) across a fixture
-    // larger than the two-panel demo default, so any anchor/x mismatch at the tail shows up.
-    const { epochs, trainLoss, valLoss, trainAcc, valAcc } = {
-      ...run(40),
-      trainAcc: run(40).epochs.map((_, i) => 0.3 + i * 0.01),
-      valAcc: run(40).epochs.map((_, i) => 0.28 + i * 0.009),
-    };
-    for (const bestEpoch of [
-      epochs[0],
-      epochs[Math.floor(epochs.length / 2)],
-      epochs[epochs.length - 1],
-    ]) {
-      const { container } = render(
+  it('keeps the "Best" flag inside the figure and clear of the panel title at every epoch', () => {
+    const { epochs, trainLoss, valLoss } = run(40);
+    for (const bestEpoch of [1, 2, 20, 39, 40]) {
+      const { container, unmount } = render(
         <TrainingCurve
           title="Training"
           epochs={epochs}
           trainLoss={trainLoss}
           valLoss={valLoss}
-          trainAcc={trainAcc}
-          valAcc={valAcc}
           bestEpoch={bestEpoch}
         />,
       );
-      const svg = container.querySelector('svg[role="img"]')!;
-      const [, , vbWidth] = svg.getAttribute('viewBox')!.split(' ').map(Number);
-      const labels = Array.from(container.querySelectorAll('text')).filter(
-        (t) => t.textContent === 'Best',
-      );
-      for (const label of labels) {
-        const x = Number(label.getAttribute('x'));
-        const anchor = label.getAttribute('text-anchor');
-        const rightEdge = anchor === 'end' ? x : x + 20;
-        expect(rightEdge).toBeLessThanOrEqual(vbWidth);
-      }
+      const best = [...container.querySelectorAll('text')].find((t) => t.textContent === 'Best')!;
+      const x = Number(best.getAttribute('x'));
+      const halfW = 4 * 11 * 0.3;
+      expect(best.getAttribute('text-anchor')).toBe('middle');
+      expect(x + halfW).toBeLessThanOrEqual(widthOf(chartOf(container)));
+      // "Loss" at 12px bold from x=40 ends near 40 + 4 × 12 × 0.62.
+      expect(x - halfW).toBeGreaterThan(40 + 4 * 12 * 0.62);
+      unmount();
     }
+  });
+
+  it('places unevenly logged epochs by their value, not their index', () => {
+    const epochs = [1, 4, 7, 12, 20];
+    const { container } = render(
+      <TrainingCurve
+        title="Training"
+        epochs={epochs}
+        trainLoss={[1.8, 1.1, 0.7, 0.4, 0.2]}
+        valLoss={[1.9, 1.2, 0.8, 0.55, 0.5]}
+      />,
+    );
+    const d = chartOf(container).querySelector('path')!.getAttribute('d')!;
+    const xs = [...d.matchAll(/[ML]([\d.]+),/g)].map((m) => Number(m[1]));
+    const share = (xs[3] - xs[0]) / (xs[4] - xs[0]);
+    expect(share).toBeCloseTo((12 - 1) / (20 - 1), 2);
+  });
+
+  it('keeps the legend out of the plot', () => {
+    const { epochs, trainLoss, valLoss } = run(10);
+    const { container } = render(
+      <TrainingCurve title="Training" epochs={epochs} trainLoss={trainLoss} valLoss={valLoss} />,
+    );
+    const words = [...chartOf(container).querySelectorAll('text')].map((t) => t.textContent);
+    expect(words).not.toContain('Train');
+    expect(container.querySelector('.ai-curve-legend')?.textContent).toContain('Validation');
   });
 });

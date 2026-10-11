@@ -128,19 +128,22 @@ export function BohrModel({
 
   const outerR = model.rings.length ? model.rings[model.rings.length - 1].radius : FIRST_RING;
 
-  // Vertical layout of the right-hand occupancy callouts, centred on the atom.
-  const labelX = W - 10; // right-aligned text anchor x (inside the gutter)
+  // The right-hand occupancy callouts: a left-aligned column, rows centred on the atom, each
+  // reached by a leader that leaves its ring heading straight for its own row. Leaders that all
+  // left the rings at three o'clock converged on one point before fanning out to the rows.
+  const leaderEnd = W - GUTTER + 6;
+  const labelX = leaderEnd + 4;
   const rowH = 18;
   const labelTop = CY - ((model.rings.length - 1) * rowH) / 2;
 
   const ionSign = model.charge > 0 ? '+' : model.charge < 0 ? '−' : '';
   const ionMag = Math.abs(model.charge);
 
-  // Wrap the configuration summary to the gutter's inner width (from the label anchor back to
-  // the leader-line column) so a many-shell / high-count atom can't run past the card edge.
+  // The configuration summary closes the column it totals, wrapped to the gutter's width so a
+  // many-shell / high-count atom can't run past the card edge.
   const configText = `${model.counts.join('·')} = ${model.electronTotal} e⁻`;
-  const configLines = wrapToWidth(configText, labelX - (W - GUTTER + 6));
-  const configBaseY = H - 14 - (configLines.length - 1) * CONFIG_ROW_H;
+  const configLines = wrapToWidth(configText, W - 6 - labelX);
+  const configBaseY = labelTop + (model.rings.length - 1) * rowH + rowH + 4;
 
   return (
     <div
@@ -221,17 +224,19 @@ export function BohrModel({
           {/* Right-hand gutter: leader line + per-shell occupancy, plus a totals row. */}
           {model.rings.map((r, i) => {
             const ly = labelTop + i * rowH;
-            // A leader from the ring's right edge across to the label column.
+            // Leave the ring on the ray from the centre to this row's end, so no two leaders
+            // share a point or cross: rays from one centre never meet.
+            const a = Math.atan2(ly - CY, leaderEnd - CX);
             return (
               <g key={`lbl${r.index}`}>
                 <line
-                  x1={CX + r.radius}
-                  y1={CY}
-                  x2={W - GUTTER + 6}
+                  x1={CX + r.radius * Math.cos(a)}
+                  y1={CY + r.radius * Math.sin(a)}
+                  x2={leaderEnd}
                   y2={ly}
                   className="boh-leader"
                 />
-                <text x={labelX} y={ly + 3} className="boh-shell-lbl" textAnchor="end">
+                <text x={labelX} y={ly + 3} className="boh-shell-lbl" textAnchor="start">
                   <tspan className="boh-shell-n">n{r.index + 1}</tspan>{' '}
                   <tspan className="boh-shell-e">{r.count} e⁻</tspan>
                 </text>
@@ -241,7 +246,7 @@ export function BohrModel({
 
           {/* Configuration summary along the bottom of the gutter — wrapped across multiple
               lines (rather than truncated) so a many-shell atom never overflows the card. */}
-          <text x={labelX} y={configBaseY} className="boh-config" textAnchor="end">
+          <text x={labelX} y={configBaseY} className="boh-config" textAnchor="start">
             {configLines.map((line, i) => (
               <tspan key={i} x={labelX} dy={i === 0 ? 0 : CONFIG_ROW_H}>
                 {line}

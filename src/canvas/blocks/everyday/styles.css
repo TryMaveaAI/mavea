@@ -1,7 +1,9 @@
 /* ── forecast ── weather/prediction card */
 .fc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  /* auto-fit, so a five-day week spreads across the card instead of leaving empty tracks
+     beside five cramped tiles that cut "Partly cloudy" to "Partly clo…". */
+  grid-template-columns: repeat(auto-fit, minmax(min(76px, 100%), 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -29,6 +31,13 @@
   color: var(--presence);
 }
 .fc-condition {
+  /* Two lines before an ellipsis: a condition is usually two words and reads whole wrapped. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
   font-size: var(--fs-xs, 11px);
   color: var(--text-secondary);
 }
@@ -659,16 +668,20 @@
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  /* The quantity column is as wide as the longest quantity ("handful", "1 1/2 cups"), shared
+     by every row through subgrid, so names always start on one line. */
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-content: start;
+  gap: 5px 6px;
   max-height: 280px;
   overflow-y: auto;
 }
 .rc2-ing {
-  display: flex;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: baseline;
-  gap: 6px;
   font-size: var(--fs-xs, 12px);
   line-height: 1.4;
 }
@@ -677,11 +690,10 @@
   color: var(--presence);
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
-  flex-shrink: 0;
-  min-width: 36px;
   text-align: right;
 }
 .rc2-ing-name {
+  grid-column: 2;
   color: var(--text-primary);
 }
 .rc2-step-list {
@@ -985,16 +997,24 @@
   transform-origin: left center;
 }
 .mb-macros {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  /* A compact key: each value sits right after its name instead of across the card. */
+  display: grid;
+  grid-template-columns: auto max-content max-content max-content;
+  justify-content: start;
+  align-items: center;
+  gap: 6px 12px;
   max-height: 320px;
   overflow-y: auto;
 }
 .mb-macro {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: contents;
+}
+.mb-macro--sub .mb-macro-dot {
+  background: none;
+}
+.mb-macro--sub .mb-macro-label {
+  padding-left: 10px;
+  color: var(--text-muted);
 }
 .mb-macro-dot {
   width: 8px;
@@ -1005,7 +1025,6 @@
 .mb-macro-label {
   font-size: var(--fs-xs, 12px);
   color: var(--text-secondary);
-  flex: 1;
 }
 .mb-macro-value {
   font-size: var(--fs-xs, 12px);
@@ -1404,8 +1423,8 @@
   line-height: 1.45;
 }
 .hts-caution {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 4px;
   font-size: var(--fs-xs, 11.5px);
   color: var(--warning);
@@ -1419,17 +1438,20 @@
   margin-top: 4px;
 }
 .hts-check {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 4px;
   font-size: var(--fs-xs, 11.5px);
   color: var(--insight);
   margin-top: 5px;
   font-weight: 600;
 }
+/* Each note is its own line: inline, a caution and the step's check ran together into one
+   sentence. The icon sits on the first line of a note that wraps. */
 .hts-caution .ic,
 .hts-check .ic {
   flex: none;
+  margin-top: 0.2em;
 }
 
 /* ── livecompute ── stateful what-if levers */
@@ -2460,13 +2482,22 @@
   overflow-x: auto;
 }
 .cn-slot {
-  flex-basis: 0;
+  flex: none;
   min-width: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  position: relative;
+}
+.cn-gap {
+  flex-basis: 0;
+  min-width: 30px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 3px;
 }
 .cn-bar {
   width: 14px;
@@ -2486,15 +2517,24 @@
   white-space: nowrap;
 }
 .cn-gap-label {
-  position: absolute;
-  top: 40%;
-  right: -2px;
-  transform: translateX(100%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
-  pointer-events: none;
+}
+/* A hairline either side of the figure, so it reads as the span between the two bars. */
+.cn-gap-label::before,
+.cn-gap-label::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+/* Holds the label up on the bars' baseline by taking the height of the time row beneath. */
+.cn-gap-pad {
+  visibility: hidden;
 }
 .cn-rule {
   display: flex;
@@ -3631,7 +3671,11 @@
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  max-height: 34px;
+  /* Centred in its column, under the centred day name: capping the height instead let the
+     stretched track hand the tile a 34px width at the column's start edge. */
+  justify-self: center;
+  width: 100%;
+  max-width: 34px;
   border-radius: var(--r-sm);
   background: var(--surface-glass);
   border: 1px solid var(--line);
@@ -4390,9 +4434,12 @@
   stroke-width: 1;
 }
 .rn-tick {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 9px;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the chart is laid out at its host width, so these render 1:1 (TICK_FS in RunningLog) */
+  font-size: 11px;
   fill: var(--text-muted);
+}
+.rn-tick--pace {
+  fill: color-mix(in oklab, var(--warning) 70%, var(--text-muted));
 }
 .rn-legend {
   display: flex;
@@ -4765,11 +4812,13 @@
 }
 
 /* ── vaxschedule ── vaccination schedule, pet or person */
+.vx-axis-wrap {
+  margin: 8px 0 12px;
+}
 .vx-axis {
   display: block;
   width: 100%;
   height: auto;
-  margin: 8px 0 12px;
 }
 .vx-line {
   stroke: var(--grid-line);
@@ -4862,6 +4911,9 @@
   font-weight: 800;
   color: var(--text-primary);
 }
+.cac-chart-wrap {
+  min-width: 0;
+}
 .cac-chart {
   display: block;
   width: 100%;
@@ -4872,8 +4924,8 @@
   stroke-width: 1;
 }
 .cac-tick {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 9px;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the chart is laid out at its host width, so these render 1:1 */
+  font-size: 11px;
   fill: var(--text-muted);
 }
 .cac-breakeven {

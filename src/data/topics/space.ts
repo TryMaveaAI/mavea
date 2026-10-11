@@ -536,48 +536,53 @@ export const space: ConversationSpec = {
         title: 'The solar system, to (very rough) scale',
         icon: 'sparkle',
         iconColor: 'var(--warning)',
-        svg: `<svg viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg">
+        svg: `<svg viewBox="0 0 470 116" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="sun-g" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="var(--warning)" stop-opacity="1"/>
       <stop offset="100%" stop-color="var(--warning)" stop-opacity="0.4"/>
     </radialGradient>
   </defs>
-  <!-- Sun -->
-  <circle cx="28" cy="60" r="22" fill="url(#sun-g)"/>
-  <text x="28" y="98" text-anchor="middle" font-size="8" fill="var(--text-secondary)">Sun</text>
+  <!-- Names alternate between two rows so neighbours never touch; type is sized for the
+       figure's ~640px display width, not for the viewBox. -->
+  <circle cx="26" cy="56" r="22" fill="url(#sun-g)"/>
+  <text x="26" y="96" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Sun</text>
+  <line x1="170" y1="40" x2="170" y2="72" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2,3"/>
+  <line x1="192" y1="40" x2="192" y2="72" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2,3"/>
+  <text x="181" y="32" text-anchor="middle" font-size="11" fill="var(--text-muted)">asteroid belt</text>
   <!-- Mercury -->
-  <circle cx="68" cy="60" r="2.4" fill="var(--text-muted)"/>
-  <text x="68" y="74" text-anchor="middle" font-size="7" fill="var(--text-muted)">☿</text>
+  <circle cx="70" cy="56" r="2.4" fill="var(--text-muted)"/>
+  <line x1="70" y1="61.4" x2="70" y2="83" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="70" y="96" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Mercury</text>
   <!-- Venus -->
-  <circle cx="90" cy="60" r="4" fill="var(--warning-soft)"/>
-  <text x="90" y="74" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♀</text>
+  <circle cx="96" cy="56" r="4" fill="var(--text-secondary)"/>
+  <line x1="96" y1="63" x2="96" y2="97" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="96" y="110" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Venus</text>
   <!-- Earth -->
-  <circle cx="118" cy="60" r="4.2" fill="var(--presence)"/>
-  <text x="118" y="74" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♁</text>
+  <circle cx="120" cy="56" r="4.2" fill="var(--presence)"/>
+  <line x1="120" y1="63.2" x2="120" y2="83" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="120" y="96" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Earth</text>
   <!-- Mars -->
-  <circle cx="150" cy="60" r="3" fill="var(--danger)"/>
-  <text x="150" y="74" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♂</text>
-  <!-- Asteroid belt -->
-  <line x1="168" y1="45" x2="168" y2="75" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2,3"/>
-  <line x1="192" y1="45" x2="192" y2="75" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="2,3"/>
-  <text x="180" y="40" text-anchor="middle" font-size="6.5" fill="var(--text-muted)">belt</text>
+  <circle cx="150" cy="56" r="3" fill="var(--danger)"/>
+  <line x1="150" y1="62" x2="150" y2="97" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="150" y="110" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Mars</text>
   <!-- Jupiter -->
-  <circle cx="232" cy="60" r="11" fill="var(--warning)"/>
-  <text x="232" y="83" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♃</text>
-  <!-- Saturn + rings -->
-  <ellipse cx="290" cy="60" rx="22" ry="4" fill="none" stroke="var(--warning-soft)" stroke-width="2.5" opacity="0.7"/>
-  <circle cx="290" cy="60" r="9" fill="var(--insight-soft)"/>
-  <text x="290" y="81" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♄</text>
+  <circle cx="222" cy="56" r="12" fill="var(--warning)"/>
+  <line x1="222" y1="71" x2="222" y2="83" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="222" y="96" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Jupiter</text>
+  <!-- Saturn -->
+  <ellipse cx="284" cy="56" rx="24" ry="4.5" fill="none" stroke="var(--text-muted)" stroke-width="2.5"/>
+  <circle cx="284" cy="56" r="9" fill="var(--warning)" opacity="0.75"/>
+  <line x1="284" y1="68" x2="284" y2="97" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="284" y="110" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Saturn</text>
   <!-- Uranus -->
-  <circle cx="340" cy="60" r="6.5" fill="var(--insight)"/>
-  <text x="340" y="79" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♅</text>
+  <circle cx="352" cy="56" r="6.5" fill="var(--insight)"/>
+  <line x1="352" y1="65.5" x2="352" y2="83" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="352" y="96" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Uranus</text>
   <!-- Neptune -->
-  <circle cx="390" cy="60" r="6" fill="var(--presence-deep)"/>
-  <text x="390" y="78" text-anchor="middle" font-size="7" fill="var(--text-secondary)">♆</text>
-  <!-- Scale note -->
-  <text x="460" y="58" font-size="8" fill="var(--text-muted)" text-anchor="middle">sizes ≈ relative</text>
-  <text x="460" y="70" font-size="8" fill="var(--text-muted)" text-anchor="middle">distances compressed</text>
+  <circle cx="420" cy="56" r="6" fill="var(--presence)"/>
+  <line x1="420" y1="65" x2="420" y2="97" stroke="var(--text-muted)" stroke-width="1"/>
+  <text x="420" y="110" text-anchor="middle" font-size="12" fill="var(--text-secondary)">Neptune</text>
 </svg>`,
         caption:
           'Sizes are roughly proportional; distances are heavily compressed, real gaps are millions of km.',

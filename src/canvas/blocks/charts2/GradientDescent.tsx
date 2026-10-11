@@ -11,12 +11,14 @@ import { usePathDraw } from '../../lib/motion';
 import { formatValue } from '../../lib/format';
 import type { GradientDescentProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { isoSegments, lerpIndex } from './chartMath';
 
 type Props = GradientDescentProps & { delay?: number };
 
 const W = 320;
 const H = 260;
-const PAD = { l: 42, r: 32, t: 16, b: 34 };
+// The right gutter holds the colour bar and its min/max beside it.
+const PAD = { l: 42, r: 44, t: 16, b: 34 };
 const LEVELS = 6; // iso-line threshold bands, matching SurfacePlot's default
 
 /** Loss-surface colour ramp: cool/blue at the minimum, warm/red at the maximum — the same
@@ -80,11 +82,26 @@ export function GradientDescent({
     const exZ = extent(zs);
     if (!exZ) return null;
 
-    const exX = extent([...colXs, ...path.map((p) => p.x)]);
-    const exY = extent([...rowYs, ...path.map((p) => p.y)]);
-    if (!exX || !exY) return null;
-    const [xMin, xMax] = niceDomain(exX[0], exX[1]);
-    const [yMin, yMax] = niceDomain(exY[0], exY[1]);
+    // Each sample is a cell CENTRE, so the plot reaches half a spacing past the outer samples —
+    // otherwise the edge cells are cut to half width and the mesh reads as irregular. Only a path
+    // that strays further than that widens the domain (to a nice bound).
+    const halo = (vs: number[]) => {
+      const ex = extent(vs);
+      if (!ex) return null;
+      const step = vs.length > 1 ? Math.abs(vs[vs.length - 1] - vs[0]) / (vs.length - 1) : 1;
+      return [ex[0] - step / 2, ex[1] + step / 2] as [number, number];
+    };
+    const meshX = halo(colXs);
+    const meshY = halo(rowYs);
+    const exPx = extent(path.map((p) => p.x));
+    const exPy = extent(path.map((p) => p.y));
+    if (!meshX || !meshY) return null;
+    const fit = (mesh: [number, number], ex: [number, number] | null): [number, number] =>
+      ex && (ex[0] < mesh[0] || ex[1] > mesh[1])
+        ? niceDomain(Math.min(mesh[0], ex[0]), Math.max(mesh[1], ex[1]))
+        : mesh;
+    const [xMin, xMax] = fit(meshX, exPx);
+    const [yMin, yMax] = fit(meshY, exPy);
     const [zMin, zMax] = exZ;
     const zSpan = zMax - zMin || 1;
 
@@ -126,37 +143,20 @@ export function GradientDescent({
       }
     }
 
-    // Marching-squares-style iso-lines, same technique as SurfacePlot: for each threshold band,
-    // find where a row-adjacent or column-adjacent pair of samples straddles it and draw a short
-    // segment spanning that pair's cell at the interpolated crossing position.
+    // Iso-lines traced through the sample centres (marching squares, shared with SurfacePlot), so
+    // each level reads as one continuous contour.
     const isoLines: { x1: number; y1: number; x2: number; y2: number }[] = [];
     for (let li = 1; li < LEVELS; li++) {
       // Match the sqrt colour scale: squared level spacing puts more iso-lines through the low-loss
       // valley (where the interesting structure is) instead of bunching them up the steep walls.
       const zIso = zMin + (li / LEVELS) ** 2 * zSpan;
-      for (let i = 0; i < rows - 1; i++) {
-        for (let j = 0; j < cols; j++) {
-          const a = contour[i]?.[j];
-          const b = contour[i + 1]?.[j];
-          if (!a || !b) continue;
-          if ((a.z - zIso) * (b.z - zIso) < 0) {
-            const t = (zIso - a.z) / (b.z - a.z);
-            const y = rowPix[i] + (rowPix[i + 1] - rowPix[i]) * t;
-            isoLines.push({ x1: colBounds[j], y1: y, x2: colBounds[j + 1], y2: y });
-          }
-        }
-      }
-      for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols - 1; j++) {
-          const a = contour[i]?.[j];
-          const b = contour[i]?.[j + 1];
-          if (!a || !b) continue;
-          if ((a.z - zIso) * (b.z - zIso) < 0) {
-            const t = (zIso - a.z) / (b.z - a.z);
-            const x = colPix[j] + (colPix[j + 1] - colPix[j]) * t;
-            isoLines.push({ x1: x, y1: rowBounds[i], x2: x, y2: rowBounds[i + 1] });
-          }
-        }
+      for (const [a, b] of isoSegments((i, j) => contour[i]?.[j]?.z, rows, cols, zIso)) {
+        isoLines.push({
+          x1: lerpIndex(colPix, a.j),
+          y1: lerpIndex(rowPix, a.i),
+          x2: lerpIndex(colPix, b.j),
+          y2: lerpIndex(rowPix, b.i),
+        });
       }
     }
 
@@ -232,6 +232,7 @@ export function GradientDescent({
               y2={l.y2}
               stroke="white"
               strokeWidth={0.6}
+              strokeLinecap="round"
               opacity={0.45}
             />
           ))}
@@ -270,10 +271,11 @@ export function GradientDescent({
               fill={lossColor((legendSteps - 1 - i) / (legendSteps - 1))}
             />
           ))}
-          <text x={legendX + 3} y={plotT - 3} textAnchor="middle" className="gd-legend-lbl">
+          {/* min/max sit BESIDE the bar's ends: below it they shared a row with the x ticks. */}
+          <text x={legendX + 9} y={plotT + 6} textAnchor="start" className="gd-legend-lbl">
             {fmtZ(zMax)}
           </text>
-          <text x={legendX + 3} y={plotB + 10} textAnchor="middle" className="gd-legend-lbl">
+          <text x={legendX + 9} y={plotB} textAnchor="start" className="gd-legend-lbl">
             {fmtZ(zMin)}
           </text>
 

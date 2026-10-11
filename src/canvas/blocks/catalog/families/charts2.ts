@@ -910,7 +910,8 @@ export const CATALOG_CHARTS2: ComponentCatalog = [
       'curves[].name': 'classifier or model name shown in the legend',
       'curves[].points': 'array of { fpr, tpr, threshold? } in ascending fpr order',
       'curves[].auc': 'area under curve 0-1 (model-supplied, not recomputed)',
-      operatingPoint: '0-based index into the first curve points for the initial marker position',
+      operatingPoint:
+        '0-based index into the first curve points for the initial marker position (default: the point with the best Youden J, TPR − FPR)',
     },
     intents: ['explain', 'compare', 'reference'],
     domains: ['data', 'code', 'science', 'health'],

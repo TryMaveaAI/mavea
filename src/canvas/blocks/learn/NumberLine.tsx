@@ -13,6 +13,8 @@ const W = 320;
 const H = 92;
 /** The axis's end inset when its end labels are narrow enough not to need more. */
 const PADX_MIN = 18;
+/** How far the axis and its arrowheads run past the end ticks; inside PADX_MIN. */
+const ARROW_RUN = 12;
 /** The most either end label may take: past this the axis would shrink to a stub. */
 const PADX_MAX = W * 0.25;
 const AXIS_Y = 54;
@@ -91,10 +93,19 @@ export function NumberLine({
     const labelW = Math.max(0, ...widths);
     const gap = tv.length > 1 ? (W - padL - padR) / (tv.length - 1) : W;
     const every = labelW > gap * 0.8 ? Math.ceil(labelW / (gap * 0.8)) : 1;
-    return { x: sc, lo: padL, hi: W - padR, tickVals: tv, showEvery: every };
+    // The axis runs on past both end ticks: a point or interval end at the range's limit would
+    // otherwise sit on the arrowhead and hide it, and the line would stop dead at the last number.
+    return {
+      x: sc,
+      lo: padL - ARROW_RUN,
+      hi: W - padR + ARROW_RUN,
+      tickVals: tv,
+      showEvery: every,
+    };
   }, [min, max, step, unit]);
 
-  const clampX = (v: number) => Math.max(lo, Math.min(hi, x(v)));
+  // An out-of-range value pins to the range's end tick, not out onto the arrowhead.
+  const clampX = (v: number) => Math.max(lo + ARROW_RUN, Math.min(hi - ARROW_RUN, x(v)));
 
   const ivLabelX = (iv: (typeof intervals)[number]) =>
     keepInside(

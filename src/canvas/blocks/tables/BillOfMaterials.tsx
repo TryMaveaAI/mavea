@@ -6,6 +6,10 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = BillOfMaterialsProps & { delay?: number };
 
+// Set in the body face even inside the monospace part-number column, so every missing value
+// reads as the same dash.
+const NONE = <span className="bom-none">—</span>;
+
 function money(v: number, currency: string): string {
   return formatValue(v, { currency, decimals: 2 });
 }
@@ -108,22 +112,24 @@ export function BillOfMaterials({
                     : c.kind === 'subassembly'
                       ? rollups[i]
                       : grandTotal;
+                // A subassembly or total row is a heading over its parts: it has no part number,
+                // quantity or unit price of its own, so those cells stay empty rather than
+                // filling the row with dashes. A dash marks only a part missing a value.
+                const isPart = c.kind === 'part';
                 return (
-                  <tr key={i} className={`bom-row bom-${c.kind}`}>
+                  <tr key={i} className={`bom-row bom-row--${c.kind}`}>
                     <td className="bom-label" style={{ paddingLeft: 2 + c.indent * 14 }}>
                       {c.row.label}
                     </td>
                     <td className="bom-part tab-num">
-                      {c.kind === 'part' && c.row.partNo ? c.row.partNo : '—'}
+                      {isPart && (c.row.partNo ? c.row.partNo : NONE)}
                     </td>
+                    <td className="bom-num tab-num">{isPart && (c.qty != null ? c.qty : NONE)}</td>
                     <td className="bom-num tab-num">
-                      {c.kind === 'part' && c.qty != null ? c.qty : '—'}
-                    </td>
-                    <td className="bom-num tab-num">
-                      {c.kind === 'part' && c.unitCost != null ? money(c.unitCost, currency) : '—'}
+                      {isPart && (c.unitCost != null ? money(c.unitCost, currency) : NONE)}
                     </td>
                     <td className="bom-num bom-ext tab-num">
-                      {rowValue != null ? money(rowValue, currency) : '—'}
+                      {rowValue != null ? money(rowValue, currency) : NONE}
                     </td>
                   </tr>
                 );

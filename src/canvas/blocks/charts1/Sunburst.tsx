@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { effectiveValue } from '../../lib/squarify';
+import { withUnit } from '../../lib/format';
+import { estimateTextWidth } from '../../lib/fitText';
 import type { SunburstNode, SunburstProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -40,6 +42,29 @@ function arcPath(a0: number, a1: number, rIn: number, rOut: number) {
   const [x3, y3] = polar(CX, CY, rIn, a0);
   const large = a1 - a0 > Math.PI ? 1 : 0;
   return `M${x0} ${y0} A${rOut} ${rOut} 0 ${large} 1 ${x1} ${y1} L${x2} ${y2} A${rIn} ${rIn} 0 ${large} 0 ${x3} ${y3} Z`;
+}
+
+const ARC_FS = 9;
+
+/**
+ * Name an outer-ring wedge along its own arc, upright on either half of the ring, when the arc is
+ * long enough to hold the name (cut with an ellipsis down to six characters at most). The inner
+ * ring is named by the legend; without this the outer ring was nameless until hovered.
+ */
+function arcLabel(label: string, a0: number, a1: number, rMid: number) {
+  const room = (a1 - a0) * rMid - 8;
+  let text = label;
+  if (estimateTextWidth(text, ARC_FS) > room) {
+    let n = label.length;
+    while (n > 6 && estimateTextWidth(label.slice(0, n) + '…', ARC_FS) > room) n--;
+    text = label.slice(0, n).trimEnd() + '…';
+    if (n <= 6 && estimateTextWidth(text, ARC_FS) > room) return null;
+  }
+  const mid = (a0 + a1) / 2;
+  const [x, y] = polar(CX, CY, rMid, mid);
+  let deg = (mid * 180) / Math.PI;
+  if (deg > 90 && deg < 270) deg += 180;
+  return { text, x, y, deg, cut: text !== label };
 }
 
 function build(
@@ -121,68 +146,94 @@ export function Sunburst({
       </div>
 
       <div className="c1-sun-wrap">
-        <svg
-          role="img"
-          aria-label={title}
-          viewBox="0 0 300 300"
-          width="100%"
-          className="c1-sunburst"
-        >
-          {arcs.map((a, i) => {
-            const rIn = R0 + (a.ring - 1) * RING;
-            const rOut = R0 + a.ring * RING - 3;
-            const active = hover === a.node.label;
-            const dim = hover && !active;
-            const drillable = !!(a.ring === 1 && a.node.children?.length);
-            return (
-              <path
-                key={i}
-                d={arcPath(a.a0, a.a1, rIn, rOut)}
-                fill={`color-mix(in oklab, ${a.color} ${active ? 70 : 38 - a.ring * 6}%, transparent)`}
-                stroke={a.color}
-                strokeWidth={active ? 1.6 : 0.8}
-                opacity={dim ? 0.4 : 1}
-                style={{
-                  cursor: drillable ? 'pointer' : 'default',
-                  transition: 'opacity var(--m-fast), fill var(--m-fast)',
-                }}
-                onMouseEnter={() => setHover(a.node.label)}
-                onMouseLeave={() => setHover(null)}
-                onClick={() => drillable && setPath([...path, a.childIdx])}
-              />
-            );
-          })}
-          {/* center hub — click to go up a level */}
-          <circle
-            cx={CX}
-            cy={CY}
-            r={R0 - 6}
-            fill="var(--surface-elevated)"
-            stroke="var(--line-strong)"
-            style={{ cursor: path.length ? 'pointer' : 'default' }}
-            onClick={() => path.length && setPath(path.slice(0, -1))}
-          />
-          <text
-            x={CX}
-            y={CY - 4}
-            textAnchor="middle"
-            fontSize="12"
-            fontWeight="600"
-            fill="var(--text-primary)"
+        <div className="canvas-figure">
+          <svg
+            role="img"
+            aria-label={title}
+            viewBox="0 0 300 300"
+            width="100%"
+            className="c1-sunburst"
           >
-            {focus.label}
-          </text>
-          <text
-            x={CX}
-            y={CY + 13}
-            textAnchor="middle"
-            fontSize="11"
-            fill="var(--text-muted)"
-            className="tab-num"
-          >
-            {path.length ? '‹ back' : unit + total.toLocaleString()}
-          </text>
-        </svg>
+            {arcs.map((a, i) => {
+              const rIn = R0 + (a.ring - 1) * RING;
+              const rOut = R0 + a.ring * RING - 3;
+              const active = hover === a.node.label;
+              const dim = hover && !active;
+              const drillable = !!(a.ring === 1 && a.node.children?.length);
+              return (
+                <path
+                  key={i}
+                  d={arcPath(a.a0, a.a1, rIn, rOut)}
+                  fill={`color-mix(in oklab, ${a.color} ${active ? 70 : 38 - a.ring * 6}%, transparent)`}
+                  stroke={a.color}
+                  strokeWidth={active ? 1.6 : 0.8}
+                  opacity={dim ? 0.4 : 1}
+                  style={{
+                    cursor: drillable ? 'pointer' : 'default',
+                    transition: 'opacity var(--m-fast), fill var(--m-fast)',
+                  }}
+                  onMouseEnter={() => setHover(a.node.label)}
+                  onMouseLeave={() => setHover(null)}
+                  onClick={() => drillable && setPath([...path, a.childIdx])}
+                />
+              );
+            })}
+            {arcs.map((a, i) => {
+              if (a.ring < 2) return null;
+              const rMid = R0 + (a.ring - 0.5) * RING - 1.5;
+              const l = arcLabel(a.node.label, a.a0, a.a1, rMid);
+              if (!l) return null;
+              const dim = hover && hover !== a.node.label;
+              return (
+                <text
+                  key={`l${i}`}
+                  x={l.x}
+                  y={l.y}
+                  transform={`rotate(${l.deg} ${l.x} ${l.y})`}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={ARC_FS}
+                  fill="var(--text-secondary)"
+                  opacity={dim ? 0.4 : 1}
+                  pointerEvents="none"
+                >
+                  {l.cut && <title>{a.node.label}</title>}
+                  {l.text}
+                </text>
+              );
+            })}
+            {/* center hub — click to go up a level */}
+            <circle
+              cx={CX}
+              cy={CY}
+              r={R0 - 6}
+              fill="var(--surface-elevated)"
+              stroke="var(--line-strong)"
+              style={{ cursor: path.length ? 'pointer' : 'default' }}
+              onClick={() => path.length && setPath(path.slice(0, -1))}
+            />
+            <text
+              x={CX}
+              y={CY - 4}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="600"
+              fill="var(--text-primary)"
+            >
+              {focus.label}
+            </text>
+            <text
+              x={CX}
+              y={CY + 13}
+              textAnchor="middle"
+              fontSize="11"
+              fill="var(--text-muted)"
+              className="tab-num"
+            >
+              {path.length ? '‹ back' : withUnit(total, unit)}
+            </text>
+          </svg>
+        </div>
 
         <div className="c1-sun-legend">
           {(focus.children || []).map((c, i) => (
@@ -207,8 +258,8 @@ export function Sunburst({
       <div className="insight-summary" style={{ marginTop: 8 }}>
         {hovered ? (
           <span>
-            <strong style={{ color: 'var(--text-primary)' }}>{hovered.node.label}</strong> · {unit}
-            {effectiveValue(hovered.node).toLocaleString()} ·{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{hovered.node.label}</strong> ·{' '}
+            {withUnit(effectiveValue(hovered.node), unit)} ·{' '}
             {Math.round((effectiveValue(hovered.node) / total) * 100)}% of {focus.label}
           </span>
         ) : footer ? (

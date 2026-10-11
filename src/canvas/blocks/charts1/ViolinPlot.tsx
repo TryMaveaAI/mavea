@@ -83,15 +83,6 @@ export function ViolinPlot({
     if (!ext) return null;
 
     const bws = groups.map((g) => silvermanBW(g.values.filter(Number.isFinite)));
-    const maxBW = Math.max(...bws, 1e-9);
-
-    // Extend evaluation domain by one max-bandwidth on each side so violin tapers smoothly.
-    const evalLo = ext[0] - maxBW;
-    const evalHi = ext[1] + maxBW;
-    const evalPts = Array.from(
-      { length: N_EVAL },
-      (_, k) => evalLo + (k / (N_EVAL - 1)) * (evalHi - evalLo),
-    );
 
     const [domainMin, domainMax] = niceDomain(ext[0], ext[1]);
     const y = scaleLinear([domainMin, domainMax], [H - PAD.b, PAD.t]);
@@ -104,11 +95,20 @@ export function ViolinPlot({
 
     const groupGeom = groups.map((g, i) => {
       const vals = g.values.filter(Number.isFinite);
-      const densities =
-        vals.length > 0 ? kernelDensity(vals, bws[i], evalPts) : evalPts.map(() => 0);
+      // Each violin spans its own group's observed range and no further. Running the density a
+      // bandwidth past the data tapered the ends nicely but drew scores above 100 and below the
+      // axis floor, over the top gridline and under the baseline, claiming values nobody got.
+      let lo = vals.length ? Math.min(...vals) : 0;
+      let hi = vals.length ? Math.max(...vals) : 0;
+      if (hi === lo) {
+        lo -= bws[i] / 2;
+        hi += bws[i] / 2;
+      }
+      const pts = Array.from({ length: N_EVAL }, (_, k) => lo + (k / (N_EVAL - 1)) * (hi - lo));
+      const densities = vals.length > 0 ? kernelDensity(vals, bws[i], pts) : pts.map(() => 0);
       const box = vals.length > 1 ? computeBox(vals) : null;
       const peak = Math.max(...densities, 0);
-      return { densities, box, peak, color: g.color || PALETTE[i % PALETTE.length] };
+      return { pts, densities, box, peak, color: g.color || PALETTE[i % PALETTE.length] };
     });
 
     // Shared density scale so groups are comparable to each other.
@@ -123,11 +123,11 @@ export function ViolinPlot({
       0,
     );
 
-    return { y, yTicks, slot, densityScale, evalPts, groupGeom, salient };
+    return { y, yTicks, slot, densityScale, groupGeom, salient };
   }, [groups]);
 
   if (!geom) return null;
-  const { y, yTicks, slot, densityScale, evalPts, groupGeom, salient } = geom;
+  const { y, yTicks, slot, densityScale, groupGeom, salient } = geom;
 
   return (
     <div
@@ -138,140 +138,148 @@ export function ViolinPlot({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {/* Y-axis gridlines and labels */}
-        {yTicks.map((t, i) => {
-          const yy = y(t);
-          return (
-            <g key={i}>
-              <line
-                x1={PAD.l}
-                x2={W - PAD.r}
-                y1={yy}
-                y2={yy}
-                stroke="var(--grid-line)"
-                strokeWidth={0.8}
-              />
-              <text x={PAD.l - 6} y={yy + 4} textAnchor="end" fontSize="9" fill="var(--text-muted)">
-                {t}
-                {unit ? ` ${unit}` : ''}
-              </text>
-            </g>
-          );
-        })}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          {/* Y-axis gridlines and labels */}
+          {yTicks.map((t, i) => {
+            const yy = y(t);
+            return (
+              <g key={i}>
+                <line
+                  x1={PAD.l}
+                  x2={W - PAD.r}
+                  y1={yy}
+                  y2={yy}
+                  stroke="var(--grid-line)"
+                  strokeWidth={0.8}
+                />
+                <text
+                  x={PAD.l - 6}
+                  y={yy + 4}
+                  textAnchor="end"
+                  fontSize="9"
+                  fill="var(--text-muted)"
+                >
+                  {t}
+                  {unit ? ` ${unit}` : ''}
+                </text>
+              </g>
+            );
+          })}
 
-        {groups.map((g, i) => {
-          const cx = PAD.l + slot * i + slot / 2;
-          const { densities, box, color } = groupGeom[i];
-          const active = hover === i;
+          {groups.map((g, i) => {
+            const cx = PAD.l + slot * i + slot / 2;
+            const { pts: evalPts, densities, box, color } = groupGeom[i];
+            const active = hover === i;
 
-          // Left side: evalPts[0] maps to bottom pixel (large y), evalPts[N-1] to top (small y).
-          // Trace left column bottom→top, then mirror right column top→bottom — forms closed violin.
-          const leftPts = evalPts.map((xv, k) => {
-            const hw = densities[k] * densityScale;
-            return `${(cx - hw).toFixed(1)},${y(xv).toFixed(1)}`;
-          });
-          const rightPtsReversed = [...evalPts].reverse().map((xv, k) => {
-            const origK = N_EVAL - 1 - k;
-            const hw = densities[origK] * densityScale;
-            return `${(cx + hw).toFixed(1)},${y(xv).toFixed(1)}`;
-          });
+            // Left side: evalPts[0] maps to bottom pixel (large y), evalPts[N-1] to top (small y).
+            // Trace left column bottom→top, then mirror right column top→bottom — forms closed violin.
+            const leftPts = evalPts.map((xv, k) => {
+              const hw = densities[k] * densityScale;
+              return `${(cx - hw).toFixed(1)},${y(xv).toFixed(1)}`;
+            });
+            const rightPtsReversed = [...evalPts].reverse().map((xv, k) => {
+              const origK = N_EVAL - 1 - k;
+              const hw = densities[origK] * densityScale;
+              return `${(cx + hw).toFixed(1)},${y(xv).toFixed(1)}`;
+            });
 
-          const pathD =
-            `M ${leftPts[0]} ` +
-            leftPts
-              .slice(1)
-              .map((p) => `L ${p}`)
-              .join(' ') +
-            ' ' +
-            rightPtsReversed.map((p) => `L ${p}`).join(' ') +
-            ' Z';
+            const pathD =
+              `M ${leftPts[0]} ` +
+              leftPts
+                .slice(1)
+                .map((p) => `L ${p}`)
+                .join(' ') +
+              ' ' +
+              rightPtsReversed.map((p) => `L ${p}`).join(' ') +
+              ' Z';
 
-          return (
-            <g
-              key={i}
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover(null)}
-              style={{ cursor: 'pointer' }}
-            >
-              <path
-                className="c1-violin-path"
-                d={pathD}
-                fill={`color-mix(in oklab, ${color} ${active ? 46 : 30}%, transparent)`}
-                stroke={color}
-                strokeWidth={active ? 2.2 : 1.5}
-                strokeLinejoin="round"
-                data-mark={i === salient ? 'circle' : undefined}
-                style={
-                  {
-                    ['--i' as string]: i,
-                    transition: 'fill var(--m-fast), stroke-width var(--m-fast)',
-                  } as CSSProperties
-                }
-              />
+            return (
+              <g
+                key={i}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                style={{ cursor: 'pointer' }}
+              >
+                <path
+                  className="c1-violin-path"
+                  d={pathD}
+                  fill={`color-mix(in oklab, ${color} ${active ? 46 : 30}%, transparent)`}
+                  stroke={color}
+                  strokeWidth={active ? 2.2 : 1.5}
+                  strokeLinejoin="round"
+                  data-mark={i === salient ? 'circle' : undefined}
+                  style={
+                    {
+                      ['--i' as string]: i,
+                      transition: 'fill var(--m-fast), stroke-width var(--m-fast)',
+                    } as CSSProperties
+                  }
+                />
 
-              {showBox &&
-                box &&
-                (() => {
-                  const yQ1 = y(box.q1);
-                  const yQ3 = y(box.q3);
-                  const yMed = y(box.median);
-                  const yWLo = y(box.wLo);
-                  const yWHi = y(box.wHi);
-                  const bw = 6;
-                  return (
-                    <g style={{ transition: 'opacity var(--m-fast)' }}>
-                      {/* Lower whisker: Q1 down to fence */}
-                      <line x1={cx} x2={cx} y1={yQ1} y2={yWLo} stroke={color} strokeWidth={1.2} />
-                      {/* Upper whisker: Q3 up to fence */}
-                      <line x1={cx} x2={cx} y1={yQ3} y2={yWHi} stroke={color} strokeWidth={1.2} />
-                      {/* IQR box */}
-                      <rect
-                        x={cx - bw / 2}
-                        y={yQ3}
-                        width={bw}
-                        height={Math.max(1, yQ1 - yQ3)}
-                        fill={`color-mix(in oklab, ${color} ${active ? 76 : 60}%, transparent)`}
-                        stroke={color}
-                        strokeWidth={active ? 1.6 : 1}
-                        style={{ transition: 'fill var(--m-fast), stroke-width var(--m-fast)' }}
-                      />
-                      {/* Median stripe — uses elevated surface so it shows in both light and dark. */}
-                      <line
-                        x1={cx - bw / 2}
-                        x2={cx + bw / 2}
-                        y1={yMed}
-                        y2={yMed}
-                        stroke="var(--surface-elevated)"
-                        strokeWidth={2}
-                      />
-                    </g>
-                  );
-                })()}
+                {showBox &&
+                  box &&
+                  (() => {
+                    const yQ1 = y(box.q1);
+                    const yQ3 = y(box.q3);
+                    const yMed = y(box.median);
+                    const yWLo = y(box.wLo);
+                    const yWHi = y(box.wHi);
+                    const bw = 6;
+                    return (
+                      <g style={{ transition: 'opacity var(--m-fast)' }}>
+                        {/* Lower whisker: Q1 down to fence */}
+                        <line x1={cx} x2={cx} y1={yQ1} y2={yWLo} stroke={color} strokeWidth={1.2} />
+                        {/* Upper whisker: Q3 up to fence */}
+                        <line x1={cx} x2={cx} y1={yQ3} y2={yWHi} stroke={color} strokeWidth={1.2} />
+                        {/* IQR box */}
+                        <rect
+                          x={cx - bw / 2}
+                          y={yQ3}
+                          width={bw}
+                          height={Math.max(1, yQ1 - yQ3)}
+                          fill={`color-mix(in oklab, ${color} ${active ? 76 : 60}%, transparent)`}
+                          stroke={color}
+                          strokeWidth={active ? 1.6 : 1}
+                          style={{ transition: 'fill var(--m-fast), stroke-width var(--m-fast)' }}
+                        />
+                        {/* Median stripe — uses elevated surface so it shows in both light and dark. */}
+                        <line
+                          x1={cx - bw / 2}
+                          x2={cx + bw / 2}
+                          y1={yMed}
+                          y2={yMed}
+                          stroke="var(--surface-elevated)"
+                          strokeWidth={2}
+                        />
+                      </g>
+                    );
+                  })()}
 
-              {/* Group label. Font shrinks as groups pack in — a fixed size relied on each slot
+                {/* Group label. Font shrinks as groups pack in — a fixed size relied on each slot
                   narrowing to fit the (unchanging) label, so past ~5 groups neighboring labels
                   started to overlap; same fix as Boxplot's bottom axis. */}
-              <text
-                x={cx}
-                y={H - PAD.b + 18}
-                textAnchor="middle"
-                fontSize={groups.length > 5 ? '8' : groups.length > 4 ? '9' : '10'}
-                fill={active ? 'var(--text-primary)' : 'var(--text-muted)'}
-                style={{ transition: 'fill var(--m-fast)' }}
-              >
-                {g.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                <text
+                  x={cx}
+                  y={H - PAD.b + 18}
+                  textAnchor="middle"
+                  fontSize={groups.length > 5 ? '8' : groups.length > 4 ? '9' : '10'}
+                  fill={active ? 'var(--text-primary)' : 'var(--text-muted)'}
+                  style={{ transition: 'fill var(--m-fast)' }}
+                >
+                  {g.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       {footer && (
         <div

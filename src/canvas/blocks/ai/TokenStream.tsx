@@ -86,7 +86,7 @@ export function TokenStream({
             )}
           </div>
         ) : (
-          <span className="faint">
+          <span className="ai-ts-hint faint">
             <Icon.eye className="ic" style={{ verticalAlign: '-2px', width: 14, height: 14 }} />{' '}
             Hover a token to see its probability and top alternatives
           </span>

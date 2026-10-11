@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import { longestRun } from './lib/fitText';
+import { FigureProof } from './figures/FigureProof';
 import type { KpiGridProps } from '../data/conversation';
 
 type Props = KpiGridProps & { delay?: number };
@@ -76,7 +77,9 @@ export function KpiGrid({
                 data-mark={i === 0 ? 'underline' : undefined}
                 style={k.color ? { color: k.color } : undefined}
               >
-                {k.val}
+                <FigureProof label={k.label} shown={val}>
+                  {k.val}
+                </FigureProof>
               </div>
               <div className="kpi-label">{k.label}</div>
               {k.sub && <div className="kpi-sub">{k.sub}</div>}

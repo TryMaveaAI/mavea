@@ -158,6 +158,7 @@ export const CATALOG_MEDIA: ComponentCatalog = [
     optional: [
       'icon',
       'iconColor',
+      'name',
       'year',
       'runtime',
       'rating',
@@ -176,6 +177,7 @@ export const CATALOG_MEDIA: ComponentCatalog = [
     blurb:
       'A poster-forward detail card for ONE recommended title (film/show/book/game): cover art, year/runtime/rating chips, a 0–100 score badge, a spoiler-safe logline, genre tags, and "where to watch" provider chips. Give a real cover.src when you have one; otherwise it falls back to the cover.from/to gradient. Pick this for a single "what should I watch/read next" pick — use carousel or lightbox for a gallery of several.',
     propHints: {
+      name: "the work's own title; `title` is the framing line above it",
       score: 'a number 0–100 (aggregate/critic score); omit if unknown rather than guessing',
       'cover.src': 'real poster/cover image URL; omit to show the from/to gradient placeholder',
       'cover.from': 'gradient start, e.g. var(--presence-deep)',

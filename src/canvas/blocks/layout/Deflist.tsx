@@ -39,7 +39,7 @@ export function Deflist({
       </div>
 
       <label className="lay-dl-search">
-        <Icon.eye className="ic lay-dl-search-ic" />
+        <Icon.search className="ic lay-dl-search-ic" />
         <input
           className="lay-dl-input"
           type="text"

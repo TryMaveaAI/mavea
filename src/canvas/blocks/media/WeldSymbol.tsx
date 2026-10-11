@@ -100,96 +100,100 @@ export function WeldSymbol({
         <div className="wld-grid">
           {/* the physical joint cross-section */}
           <div className="wld-cell">
-            <svg
-              viewBox="0 0 100 80"
-              className="wld-svg"
-              role="img"
-              aria-label={JOINT_LABEL[joint]}
-            >
-              <JointFigure joint={joint} />
-            </svg>
+            <div className="canvas-figure">
+              <svg
+                viewBox="0 0 100 80"
+                className="wld-svg"
+                role="img"
+                aria-label={JOINT_LABEL[joint]}
+              >
+                <JointFigure joint={joint} />
+              </svg>
+            </div>
             <div className="wld-cap">{JOINT_LABEL[joint]}</div>
           </div>
 
           {/* the AWS weld symbol */}
           <div className="wld-cell">
-            <svg viewBox="0 0 140 80" className="wld-svg" role="img" aria-label="AWS weld symbol">
-              <defs>
-                <marker
-                  id={ahId}
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="6"
-                  markerHeight="6"
-                  orient="auto-start-reverse"
-                >
-                  <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" />
-                </marker>
-              </defs>
-              {/* arrow pointing to the joint */}
-              <line
-                x1="6"
-                y1="64"
-                x2="34"
-                y2="40"
-                className="wld-arrow"
-                markerEnd={`url(#${ahId})`}
-              />
-              {/* reference line — it runs into the tail's vertex when there is one */}
-              <line
-                x1="34"
-                y1="40"
-                x2={tail ? tail.x : REF_END_X}
-                y2="40"
-                className="wld-ref"
-                data-mark="line"
-              />
-              {/* tail (process), drawn as the open V at the far end */}
-              {tail && (
-                <>
-                  <line
-                    x1={tail.x}
-                    y1="40"
-                    x2={TAIL_TIP_X}
-                    y2={40 - TAIL_HALF_H}
-                    className="wld-ref"
-                  />
-                  <line
-                    x1={tail.x}
-                    y1="40"
-                    x2={TAIL_TIP_X}
-                    y2={40 + TAIL_HALF_H}
-                    className="wld-ref"
-                  />
-                  <text
-                    x={tail.textX}
-                    y="40"
-                    className="wld-process"
-                    style={{ fontSize: PROCESS_FS }}
+            <div className="canvas-figure">
+              <svg viewBox="0 0 140 80" className="wld-svg" role="img" aria-label="AWS weld symbol">
+                <defs>
+                  <marker
+                    id={ahId}
+                    viewBox="0 0 10 10"
+                    refX="8"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
                   >
-                    {tail.text !== tail.full && <title>{tail.full}</title>}
-                    {tail.text}
+                    <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" />
+                  </marker>
+                </defs>
+                {/* arrow pointing to the joint */}
+                <line
+                  x1="6"
+                  y1="64"
+                  x2="34"
+                  y2="40"
+                  className="wld-arrow"
+                  markerEnd={`url(#${ahId})`}
+                />
+                {/* reference line — it runs into the tail's vertex when there is one */}
+                <line
+                  x1="34"
+                  y1="40"
+                  x2={tail ? tail.x : REF_END_X}
+                  y2="40"
+                  className="wld-ref"
+                  data-mark="line"
+                />
+                {/* tail (process), drawn as the open V at the far end */}
+                {tail && (
+                  <>
+                    <line
+                      x1={tail.x}
+                      y1="40"
+                      x2={TAIL_TIP_X}
+                      y2={40 - TAIL_HALF_H}
+                      className="wld-ref"
+                    />
+                    <line
+                      x1={tail.x}
+                      y1="40"
+                      x2={TAIL_TIP_X}
+                      y2={40 + TAIL_HALF_H}
+                      className="wld-ref"
+                    />
+                    <text
+                      x={tail.textX}
+                      y="40"
+                      className="wld-process"
+                      style={{ fontSize: PROCESS_FS }}
+                    >
+                      {tail.text !== tail.full && <title>{tail.full}</title>}
+                      {tail.text}
+                    </text>
+                  </>
+                )}
+
+                {/* the weld-type glyph sits below the line for an arrow-side weld, above for other */}
+                {arrowSide && <WeldGlyph joint={joint} side="below" />}
+                {otherSide && <WeldGlyph joint={joint} side="above" />}
+
+                {/* size to the left of the glyph; length-pitch to the right */}
+                {size && (
+                  <text x="44" y={arrowSide ? 56 : 30} className="wld-dim">
+                    {size}
                   </text>
-                </>
-              )}
-
-              {/* the weld-type glyph sits below the line for an arrow-side weld, above for other */}
-              {arrowSide && <WeldGlyph joint={joint} side="below" />}
-              {otherSide && <WeldGlyph joint={joint} side="above" />}
-
-              {/* size to the left of the glyph; length-pitch to the right */}
-              {size && (
-                <text x="44" y={arrowSide ? 56 : 30} className="wld-dim">
-                  {size}
-                </text>
-              )}
-              {lenPitch && (
-                <text x="78" y={arrowSide ? 56 : 30} className="wld-dim">
-                  {lenPitch}
-                </text>
-              )}
-            </svg>
+                )}
+                {lenPitch && (
+                  <text x="78" y={arrowSide ? 56 : 30} className="wld-dim">
+                    {lenPitch}
+                  </text>
+                )}
+              </svg>
+            </div>
             <div className="wld-cap">AWS weld symbol</div>
           </div>
         </div>

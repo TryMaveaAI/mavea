@@ -175,66 +175,68 @@ export function FlowChord({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`${-PAD_X} ${-PAD_Y} ${VB_W} ${VB_H}`}
-        className="c1-fc-svg"
-      >
-        {model.flows.map((f) => {
-          const lit = isFlowLit(f);
-          return (
-            <path
-              key={f.key}
-              d={f.d}
-              fill="none"
-              stroke={f.color}
-              strokeWidth={f.thick}
-              opacity={lit ? 0.45 : 0.08}
-              style={{ transition: 'opacity var(--m-fast)', cursor: 'pointer' }}
-              onMouseEnter={() => setHover(f.key)}
-              onMouseLeave={() => setHover(null)}
-            />
-          );
-        })}
-        {model.nodes.map((n) => {
-          const lit = isNodeLit(n.id);
-          const active = hover === n.id;
-          const lx = CX + LABEL_R * Math.cos(n.angle);
-          const ly = CY + LABEL_R * Math.sin(n.angle);
-          return (
-            <g
-              key={n.id}
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={() => setHover(n.id)}
-              onMouseLeave={() => setHover(null)}
-            >
-              <circle
-                cx={n.x}
-                cy={n.y}
-                r={active ? 7 : 5.5}
-                fill={n.color}
-                opacity={lit ? 1 : 0.3}
-                stroke="var(--surface-default)"
-                strokeWidth={2}
-                data-mark={n.id === model.salientId ? 'circle' : undefined}
-                style={{ transition: 'opacity var(--m-fast)' }}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`${-PAD_X} ${-PAD_Y} ${VB_W} ${VB_H}`}
+          className="c1-fc-svg"
+        >
+          {model.flows.map((f) => {
+            const lit = isFlowLit(f);
+            return (
+              <path
+                key={f.key}
+                d={f.d}
+                fill="none"
+                stroke={f.color}
+                strokeWidth={f.thick}
+                opacity={lit ? 0.45 : 0.08}
+                style={{ transition: 'opacity var(--m-fast)', cursor: 'pointer' }}
+                onMouseEnter={() => setHover(f.key)}
+                onMouseLeave={() => setHover(null)}
               />
-              <text
-                x={lx}
-                y={ly}
-                textAnchor={Math.abs(lx - CX) < 10 ? 'middle' : lx > CX ? 'start' : 'end'}
-                dominantBaseline="middle"
-                fontSize="10.5"
-                fill={active ? 'var(--text-primary)' : 'var(--text-secondary)'}
-                opacity={lit ? 1 : 0.35}
+            );
+          })}
+          {model.nodes.map((n) => {
+            const lit = isNodeLit(n.id);
+            const active = hover === n.id;
+            const lx = CX + LABEL_R * Math.cos(n.angle);
+            const ly = CY + LABEL_R * Math.sin(n.angle);
+            return (
+              <g
+                key={n.id}
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={() => setHover(n.id)}
+                onMouseLeave={() => setHover(null)}
               >
-                {n.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                <circle
+                  cx={n.x}
+                  cy={n.y}
+                  r={active ? 7 : 5.5}
+                  fill={n.color}
+                  opacity={lit ? 1 : 0.3}
+                  stroke="var(--surface-default)"
+                  strokeWidth={2}
+                  data-mark={n.id === model.salientId ? 'circle' : undefined}
+                  style={{ transition: 'opacity var(--m-fast)' }}
+                />
+                <text
+                  x={lx}
+                  y={ly}
+                  textAnchor={Math.abs(lx - CX) < 10 ? 'middle' : lx > CX ? 'start' : 'end'}
+                  dominantBaseline="middle"
+                  fontSize="10.5"
+                  fill={active ? 'var(--text-primary)' : 'var(--text-secondary)'}
+                  opacity={lit ? 1 : 0.35}
+                >
+                  {n.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 10 }}>
         {hoveredFlow ? (

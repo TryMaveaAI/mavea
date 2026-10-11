@@ -12,10 +12,18 @@ import { validateLiveResponse } from '../src/engine/liveSchema';
 import { ensureDetails } from '../src/canvas/blocks/catalog';
 import { DataTable } from '../src/canvas/blocks/tables/DataTable';
 import { ComparisonMatrix } from '../src/canvas/ComparisonMatrix';
+import { Heatmap } from '../src/canvas/Heatmap';
+import { PlanGrid } from '../src/canvas/blocks/everyday/PlanGrid';
 import { hydrateFromSession } from '../src/live/useLiveTurn';
-import type { ConversationSpec } from '../src/data/conversation';
+import type { ConversationSpec, HeatmapProps } from '../src/data/conversation';
 import type { DecisionNode } from '../src/canvas/blocks/flows/types';
-import { hasKeyedRows, resolvesKeyedRows, usableBlock } from '../src/canvas/lib/empty';
+import type { PlanGridProps } from '../src/canvas/blocks/everyday/types';
+import {
+  hasKeyedRows,
+  resolvesKeyedRows,
+  resolvesNamedCells,
+  usableBlock,
+} from '../src/canvas/lib/empty';
 
 const COLUMNS = [
   { key: 'metric', label: 'Bridge Element', align: 'left' as const },
@@ -573,5 +581,108 @@ describe('decisiontree — a tree of nameless nodes is not a tree', () => {
       'Take an umbrella',
       'Leave it at home',
     ]);
+  });
+});
+
+// A heatmap is drawn FROM its levels: every cell is painted whether or not it carries one, so a
+// grid whose cells are notes, prose or nothing at all renders its row labels beside empty tiles —
+// a "checklist" of blank boxes that reads as a card that failed to load. The same question at
+// every seam: the validator on the way in, usableBlock for a restored or baked frame, and the
+// renderer itself, which is what a replay actually paints.
+describe('heat — a grid is its levels', () => {
+  beforeAll(async () => {
+    await ensureDetails(['heat']);
+  });
+
+  const one = (block: unknown) =>
+    validateLiveResponse({ title: 'T', narration: 'n', blocks: [block] }, new Set(['heat']), 1)
+      ?.blocks[0];
+  const blank = {
+    title: 'Roommate compatibility checklist',
+    cols: ['Category', 'Key questions'],
+    rows: [
+      { label: 'Schedule', cells: [{ note: 'Early riser?' }, { note: 'Night owl?' }] },
+      { label: 'Cleanliness', cells: ['Shared chores', 'Dishes the same day'] },
+      { label: 'Guests', cells: [null, null] },
+      { label: 'Budget' },
+    ],
+  };
+
+  // Core `heat` declares a custom coercer and has no builder yet, so the validator builds no heat
+  // block at all today and a live answer never reaches the Heatmap renderer. The guard still has
+  // to hold at the seam: `buildBlock` wraps `usableBlock` for every block it does build, and a
+  // restored session or a baked frame reaches the renderer without the validator.
+  it('the validator drops a grid no cell of which carries a level or a mark', () => {
+    expect(one({ type: 'heat', props: blank })).toBeUndefined();
+  });
+
+  it('usableBlock refuses it for frames the validator never sees', () => {
+    expect(usableBlock('heat', blank)).toBe(false);
+    // A bare number, a numeric string and an honest zero are all levels.
+    expect(usableBlock('heat', { rows: [{ label: 'A', cells: [null, 3] }] })).toBe(true);
+    expect(usableBlock('heat', { rows: [{ label: 'A', cells: ['2'] }] })).toBe(true);
+    expect(usableBlock('heat', { rows: [{ label: 'A', cells: [0] }] })).toBe(true);
+    // A level object and a bare mark each paint a cell.
+    expect(usableBlock('heat', { rows: [{ label: 'A', cells: [{ lvl: 2 }, null] }] })).toBe(true);
+    expect(usableBlock('heat', { rows: [{ label: 'A', cells: [{ mark: '✓' }, null] }] })).toBe(
+      true,
+    );
+    // No rows at all is the requires-check's call, not this one.
+    expect(usableBlock('heat', { rows: [] })).toBe(true);
+  });
+
+  it('the renderer says so instead of drawing empty tiles', () => {
+    render(<Heatmap {...(blank as unknown as HeatmapProps)} />);
+    expect(screen.getByText('No levels to show')).toBeTruthy();
+    expect(screen.queryByText('Schedule')).toBeNull();
+  });
+});
+
+describe('plangrid — a cell is its column and its entry', () => {
+  beforeAll(async () => {
+    await ensureDetails(['plangrid']);
+  });
+
+  const one = (block: unknown) =>
+    validateLiveResponse({ title: 'T', narration: 'n', blocks: [block] }, new Set(['plangrid']), 1)
+      ?.blocks[0];
+  // The board a reader was shown: every cell names a column the grid does not have, or names one
+  // and carries no entry, so the card drew four slots of dashed free cells under a title.
+  const blank = {
+    title: 'Roommate compatibility checklist',
+    columns: ['Category', 'Key questions'],
+    rows: [
+      { slot: 'Schedule', cells: [{ col: 'Schedule', label: 'Early riser or night owl?' }] },
+      { slot: 'Cleanliness', cells: [{ label: 'Shared chores' }] },
+      { slot: 'Guests', cells: [{ col: 'Key questions' }, { col: 'Category', label: '  ' }] },
+      { slot: 'Budget', cells: [] },
+    ],
+  };
+  const planned = {
+    ...blank,
+    rows: [
+      { slot: 'Budget', cells: [{ col: ' key QUESTIONS', label: 'Split utilities evenly?' }] },
+    ],
+  };
+
+  it('the validator drops a grid whose every slot is free, and keeps one with an entry', () => {
+    expect(one({ type: 'plangrid', props: blank })).toBeUndefined();
+    expect(one({ type: 'plangrid', props: planned })?.type).toBe('plangrid');
+  });
+
+  it('matches a column the way the renderer does: trimmed, case-insensitive', () => {
+    expect(resolvesNamedCells('plangrid', blank)).toBe(false);
+    expect(resolvesNamedCells('plangrid', planned)).toBe(true);
+    expect(usableBlock('plangrid', blank)).toBe(false);
+    // No columns or no rows is the requires-check's call, and other types are not read this way.
+    expect(usableBlock('plangrid', { columns: [], rows: blank.rows })).toBe(true);
+    expect(usableBlock('plangrid', { columns: blank.columns, rows: [] })).toBe(true);
+    expect(usableBlock('agenda', blank)).toBe(true);
+  });
+
+  it('the renderer says so instead of drawing a board of free slots', () => {
+    render(<PlanGrid {...(blank as unknown as PlanGridProps)} />);
+    expect(screen.getByText('No entries to show')).toBeTruthy();
+    expect(screen.queryByText('Schedule')).toBeNull();
   });
 });

@@ -167,8 +167,8 @@ export function Wireframe({
                 } as CSSProperties
               }
             >
-              <div className="wf-fill">{wireFill(r.kind)}</div>
               {r.label && <span className="wf-label">{r.label}</span>}
+              <div className="wf-fill">{wireFill(r.kind)}</div>
             </div>
           );
         })}

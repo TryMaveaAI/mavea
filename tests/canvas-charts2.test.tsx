@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
+import { labcanvas } from '../src/data/topics/labcanvas';
 import { join } from 'path';
 import { render, fireEvent } from '@testing-library/react';
 import { AreaPlot } from '../src/canvas/blocks/charts2/AreaPlot';
@@ -14,6 +15,7 @@ import { DualAxis } from '../src/canvas/blocks/charts2/DualAxis';
 import { EcgStrip } from '../src/canvas/blocks/charts2/EcgStrip';
 import { ErrorBars } from '../src/canvas/blocks/charts2/ErrorBars';
 import { Gantt } from '../src/canvas/blocks/charts2/Gantt';
+import { HrDiagram } from '../src/canvas/blocks/charts2/HrDiagram';
 import { LineBalance } from '../src/canvas/blocks/charts2/LineBalance';
 import { IndifferenceCurve } from '../src/canvas/blocks/charts2/IndifferenceCurve';
 import { PayoffDiagram } from '../src/canvas/blocks/charts2/PayoffDiagram';
@@ -53,10 +55,10 @@ function visibleText(node: Element): string {
 }
 
 // Regression coverage for a real bug: the area read-out badge (.apl-area) is plain SVG <text>
-// centred in the shaded region with no width constraint or wrapping, sized off the demo's short
-// "area ≈ N" text. A long caller-supplied areaLabel — or a narrow integration interval, which
-// shrinks the region's own pixel width — let the badge render wider than the shaded fill and
-// bleed out past it. Every rendered badge must fit inside the region it's centred in.
+// centred in the shaded region, sized off the demo's short "area ≈ N" text. A long caller-supplied
+// areaLabel — or a narrow integration interval, which shrinks the region's own width — let the
+// badge render wider than the shaded fill and bleed out past it. A badge is drawn only where it
+// fits whole; otherwise the read-out is stated in full under the plot, never cut to an ellipsis.
 describe('AreaPlot', () => {
   function curve(): AreaCurve {
     return {
@@ -72,7 +74,7 @@ describe('AreaPlot', () => {
     };
   }
 
-  it('truncates a long areaLabel instead of letting the badge overflow the shaded region', () => {
+  it('moves a long areaLabel under the plot instead of letting the badge overflow the region', () => {
     const longLabel = 'A Much Longer Symbolic Area Label Than The Demo Ever Used ∫ f(x) dx';
     const { container } = render(
       <AreaPlot
@@ -82,22 +84,14 @@ describe('AreaPlot', () => {
         areaLabel={longLabel}
       />,
     );
-    const badge = container.querySelector('text.apl-area');
-    expect(badge).toBeTruthy();
-
-    // The region here spans the full plot width, so this is a "long label" case: the visible
-    // glyphs must be short enough to plausibly fit within the region's own pixel width at the
-    // badge's font-size, not the raw ~68-character label.
-    expect(visibleText(badge!).length).toBeLessThan(longLabel.length);
-    expect(visibleText(badge!).endsWith('…')).toBe(true);
-    // The untruncated string is still present, via a native <title> tooltip.
-    const titles = Array.from(container.querySelectorAll('title')).map((t) => t.textContent);
-    expect(titles).toContain(longLabel);
+    expect(container.querySelector('text.apl-area')).toBeNull();
+    expect(container.querySelector('.apl-note-area')?.textContent).toBe(longLabel);
+    expect(container.textContent).not.toContain('…');
   });
 
-  it('truncates even a short areaLabel when the integration interval narrows the region', () => {
-    // Same short label the demo would use, but a narrow x0..x1 shrinks the shaded region to a
-    // sliver — the label must still fit the region's actual pixel width, not just be "short".
+  it('moves even a short areaLabel under the plot when the interval narrows the region', () => {
+    // The demo's own short label, but a narrow x0..x1 shrinks the shaded region to a sliver — a
+    // label being "short" says nothing about whether it fits the region it would sit in.
     const label = 'area of narrow slice';
     const { container } = render(
       <AreaPlot
@@ -107,12 +101,8 @@ describe('AreaPlot', () => {
         areaLabel={label}
       />,
     );
-    const badge = container.querySelector('text.apl-area');
-    expect(badge).toBeTruthy();
-    expect(visibleText(badge!).length).toBeLessThan(label.length);
-    expect(visibleText(badge!).endsWith('…')).toBe(true);
-    const titles = Array.from(container.querySelectorAll('title')).map((t) => t.textContent);
-    expect(titles).toContain(label);
+    expect(container.querySelector('text.apl-area')).toBeNull();
+    expect(container.querySelector('.apl-note-area')?.textContent).toBe(label);
   });
 
   it('leaves a short areaLabel untouched when the region is wide enough', () => {
@@ -368,11 +358,10 @@ describe('BumpChart', () => {
   });
 });
 
-// Regression coverage for a real bug: the axis row (.c2-cs-axis) is a `justify-content:
-// space-between` flex row holding the first/last candle's period label with no width cap —
-// sized only for the short demo-fixture strings ("Jan", "Dec"). A real-world date/period label
-// far longer than the fixture wraps or pushes the opposite label past the card edge instead of
-// truncating.
+// Regression coverage for a real bug: the axis row (.c2-cs-axis) held only the first and last
+// candle's period label, sized for the short demo strings ("Jan", "Dec"). Labels now sit under
+// their own candles, thinned to a stride the measured row can hold; the last one always shows and
+// is capped at the row, so a period name longer than the card cannot push past its edge.
 describe('Candlestick', () => {
   function candles(firstLabel: string, lastLabel: string): Candle[] {
     return [
@@ -381,44 +370,52 @@ describe('Candlestick', () => {
       { label: lastLabel, o: 12, h: 14, l: 11, c: 13 },
     ];
   }
+  const axisLabels = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll<HTMLElement>('.c2-cs-axis .c2-cs-xt'));
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-  it('caps and ellipsizes long axis labels instead of overflowing the row', () => {
+  it('thins long axis labels to what the row can hold, keeping the last', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(320);
     const longFirst = 'Week ending March 3rd, 2024 (pre-market session)';
     const longLast = 'Week ending September 29th, 2025 (after-hours session)';
     const { container } = render(
       <Candlestick title="Price" candles={candles(longFirst, longLast)} />,
     );
-
-    const labels = Array.from(container.querySelectorAll<HTMLElement>('.c2-cs-axis span'));
-    expect(labels).toHaveLength(2);
-    // Full text is preserved in the DOM (it's a CSS-only truncation, not a string clip)...
-    expect(labels[0].textContent).toBe(longFirst);
-    expect(labels[1].textContent).toBe(longLast);
-    // ...but each label is set up to truncate rather than wrap or grow past its half of the
-    // space-between row: hidden overflow + ellipsis + a width ceiling relative to the row.
-    for (const label of labels) {
-      expect(label.style.overflow).toBe('hidden');
-      expect(label.style.textOverflow).toBe('ellipsis');
-      expect(label.style.whiteSpace).toBe('nowrap');
-      expect(label.style.maxWidth).toBe('48%');
-    }
+    const labels = axisLabels(container);
+    expect(labels.map((l) => l.textContent)).toEqual([longLast]);
+    // An ellipsized label keeps its full name on hover.
+    expect(labels[0].getAttribute('title')).toBe(longLast);
   });
 
-  it('still shows the short demo-fixture-sized labels untouched', () => {
+  it('caps a label at the row so the last one cannot leave the card', () => {
+    const css = readFileSync(join(__dirname, '..', 'src/canvas/blocks/charts2/styles.css'), 'utf8');
+    const rule = /\.c2-cs-xt \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(rule).toMatch(/max-width:\s*100%/);
+    expect(rule).toMatch(/text-overflow:\s*ellipsis/);
+    expect(rule).toMatch(/overflow:\s*hidden/);
+  });
+
+  it('shows every short label under its own candle when they fit', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(320);
     const { container } = render(<Candlestick title="Price" candles={candles('Jan', 'Dec')} />);
-    const labels = Array.from(container.querySelectorAll<HTMLElement>('.c2-cs-axis span'));
-    expect(labels.map((l) => l.textContent)).toEqual(['Jan', 'Dec']);
+    const labels = axisLabels(container);
+    expect(labels.map((l) => l.textContent)).toEqual(['Jan', 'mid', 'Dec']);
+    const at = labels.map((l) => parseFloat(l.style.getPropertyValue('--at')));
+    expect(at[0]).toBeLessThan(at[1]);
+    expect(at[1]).toBeLessThan(at[2]);
   });
 });
 
-// Regression coverage for a real bug: once a run has more than 7 points, ControlChart rotates
-// its x-axis tick labels -40° to keep them from colliding. Rotating a label swings its bounding
-// box down below the horizontal baseline by sin(40°) × label-width — a label longer than the
-// tiny ~6-char demo fixture ("Week 1") descended past the SVG viewBox floor and was clipped by
-// the SVG's default overflow:hidden before the card ever rendered it.
+// Regression coverage for a real bug: ControlChart rotated its x labels -40° by point count and
+// kept a fixed viewBox height, so a label longer than the ~6-char demo fixture ("Week 1") swung
+// below the viewBox floor and was clipped. Labels now rotate only when the widest would crowd its
+// neighbour, the bottom margin grows to what the rotated labels need, and a label past the
+// rotated cap is cut with its full name kept in a <title>.
 describe('ControlChart', () => {
-  const H = 240; // must track ControlChart.tsx's viewBox height — fixed-viewBox, not measured live.
-  const M_BOTTOM = 60; // must track ControlChart.tsx's M.bottom margin.
+  const M_TOP = 16; // ControlChart's plot group is translated down by its top margin.
+  const TICK_FS = 9.5;
 
   function points(n: number, labelLength: number): ControlChartPoint[] {
     return Array.from({ length: n }, (_, i) => ({
@@ -427,74 +424,48 @@ describe('ControlChart', () => {
     }));
   }
 
-  it('rotates x-axis labels once past 7 points, same as the sparse demo fixture', () => {
+  function expectTicksInsideViewBox(container: HTMLElement) {
+    const svg = container.querySelector('svg.c2-cc-svg')!;
+    const viewBoxH = Number(svg.getAttribute('viewBox')!.split(/\s+/)[3]);
+    const ticks = Array.from(container.querySelectorAll<SVGTextElement>('text.c2-cc-xtick'));
+    expect(ticks.length).toBeGreaterThan(0);
+    for (const t of ticks) {
+      expect(t.getAttribute('transform')).toMatch(/rotate\(-40,/);
+      // A rotated label anchored 'end' descends sin(40°) × its width below its pivot.
+      const width = estimateTextWidth(visibleText(t), TICK_FS);
+      const lowest = M_TOP + Number(t.getAttribute('y')) + Math.sin((40 * Math.PI) / 180) * width;
+      expect(lowest).toBeLessThanOrEqual(viewBoxH);
+    }
+  }
+
+  it('keeps short labels flat when they fit their pitch', () => {
     const { container } = render(
       <ControlChart title="Process" points={points(3, 6)} ucl={60} lcl={40} centerLine={50} />,
     );
     const ticks = Array.from(container.querySelectorAll('text.c2-cc-xtick'));
     expect(ticks.length).toBeGreaterThan(0);
-    for (const t of ticks) {
-      expect(t.getAttribute('transform')).toBeNull();
-    }
+    for (const t of ticks) expect(t.getAttribute('transform')).toBeNull();
   });
 
   it.each([10, 20])('keeps rotated long labels inside the viewBox for %i points', (n) => {
-    // Long labels (well beyond the ~6-char demo fixture) are exactly what pushed a rotated
-    // label's descent past the old 40px bottom margin.
     const { container } = render(
       <ControlChart title="Process" points={points(n, 14)} ucl={60} lcl={40} centerLine={50} />,
     );
-    const svg = container.querySelector('svg.c2-cc-svg')!;
-    const viewBox = svg.getAttribute('viewBox')!.split(/\s+/).map(Number);
-    const [, , , viewBoxH] = viewBox;
-    expect(viewBoxH).toBe(H);
-
-    const ticks = Array.from(container.querySelectorAll<SVGTextElement>('text.c2-cc-xtick'));
-    expect(ticks.length).toBeGreaterThan(0);
-
-    for (const t of ticks) {
-      // Rotated labels anchor 'end' and pivot via `rotate(-40, x, y)` around their own
-      // baseline y — the same shape ControlChart.tsx emits.
-      expect(t.getAttribute('transform')).toMatch(/rotate\(-40,/);
-      const y = Number(t.getAttribute('y'));
-      const label = t.textContent ?? '';
-      // Approximate glyph width for the 9.5px axis-tick font (~6px/char average for a sans
-      // font — the same ratio the component's own margin comment budgets against: "~84px
-      // wide, ≈14 chars"), then project the rotated bounding box's descent below the
-      // label's rotation anchor.
-      const approxWidth = label.length * 6;
-      const descent = Math.sin((40 * Math.PI) / 180) * approxWidth;
-      const lowestPoint = y + descent;
-      // The label's rotated footprint must stay inside the fixed viewBox — this is exactly
-      // what the old M.bottom=40 / H=220 layout failed for any label wider than ~53px.
-      expect(lowestPoint).toBeLessThanOrEqual(H);
-    }
+    expectTicksInsideViewBox(container);
   });
 
-  it('does not let a 14-character label overflow the fixed-height card wrapper', () => {
-    // The wrapper clamps to a fixed pixel height (clamp(200px, 50cqi, 280px)) matching the
-    // 480:240 viewBox aspect ratio; overflow:hidden on the wrapper is the last line of defense,
-    // but the SVG content itself must stay within its own viewBox — this is what regressed.
-    const longLabelPoints: ControlChartPoint[] = Array.from({ length: 12 }, (_, i) => ({
-      label: `Milestone ${i + 1} Review`, // ~20 chars, far past the ~6-char demo fixture
+  it('cuts a label past the rotated cap and keeps it whole in a tooltip', () => {
+    const long: ControlChartPoint[] = Array.from({ length: 12 }, (_, i) => ({
+      label: `Milestone ${i + 1} quarterly operating review`,
       value: 50 + i,
     }));
     const { container } = render(
-      <ControlChart title="Process" points={longLabelPoints} ucl={70} lcl={30} centerLine={50} />,
+      <ControlChart title="Process" points={long} ucl={70} lcl={30} centerLine={50} />,
     );
-    const svg = container.querySelector('svg.c2-cc-svg')!;
-    const [, , , viewBoxH] = svg.getAttribute('viewBox')!.split(/\s+/).map(Number);
-    expect(viewBoxH).toBe(H);
-
-    const ticks = Array.from(container.querySelectorAll<SVGTextElement>('text.c2-cc-xtick'));
-    for (const t of ticks) {
-      const y = Number(t.getAttribute('y'));
-      // Every rotated tick's un-rotated anchor point must sit above the viewBox floor with
-      // room for its own margin band — regression guard for the 40px-bottom-margin bug where
-      // even the anchor's clearance was too tight for long labels.
-      expect(y).toBeLessThan(H);
-      expect(H - y).toBeGreaterThanOrEqual(M_BOTTOM - 6);
-    }
+    expectTicksInsideViewBox(container);
+    const first = container.querySelector<SVGTextElement>('text.c2-cc-xtick')!;
+    expect(visibleText(first).endsWith('…')).toBe(true);
+    expect(first.querySelector('title')?.textContent).toBe(long[0].label);
   });
 });
 
@@ -1335,11 +1306,10 @@ describe('QQPlot', () => {
   });
 });
 
-// Regression coverage for a real bug: the row label <text> sits at a fixed x = PAD_L - 8
-// (right-anchored into an 86px-wide left gutter) with no truncation, sized only for the demo
-// fixture's longest label ("Winter squash", 13 chars). A longer real-data row label (a species
-// name, a multi-word produce item) rendered wide enough to run past the SVG's left edge (x=0)
-// instead of fitting inside the gutter — clipped or drawn off-canvas.
+// SeasonBand used to draw in a fixed 320-wide viewBox stretched to the card, so on a wide card its
+// 10px row names rendered at 25-50px and ran off the left edge however the gutter truncated them.
+// It now lays out at the measured width, one unit per pixel, and WRAPS a long name inside the
+// gutter rather than cutting it.
 describe('SeasonBand', () => {
   function rowsWith(labels: string[]): SeasonRow[] {
     return labels.map((label) => ({
@@ -1347,53 +1317,61 @@ describe('SeasonBand', () => {
       windows: [{ from: 3, to: 6, kind: 'available' }],
     }));
   }
+  const lineTexts = (node: Element) =>
+    Array.from(node.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
 
-  it('leaves a short demo-fixture-sized row label untouched', () => {
+  it('shows a short name whole, on one line', () => {
     const { container } = render(
       <SeasonBand title="Produce" rows={rowsWith(['Tomatoes', 'Winter squash'])} />,
     );
     const labels = Array.from(container.querySelectorAll('text.c2-sb-row-lbl'));
-    expect(labels.map((n) => visibleText(n))).toEqual(['Tomatoes', 'Winter squash']);
-    expect(container.querySelectorAll('text.c2-sb-row-lbl title')).toHaveLength(0);
+    expect(labels.map(lineTexts)).toEqual([['Tomatoes'], ['Winter squash']]);
   });
 
-  it('truncates a row label longer than the left-gutter can hold instead of overflowing it', () => {
+  it('wraps a long name inside the gutter instead of cutting it or running off the edge', () => {
     const longLabel = 'Gravitationally Anomalous Heirloom Squash';
     const { container } = render(
       <SeasonBand title="Produce" rows={rowsWith(['Tomatoes', longLabel])} />,
     );
-    const labels = Array.from(container.querySelectorAll('text.c2-sb-row-lbl'));
-    expect(labels).toHaveLength(2);
-
-    const longNode = labels[1];
-    const rendered = visibleText(longNode);
-    // Every rendered row label must fit inside the fixed 86px-wide left gutter at the class's
-    // 10px font-size — this is the exact ceiling the unbounded label blew past.
-    expect(rendered.length).toBeLessThan(longLabel.length);
-    expect(rendered.endsWith('…')).toBe(true);
-
-    // Rendered text never starts left of the SVG's viewBox origin (x=0) — the concrete
-    // "off-canvas" failure mode: an unclamped label's glyph run extending past x=0.
-    const x = Number(longNode.getAttribute('x'));
-    const approxWidth = rendered.length * 10 * 0.6; // same glyph-width heuristic as the fix
-    expect(x - approxWidth).toBeGreaterThanOrEqual(0);
-
-    // The full label is still available, via a native <title> tooltip.
-    const title = longNode.querySelector('title');
-    expect(title?.textContent).toBe(longLabel);
+    const node = container.querySelectorAll('text.c2-sb-row-lbl')[1];
+    const lines = lineTexts(node);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe(longLabel);
+    expect(lines.join('')).not.toContain('…');
+    const x = Number(node.getAttribute('x'));
+    for (const line of lines) expect(x - line.length * 11 * 0.6).toBeGreaterThanOrEqual(0);
   });
 
-  it('holds the truncation ceiling steady as more rows are added, not just at the demo fixture count', () => {
+  it('grows a row to carry its wrapped name, so stacked names never overlap', () => {
     const longLabel = 'Extraordinarily Long Multi-Word Produce Designation';
     const rows = rowsWith(Array.from({ length: 12 }, (_, i) => `${longLabel} ${i}`));
     const { container } = render(<SeasonBand title="Produce" rows={rows} />);
     const labels = Array.from(container.querySelectorAll('text.c2-sb-row-lbl'));
     expect(labels).toHaveLength(12);
-    for (const node of labels) {
-      const rendered = visibleText(node);
-      expect(rendered.length).toBeLessThanOrEqual(13);
-      expect(rendered.endsWith('…')).toBe(true);
+    for (let i = 1; i < labels.length; i++) {
+      const prevLines = lineTexts(labels[i - 1]).length;
+      const prevTop = Number(labels[i - 1].getAttribute('y'));
+      const top = Number(labels[i].getAttribute('y'));
+      expect(top - prevTop).toBeGreaterThanOrEqual(prevLines * 13);
     }
+  });
+
+  it('lays out at the width it is given, one unit per pixel', () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900);
+    const { container } = render(<SeasonBand title="Produce" rows={rowsWith(['Tomatoes'])} />);
+    expect(container.querySelector('svg.c2-sb-svg')?.getAttribute('viewBox')).toMatch(/^0 -6 900 /);
+    rect.mockRestore();
+  });
+
+  it('tells window kinds apart by more than hue, in the bands and the legend alike', () => {
+    const rows: SeasonRow[] = [
+      { label: 'Sanma', windows: [{ from: 9, to: 11, kind: 'peak' }] },
+      { label: 'Sweet potato', windows: [{ from: 9, to: 12, kind: 'harvest' }] },
+    ];
+    const { container } = render(<SeasonBand title="Produce" rows={rows} />);
+    // Harvest is hatched: a template that inks presence and warning alike still shows two kinds.
+    expect(container.querySelectorAll('pattern')).toHaveLength(1);
+    expect(container.querySelectorAll('.c2-sb-leg i.is-hatched')).toHaveLength(1);
   });
 });
 
@@ -1720,6 +1698,30 @@ describe('LineBalance hover read-out', () => {
       expect(x + w).toBeLessThanOrEqual(vbW);
       expect(y).toBeGreaterThanOrEqual(0);
       expect(y + h).toBeLessThanOrEqual(vbH);
+    }
+  });
+});
+
+describe('HrDiagram region names', () => {
+  it('sits each region name clear of the stars clustered at its centre', () => {
+    const block = labcanvas.blocks.find((b) => b.type === 'hrdiagram');
+    if (!block || block.type !== 'hrdiagram') throw new Error('fixture missing');
+    const { container } = render(<HrDiagram {...block.props} />);
+    const stars = [...container.querySelectorAll('circle.hrd-star')].map((c) => ({
+      x: Number(c.getAttribute('cx')),
+      y: Number(c.getAttribute('cy')),
+      r: Number(c.getAttribute('r')),
+    }));
+    const labels = [...container.querySelectorAll('text.hrd-region-lbl[x]')];
+    expect(labels.length).toBeGreaterThan(1);
+    for (const t of labels) {
+      const x = Number(t.getAttribute('x'));
+      const y = Number(t.getAttribute('y'));
+      const halfW = estimateTextWidth(t.textContent ?? '', 9.5, true) / 2;
+      const under = stars.filter(
+        (s) => Math.abs(s.x - x) < halfW + s.r && Math.abs(s.y - y) < 9.5 * 0.6 + s.r,
+      );
+      expect(under, t.textContent ?? '').toEqual([]);
     }
   });
 });

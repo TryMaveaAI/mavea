@@ -1313,7 +1313,7 @@ export const product: ConversationSpec = {
         pitch: '100',
         process: 'GMAW',
         caption:
-          'A 6&nbsp;mm fillet on the arrow side, welded intermittently 50&nbsp;long every 100.',
+          'A 6\u00a0mm fillet on the arrow side, welded intermittently 50\u00a0mm long every 100\u00a0mm.',
         footer:
           'The glyph below the reference line means <b>arrow-side</b>; <b>50-100</b> reads “50&nbsp;mm of weld, centre-to-centre every 100&nbsp;mm” — an intermittent fillet that saves heat and filler.',
       },

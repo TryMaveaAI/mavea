@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { CellDiagramProps, CellPart } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { COLUMN_OFFSET, layoutCellLabels } from './cellLabels';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 
 type Props = CellDiagramProps & { delay?: number };
 
@@ -13,38 +15,43 @@ type Props = CellDiagramProps & { delay?: number };
 // lines. The plant view swaps in a rectangular cell-wall frame and adds the chloroplast, the large
 // central vacuole, and a wider cell wall; the animal view is the rounded membrane blob.
 
-const W = 320;
 const H = 230;
-// Left/right gutters revealed in the viewBox so the right-aligned gutter labels (e.g. the
-// left-side "Golgi apparatus") and the longest right-side labels render in full instead of
-// clipping at the card edge. They only widen the visible canvas — every glyph/label keeps its
-// existing coordinates, so the cell is not rescaled or moved. Each is sized for a full
-// LABEL_MAX_CHARS label at .cel-label's size reading outward from the outermost anchor.
-const GUT_L = 60;
-const GUT_R = 24;
+// .cel-label's size, in the viewBox's units, and its line pitch.
+const LABEL_FS = 9;
+const LABEL_LINE_H = LABEL_FS * 1.18;
+const LABEL_GAP = 12;
+// Each label column is a fixed width, so the canvas — and with it the cell's drawn size — is
+// the same whatever names an answer uses. A name wider than the column wraps to a second line
+// ("Endoplasmic / reticulum"), and past two lines it ends in an ellipsis with the full text in
+// a native <title>; the column only has to be as wide as a typical organelle name.
+const LABEL_COL_W = estimateTextWidth('Golgi apparatus', LABEL_FS, true);
+const LABEL_MAX_LINES = 2;
+// The cell's outer edge in each shell, which the label columns sit just outside.
+const SHELL_X = { animal: [40, 252], plant: [20, 260] } as const;
 
-// Labels are drawn at fixed anchor coordinates (see GLYPHS below) with no width check — a
-// model-authored override longer than the preset names ("Nucleus", "Golgi apparatus") or an
-// organelle list crowded with many labels runs past the gutter/card edge or collides with a
-// neighbouring leader line. Cap to a conservative character budget sized for .cel-label and the
-// gutter width, keeping the full text as a native <title> tooltip — same idiom as
-// EtymTree/ParseTree/WaveDiagram/TeachDiagram.
-const LABEL_MAX_CHARS = 20;
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
+/** A label's lines in its column, and whether any of it had to be cut. */
+function labelLines(text: string): { lines: string[]; clipped: boolean } {
+  const all = fitText(text, {
+    maxWidth: LABEL_COL_W,
+    fontSize: LABEL_FS,
+    minFontSize: LABEL_FS,
+    bold: true,
+  }).lines;
+  if (all.length <= LABEL_MAX_LINES) return { lines: all, clipped: false };
+  const lines = all.slice(0, LABEL_MAX_LINES);
+  let last = lines[LABEL_MAX_LINES - 1];
+  while (last.length > 1 && estimateTextWidth(last + '…', LABEL_FS, true) > LABEL_COL_W) {
+    last = last.slice(0, -1);
+  }
+  lines[LABEL_MAX_LINES - 1] = last.trimEnd() + '…';
+  return { lines, clipped: true };
 }
 
-// Where a label sits and which way its leader line reads. `side:'left'` anchors the text at the
-// left gutter (text-anchor:end) with the leader running rightward to the glyph; `'right'` mirrors.
+// The point on a glyph its leader line starts from. Where the label itself goes is decided at
+// render time by `layoutCellLabels`, from whichever organelles the answer actually lists.
 interface Anchor {
-  /** Glyph attachment point (SVG coords) — the leader line starts here. */
   gx: number;
   gy: number;
-  /** Label text position (SVG coords). */
-  lx: number;
-  ly: number;
-  side: 'left' | 'right';
 }
 
 interface Glyph {
@@ -52,7 +59,7 @@ interface Glyph {
   name: string;
   /** Which cell types this organelle legitimately belongs to. */
   in: 'both' | 'animal' | 'plant';
-  /** Leader-line + label anchor. */
+  /** Leader-line start. */
   anchor: Anchor;
   /** The organelle shape, parameterised only by its highlight colour. */
   draw: (color: string, on: boolean) => ReactNode;
@@ -73,7 +80,7 @@ const GLYPHS: Record<string, Glyph> = {
   nucleus: {
     name: 'Nucleus',
     in: 'both',
-    anchor: { gx: 118, gy: 96, lx: 150, ly: 40, side: 'right' },
+    anchor: { gx: 118, gy: 96 },
     draw: (color, on) => (
       <g>
         <circle
@@ -97,13 +104,13 @@ const GLYPHS: Record<string, Glyph> = {
   nucleolus: {
     name: 'Nucleolus',
     in: 'both',
-    anchor: { gx: 126, gy: 114, lx: 158, ly: 150, side: 'right' },
+    anchor: { gx: 126, gy: 114 },
     draw: () => null, // drawn inside the nucleus glyph; label-only entry
   },
   mitochondria: {
     name: 'Mitochondria',
     in: 'both',
-    anchor: { gx: 196, gy: 70, lx: 226, ly: 56, side: 'right' },
+    anchor: { gx: 196, gy: 70 },
     draw: (color, on) => (
       <g transform="translate(196 70) rotate(-18)">
         <ellipse
@@ -129,7 +136,7 @@ const GLYPHS: Record<string, Glyph> = {
   er: {
     name: 'Endoplasmic reticulum',
     in: 'both',
-    anchor: { gx: 96, gy: 158, lx: 150, ly: 200, side: 'right' },
+    anchor: { gx: 96, gy: 158 },
     draw: (color, on) => (
       // Folded membrane ribbon hugging the lower edge of the nucleus.
       <path
@@ -144,7 +151,7 @@ const GLYPHS: Record<string, Glyph> = {
   golgi: {
     name: 'Golgi apparatus',
     in: 'both',
-    anchor: { gx: 70, gy: 70, lx: 36, ly: 50, side: 'left' },
+    anchor: { gx: 70, gy: 70 },
     draw: (color, on) => (
       // Stack of flattened, progressively shorter cisternae.
       <g
@@ -162,7 +169,7 @@ const GLYPHS: Record<string, Glyph> = {
   ribosomes: {
     name: 'Ribosomes',
     in: 'both',
-    anchor: { gx: 168, gy: 150, lx: 222, ly: 176, side: 'right' },
+    anchor: { gx: 168, gy: 150 },
     draw: (color, on) => {
       // A scatter of small dots — fixed offsets so they never wander between renders.
       const dots: Array<[number, number]> = [
@@ -186,7 +193,7 @@ const GLYPHS: Record<string, Glyph> = {
     name: 'Vacuole',
     // Small storage vacuoles exist in animal cells; the LARGE central vacuole is the plant one.
     in: 'both',
-    anchor: { gx: 208, gy: 150, lx: 240, ly: 150, side: 'right' },
+    anchor: { gx: 208, gy: 150 },
     draw: (color, on) => (
       <circle
         cx={208}
@@ -201,7 +208,7 @@ const GLYPHS: Record<string, Glyph> = {
   lysosome: {
     name: 'Lysosome',
     in: 'animal',
-    anchor: { gx: 96, gy: 188, lx: 60, ly: 200, side: 'left' },
+    anchor: { gx: 96, gy: 188 },
     draw: (color, on) => (
       <circle
         cx={96}
@@ -216,7 +223,7 @@ const GLYPHS: Record<string, Glyph> = {
   centrosome: {
     name: 'Centrosome',
     in: 'animal',
-    anchor: { gx: 150, gy: 96, lx: 184, ly: 96, side: 'right' },
+    anchor: { gx: 150, gy: 96 },
     draw: (color, on) => (
       // Two perpendicular centrioles.
       <g stroke={baseStroke(on, color)} strokeWidth={on ? 3 : 2.2} strokeLinecap="round">
@@ -228,20 +235,20 @@ const GLYPHS: Record<string, Glyph> = {
   cytoplasm: {
     name: 'Cytoplasm',
     in: 'both',
-    anchor: { gx: 150, gy: 120, lx: 150, ly: 120, side: 'right' },
+    anchor: { gx: 200, gy: 182 }, // open cytoplasm, clear of every organelle
     draw: () => null, // the interior fill IS the cytoplasm — label-only entry
   },
   membrane: {
     name: 'Cell membrane',
     in: 'both',
-    anchor: { gx: 150, gy: 30, lx: 150, ly: 18, side: 'right' },
+    anchor: { gx: 150, gy: 29 }, // on the membrane's top edge in both shells
     draw: () => null, // the outline IS the membrane — label-only entry
   },
   // ── plant-only ──
   chloroplast: {
     name: 'Chloroplast',
     in: 'plant',
-    anchor: { gx: 196, gy: 96, lx: 232, ly: 88, side: 'right' },
+    anchor: { gx: 196, gy: 96 },
     draw: (color, on) => (
       <g transform="translate(196 96) rotate(24)">
         <ellipse
@@ -272,7 +279,7 @@ const GLYPHS: Record<string, Glyph> = {
   'cell wall': {
     name: 'Cell wall',
     in: 'plant',
-    anchor: { gx: 150, gy: 14, lx: 150, ly: 14, side: 'right' },
+    anchor: { gx: 150, gy: 20 }, // on the wall's top edge
     draw: () => null, // the rigid outer frame IS the wall — drawn by the shell, label-only here
   },
 };
@@ -372,6 +379,25 @@ export function CellDiagram({
   // squarer cell-wall frame. The interior fill is the cytoplasm.
   const cytoFill = 'color-mix(in oklab, var(--presence) 6%, transparent)';
 
+  const [shellLeft, shellRight] = SHELL_X[isPlant ? 'plant' : 'animal'];
+  const fitted = new Map(resolved.map((r) => [r.key, labelLines(r.label)]));
+  // One pitch for every label, sized for a wrapped one when any label wraps.
+  const tallest = Math.max(1, ...[...fitted.values()].map((f) => f.lines.length));
+  const placed = new Map(
+    layoutCellLabels(
+      resolved.map((r) => ({ id: r.key, gx: r.glyph.anchor.gx, gy: r.glyph.anchor.gy })),
+      {
+        shellLeft,
+        shellRight,
+        top: 8 + ((tallest - 1) * LABEL_LINE_H) / 2,
+        bottom: H - 8 - ((tallest - 1) * LABEL_LINE_H) / 2,
+        gap: tallest > 1 ? tallest * LABEL_LINE_H + 3 : LABEL_GAP,
+      },
+    ).map((l) => [l.id, l]),
+  );
+  const viewMinX = Math.floor(shellLeft - COLUMN_OFFSET - LABEL_COL_W) - 2;
+  const viewMaxX = Math.ceil(shellRight + COLUMN_OFFSET + LABEL_COL_W) + 2;
+
   return (
     <div
       className="card reveal"
@@ -383,86 +409,101 @@ export function CellDiagram({
       </div>
 
       <div className="cel-wrap">
-        <svg
-          viewBox={`${-GUT_L} 0 ${W + GUT_L + GUT_R} ${H}`}
-          className="cel-svg"
-          role="img"
-          aria-label={`${isPlant ? 'Plant' : 'Animal'} cell diagram — ${title}`}
-        >
-          {/* ── Shell ── */}
-          {isPlant ? (
-            <>
-              {/* Cell wall — rigid outer frame. */}
-              <rect
-                x={22}
-                y={20}
-                width={236}
-                height={190}
-                rx={18}
-                fill="color-mix(in oklab, var(--insight) 7%, transparent)"
-                stroke="var(--line-strong)"
-                strokeWidth={5}
-              />
-              {/* Plasma membrane, just inside the wall. */}
-              <rect
-                x={32}
-                y={30}
-                width={216}
-                height={170}
-                rx={12}
+        <div className="canvas-figure cel-figure">
+          <svg
+            viewBox={`${viewMinX} 0 ${viewMaxX - viewMinX} ${H}`}
+            className="cel-svg"
+            role="img"
+            aria-label={`${isPlant ? 'Plant' : 'Animal'} cell diagram — ${title}`}
+          >
+            {/* ── Shell ── */}
+            {isPlant ? (
+              <>
+                {/* Cell wall — rigid outer frame. */}
+                <rect
+                  x={22}
+                  y={20}
+                  width={236}
+                  height={190}
+                  rx={18}
+                  fill="color-mix(in oklab, var(--insight) 7%, transparent)"
+                  stroke="var(--line-strong)"
+                  strokeWidth={5}
+                />
+                {/* Plasma membrane, just inside the wall. */}
+                <rect
+                  x={32}
+                  y={30}
+                  width={216}
+                  height={170}
+                  rx={12}
+                  fill={cytoFill}
+                  stroke="var(--text-secondary)"
+                  strokeWidth={1.6}
+                />
+              </>
+            ) : (
+              // Animal membrane — a soft rounded blob.
+              <path
+                d="M150,28 C214,28 252,62 252,116 C252,172 210,206 150,206 C92,206 40,176 40,116 C40,60 88,28 150,28 Z"
                 fill={cytoFill}
                 stroke="var(--text-secondary)"
-                strokeWidth={1.6}
+                strokeWidth={1.8}
               />
-            </>
-          ) : (
-            // Animal membrane — a soft rounded blob.
-            <path
-              d="M150,28 C214,28 252,62 252,116 C252,172 210,206 150,206 C92,206 40,176 40,116 C40,60 88,28 150,28 Z"
-              fill={cytoFill}
-              stroke="var(--text-secondary)"
-              strokeWidth={1.8}
-            />
-          )}
+            )}
 
-          {/* ── Organelle glyphs ── */}
-          {resolved.map((r) => (
-            <g key={r.key}>{r.glyph.draw(r.color, r.on)}</g>
-          ))}
+            {/* ── Organelle glyphs ── */}
+            {resolved.map((r) => (
+              <g key={r.key}>{r.glyph.draw(r.color, r.on)}</g>
+            ))}
 
-          {/* ── Leader lines + labels ── (drawn last so they sit above the glyphs) */}
-          {resolved.map((r) => {
-            const a = r.glyph.anchor;
-            const labelColor = r.on ? r.color : 'var(--text-secondary)';
-            // Elbow leader: from the glyph out to the label baseline.
-            const tx = a.side === 'left' ? a.lx + 2 : a.lx - 2;
-            return (
-              <g key={`l-${r.key}`}>
-                <line
-                  x1={a.gx}
-                  y1={a.gy}
-                  x2={tx}
-                  y2={a.ly}
-                  stroke="var(--line-strong)"
-                  strokeWidth={0.8}
-                  className="cel-leader"
-                />
-                <circle cx={a.gx} cy={a.gy} r={1.6} fill="var(--line-strong)" />
-                <text
-                  x={a.lx}
-                  y={a.ly}
-                  textAnchor={a.side === 'left' ? 'end' : 'start'}
-                  dominantBaseline="middle"
-                  className={'cel-label' + (r.on ? ' cel-label--on' : '')}
-                  fill={labelColor}
-                >
-                  {r.label.length > LABEL_MAX_CHARS && <title>{r.label}</title>}
-                  {truncate(r.label, LABEL_MAX_CHARS)}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+            {/* ── Leader lines + labels ── (drawn last so they sit above the glyphs) */}
+            {resolved.map((r) => {
+              const a = r.glyph.anchor;
+              const l = placed.get(r.key);
+              const fit = fitted.get(r.key);
+              if (!l || !fit) return null;
+              const labelColor = r.on ? r.color : 'var(--text-secondary)';
+              return (
+                <g key={`l-${r.key}`}>
+                  <line
+                    x1={a.gx}
+                    y1={a.gy}
+                    x2={l.leaderX}
+                    y2={l.y}
+                    stroke="var(--line-strong)"
+                    strokeWidth={0.8}
+                    className="cel-leader"
+                  />
+                  <circle cx={a.gx} cy={a.gy} r={1.6} fill="var(--line-strong)" />
+                  <text
+                    x={l.x}
+                    y={l.y}
+                    textAnchor={l.side === 'left' ? 'end' : 'start'}
+                    dominantBaseline="middle"
+                    className={'cel-label' + (r.on ? ' cel-label--on' : '')}
+                    fill={labelColor}
+                  >
+                    {fit.clipped && <title>{r.label}</title>}
+                    {fit.lines.length === 1
+                      ? fit.lines[0]
+                      : fit.lines.map((line, li) => (
+                          <tspan
+                            key={li}
+                            x={l.x}
+                            dy={
+                              li === 0 ? (-(fit.lines.length - 1) * LABEL_LINE_H) / 2 : LABEL_LINE_H
+                            }
+                          >
+                            {line}
+                          </tspan>
+                        ))}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
 
         {/* Legend — only parts that carry a note (so it stays clean when there's nothing to add). */}
         {resolved.some((r) => r.note) && (

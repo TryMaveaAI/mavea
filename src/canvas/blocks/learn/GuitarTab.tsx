@@ -16,6 +16,11 @@ const ROW_BLOCK = 75; // vertical distance between successive rows
 const PAD_IN = 9; // inset so a beat-1 note doesn't sit on the barline
 const PX_PER_BEAT = 20;
 const MAX_MEASURES = 64;
+// A fret number's backing pill, in viewBox units: wide enough for its digits at .gt-fret's size.
+const pillWidth = (label: string) => label.length * 4.4 + 5;
+// .gt-tech's glyph width, and the air it needs either side to sit between two pills.
+const TECH_W = 4;
+const TECH_AIR = 0.5;
 
 const clampInt = (v: unknown, lo: number, hi: number, fallback: number): number => {
   const n = typeof v === 'number' ? v : typeof v === 'string' ? parseInt(v, 10) : NaN;
@@ -33,12 +38,13 @@ function parseTuning(tuning: string | undefined): string[] {
   return tokens.map((t) => t[0].toUpperCase() + t.slice(1));
 }
 
-// A technique that draws as an arc/line linking two notes on the same string.
-const LINKED: Record<string, { glyph: string; arc: boolean }> = {
+// A technique that links two notes on the same string: a slur for a hammer-on or pull-off, a
+// slanted stroke for a slide, rising for a slide up and falling for one down.
+const LINKED: Record<string, { glyph: string; arc: boolean; rise?: boolean }> = {
   h: { glyph: 'h', arc: true }, // hammer-on
   p: { glyph: 'p', arc: true }, // pull-off
-  s: { glyph: '/', arc: false }, // slide up
-  '/': { glyph: '\\', arc: false }, // slide down
+  s: { glyph: '/', arc: false, rise: true }, // slide up
+  '/': { glyph: '\\', arc: false, rise: false }, // slide down
 };
 
 export function GuitarTab({
@@ -89,7 +95,12 @@ export function GuitarTab({
     };
     const rowOf = (measure: number) => Math.floor((measure - 1) / mpr);
 
-    const placed = norm.map((n) => ({ ...n, x: noteX(n.measure, n.beat), row: rowOf(n.measure) }));
+    const placed = norm.map((n) => ({
+      ...n,
+      x: noteX(n.measure, n.beat),
+      row: rowOf(n.measure),
+      w: pillWidth(n.technique === 'x' ? 'x' : String(n.fret)),
+    }));
 
     // Per (row,string) note sequence, ordered by x, so a technique can link to the NEXT played note.
     const seq = new Map<string, typeof placed>();
@@ -101,6 +112,7 @@ export function GuitarTab({
     }
     for (const list of seq.values()) list.sort((a, b) => a.x - b.x);
 
+    // x1/x2 are the facing edges of the two notes' pills — the room a link has to draw in.
     const links: Array<{
       row: number;
       string: number;
@@ -108,6 +120,7 @@ export function GuitarTab({
       x2: number;
       glyph: string;
       arc: boolean;
+      rise?: boolean;
     }> = [];
     for (const list of seq.values()) {
       for (let i = 0; i < list.length; i++) {
@@ -116,8 +129,9 @@ export function GuitarTab({
         if (!t || !(t in LINKED)) continue;
         const next = list[i + 1];
         const spec = LINKED[t];
-        const x2 = next ? next.x : n.x + 14;
-        links.push({ row: n.row, string: n.string, x1: n.x, x2, glyph: spec.glyph, arc: spec.arc });
+        const x1 = n.x + n.w / 2;
+        const x2 = next ? next.x - next.w / 2 : x1 + 10;
+        links.push({ row: n.row, string: n.string, x1, x2, ...spec });
       }
     }
 
@@ -217,42 +231,63 @@ export function GuitarTab({
               );
             })}
 
-            {/* Technique links (arcs/slides), drawn under the fret markers */}
+            {/* Technique links, drawn under the fret markers. Each one keeps to its own string's
+                band: the glyph sits ON the string between the two pills, as tab writes "5h7",
+                because anything stacked above the slur lands on the next string up. */}
             {model.links.map((lk, i) => {
               const y = stringY(lk.string)(lk.row);
               const mx = (lk.x1 + lk.x2) / 2;
+              const room = lk.x2 - lk.x1;
               if (lk.arc) {
-                const arcTop = y - 7;
+                const from = lk.x1 - 2;
+                const to = lk.x2 + 2;
+                const inline = room >= TECH_W + 2 * TECH_AIR;
                 return (
                   <g key={`lk${i}`} className="gt-link">
                     <path
-                      d={`M ${lk.x1} ${y - 3} Q ${mx} ${arcTop} ${lk.x2} ${y - 3}`}
+                      d={`M ${from} ${y - 5} Q ${mx} ${y - 9} ${to} ${y - 5}`}
                       className="gt-slur"
                       fill="none"
                     />
-                    <text x={mx} y={arcTop - 1} className="gt-tech" textAnchor="middle">
-                      {lk.glyph}
-                    </text>
+                    {inline && (
+                      <text
+                        x={mx}
+                        y={y}
+                        className="gt-tech"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                      >
+                        {lk.glyph}
+                      </text>
+                    )}
+                    {!inline && <title>{lk.glyph === 'h' ? 'hammer-on' : 'pull-off'}</title>}
                   </g>
                 );
               }
+              // The slide is its own glyph: a stroke across the gap, slanted the way the pitch moves.
+              const dy = Math.min(3.5, room / 2);
+              const from = lk.x1 + TECH_AIR;
+              const to = Math.max(from, lk.x2 - TECH_AIR);
               return (
                 <g key={`lk${i}`} className="gt-link">
-                  <line x1={lk.x1 + 5} y1={y - 2} x2={lk.x2 - 5} y2={y - 2} className="gt-slide" />
-                  <text x={mx} y={y - 5} className="gt-tech" textAnchor="middle">
-                    {lk.glyph}
-                  </text>
+                  <line
+                    x1={from}
+                    y1={lk.rise ? y + dy : y - dy}
+                    x2={to}
+                    y2={lk.rise ? y - dy : y + dy}
+                    className="gt-slide"
+                  />
+                  <title>{lk.rise ? 'slide up' : 'slide down'}</title>
                 </g>
               );
             })}
-
             {/* Fret markers — a bg pill so the string doesn't strike through the digits */}
             {model.placed.map((n, i) => {
               const y = stringY(n.string)(n.row);
               const mute = n.technique === 'x';
               const bend = n.technique === 'b';
               const label = mute ? 'x' : String(n.fret);
-              const w = label.length * 4.4 + 5;
+              const w = n.w;
               return (
                 <g key={`fn${i}`}>
                   <rect

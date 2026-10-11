@@ -4,6 +4,8 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
 import type { RayDiagramProps, RayOpticalElement } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { boxesOverlap, cheapest, labelBox, segmentHitsBox, type Box } from './labelPlace';
 
 type Props = RayDiagramProps & { delay?: number };
 
@@ -45,12 +47,23 @@ function Head({ x, y, angle, color }: { x: number; y: number; angle: number; col
   );
 }
 
+type Pt = [number, number];
+interface PlacedLabel {
+  x: number;
+  y: number;
+  anchor: 'start' | 'middle' | 'end';
+}
+// .ray-arrow-lbl / .ray-f-lbl at their fallback size, in viewBox units, for measuring.
+const LBL_FS = 10;
+const LBL_H = 11;
+
 /** A vertical object/image arrow standing on the axis at axis-x = `ax`, height = `h` axis units. */
 function UprightArrow({
   ax,
   h,
   color,
   label,
+  labelAt,
   dashed,
   sx,
   sy,
@@ -59,6 +72,7 @@ function UprightArrow({
   h: number;
   color: string;
   label: string;
+  labelAt: PlacedLabel;
   dashed?: boolean;
   sx: (v: number) => number;
   sy: (v: number) => number;
@@ -82,11 +96,12 @@ function UprightArrow({
       />
       <Head x={x} y={tipY} angle={angle} color={color} />
       <text
-        x={x}
-        y={up ? tipY - 7 : tipY + 14}
+        x={labelAt.x}
+        y={labelAt.y}
         fill={color}
         className="ray-arrow-lbl"
-        textAnchor="middle"
+        textAnchor={labelAt.anchor}
+        dominantBaseline="central"
       >
         {label}
       </text>
@@ -179,7 +194,7 @@ export function RayDiagram({
   const rays = useMemo(() => {
     const tipX = sx(geom.objX);
     const tipY = sy(geom.ho);
-    const out: Array<{ d: string; dash?: boolean; col: string }> = [];
+    const out: Array<{ pts: Pt[]; dash?: boolean; col: string }> = [];
     const xRight = W - PAD_X;
     const xLeft = PAD_X;
 
@@ -189,21 +204,48 @@ export function RayDiagram({
       const fImgX = sx(geom.fRight);
       const slope1 = (axisY - tipY) / (fImgX - cx); // after refraction at the lens plane
       const y1End = tipY + slope1 * (xRight - cx);
-      out.push({ d: `M ${tipX} ${tipY} L ${cx} ${tipY} L ${xRight} ${y1End}`, col: RAY_COL });
+      out.push({
+        pts: [
+          [tipX, tipY],
+          [cx, tipY],
+          [xRight, y1End],
+        ],
+        col: RAY_COL,
+      });
 
       // Ray 2: straight through the centre of the lens (undeviated).
       const slope2 = (sy(0) - tipY) / (cx - tipX);
       const y2End = tipY + slope2 * (xRight - tipX);
-      out.push({ d: `M ${tipX} ${tipY} L ${xRight} ${y2End}`, col: RAY_COL });
+      out.push({
+        pts: [
+          [tipX, tipY],
+          [xRight, y2End],
+        ],
+        col: RAY_COL,
+      });
 
       // For a virtual image (diverging lens, or object inside f) the refracted rays diverge;
       // dashed back-extensions on the OBJECT side meet at the upright virtual image.
       if (Number.isFinite(geom.di) && geom.di < 0) {
         const slope1L = (tipY - axisY) / (cx - fImgX);
         const y1L = tipY + slope1L * (xLeft - cx);
-        out.push({ d: `M ${cx} ${tipY} L ${xLeft} ${y1L}`, dash: true, col: RAY_COL });
+        out.push({
+          pts: [
+            [cx, tipY],
+            [xLeft, y1L],
+          ],
+          dash: true,
+          col: RAY_COL,
+        });
         const y2L = tipY + slope2 * (xLeft - tipX);
-        out.push({ d: `M ${tipX} ${tipY} L ${xLeft} ${y2L}`, dash: true, col: RAY_COL });
+        out.push({
+          pts: [
+            [tipX, tipY],
+            [xLeft, y2L],
+          ],
+          dash: true,
+          col: RAY_COL,
+        });
       }
     } else {
       // ── MIRROR ────────────────────────────────────────────────────────
@@ -211,7 +253,14 @@ export function RayDiagram({
       const fX = sx(geom.fLeft);
       const slope1 = (axisY - tipY) / (fX - cx);
       const y1End = tipY + slope1 * (xLeft - cx);
-      out.push({ d: `M ${tipX} ${tipY} L ${cx} ${tipY} L ${xLeft} ${y1End}`, col: RAY_COL });
+      out.push({
+        pts: [
+          [tipX, tipY],
+          [cx, tipY],
+          [xLeft, y1End],
+        ],
+        col: RAY_COL,
+      });
 
       // Ray 2: through the centre of curvature direction — here, aimed at the focal point and
       // reflected parallel to the axis. Simpler stable pair: ray to the pole reflecting symmetrically.
@@ -219,7 +268,11 @@ export function RayDiagram({
       const slopeIn = (axisY - tipY) / (fX - tipX);
       const yAtMirror = tipY + slopeIn * (cx - tipX);
       out.push({
-        d: `M ${tipX} ${tipY} L ${cx} ${yAtMirror} L ${xLeft} ${yAtMirror}`,
+        pts: [
+          [tipX, tipY],
+          [cx, yAtMirror],
+          [xLeft, yAtMirror],
+        ],
         col: RAY_COL,
       });
 
@@ -227,9 +280,23 @@ export function RayDiagram({
       // dashed back-extensions BEHIND the mirror (right side) meet at the upright virtual image.
       if (Number.isFinite(geom.di) && geom.di < 0) {
         const y1R = tipY + slope1 * (xRight - cx);
-        out.push({ d: `M ${cx} ${tipY} L ${xRight} ${y1R}`, dash: true, col: RAY_COL });
+        out.push({
+          pts: [
+            [cx, tipY],
+            [xRight, y1R],
+          ],
+          dash: true,
+          col: RAY_COL,
+        });
         const y2R = yAtMirror; // already horizontal
-        out.push({ d: `M ${cx} ${y2R} L ${xRight} ${y2R}`, dash: true, col: RAY_COL });
+        out.push({
+          pts: [
+            [cx, y2R],
+            [xRight, y2R],
+          ],
+          dash: true,
+          col: RAY_COL,
+        });
       }
     }
     return out;
@@ -255,6 +322,72 @@ export function RayDiagram({
   const elTop = sy(geom.ho > 0 ? Math.max(geom.ho, Math.abs(geom.hi) || 0) : 0);
   const elBot = sy(-(geom.ho > 0 ? Math.max(geom.ho, Math.abs(geom.hi) || 0) : 0));
   const elHalf = Math.min(Math.abs(axisY - elTop), Math.abs(elBot - axisY), 70) || 60;
+
+  const imageLabel = geom.real ? 'Image' : 'Image (virtual)';
+  const hasImage = Number.isFinite(geom.imageX) && Number.isFinite(geom.hi);
+
+  // Every principal ray passes through the image's tip — that is what makes it the image — so a
+  // label parked at a tip, or under a focal point a ray runs through, is crossed by construction.
+  // Each label takes whichever of a few spots around its feature the fewest rays and shafts
+  // cross, and the labels placed first are obstacles for the rest.
+  const labels = useMemo(() => {
+    const segs: [Pt, Pt][] = rays.flatMap((r) =>
+      r.pts.slice(1).map((q, k): [Pt, Pt] => [r.pts[k], q]),
+    );
+    const shaft = (ax: number, h: number): [Pt, Pt] => [
+      [sx(ax), axisY],
+      [sx(ax), sy(h)],
+    ];
+    segs.push(shaft(geom.objX, geom.ho), [
+      [cx, axisY - elHalf],
+      [cx, axisY + elHalf],
+    ]);
+    if (hasImage) segs.push(shaft(geom.imageX, geom.hi));
+    const taken: Box[] = [];
+    const inside = (b: Box) => b.x1 >= 0 && b.x2 <= W && b.y1 >= 0 && b.y2 <= H;
+    const place = (text: string, candidates: PlacedLabel[]): PlacedLabel => {
+      const w = estimateTextWidth(text, LBL_FS, true);
+      const boxOf = (c: PlacedLabel) => labelBox(c.x, c.y, w, LBL_H, c.anchor);
+      const best = cheapest(candidates, (c) => {
+        const b = boxOf(c);
+        if (!inside(b)) return Infinity;
+        const crossings = segs.filter(([a, z]) => segmentHitsBox(a[0], a[1], z[0], z[1], b)).length;
+        const clashes = taken.filter((t) => boxesOverlap(t, b, 2)).length;
+        return crossings + clashes * 10;
+      });
+      taken.push(boxOf(best));
+      return best;
+    };
+    // An arrow's label: past its tip, across the axis from its base, or beside its shaft.
+    const arrowSpots = (ax: number, h: number): PlacedLabel[] => {
+      const x = sx(ax);
+      const tipY = sy(h);
+      const away = h >= 0 ? -1 : 1; // the tip's direction on screen
+      const midY = (axisY + tipY) / 2;
+      return [
+        { x, y: tipY + away * (LBL_H / 2 + 5), anchor: 'middle' },
+        { x, y: axisY - away * (LBL_H / 2 + 4), anchor: 'middle' },
+        { x: x + 6, y: midY, anchor: 'start' },
+        { x: x - 6, y: midY, anchor: 'end' },
+      ];
+    };
+    const object = place('Object', arrowSpots(geom.objX, geom.ho));
+    const image = hasImage ? place(imageLabel, arrowSpots(geom.imageX, geom.hi)) : null;
+    const below = axisY + LBL_H / 2 + 4;
+    const above = axisY - LBL_H / 2 - 4;
+    const f = [geom.fLeft, geom.fRight].map((fx) => {
+      const x = sx(fx);
+      return place('F', [
+        { x, y: below, anchor: 'middle' },
+        { x, y: above, anchor: 'middle' },
+        { x: x - 4, y: below, anchor: 'end' },
+        { x: x + 4, y: below, anchor: 'start' },
+        { x: x - 4, y: above, anchor: 'end' },
+        { x: x + 4, y: above, anchor: 'start' },
+      ]);
+    });
+    return { object, image, f };
+  }, [rays, geom, sx, sy, axisY, cx, elHalf, hasImage, imageLabel]);
 
   return (
     <div
@@ -329,7 +462,13 @@ export function RayDiagram({
           {[geom.fLeft, geom.fRight].map((fx, i) => (
             <g key={`f${i}`}>
               <circle cx={sx(fx)} cy={axisY} r={2.6} fill={F_COL} />
-              <text x={sx(fx)} y={axisY + 14} className="ray-f-lbl" textAnchor="middle">
+              <text
+                x={labels.f[i].x}
+                y={labels.f[i].y}
+                className="ray-f-lbl"
+                textAnchor={labels.f[i].anchor}
+                dominantBaseline="central"
+              >
                 F
               </text>
             </g>
@@ -342,7 +481,7 @@ export function RayDiagram({
             {rays.map((r, i) => (
               <path
                 key={`ray${i}`}
-                d={r.d}
+                d={r.pts.map(([x, y], k) => `${k ? 'L' : 'M'} ${x} ${y}`).join(' ')}
                 stroke={r.col}
                 className={r.dash ? 'ray-ray ray-ray--dash' : 'ray-ray'}
                 fill="none"
@@ -351,15 +490,24 @@ export function RayDiagram({
           </g>
 
           {/* Object arrow (upright, on the left) */}
-          <UprightArrow ax={geom.objX} h={geom.ho} color={OBJ_COL} label="Object" sx={sx} sy={sy} />
+          <UprightArrow
+            ax={geom.objX}
+            h={geom.ho}
+            color={OBJ_COL}
+            label="Object"
+            labelAt={labels.object}
+            sx={sx}
+            sy={sy}
+          />
 
           {/* Image arrow — only when a finite image forms */}
-          {Number.isFinite(geom.imageX) && Number.isFinite(geom.hi) && (
+          {hasImage && (
             <UprightArrow
               ax={geom.imageX}
               h={geom.hi}
               color={IMG_COL}
-              label={geom.real ? 'Image' : 'Image (virtual)'}
+              label={imageLabel}
+              labelAt={labels.image ?? labels.object}
               dashed={!geom.real}
               sx={sx}
               sy={sy}

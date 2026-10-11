@@ -90,8 +90,12 @@ export function Roadmap({
                   } as CSSProperties
                 }
               >
+                {/* Each divider names its quarter. Left to auto-placement, a full-height cell finds
+                    no column with every row free once the bars have claimed theirs, so the grid
+                    grew implicit columns past the last quarter for them — a grey strip at the right
+                    edge that also squeezed the final quarter's bars into the card's border. */}
                 {quarters.map((_, qi) => (
-                  <div className="fl-rm-cell" key={qi} />
+                  <div className="fl-rm-cell" key={qi} style={{ gridColumn: qi + 1 }} />
                 ))}
                 {!hidden &&
                   lane.items.map((it, ii) => {

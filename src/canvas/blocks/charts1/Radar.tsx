@@ -97,73 +97,75 @@ export function Radar({
       </div>
 
       <div className="c1-radar-wrap">
-        <svg role="img" aria-label={title} viewBox={viewBox} width="100%" className="c1-radar">
-          {rings.map((r, i) => (
-            <polygon
-              key={i}
-              points={angles.map((a) => pt(a, R * r).join(',')).join(' ')}
-              fill="none"
-              stroke="var(--grid-line)"
-              strokeWidth={1}
-            />
-          ))}
-          {angles.map((a, i) => {
-            const [x, y] = pt(a, R);
-            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--grid-line)" />;
-          })}
-          {series.map((s, si) => {
-            if (off.has(si)) return null;
-            const col = s.color || PALETTE[si % PALETTE.length];
-            const poly = angles
-              .map((a, ai) => pt(a, R * ((s.values[ai] || 0) / maxV)).join(','))
-              .join(' ');
-            return (
-              <g key={si} style={{ transition: 'opacity var(--m-normal)' }}>
-                <polygon
-                  points={poly}
-                  fill={col}
-                  fillOpacity={0.14}
-                  stroke={col}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                />
-                {angles.map((a, ai) => {
-                  const [x, y] = pt(a, R * ((s.values[ai] || 0) / maxV));
-                  return (
-                    <circle
-                      key={ai}
-                      cx={x}
-                      cy={y}
-                      r={hoverAxis === ai ? 4.5 : 3}
-                      fill={col}
-                      data-mark={si === 0 && ai === salientAxis ? 'circle' : undefined}
-                    />
-                  );
-                })}
-              </g>
-            );
-          })}
-          {axes.map((label, i) => {
-            const a = angles[i];
-            const [x, y] = pt(a, R + 18);
-            return (
-              <text
+        <div className="canvas-figure">
+          <svg role="img" aria-label={title} viewBox={viewBox} width="100%" className="c1-radar">
+            {rings.map((r, i) => (
+              <polygon
                 key={i}
-                x={x}
-                y={y}
-                textAnchor={Math.abs(x - CX) < 8 ? 'middle' : x > CX ? 'start' : 'end'}
-                dominantBaseline="middle"
-                fontSize={fontSize}
-                fill={hoverAxis === i ? 'var(--text-primary)' : 'var(--text-muted)'}
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={() => setHoverAxis(i)}
-                onMouseLeave={() => setHoverAxis(null)}
-              >
-                {label}
-              </text>
-            );
-          })}
-        </svg>
+                points={angles.map((a) => pt(a, R * r).join(',')).join(' ')}
+                fill="none"
+                stroke="var(--grid-line)"
+                strokeWidth={1}
+              />
+            ))}
+            {angles.map((a, i) => {
+              const [x, y] = pt(a, R);
+              return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--grid-line)" />;
+            })}
+            {series.map((s, si) => {
+              if (off.has(si)) return null;
+              const col = s.color || PALETTE[si % PALETTE.length];
+              const poly = angles
+                .map((a, ai) => pt(a, R * ((s.values[ai] || 0) / maxV)).join(','))
+                .join(' ');
+              return (
+                <g key={si} style={{ transition: 'opacity var(--m-normal)' }}>
+                  <polygon
+                    points={poly}
+                    fill={col}
+                    fillOpacity={0.14}
+                    stroke={col}
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                  />
+                  {angles.map((a, ai) => {
+                    const [x, y] = pt(a, R * ((s.values[ai] || 0) / maxV));
+                    return (
+                      <circle
+                        key={ai}
+                        cx={x}
+                        cy={y}
+                        r={hoverAxis === ai ? 4.5 : 3}
+                        fill={col}
+                        data-mark={si === 0 && ai === salientAxis ? 'circle' : undefined}
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })}
+            {axes.map((label, i) => {
+              const a = angles[i];
+              const [x, y] = pt(a, R + 18);
+              return (
+                <text
+                  key={i}
+                  x={x}
+                  y={y}
+                  textAnchor={Math.abs(x - CX) < 8 ? 'middle' : x > CX ? 'start' : 'end'}
+                  dominantBaseline="middle"
+                  fontSize={fontSize}
+                  fill={hoverAxis === i ? 'var(--text-primary)' : 'var(--text-muted)'}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={() => setHoverAxis(i)}
+                  onMouseLeave={() => setHoverAxis(null)}
+                >
+                  {label}
+                </text>
+              );
+            })}
+          </svg>
+        </div>
 
         <div className="c1-radar-legend">
           {series.map((s, si) => {

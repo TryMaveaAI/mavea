@@ -166,7 +166,7 @@ export function Commandk({
               aria-label="Command palette"
             >
               <div className="ov-ck-search">
-                <Icon.globe className="ic ov-ck-search-ic" />
+                <Icon.search className="ic ov-ck-search-ic" />
                 <input
                   ref={inputRef}
                   className="ov-ck-input"

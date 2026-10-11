@@ -47,7 +47,6 @@ export function Pullquote({
 
       <figure className="lay-pq-fig">
         <span className="lay-pq-bar" />
-        <Icon.quote className="ic lay-pq-mark" style={{ color: accent }} />
         <blockquote
           className="lay-pq-quote"
           key={idx}

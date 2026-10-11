@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { useTimeout } from '../../../hooks/useTimeout';
+import { safeCssColor } from '../../../lib/safeCssColor';
 import type { PaletteProps } from './types';
 
 type Props = PaletteProps & { delay?: number };
@@ -41,14 +42,14 @@ export function Palette({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <div className="me-pal">
+      <div className="me-pal" style={{ ['--pal-n' as string]: swatches.length } as CSSProperties}>
         {swatches.map((s, i) => (
           <button
             key={i}
             className={
               'me-pal-swatch' + (s.light ? ' light' : '') + (copied === i ? ' copied' : '')
             }
-            style={{ background: s.hex }}
+            style={{ background: safeCssColor(s.hex, 'var(--track)') }}
             onClick={() => copy(i, s.hex)}
             title={`Copy ${s.hex}`}
           >

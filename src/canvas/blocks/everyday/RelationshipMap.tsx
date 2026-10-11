@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { RelationshipPerson, RelationshipTie, RelationshipMapProps, TieKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { routeEdge } from '../../lib/edgeDetour';
 
 type Props = RelationshipMapProps & { delay?: number };
 
@@ -12,6 +13,8 @@ const W = 520,
   CX = 260,
   CY = 160;
 const NODE_R = 16;
+/** How far a tie keeps from the centre of a person it does not join: the dot plus a gap. */
+const EDGE_CLEARANCE = NODE_R + 6;
 
 const KIND_STYLE: Record<TieKind, { color: string; dash?: string }> = {
   family: { color: 'var(--presence)' },
@@ -33,6 +36,28 @@ const KIND_LABEL: Record<TieKind, string> = {
 // edge's midpoint instead of relying on color/dash alone to read as "this one's different".
 const HEART_D =
   'M0 3.4 C0 1.1 -2.3 -0.5 -4 0.3 C-5.7 1.1 -5.7 3.4 -4 5.1 L0 9.1 L4 5.1 C5.7 3.4 5.7 1.1 4 0.3 C2.3 -0.5 0 1.1 0 3.4 Z';
+
+interface NodeLabel {
+  x: number;
+  y: number;
+  anchor: 'start' | 'middle' | 'end';
+}
+
+const LABEL_GAP = 6;
+const LABEL_FS = 10.5; // .rm-node-label
+
+/** A name placed just outside its dot along the ring's radius, anchored on the side facing
+ *  away from the centre so its text grows outward rather than back over the dot. */
+function outwardLabel(pt: { x: number; y: number }, angle: number): NodeLabel {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  const reach = NODE_R + LABEL_GAP;
+  const anchor = dx > 0.35 ? 'start' : dx < -0.35 ? 'end' : 'middle';
+  // Text sits on its baseline: shift down by about a cap height so the glyphs centre on the
+  // radial point, and further out at the top and bottom where the name is stacked, not beside.
+  const baseline = LABEL_FS * 0.35 + (anchor === 'middle' ? dy * LABEL_FS * 0.6 : 0);
+  return { x: pt.x + dx * reach, y: pt.y + dy * reach + baseline, anchor };
+}
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
@@ -110,6 +135,10 @@ export function RelationshipMap({
   const model = useMemo(() => {
     const graph = normalizeRelationshipGraph(people, ties);
     const pos = new Map<string, { x: number; y: number }>();
+    // Where each name sits relative to its dot. On the circle every tie is a chord, so it
+    // leaves a dot heading INTO the ring — a name set radially outward is the one place no
+    // tie can cross. The grid keeps names under the dots.
+    const labelAt = new Map<string, NodeLabel>();
     if (layout === 'grid') {
       const cols = Math.ceil(Math.sqrt(graph.people.length));
       const cw = (W - 80) / Math.max(1, cols - 1 || 1);
@@ -118,22 +147,37 @@ export function RelationshipMap({
       graph.people.forEach((p, i) => {
         const c = i % cols,
           r = Math.floor(i / cols);
-        pos.set(p.renderId, { x: 40 + c * cw, y: 40 + r * ch });
+        const pt = { x: 40 + c * cw, y: 40 + r * ch };
+        pos.set(p.renderId, pt);
+        labelAt.set(p.renderId, { x: pt.x, y: pt.y + NODE_R + 13, anchor: 'middle' });
       });
     } else {
       const R = 120;
       graph.people.forEach((p, i) => {
         const a = (i / Math.max(1, graph.people.length)) * Math.PI * 2 - Math.PI / 2;
-        pos.set(p.renderId, { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) });
+        const pt = { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) };
+        pos.set(p.renderId, pt);
+        labelAt.set(p.renderId, outwardLabel(pt, a));
       });
     }
+    // Ties route around the people they do not join — on the grid a row's first and third dots
+    // would otherwise be linked straight through the second.
+    const routes = graph.ties.map((t) => {
+      const a = pos.get(t.source),
+        b = pos.get(t.target);
+      if (!a || !b) return null;
+      const others = graph.people
+        .filter((p) => p.renderId !== t.source && p.renderId !== t.target)
+        .flatMap((p) => pos.get(p.renderId) ?? []);
+      return routeEdge(a, b, others, EDGE_CLEARANCE);
+    });
     const adj = new Map<string, Set<string>>();
     graph.people.forEach((p) => adj.set(p.renderId, new Set()));
     graph.ties.forEach((t) => {
       adj.get(t.source)?.add(t.target);
       adj.get(t.target)?.add(t.source);
     });
-    return { ...graph, pos, adj };
+    return { ...graph, pos, labelAt, routes, adj };
   }, [people, ties, layout]);
 
   const neighbors = hover ? model.adj.get(hover) : null;
@@ -174,78 +218,88 @@ export function RelationshipMap({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg role="img" aria-label={title} viewBox={`0 0 ${W} ${H}`} width="100%" className="rm-svg">
-        {model.ties.map((t, i) => {
-          const a = model.pos.get(t.source),
-            b = model.pos.get(t.target);
-          if (!a || !b) return null;
-          const style = KIND_STYLE[t.kind] ?? KIND_STYLE.other;
-          const lit = edgeLit(t);
-          const mx = (a.x + b.x) / 2,
-            my = (a.y + b.y) / 2;
-          return (
-            <g key={i}>
-              <line
-                className="rm-edge m-stagger-item m-scale-in"
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
-                stroke={style.color}
-                strokeDasharray={style.dash}
-                opacity={lit ? 0.9 : 0.2}
-                style={{ ['--i' as string]: i } as CSSProperties}
-              >
-                <title>{t.label ? `${KIND_LABEL[t.kind]} · ${t.label}` : KIND_LABEL[t.kind]}</title>
-              </line>
-              {t.kind === 'romance' && (
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          className="rm-svg"
+        >
+          {model.ties.map((t, i) => {
+            const route = model.routes[i];
+            if (!route) return null;
+            const style = KIND_STYLE[t.kind] ?? KIND_STYLE.other;
+            const lit = edgeLit(t);
+            return (
+              <g key={i}>
                 <path
-                  d={HEART_D}
-                  fill={style.color}
-                  opacity={lit ? 1 : 0.3}
-                  transform={`translate(${mx} ${my})`}
-                />
-              )}
-            </g>
-          );
-        })}
-        {model.people.map((p, i) => {
-          const pt = model.pos.get(p.renderId);
-          if (!pt) return null;
-          const lit = nodeLit(p.renderId);
-          const isHover = hover === p.renderId;
-          const name = truncate(p.name, 12);
-          return (
-            <g
-              key={p.renderId}
-              className="rm-node m-stagger-item m-scale-in"
-              style={{ ['--i' as string]: i } as CSSProperties}
-              onMouseEnter={() => setHover(p.renderId)}
-              onMouseLeave={() => setHover(null)}
-            >
-              <title>{p.role ? `${p.name} · ${p.role}` : p.name}</title>
-              {isHover && <circle cx={pt.x} cy={pt.y} r={NODE_R + 6} className="rm-node-halo" />}
-              <circle
-                cx={pt.x}
-                cy={pt.y}
-                r={NODE_R}
-                className="rm-node-dot"
-                opacity={lit ? 1 : 0.32}
-                data-mark={p.renderId === salientId ? 'circle' : undefined}
-              />
-              <text
-                x={pt.x}
-                y={pt.y + NODE_R + 13}
-                textAnchor="middle"
-                className="rm-node-label"
-                opacity={lit ? 1 : 0.32}
+                  className="rm-edge m-stagger-item m-scale-in"
+                  d={route.d}
+                  fill="none"
+                  stroke={style.color}
+                  strokeDasharray={style.dash}
+                  opacity={lit ? 0.9 : 0.2}
+                  style={{ ['--i' as string]: i } as CSSProperties}
+                >
+                  <title>
+                    {t.label ? `${KIND_LABEL[t.kind]} · ${t.label}` : KIND_LABEL[t.kind]}
+                  </title>
+                </path>
+                {t.kind === 'romance' && (
+                  <path
+                    d={HEART_D}
+                    fill={style.color}
+                    opacity={lit ? 1 : 0.3}
+                    transform={`translate(${route.mid.x} ${route.mid.y})`}
+                  />
+                )}
+              </g>
+            );
+          })}
+          {model.people.map((p, i) => {
+            const pt = model.pos.get(p.renderId);
+            if (!pt) return null;
+            const lit = nodeLit(p.renderId);
+            const isHover = hover === p.renderId;
+            const name = truncate(p.name, 12);
+            const label = model.labelAt.get(p.renderId) ?? {
+              x: pt.x,
+              y: pt.y + NODE_R + 13,
+              anchor: 'middle' as const,
+            };
+            return (
+              <g
+                key={p.renderId}
+                className="rm-node m-stagger-item m-scale-in"
+                style={{ ['--i' as string]: i } as CSSProperties}
+                onMouseEnter={() => setHover(p.renderId)}
+                onMouseLeave={() => setHover(null)}
               >
-                {name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                <title>{p.role ? `${p.name} · ${p.role}` : p.name}</title>
+                {isHover && <circle cx={pt.x} cy={pt.y} r={NODE_R + 6} className="rm-node-halo" />}
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={NODE_R}
+                  className="rm-node-dot"
+                  opacity={lit ? 1 : 0.32}
+                  data-mark={p.renderId === salientId ? 'circle' : undefined}
+                />
+                <text
+                  x={label.x}
+                  y={label.y}
+                  textAnchor={label.anchor}
+                  className="rm-node-label"
+                  opacity={lit ? 1 : 0.32}
+                >
+                  {name}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       {kindsUsed.length > 0 && (
         <ul className="rm-legend" aria-label="Relationship key">

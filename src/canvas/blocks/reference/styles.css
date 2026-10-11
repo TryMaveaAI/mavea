@@ -576,6 +576,9 @@
   fill: var(--presence);
   font-weight: 800;
 }
+.ipa-vowel-dot {
+  fill: var(--text-muted);
+}
 .ipa-vowel-halo {
   fill: color-mix(in oklab, var(--presence) 16%, transparent);
   stroke: color-mix(in oklab, var(--presence) 55%, transparent);
@@ -701,9 +704,11 @@
   margin-top: 4px;
   flex-wrap: wrap;
 }
+/* Sized so the 5-unit stroke numbers paint at 10px. At 144px they painted at 7, under the board's
+   legibility floor, and the guard widened the figure out of its square behind the reading panel. */
 .ss-square {
   flex: 0 0 auto;
-  width: min(144px, 100%);
+  width: min(200px, 100%);
   max-width: 100%;
 }
 .ss-ghost {
@@ -1127,6 +1132,10 @@
   color: var(--text-muted);
 }
 .sp-lookalikes-ic {
+  /* An unsized icon in an inline-flex label grows to fill it and squeezes the words beside it. */
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
   color: var(--warning);
 }
 .sp-lookalike-list {
@@ -1155,9 +1164,12 @@
 }
 .et-svg {
   display: block;
-  width: 100%;
-  overflow: hidden;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+  overflow: visible;
 }
+/* Type sizes are set on each <text> by EtymTree, which fits them to the box they sit in. */
 .et-box {
   fill: var(--surface-elevated);
   stroke-width: 1.5;
@@ -1168,24 +1180,14 @@
   stroke-width: 2;
 }
 .et-word {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 13px;
   font-weight: 700;
   fill: var(--text-primary);
 }
 .et-form {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 10px;
   font-weight: 600;
   fill: var(--text-primary);
 }
-.et-lang {
-  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
-  font-size: 9px;
-}
 .et-col-hdr {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 9px;
   font-weight: 700;
   fill: var(--text-muted);
   text-transform: uppercase;
@@ -1427,6 +1429,8 @@
 .szc-row {
   display: flex;
   align-items: flex-start;
+  /* `safe`: a row wider than the card starts at its left edge, where scrolling can reach it. */
+  justify-content: safe center;
   gap: 20px;
   width: max-content;
   min-width: 100%;
@@ -1455,6 +1459,14 @@
 }
 .szc-glyph-cut {
   opacity: 0.9;
+}
+/* No silhouette for this subject: a bar of its length, quieter than the drawn figures so it
+   reads as a measure rather than a picture of the thing. */
+.szc-bar {
+  display: block;
+  border-radius: var(--r-full);
+  background: currentColor;
+  opacity: 0.6;
 }
 .szc-item-label {
   margin-top: 8px;
@@ -1781,8 +1793,10 @@
 
 /* ── countrycard ── single-country deep-dive */
 .cc-banner {
+  container-type: inline-size;
   width: 100%;
   aspect-ratio: 16 / 6;
+  max-block-size: 11rem;
   border-radius: var(--r-md, 8px);
   background: linear-gradient(
     150deg,
@@ -1797,7 +1811,9 @@
   overflow: hidden;
 }
 .cc-flag {
-  font-size: clamp(36px, 8cqi, 56px);
+  /* Sized off the banner it fills (see container-type above), so the flag is the hero at every
+     card width instead of a stamp in the middle of an empty panel. */
+  font-size: clamp(2.5rem, 24cqi, 6.5rem);
   line-height: 1;
 }
 .cc-name {

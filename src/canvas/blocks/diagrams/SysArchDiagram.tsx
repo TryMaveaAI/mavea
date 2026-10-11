@@ -13,6 +13,18 @@ import type { SysArchDiagramProps, SysArchNode, SysArchEdge, SysArchNodeKind } f
 import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
 import { honouredPlacements, honouredSpread } from './placement';
 import { richInnerHtml } from '../../../lib/richText';
+import {
+  captionAt,
+  columnSpacing,
+  fitCaption,
+  route,
+  LABEL_DY,
+  stackText,
+  SUB_DY,
+  SUB_LINE_H,
+  type Footprint,
+  type TextStack,
+} from './whiteboard';
 
 type Props = SysArchDiagramProps & { delay?: number };
 
@@ -34,6 +46,8 @@ const STAGE_BASE_W = 720;
 // distinct-shape kinds fit inside it too), with the label + optional sub sitting below.
 const SHAPE_H = 70;
 const SHAPE_CY_OFFSET = -30; // shape centre, relative to the node's own centre
+/** Half the widest silhouette (the shared rounded rectangle). */
+const SHAPE_HALF_W = NODE_W / 2 - 18;
 
 const KIND_FILL: Record<SysArchNodeKind, string> = {
   client: 'var(--surface-elevated-2)',
@@ -56,11 +70,8 @@ const KIND_STROKE: Record<SysArchNodeKind, string> = {
   cdn: 'var(--insight)',
 };
 
-const LABEL_MAX_CHARS = 17;
-const SUB_MAX_CHARS = 20;
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
+/** Clear air between two neighbouring nodes' text. */
+const TEXT_GUTTER = 24;
 
 interface Placed extends SysArchNode {
   cx: number;
@@ -69,6 +80,8 @@ interface Placed extends SysArchNode {
 
 interface Figure {
   vbW: number;
+  /** Centre-to-centre column spacing — the width a node's text may use. */
+  colSpacing: number;
   vbH: number;
   placed: Placed[];
   /** The index of the node an authored edge endpoint names, or null. */
@@ -81,7 +94,8 @@ interface Figure {
  *  origin under a card grown a row taller per node. */
 function layOut(nodes: SysArchNode[], edges: SysArchEdge[]): Figure {
   const at = endpointIndex(nodes);
-  if (nodes.length === 0) return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at };
+  if (nodes.length === 0)
+    return { vbW: VIEW_W, colSpacing: MIN_COL_SPACING, vbH: MIN_VBH, placed: [], at };
 
   // Only a placement this figure can actually read wins; the rest are laid out by rank. See
   // ./placement — an out-of-scale coordinate used to clamp to 1 and pile the whole diagram into
@@ -89,9 +103,12 @@ function layOut(nodes: SysArchNode[], edges: SysArchEdge[]): Figure {
   const honoured = honouredPlacements(nodes);
   const auto = nodes.map((_, i) => i).filter((i) => !honoured.has(i));
   const links = resolveLinks(edges, at, (e) => [e?.from, e?.to]);
+  // A column is a shape plus room for the widest caption that has to sit beside it, so a long
+  // protocol note widens the figure instead of landing on the next node.
+  const colSpacing = columnSpacing(MIN_COL_SPACING, SHAPE_HALF_W, edges.map(captionOf));
   const plan = planLayered(nodes.length, links, {
     placeable: auto,
-    maxColumns: columnsAcross(VIEW_W, PAD, MIN_COL_SPACING),
+    maxColumns: columnsAcross(VIEW_W, PAD, colSpacing),
   });
 
   // The frame has to hold the placements it honoured as well as the layout it planned —
@@ -101,7 +118,7 @@ function layOut(nodes: SysArchNode[], edges: SysArchEdge[]): Figure {
   const columns = Math.max(plan.columns.length, spread.columns);
   const contentH = rows * NODE_H + Math.max(0, rows - 1) * ROW_GAP;
   const vbH = Math.max(MIN_VBH, contentH + PAD * 2);
-  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * MIN_COL_SPACING + PAD * 2);
+  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * colSpacing + PAD * 2);
   const innerW = vbW - PAD * 2;
   const innerH = vbH - PAD * 2;
   const toX = (u: number) => PAD + u * innerW;
@@ -120,49 +137,42 @@ function layOut(nodes: SysArchNode[], edges: SysArchEdge[]): Figure {
       placed[index].cy = toY(rowFraction(plan, column, ri));
     });
   });
-  return { vbW, vbH, placed, at };
+  return { vbW, colSpacing, vbH, placed, at };
 }
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-/** The fixed-radius rim trim silently reverses an arrow's apparent direction once a layout
- *  packs columns closer together than the trim radius (confirmed live in this block's own
- *  demo — every edge measures cx-after-trim < cx-before-trim reversed once rank columns sit
- *  close). Capping each end's trim at a fraction of the actual centre-to-centre distance keeps
- *  the two trimmed endpoints from ever crossing: at the cap, each end eats at most 40% of the
- *  gap, leaving a guaranteed 20% of it between them regardless of how tightly packed the
- *  layout is. Wide layouts are unaffected — the cap only bites once nodes sit closer than
- *  their own footprint. */
-function trimRadii(from: Placed, to: Placed): { rx: number; ry: number } {
-  const dist = Math.hypot(to.cx - from.cx, to.cy - from.cy) || 1;
-  const cap = dist * 0.4;
-  return { rx: Math.min(NODE_W / 2 + 6, cap), ry: Math.min(NODE_H / 2 + 6, cap) };
+/** Each kind's silhouette as a box (or rhombus) around its centre — what an edge is trimmed to,
+ *  so it meets the shape it names rather than stopping at a fixed radius out in the air. */
+const KIND_EXTENT: Record<SysArchNodeKind, { halfW: number; halfH: number; diamond?: boolean }> = {
+  client: { halfW: SHAPE_HALF_W, halfH: SHAPE_H / 2 },
+  service: { halfW: SHAPE_HALF_W, halfH: SHAPE_H / 2 },
+  gateway: { halfW: SHAPE_HALF_W, halfH: SHAPE_H / 2 },
+  cdn: { halfW: SHAPE_HALF_W, halfH: SHAPE_H / 2 },
+  database: { halfW: 58, halfH: SHAPE_H / 2 },
+  queue: { halfW: 60, halfH: 30 },
+  cache: { halfW: 40, halfH: 40, diamond: true },
+  loadbalancer: { halfW: 66, halfH: 35 },
+};
+
+function footprint(p: Placed, text: TextStack): Footprint {
+  return {
+    x: p.cx,
+    y: p.cy + SHAPE_CY_OFFSET,
+    ...(KIND_EXTENT[p.kind] ?? KIND_EXTENT.service),
+    textHalfW: text.halfW,
+    textBottom: text.bottom,
+  };
 }
 
-/** Trim a connection to the rim of each node's bounding ellipse (the same approximation
- *  DiagramFlow's rimPoint/rimStart use for its own ellipse nodes — close enough for a boxy or
- *  angular shape too) so the arrow meets the border, not the label. */
-function rim(from: Placed, to: Placed): { x: number; y: number } {
-  const dx = to.cx - from.cx;
-  const dy = to.cy - from.cy;
-  const ang = Math.atan2(dy, dx);
-  const { rx, ry } = trimRadii(from, to);
-  return {
-    x: to.cx - Math.cos(ang) * rx,
-    y: to.cy - Math.sin(ang) * ry,
-  };
+function labelOf(p: Placed): string {
+  return typeof p.label === 'string' && p.label.trim() ? p.label.trim() : p.id || 'Node';
 }
-function rimStart(from: Placed, to: Placed): { x: number; y: number } {
-  const dx = to.cx - from.cx;
-  const dy = to.cy - from.cy;
-  const ang = Math.atan2(dy, dx);
-  const { rx, ry } = trimRadii(from, to);
-  return {
-    x: from.cx + Math.cos(ang) * rx,
-    y: from.cy + Math.sin(ang) * ry,
-  };
+
+function captionOf(e: SysArchEdge): string {
+  return [e.label, e.protocol].filter((v) => typeof v === 'string' && v.trim()).join(' · ');
 }
 
 /** The four kinds whose silhouette is a plain rounded rectangle need a small icon to tell them
@@ -348,11 +358,27 @@ export function SysArchDiagram({
   const safeNodes = graph.nodes;
   const safeEdges = graph.edges;
 
-  const { vbW, vbH, placed, at } = useMemo(
+  const { vbW, colSpacing, vbH, placed, at } = useMemo(
     () => layOut(safeNodes, safeEdges),
     [safeNodes, safeEdges],
   );
   const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
+  // Each node's text gets its column's width, less a gutter so neighbours never touch.
+  const stacks = useMemo(
+    () => placed.map((p) => stackText(labelOf(p), p.sub, colSpacing - TEXT_GUTTER, SHAPE_H / 2)),
+    [placed, colSpacing],
+  );
+  // Resolved once so the line and its caption read the same geometry; the caption is painted in
+  // its own pass after every node, so no opaque fill can bury it.
+  const routes = useMemo(() => {
+    const prints = placed.map((p, i) => footprint(p, stacks[i]));
+    return safeEdges.flatMap((e, key) => {
+      const from = at(e.from);
+      const to = at(e.to);
+      if (from === null || to === null || from === to) return [];
+      return [{ key, ...route(prints[from], prints[to]), caption: captionOf(e) }];
+    });
+  }, [placed, stacks, safeEdges, at]);
 
   return (
     <div
@@ -385,28 +411,22 @@ export function SysArchDiagram({
             </marker>
           </defs>
 
-          {safeEdges.map((e, i) => {
-            const from = at(e.from);
-            const to = at(e.to);
-            if (from === null || to === null) return null;
-            const s = rimStart(placed[from], placed[to]);
-            const t = rim(placed[from], placed[to]);
-            return (
-              <line
-                key={i}
-                className="sa-edge"
-                x1={s.x}
-                y1={s.y}
-                x2={t.x}
-                y2={t.y}
-                markerEnd={`url(#sa-arrow-${uid})`}
-              />
-            );
-          })}
+          {routes.map(({ key, s: a, t: b }) => (
+            <line
+              key={key}
+              className="sa-edge"
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              markerEnd={`url(#sa-arrow-${uid})`}
+            />
+          ))}
 
-          {placed.map((p) => {
+          {placed.map((p, i) => {
             const shapeCy = p.cy + SHAPE_CY_OFFSET;
-            const label = typeof p.label === 'string' && p.label ? p.label : p.id || 'Node';
+            const label = labelOf(p);
+            const text = stacks[i];
             return (
               <g key={p.id}>
                 <g transform={`translate(${p.cx} ${shapeCy})`}>
@@ -418,21 +438,20 @@ export function SysArchDiagram({
                 </g>
                 <text
                   x={p.cx}
-                  y={shapeCy + SHAPE_H / 2 + 24}
+                  y={shapeCy + SHAPE_H / 2 + LABEL_DY}
                   className="sa-label"
                   textAnchor="middle"
                 >
-                  {label.length > LABEL_MAX_CHARS && <title>{label}</title>}
-                  {truncate(label, LABEL_MAX_CHARS)}
+                  {text.clipped && <title>{[label, p.sub].filter(Boolean).join(' — ')}</title>}
+                  {text.label}
                 </text>
-                {p.sub && (
-                  <text
-                    x={p.cx}
-                    y={shapeCy + SHAPE_H / 2 + 44}
-                    className="sa-sub"
-                    textAnchor="middle"
-                  >
-                    {truncate(p.sub, SUB_MAX_CHARS)}
+                {text.sub.length > 0 && (
+                  <text className="sa-sub" textAnchor="middle">
+                    {text.sub.map((ln, li) => (
+                      <tspan key={li} x={p.cx} y={shapeCy + SHAPE_H / 2 + SUB_DY + li * SUB_LINE_H}>
+                        {ln}
+                      </tspan>
+                    ))}
                   </text>
                 )}
               </g>
@@ -441,21 +460,23 @@ export function SysArchDiagram({
 
           {/* Edge captions render in their own pass AFTER every node so a dense layout's
               opaque node fills can never paint over a caption sitting between two nodes. */}
-          {safeEdges.map((e, i) => {
-            const from = at(e.from);
-            const to = at(e.to);
-            if (from === null || to === null) return null;
-            const s = rimStart(placed[from], placed[to]);
-            const t = rim(placed[from], placed[to]);
-            const mx = (s.x + t.x) / 2;
-            const my = (s.y + t.y) / 2;
-            const caption = [e.label, e.protocol]
-              .filter((v) => typeof v === 'string' && v)
-              .join(' · ');
+          {routes.map(({ key, s: a, t: b, length, caption }) => {
             if (!caption) return null;
+            const fit = fitCaption(caption, length);
+            const { x: mx, y0 } = captionAt(a, b, fit);
             return (
-              <text key={i} x={mx} y={my - 34} className="dg-edge-label" textAnchor="middle">
-                {truncate(caption, 26)}
+              <text
+                key={key}
+                x={mx}
+                className="dg-edge-label"
+                textAnchor="middle"
+                style={{ fontSize: fit.fontSize }}
+              >
+                {fit.lines.map((ln, li) => (
+                  <tspan key={li} x={mx} y={y0 + li * fit.lineHeight} dominantBaseline="middle">
+                    {ln}
+                  </tspan>
+                ))}
               </text>
             );
           })}

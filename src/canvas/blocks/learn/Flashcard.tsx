@@ -65,12 +65,12 @@ export function Flashcard({
 
       <div className="lr-fc-nav">
         <button
-          className="mini-btn lr-fc-prev"
+          className="mini-btn"
           onClick={() => go(-1)}
           disabled={idx === 0}
           aria-label="Previous"
         >
-          <Icon.chevR />
+          <Icon.chevL />
         </button>
         <span className="lr-fc-count tab-num">
           {idx + 1} / {cards.length}

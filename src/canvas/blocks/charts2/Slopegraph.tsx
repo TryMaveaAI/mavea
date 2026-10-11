@@ -124,7 +124,6 @@ export function Slopegraph({
           const col = r.color || 'var(--presence)';
           const active = hot === i;
           const dim = hot !== null && !active;
-          const up = r.after >= r.before;
           return (
             <Fragment key={i}>
               <span
@@ -151,10 +150,10 @@ export function Slopegraph({
                 style={{ top: pct(rightLabelY[i]), opacity: dim ? 0.25 : 1 }}
                 onMouseEnter={() => setHot(i)}
               >
-                <span
-                  className="tab-num mono"
-                  style={{ color: up ? 'var(--insight)' : 'var(--danger)' }}
-                >
+                {/* In its line's colour, not a green/red verdict: whether down is good depends on
+                    the measure (fewer alerts is a win), and the colour is what ties a value that
+                    had to be nudged off its dot back to the right line. */}
+                <span className="tab-num mono" style={{ color: col }}>
                   {withUnit(r.after, unit)}
                 </span>
               </div>

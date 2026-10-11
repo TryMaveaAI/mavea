@@ -637,7 +637,7 @@ export const mleval: ConversationSpec = {
           },
         ],
         footer:
-          '`account_tier` and `resolved_at` have real gaps — free-tier tickets and still-open ones — but neither leaks into the label columns the model is scored on.',
+          '<code>account_tier</code> and <code>resolved_at</code> have real gaps — free-tier tickets and still-open ones — but neither leaks into the label columns the model is scored on.',
       },
     },
     {

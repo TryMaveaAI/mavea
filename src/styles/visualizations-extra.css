@@ -215,12 +215,18 @@
 }
 
 /* Heatmap */
+/* Cells stop growing at a calendar square; past that a wide card only made each day a 145px
+   tile and the grid ran off the bottom of the board. The grid centres in the room it leaves. */
 .heat-wrap {
   display: flex;
   flex-direction: column;
   gap: 5px;
   margin-top: 6px;
   overflow-x: auto;
+  inline-size: fit-content;
+  min-inline-size: min(100%, 24rem);
+  max-inline-size: 100%;
+  margin-inline: auto;
 }
 .heat-cols,
 .heat-row {
@@ -239,6 +245,7 @@
 .heat-col-label {
   flex: 1;
   min-width: 22px;
+  max-inline-size: 3.5rem;
   font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
@@ -246,6 +253,7 @@
 .heat-cell {
   flex: 1;
   min-width: 22px;
+  max-inline-size: 3.5rem;
   aspect-ratio: 1;
   border-radius: 5px;
   display: grid;
@@ -266,7 +274,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-top: 12px;
+  margin-top: 7px;
   justify-content: flex-end;
 }
 .heat-legend .faint {
@@ -1033,6 +1041,7 @@
    matter how wide its card is. Only the full-bleed core charts carry the literal
    width="100%" attribute, so this leaves every other svg (icons, insets) alone. */
 .card > svg[width='100%'],
+.card > .canvas-figure > svg[width='100%'],
 .chart-wrap > svg[width='100%'],
 .codemap > svg[width='100%'] {
   display: block;
@@ -1297,6 +1306,14 @@
 .card-eyebrow .ic {
   width: 15px;
   height: 15px;
+  flex-shrink: 0;
+}
+/* An eyebrow that is only an icon and its title keeps them on one row: wrapping as flex items
+   dropped a long title onto its own line and left the icon stranded above it. The title is an
+   anonymous item whose minimum is its longest word, so it wraps inside its own box instead.
+   Eyebrows that also carry a badge or a control still wrap those onto the next row. */
+.card-eyebrow:not(:has(> :not(svg))) {
+  flex-wrap: nowrap;
 }
 
 /* composite — a model-arranged sub-grid of other blocks (the on-the-fly layout primitive).

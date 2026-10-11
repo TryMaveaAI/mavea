@@ -55,6 +55,28 @@
 .lr-eq:not(.inline) .lr-tex {
   font-size: max(19px, var(--fs-xl, 22px));
 }
+/* TeX has three sizes — text, script, scriptscript — and a script nested deeper than that stays at
+   scriptscript. MathML keeps shrinking by ~0.71 a level, so the Eₐ in a fraction in an exponent
+   (e^{-Eₐ/RT}) lands at a third of the base. Hold anything three or more script levels down at
+   level two, which is how TeX itself typesets it. */
+.lr-eq
+  :is(
+    :is(msub, msup, msubsup, munder, mover, munderover) > :not(:first-child),
+    mfrac > *,
+    mroot > :last-child
+  )
+  :is(
+    :is(msub, msup, msubsup, munder, mover, munderover) > :not(:first-child),
+    mfrac > *,
+    mroot > :last-child
+  )
+  :is(
+    :is(msub, msup, msubsup, munder, mover, munderover) > :not(:first-child),
+    mfrac > *,
+    mroot > :last-child
+  ) {
+  math-depth: 2;
+}
 .lr-tex-raw {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: var(--fs-sm, 13px);
@@ -150,6 +172,13 @@
 .lr-wx-math {
   margin: 5px 0;
   overflow-x: auto;
+}
+/* Block math centres itself in its container, which parks a step's line of working mid-card,
+   away from the step it belongs to. Inline layout with display-style sizing keeps the tall
+   fractions and starts it under the step's label. */
+.lr-wx-math > math {
+  display: inline math;
+  math-style: normal;
 }
 .lr-wx-why {
   font-size: var(--fs-xs, 12.5px);
@@ -400,9 +429,6 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-}
-.lr-fc-prev .ic {
-  transform: rotate(180deg);
 }
 .lr-fc-count {
   font-size: var(--fs-xs, 12px);
@@ -789,7 +815,6 @@
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
-  fill: inherit;
 }
 .lr-gc-lbl {
   fill: var(--text-secondary);
@@ -887,12 +912,15 @@
   stroke: var(--text-secondary);
   stroke-width: 1.2;
 }
-.ms-clef {
+.ms-clef-line {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ms-clef-dot {
   fill: var(--text-primary);
-  /* Serif for best music glyph rendering on system fonts. */
-  font-family: 'Georgia', 'Times New Roman', serif;
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 40px;
 }
 .ms-timesig {
   fill: var(--text-primary);
@@ -926,9 +954,11 @@
 .vs-wrap {
   margin: 4px 0;
 }
+/* Grows with the tile: capped at the viewBox's own height, a wide tile drew this at 88% scale,
+   which put the 9.5-unit ticks under the legibility floor. */
 .vs-svg {
   width: 100%;
-  height: clamp(180px, 56cqi, 248px);
+  height: clamp(210px, 58cqi, 340px);
   display: block;
 }
 .vs-grid line {
@@ -942,14 +972,19 @@
 .vs-tick {
   fill: var(--text-faint);
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 9.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 .vs-lbl {
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   font-style: italic;
+  /* A name may have to sit across a grid line or another arrow's shaft. */
+  paint-order: stroke fill;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 /* ───────────────────────── reactionmechanism ───────────────────────── */
@@ -1028,6 +1063,7 @@
 /* ── chorddiagram ── guitar/ukulele chord fretboard */
 .cd-layout {
   display: flex;
+  justify-content: center;
   gap: 16px;
   align-items: flex-start;
   margin-top: 12px;
@@ -1127,15 +1163,15 @@
   line-height: 1;
 }
 .cd-notes {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   margin-top: 6px;
 }
 .cd-note-label {
+  min-width: 0;
   font-size: var(--fs-2xs);
   color: var(--text-muted);
   text-align: center;
-  flex: 1;
+  overflow-wrap: break-word;
 }
 
 /* ── developmentmilestone ── child milestone tracker */
@@ -1460,34 +1496,34 @@
   letter-spacing: 0.03em;
 }
 
-/* ── ten-frame: 2×5 grid of circles ──────────────────────────── */
-.lr-gm-v-tenframe .lr-gm-wrap {
-  border: none;
+/* ── ten-frame: a 2×5 frame of boxes, a counter in each filled one ── */
+.lr-gm-v-tenframe {
+  --tf-cell: clamp(36px, 9cqi, 60px);
+  width: fit-content;
+  max-width: 100%;
+  border: 2px solid var(--line-strong);
 }
-.lr-gm-v-tenframe .lr-gm-grid {
-  gap: 6px;
-  padding: 6px;
-  background: none;
-}
-.lr-gm-circle {
-  /* Override the shared aspect-ratio so circles stay round at any card width */
-  aspect-ratio: 1 / 1;
-  width: clamp(28px, 10cqi, 48px);
-  height: clamp(28px, 10cqi, 48px);
+.lr-gm-v-tenframe .lr-gm-cell.lr-gm-box {
+  width: var(--tf-cell);
+  height: var(--tf-cell);
+  min-height: 0;
   max-height: none;
-  min-height: unset;
   padding: 0;
+  border-right: 1.5px solid var(--line-strong);
+  border-bottom: 1.5px solid var(--line-strong);
+}
+/* The frame's own border closes the right edge and the bottom row. */
+.lr-gm-v-tenframe .lr-gm-box:nth-child(5n) {
+  border-right: none;
+}
+.lr-gm-v-tenframe .lr-gm-box:nth-child(n + 6) {
+  border-bottom: none;
+}
+.lr-gm-counter {
+  width: 68%;
+  aspect-ratio: 1 / 1;
   border-radius: var(--r-full);
-  border: 2px solid var(--presence);
-  background: transparent;
-  transition: background var(--m-fast) var(--ease-out);
-}
-.lr-gm-circle.lr-gm-filled {
   background: var(--presence);
-}
-/* Remove the line grid borders from ten-frame cells */
-.lr-gm-v-tenframe .lr-gm-cell {
-  border: none;
 }
 
 /* ── note under the grid ──────────────────────────────────────── */
@@ -1635,10 +1671,56 @@
   stroke-linejoin: round;
   stroke-linecap: round;
 }
-.wv-curve-lbl {
-  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
-  font-size: 9.5px;
-  font-weight: 700;
+.pp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.pp-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pp-legend-sw {
+  width: 14px;
+  flex: none;
+  border-top: 1.5px dashed currentcolor;
+}
+.pp-legend-sw-x {
+  color: var(--danger);
+}
+.pp-legend-sw-y {
+  color: var(--insight);
+}
+.wv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.wv-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.wv-legend-sw {
+  width: 14px;
+  height: 3px;
+  flex: none;
+  border-radius: var(--r-full);
 }
 .wv-amp-line,
 .wv-wl-line {
@@ -1655,6 +1737,11 @@
 }
 .wv-measure-lbl {
   fill: var(--text-secondary);
+  /* A halo in the card's surface, so a curve that has to cross the label breaks behind it. */
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 600;
@@ -1908,9 +1995,10 @@
   margin-top: 4px;
 }
 
-.cel-svg {
+.cel-figure {
   flex: 1 1 60%;
-  min-width: 0;
+}
+.cel-svg {
   width: 100%;
   height: auto;
   display: block;
@@ -1987,7 +2075,7 @@
   .cel-wrap {
     flex-direction: column;
   }
-  .cel-svg,
+  .cel-figure,
   .cel-legend {
     flex-basis: auto;
     width: 100%;
@@ -2802,9 +2890,13 @@
   stroke-width: 1.4;
 }
 .lr-xs-leader {
-  stroke: var(--line);
-  stroke-width: 0.8;
-  stroke-dasharray: 2 2;
+  stroke: color-mix(in oklab, var(--text-muted) 70%, transparent);
+  stroke-width: 1;
+}
+/* Marks the ring the leader names: a leader that merely ends on a band could belong to the
+   ring on either side of it. */
+.lr-xs-leader-dot {
+  fill: var(--text-muted);
 }
 .lr-xs-band-name {
   fill: var(--text-primary);
@@ -3035,7 +3127,7 @@
 .cof-svg {
   /* The wheel's rim type (signatures, relative minors) is the smallest in the block, and inside a
      viewBox font-size is in user units — what lands on the retina is the authored size times this
-     drawn width over the 244-unit box. Drawing the wheel close to the card's full width is what
+     drawn width over the 248-unit box. Drawing the wheel close to the card's full width is what
      keeps that rim type above the 9px legibility floor. */
   width: 100%;
   max-width: clamp(220px, 92cqi, 320px);
@@ -3084,7 +3176,7 @@
 .cof-key-lbl--hi {
   fill: var(--presence-soft);
 }
-/* Rim + inner-ring type is sized in viewBox units against the 244-unit box (see .cof-svg): the
+/* Rim + inner-ring type is sized in viewBox units against the 248-unit box (see .cof-svg): the
    rim ring has 59 units of arc between neighbours and the minor ring 31, so both clear the
    legibility floor without the labels touching. */
 .cof-sig {
@@ -3099,6 +3191,9 @@
   font-size: 9.5px;
   font-weight: 600;
   font-style: italic;
+}
+.cof-acc {
+  font-style: normal;
 }
 .cof-minor--hi {
   fill: var(--insight);
@@ -3754,18 +3849,6 @@
   font-weight: 600;
   paint-order: stroke;
 }
-.lr-lf-index {
-  fill: var(--surface-elevated);
-  stroke: var(--insight);
-  stroke-width: 1.5;
-}
-.lr-lf-index-n {
-  fill: var(--insight);
-  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
-  font-size: 11px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
 .lr-lf-strokes {
   list-style: none;
   margin: 10px 0 0;
@@ -4086,6 +4169,10 @@
   font-size: 9px;
   font-weight: 700;
   fill: var(--text-primary);
+  /* A letter sits on its own rung; the halo parts the rung around it. */
+  paint-order: stroke fill;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
 }
 .dh-dir-label {
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
@@ -4479,7 +4566,7 @@
 }
 .lr-tc-svg {
   width: 100%;
-  height: clamp(180px, 54cqi, 236px);
+  height: clamp(190px, 56cqi, 248px);
   display: block;
 }
 .lr-tc-grid {
@@ -4568,6 +4655,8 @@
 .lr-ip-schem-meta {
   display: flex;
   flex-wrap: wrap;
+  /* The schematic above is letterboxed to the middle of the card; its caption follows it. */
+  justify-content: center;
   gap: 4px 12px;
   margin-top: 4px;
   font-size: var(--fs-2xs, 10px);
@@ -5562,10 +5651,15 @@
   stroke: var(--grid-line);
   stroke-width: 1;
 }
-.lr-ec-shell-count {
-  fill: var(--text-faint);
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 7px;
+.lr-ec-electron {
+  fill: var(--insight);
+}
+.lr-ec-shells-cap {
+  margin: 4px 0 0;
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 .lr-ec-uses {
   display: flex;
@@ -5745,9 +5839,11 @@
 }
 
 /* ───────────────────────── karyotype ───────────────────────── */
+/* 23 pairs in rows of 6, 8 or 12 — counts that fill every row but the last nearly full. A
+   fill-what-fits grid left the sex pair alone on a row at some widths. */
 .kt-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px 6px;
   align-items: end;
   margin: 10px 0 2px;
@@ -5800,12 +5896,15 @@
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.kt-note {
-  font-size: var(--fs-2xs);
-  line-height: 1.2;
-  color: var(--text-faint);
-  text-align: center;
-  text-wrap: balance;
+@container (width >= 430px) {
+  .kt-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+@container (width >= 640px) {
+  .kt-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
 }
 .kt-legend {
   display: flex;
@@ -5821,6 +5920,10 @@
   gap: 5px;
   font-size: var(--fs-2xs, 10px);
   color: var(--text-secondary);
+}
+.kt-leg-name {
+  font-weight: 700;
+  color: var(--text-primary);
 }
 .kt-leg-dot {
   width: 9px;
@@ -6175,4 +6278,55 @@
   margin: 8px 0 0;
   font-size: var(--fs-xs, 12px);
   color: var(--text-faint);
+}
+
+/* ───────────────────────── gridtransform ───────────────────────── */
+/* Labels inside the plot sit over the transformed grid wherever they go; the halo parts the
+   grid lines around them. */
+.gtf-label {
+  font-weight: 600;
+  paint-order: stroke fill;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.gtf-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 14px;
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+/* A 2×2 matrix in brackets: the side borders are the brackets. */
+.gtf-matrix {
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 0 8px;
+  padding: 1px 5px;
+  border-inline: 1.5px solid var(--text-muted);
+  border-radius: 3px;
+  font-family: var(--font-data);
+  text-align: end;
+  color: var(--text-primary);
+}
+
+/* polarplot: the outer ring's value sits on the ring and the grid, so it carries a halo. */
+.pp-scale-lbl {
+  paint-order: stroke fill;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* taylorseries legend: the exact function's swatch is dashed like its curve. */
+.lr-ts-legend {
+  justify-content: center;
+  margin-top: 4px;
+}
+.lr-ts-key--exact {
+  background: repeating-linear-gradient(90deg, var(--text-muted) 0 4px, transparent 4px 7px);
 }

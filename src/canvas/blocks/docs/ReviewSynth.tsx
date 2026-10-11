@@ -77,7 +77,9 @@ export function ReviewSynth({
                 return (
                   <div key={i} className="rv-dist-row">
                     <span className="rv-dist-star tab-num">{star}</span>
-                    <Icon.spark className="rv-dist-ic" />
+                    <span className="rv-dist-ic" aria-hidden="true">
+                      ★
+                    </span>
                     <span className="rv-dist-track">
                       <span className="rv-dist-fill" style={{ width: (n / distMax) * 100 + '%' }} />
                     </span>

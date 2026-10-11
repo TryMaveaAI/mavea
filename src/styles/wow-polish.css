@@ -1417,6 +1417,16 @@
   width: 13px;
   height: 13px;
 }
+/* The tip's only control under a thumb; the negative margins spend the tip's own padding so it
+   grows by a few pixels, not a line. */
+@media (pointer: coarse) {
+  .ask-hint-x {
+    width: var(--tap-min);
+    height: var(--tap-min);
+    margin-block: -9px;
+    margin-right: -8px;
+  }
+}
 
 /* Light theme spotlight: the floating shadow is already softer here; quiet the ring a touch and
    keep the tinted underlay faint so the color never reads as a smudge on the bright surface. */

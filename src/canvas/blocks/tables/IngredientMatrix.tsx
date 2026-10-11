@@ -55,10 +55,7 @@ export function IngredientMatrix({
                           qty ? (
                             <span className="im-qty">{qty}</span>
                           ) : (
-                            <Icon.check
-                              className="ic"
-                              style={{ width: 13, height: 13, color: 'var(--insight)' }}
-                            />
+                            <Icon.check className="ic im-check" />
                           )
                         ) : (
                           <span className="im-empty" />

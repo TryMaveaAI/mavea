@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { extent, niceStep, ticks } from '../../lib/scale';
 import { formatValue } from '../../lib/format';
+import { spreadLabels } from '../../lib/spreadLabels';
 import type { GrowthCurveProps, GrowthPercentile } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -13,6 +14,7 @@ const H = 248;
 const PAD_L = 40; // y-axis tick gutter (value labels run a little wide)
 const PAD_R = 30; // right gutter for the pXX curve-end labels
 const PAD_T = 14;
+const LABEL_DX = 8;
 const PAD_B = 40; // x-axis gutter: a row for age ticks + a row for the axis title
 
 const METRIC_LABEL: Record<GrowthCurveProps['metric'], string> = {
@@ -118,6 +120,16 @@ export function GrowthCurve({
     0,
   );
 
+  // Curve names sit past the child's largest marker (r=4 at the latest age) so a measurement on
+  // the last age never lands on top of one, and step apart when two curves end close together.
+  const endLabelY = spreadLabels(
+    curves.flatMap((c) => {
+      const end = c.points[c.points.length - 1];
+      return end ? [{ id: c.p, y: sy(end.value) }] : [];
+    }),
+    { gap: 10, top: PAD_T, bottom: H - PAD_B },
+  );
+
   return (
     <div
       className="card reveal c2"
@@ -181,7 +193,11 @@ export function GrowthCurve({
                   className={'c2-gc-pcurve' + (isMedian ? ' c2-gc-pcurve--median' : '')}
                 />
                 {end && (
-                  <text x={sx(end.age) + 3} y={sy(end.value) + 3} className="c2-gc-plabel">
+                  <text
+                    x={sx(end.age) + LABEL_DX}
+                    y={(endLabelY.get(c.p) ?? sy(end.value)) + 3}
+                    className="c2-gc-plabel"
+                  >
                     {'p' + c.p}
                   </text>
                 )}

@@ -30,14 +30,14 @@ export function Gantt({
       <div className="card-eyebrow">
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
-      <div className="c2-gantt-cols">
-        {cols.map((c, i) => (
-          <span key={i} className="c2-gantt-col faint" style={{ width: `${unit}%` }}>
-            {c}
-          </span>
-        ))}
-      </div>
       <div className="c2-gantt">
+        <div className="c2-gantt-cols">
+          {cols.map((c, i) => (
+            <span key={i} className="c2-gantt-col faint" style={{ width: `${unit}%` }}>
+              {c}
+            </span>
+          ))}
+        </div>
         {tasks.map((t, i) => {
           const col = t.color || 'var(--presence)';
           const left = t.start * unit;

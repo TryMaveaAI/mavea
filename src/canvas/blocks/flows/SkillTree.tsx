@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SkillTreeProps, SkillNode, SkillState } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useBoxSize } from '../../lib/useBoxSize';
+import { skillEdgePath } from './skillTreeLayout';
 
 type Props = SkillTreeProps & { delay?: number };
 
@@ -31,6 +33,11 @@ export function SkillTree({
   // Per-instance ids so two skill trees in one answer don't share gradient/marker defs.
   const uid = useId().replace(/:/g, '');
   const reqId = `fl-sk-req-${uid}`;
+  // Edges are drawn in px so they can stop at a pill's rim, which is a px measure; before the
+  // first measurement (or in a test DOM) a 100-unit square keeps the percentages as they were.
+  const [boxRef, box] = useBoxSize<HTMLDivElement>();
+  const W = box.w || 100;
+  const H = box.h || 100;
 
   // Group nodes into their tier bands, then sort the tiers so band 0 sits at top. A node's
   // row is its rank among the present tiers (sparse tier numbers collapse to contiguous rows),
@@ -95,16 +102,19 @@ export function SkillTree({
       {caption && <div className="fl-sk-cap">{caption}</div>}
       {/* The tree holds a minimum width its nodes stay legible at; on a narrow card this pans it. */}
       <div className="fl-sk-scroll">
-        <div className="fl-sk" style={{ ['--rows' as string]: layout.rows } as CSSProperties}>
+        <div
+          ref={boxRef}
+          className="fl-sk"
+          style={{ ['--rows' as string]: layout.rows } as CSSProperties}
+        >
           <svg
             role="img"
             aria-label={title || 'Skill tree'}
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
+            viewBox={`0 0 ${W} ${H}`}
             className="fl-sk-svg"
           >
             <defs>
-              <marker id={reqId} markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+              <marker id={reqId} markerWidth="6" markerHeight="6" refX="4" refY="2.5" orient="auto">
                 <path d="M0 0 L5 2.5 L0 5 Z" fill="var(--line-strong)" />
               </marker>
             </defs>
@@ -114,15 +124,17 @@ export function SkillTree({
                 const b = layout.pos[n.id];
                 if (!a || !b) return null;
                 const lit = isLit(reqId2, n.id);
-                // curve out of the bottom of the prerequisite, into the top of the dependent
-                const my = (a.y + b.y) / 2;
+                const px = (p: { x: number; y: number }) => ({
+                  x: (p.x / 100) * W,
+                  y: (p.y / 100) * H,
+                });
                 return (
                   <path
                     key={reqId2 + '>' + n.id}
-                    d={`M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`}
+                    d={skillEdgePath(px(a), px(b), H / layout.rows)}
                     fill="none"
                     stroke={lit ? 'var(--presence)' : 'var(--line-strong)'}
-                    strokeWidth={lit ? 1.1 : 0.6}
+                    strokeWidth={lit ? 2.4 : 1.6}
                     markerEnd={lit ? undefined : `url(#${reqId})`}
                     opacity={hover && !lit ? 0.3 : 1}
                     className="fl-sk-edge"

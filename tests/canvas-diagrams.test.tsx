@@ -1114,16 +1114,28 @@ describe('ProtocolStack', () => {
         const size = Number(rect.getAttribute('width'));
         const label = box.querySelector('text.pst-box-lbl')!;
         const inner = box.classList.contains('pst-box--inner');
-        const fontSize = inner ? 5 : 4.2;
+        const original = longPacket(n)[i].header;
+        if (inner) {
+          // The payload wraps inside its square: every line fits the box, and only a name that
+          // overflows every line the square holds ends in an ellipsis, with the full name kept.
+          const lines = Array.from(label.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
+          for (const ln of lines) {
+            expect(estimateTextWidth(ln, 5, true)).toBeLessThanOrEqual(size * 0.86 + 0.01);
+          }
+          if (lines.join(' ') !== original) {
+            expect(lines.at(-1)!.endsWith('…')).toBe(true);
+            expect(box.querySelector('title')?.textContent).toBe(original);
+          }
+          return;
+        }
         // Same budget formula the component uses: no rendered label may be wide enough (at its
         // class's font-size) to plausibly overflow its own box width.
-        const maxChars = Math.max(2, Math.floor((size * 0.92) / (fontSize * 0.62)));
+        const maxChars = Math.max(2, Math.floor((size * 0.92) / (4.2 * 0.62)));
         const text = visibleText(label);
         expect(text.length).toBeLessThanOrEqual(maxChars);
         // The full header always survives the truncation, either verbatim or via a tooltip. The
         // tooltip belongs to the box group, not the <text> — nested there it would inherit the
         // label's few-user-unit font-size.
-        const original = longPacket(n)[i].header;
         if (text !== original) {
           expect(text.endsWith('…')).toBe(true);
           expect(label.querySelector('title')).toBeNull();
@@ -1153,13 +1165,21 @@ describe('ProtocolStack', () => {
       />,
     );
     const labels = Array.from(container.querySelectorAll('text.pst-box-lbl'));
-    expect(labels.map((l) => visibleText(l))).toEqual(['IP', 'TCP', 'Data']);
+    // Header bands carry one text run; the payload's name is set as lines.
+    const shown = (l: Element) =>
+      l.querySelector('tspan')
+        ? Array.from(l.querySelectorAll('tspan'))
+            .map((t) => t.textContent)
+            .join(' ')
+        : visibleText(l);
+    expect(labels.map(shown)).toEqual(['IP', 'TCP', 'Data']);
     expect(container.querySelector('.pst-encaps title')).toBeNull();
   });
 
-  it('truncates the innermost payload label even when only the payload name is long', () => {
+  it('wraps a payload name its square has room for instead of cutting it', () => {
     // The exact shape from the shipped demo fixture: short header chain, but the innermost
-    // "payload" field carries a longer, human-readable label ("Your request").
+    // "payload" field carries a longer, human-readable label ("Your request"). The square is as
+    // tall as it is wide, so the name takes a second line rather than reading "Your requ…".
     const { container } = render(
       <ProtocolStack
         title="Stack"
@@ -1176,11 +1196,12 @@ describe('ProtocolStack', () => {
     const inner = container.querySelector('.pst-box--inner rect')!;
     const size = Number(inner.getAttribute('width'));
     const label = container.querySelector('.pst-box--inner text.pst-box-lbl')!;
-    const maxChars = Math.max(2, Math.floor((size * 0.92) / (5 * 0.62)));
-    const text = visibleText(label);
-    expect(text.length).toBeLessThanOrEqual(maxChars);
-    expect(text.length).toBeLessThan('Your request'.length);
-    expect(container.querySelector('.pst-box--inner title')?.textContent).toBe('Your request');
+    const lines = Array.from(label.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
+    expect(lines.join(' ')).toBe('Your request');
+    for (const ln of lines) {
+      expect(estimateTextWidth(ln, 5, true)).toBeLessThanOrEqual(size * 0.86 + 0.01);
+    }
+    expect(container.querySelector('.pst-box--inner title')).toBeNull();
   });
 });
 
@@ -1869,10 +1890,18 @@ describe('FiveForces', () => {
     // whether half the run fits the chord at its own height.
     const cy = Number(circle.getAttribute('cy'));
     const r = Number(circle.getAttribute('r'));
-    const hubLines = Array.from(container.querySelectorAll('svg.dg-svg > text'));
+    // A wrapped caption is one <text> of several lines, each tspan carrying its own baseline.
+    const hubLines = Array.from(container.querySelectorAll('svg.dg-svg > text')).flatMap<{
+      el: Element;
+      run: Element;
+    }>((el) =>
+      el.querySelector('tspan')
+        ? Array.from(el.querySelectorAll('tspan')).map((t) => ({ el, run: t }))
+        : [{ el, run: el }],
+    );
     expect(hubLines.length).toBeGreaterThanOrEqual(3);
-    for (const el of hubLines) {
-      const { fontSize, bold } = typeOf(el);
+    for (const { el: parent, run: el } of hubLines) {
+      const { fontSize, bold } = typeOf(parent);
       const dy = Number(el.getAttribute('y')) - cy;
       // The glyph band around the baseline, measured at whichever edge sits farther from centre.
       const far = Math.max(Math.abs(dy - fontSize * 0.78), Math.abs(dy + fontSize * 0.22));

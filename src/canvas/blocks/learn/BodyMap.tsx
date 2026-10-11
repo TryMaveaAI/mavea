@@ -383,6 +383,28 @@ function SegmentElement({
   );
 }
 
+interface LegendEntry {
+  key: string;
+  name: string;
+  color: string;
+  note?: string;
+}
+
+function bodyLegend(regions: readonly BodyRegion[], view: 'anterior' | 'posterior'): LegendEntry[] {
+  const seen = new Set<string>();
+  const out: LegendEntry[] = [];
+  for (const r of regions) {
+    const segs = REGION_TO_SEGMENTS[r.id];
+    const name = r.label ?? (segs?.length ? SEGMENT_LABEL[view][segs[0]] : undefined) ?? r.id;
+    const color = r.color ?? 'var(--presence)';
+    const key = [name, color, r.note ?? ''].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, name, color, note: r.note });
+  }
+  return out;
+}
+
 export function BodyMap({
   title,
   icon = 'sparkle',
@@ -446,6 +468,10 @@ export function BodyMap({
     }
   }
 
+  // A muscle is usually lit on both sides of the body as two regions with the same name, colour
+  // and note; the figure shows both, but the key names it once.
+  const legend = bodyLegend(regions, view);
+
   return (
     <div
       className="card reveal"
@@ -491,15 +517,11 @@ export function BodyMap({
         </div>
 
         {/* Legend — only the highlighted regions (with their notes). */}
-        {regions.length > 0 && (
+        {legend.length > 0 && (
           <ul className="bm-legend" aria-label="Highlighted regions">
-            {regions.map((r, index) => {
-              const color = r.color ?? 'var(--presence)';
-              const segs = REGION_TO_SEGMENTS[r.id];
-              const name =
-                r.label ?? (segs?.length ? SEGMENT_LABEL[view][segs[0]] : undefined) ?? r.id;
+            {legend.map(({ key, name, color, note }) => {
               return (
-                <li key={`${r.id}-${index}`} className="bm-legend-item">
+                <li key={key} className="bm-legend-item">
                   <span
                     className="bm-legend-dot"
                     style={{ background: color } as CSSProperties}
@@ -507,7 +529,7 @@ export function BodyMap({
                   />
                   <span className="bm-legend-body">
                     <span className="bm-legend-name">{name}</span>
-                    {r.note && <span className="bm-legend-note">{r.note}</span>}
+                    {note && <span className="bm-legend-note">{note}</span>}
                   </span>
                 </li>
               );

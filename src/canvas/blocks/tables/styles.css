@@ -354,11 +354,13 @@ table.pv {
     transform var(--m-fast);
   color: var(--text-primary);
 }
+/* Totals are a tint of the ink rather than a surface: a surface token is near white in light
+   mode, so the grand total read as a blank block instead of the sum of the row above it. */
 .pv-cell.tot {
-  background: var(--surface-elevated-2);
+  background: color-mix(in oklab, var(--text-muted) 7%, transparent);
 }
 .pv-cell.grand {
-  background: var(--surface-elevated-2);
+  background: color-mix(in oklab, var(--text-muted) 13%, transparent);
   border-color: var(--line);
 }
 .pv-cell.hot {
@@ -674,29 +676,36 @@ table.pv {
   height: 1px;
   background: var(--grid-line);
 }
+/* A milestone is anchored by its DOT: the box is shifted by half the dot, not half of itself, so
+   the name beside it never drags the dot off its time. The name is always shown, on the side
+   milestoneSide() picks, and ellipsizes to the room the lane has there. */
 .sw-evt {
   position: absolute;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-4.5px, -50%);
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 9px;
   cursor: default;
   z-index: 2;
 }
+.sw-evt--left {
+  flex-direction: row-reverse;
+  transform: translate(calc(-100% + 4.5px), -50%);
+}
 .sw-evt .sw-evt-label {
+  min-width: 0;
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0;
-  transition: opacity var(--m-fast);
 }
 .sw-evt:hover .sw-evt-label,
 .sw-evt.hot .sw-evt-label {
-  opacity: 1;
+  color: var(--text-primary);
 }
 .sw-dot {
   width: 9px;
@@ -991,10 +1000,14 @@ table.pv {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sm-plot {
+  min-width: 0;
+}
 .sm-svg {
   width: 100%;
   height: 40px;
   display: block;
+  overflow: visible;
 }
 .sm-foot {
   display: flex;
@@ -1019,10 +1032,10 @@ table.pv {
   width: 11px;
   height: 11px;
 }
-.sm-delta.up {
+.sm-delta.good {
   color: var(--insight);
 }
-.sm-delta.down {
+.sm-delta.bad {
   color: var(--danger);
 }
 .sm-delta.flat {
@@ -1214,6 +1227,8 @@ table.pv {
 }
 .mg-cell {
   position: relative;
+  background: var(--mg-fill);
+  color: var(--text-primary);
   aspect-ratio: 1 / 1;
   min-height: 30px;
   max-height: var(--mg-cell); /* belt-and-suspenders with the column cap: never a giant square */
@@ -1241,6 +1256,12 @@ table.pv {
 .mg-v {
   font-size: var(--fs-xs);
   font-weight: 600;
+}
+/* Black or white, whichever clears contrast on the cell's own fill, in either theme. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .mg-cell {
+    color: color(from var(--mg-fill) srgb-linear var(--ink-on-fill));
+  }
 }
 .mg-tip {
   position: absolute;
@@ -1557,8 +1578,17 @@ table.pv {
   font-weight: 600;
   color: var(--insight);
 }
+/* Both marks centre on the cell's middle, not the text baseline: a 13px glyph and a 6px dot
+   sitting on one baseline put every check a few pixels above the dots in the same row. */
+.im-check {
+  width: 13px;
+  height: 13px;
+  color: var(--insight);
+  vertical-align: middle;
+}
 .im-empty {
   display: inline-block;
+  vertical-align: middle;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -2003,6 +2033,8 @@ table.tbl-cj-table {
   flex: none;
 }
 .cg-cell {
+  background: var(--cg-fill);
+  color: var(--text-primary);
   text-align: center;
   padding: 7px 8px;
   border-radius: var(--r-sm);
@@ -2014,6 +2046,12 @@ table.tbl-cj-table {
 }
 .cg-cell.cg-empty {
   background: transparent;
+}
+/* Black or white, whichever clears contrast on the cell's own fill, in either theme. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .cg-cell {
+    color: color(from var(--cg-fill) srgb-linear var(--ink-on-fill));
+  }
 }
 .cg-cell.hot {
   outline: 1.5px solid var(--presence);
@@ -2096,8 +2134,22 @@ table.tbl-cj-table {
   filter: brightness(1.1);
   box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.5);
 }
+.rm-tick {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.rm-tick--y {
+  align-self: center;
+  padding-right: 2px;
+  text-align: right;
+}
+.rm-tick--x {
+  text-align: center;
+}
 .rm-xlabel {
-  margin-top: 6px;
+  margin-top: 2px;
+  padding-left: 1.5em;
   text-align: center;
   font-size: var(--fs-2xs, 10.5px);
   font-weight: 700;
@@ -2364,11 +2416,19 @@ table.tbl-cj-table {
   color: var(--insight);
 }
 .dl-calc-op {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
   color: var(--text-faint);
+}
+.dl-calc-rule {
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  margin-right: -10px;
+  background: currentColor;
 }
 .dl-calc-op .ic {
   width: 13px;
@@ -2389,7 +2449,9 @@ table.tbl-cj-table {
   max-width: 200px;
 }
 
-/* the climbing ladder — each rung's accent bar grows taller by step index */
+/* the climbing ladder — each rung's accent bar runs the rung's full height and deepens in tone
+   by step index. A percentage height cannot resolve against a rung whose height is its text, so
+   a "growing" bar fell back to its minimum and sat low beside the line it belonged to. */
 .dl-ladder {
   display: flex;
   flex-direction: column;
@@ -2410,11 +2472,8 @@ table.tbl-cj-table {
   width: 5px;
   flex: none;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--presence) 60%, transparent);
   /* COMPUTED from the rung's index — a rising staircase regardless of dose text */
-  height: var(--dl-h, 100%);
-  align-self: flex-end;
-  min-height: 18px;
+  background: color-mix(in oklab, var(--presence) var(--dl-h, 100%), transparent);
 }
 .dl-rung.ceiling .dl-bar {
   background: var(--warning);
@@ -2560,9 +2619,11 @@ table.tbl-cj-table {
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
+/* The size column is inset past the 3px "your size" bar, so the bar sits in its own gutter
+   rather than across the first digit; the header shares the inset to stay aligned. */
 .sz-th--size {
   text-align: left;
-  padding-left: 2px;
+  padding-left: 10px;
 }
 .sz-row {
   transition: background var(--m-fast);
@@ -2578,7 +2639,7 @@ table.tbl-cj-table {
   background: color-mix(in oklab, var(--presence) 12%, transparent);
 }
 .sz-size {
-  padding: 9px 12px 9px 2px;
+  padding: 9px 12px 9px 10px;
   text-align: left;
   font-weight: 600;
   color: var(--text-primary);
@@ -2592,7 +2653,7 @@ table.tbl-cj-table {
   min-width: 0;
 }
 .sz-row.on .sz-size {
-  color: var(--presence-soft);
+  color: color-mix(in oklab, var(--presence) 60%, var(--text-primary));
   box-shadow: inset 3px 0 0 var(--presence);
 }
 .sz-pick {
@@ -3460,7 +3521,9 @@ table.tbl-cj-table {
   font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: var(--dd-c);
+  /* Pulled toward the body text so the paler type tones (str, datetime) still read as words on
+     their own tint, in either theme. */
+  color: color-mix(in oklab, var(--dd-c) 62%, var(--text-primary));
   background: color-mix(in oklab, var(--dd-c) 16%, transparent);
   border: 1px solid color-mix(in oklab, var(--dd-c) 34%, transparent);
   border-radius: var(--r-full);
@@ -3592,40 +3655,46 @@ table.tbl-cj-table {
   margin: 0 0 14px;
   overflow-wrap: anywhere;
 }
-/* a simplified tick-marked axis strip plotting each real peak's x position on a straight line */
+/* a stick spectrum of the listed peaks, laid out at the strip's measured width */
 .spt-axis {
-  position: relative;
-  height: 26px;
-  margin: 0 2px 14px;
+  margin: 0 0 12px;
+  min-width: 0;
+}
+.spt-axis svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 .spt-axis-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 4px;
-  height: 1px;
-  background: var(--line-strong);
+  stroke: var(--line-strong);
+  stroke-width: 1;
 }
-.spt-tick {
-  position: absolute;
-  top: 0;
-  width: 1.5px;
-  height: 9px;
-  background: var(--presence);
-  transform: translateX(-50%);
+.spt-scale-tick {
+  stroke: var(--line-strong);
+  stroke-width: 1;
 }
-.spt-axis-end {
-  position: absolute;
-  top: 13px;
-  font-size: var(--fs-2xs);
+.spt-scale-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units, drawn 1:1 at the measured width */
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
+  fill: var(--text-muted);
 }
-.spt-axis-lo {
-  left: 0;
+.spt-stick {
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linecap: round;
 }
-.spt-axis-hi {
-  right: 0;
+.spt-leader {
+  stroke: color-mix(in oklab, var(--presence) 45%, transparent);
+  stroke-width: 1;
+}
+.spt-peak-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units, drawn 1:1 at the measured width */
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  fill: var(--text-primary);
 }
 .spt-scroll {
   overflow-x: auto;
@@ -3656,6 +3725,10 @@ table.tbl-cj-table {
 }
 .spt-colh-assign {
   padding-left: 2px;
+}
+/* A unit is case-sensitive: δ (ppm) set in capitals reads as Δ (PPM), a different symbol. */
+.spt-colh-unit {
+  text-transform: none;
 }
 .spt-row {
   display: grid;
@@ -3851,20 +3924,23 @@ table.tbl-cj-table {
   border-radius: var(--r-full);
   transition: width var(--m-expressive) var(--ease-out);
 }
-/* marks off the priority zone right after the top 1–3 highest-RPN rows */
+/* marks off the priority zone right after the top 1–3 highest-RPN rows. The rule and its
+   caption share one flex row, so the line stops short of the words instead of being painted
+   over by a background patch that never matches the card's gradient. */
 .fma-priority-rule {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 4px;
+}
+.fma-priority-rule::before {
+  content: '';
+  flex: 1;
   height: 1px;
-  margin: 2px 4px 4px;
   background: color-mix(in oklab, var(--danger) 40%, transparent);
 }
 .fma-priority-rule::after {
-  content: 'fix these first';
-  position: absolute;
-  top: -7px;
-  right: 0;
-  background: var(--surface-card);
-  padding: 0 6px;
+  content: '↑ fix these first';
   font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -3932,15 +4008,21 @@ table.tbl-cj-table {
   font-size: var(--fs-xs);
 }
 /* subassembly / total rows: a top rule across the whole row + bold, mirroring
-   financialstatement's subtotal rows */
-.bom-subassembly td,
-.bom-total td {
+   financialstatement's subtotal rows. The row modifiers carry a "row--" infix because a plain
+   .bom-part on the row would also match the part-number cell's rule and right-align every
+   part's name in monospace. */
+.bom-row--subassembly td,
+.bom-row--total td {
   font-weight: 700;
   color: var(--text-primary);
   border-top: 1px solid var(--line-strong);
   padding-top: 9px;
 }
-.bom-total td {
+.bom-none {
+  font-family: var(--font-ui);
+  color: var(--text-faint);
+}
+.bom-row--total td {
   background: color-mix(in oklab, var(--presence) 7%, transparent);
 }
 
@@ -4028,6 +4110,9 @@ table.tbl-cj-table {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* A long gene panel scrolls; the legend stays outside it so the scale is always readable. */
+.eh-scroll {
   max-height: 480px;
   overflow-y: auto;
 }
@@ -4071,8 +4156,12 @@ table.tbl-cj-table {
 }
 .eh-cell {
   position: relative;
-  aspect-ratio: 1 / 1;
+  /* Wider than tall: a square cell at the column cap made a six-gene panel taller than the
+     scroller, so the last gene and the legend sat below the fold of a card with room to spare. */
+  aspect-ratio: 3 / 2;
   min-height: 30px;
+  background: var(--eh-fill);
+  color: var(--text-primary);
   max-height: var(--eh-cell); /* belt-and-suspenders with the column cap */
   border-radius: var(--r-sm);
   display: grid;
@@ -4095,6 +4184,13 @@ table.tbl-cj-table {
 .eh-v {
   font-size: var(--fs-2xs);
   font-weight: 600;
+}
+/* The figure takes whichever of black or white clears contrast on its own cell's fill, so a
+   saturated cell and a pale one are both legible in either theme. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .eh-cell {
+    color: color(from var(--eh-fill) srgb-linear var(--ink-on-fill));
+  }
 }
 .eh-tip {
   position: absolute;
@@ -4208,7 +4304,11 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  /* The shorthand does not carry case or tracking, and the global button reset sets both, so
+     a sortable header read "Status" beside its plain neighbour's "BATES". */
   font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
   color: inherit;
   background: none;
   border: none;
@@ -4550,11 +4650,12 @@ table.tbl-cj-table {
   flex-direction: column;
   gap: 4px;
 }
-.ctk-card-top {
+.ctk-meta {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
 }
 .ctk-name {
   font-size: var(--fs-sm);
@@ -4563,11 +4664,12 @@ table.tbl-cj-table {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   min-width: 0;
 }
 .ctk-condition {
+  margin-left: auto;
   flex: none;
   font-size: var(--fs-2xs);
   font-weight: 700;
@@ -5218,4 +5320,31 @@ table.tbl-cj-table {
 }
 .csl-note {
   overflow-wrap: anywhere;
+}
+
+/* A sticky row header only needs an opaque fill while cells are sliding under it. At rest the
+   card's gradient shows through, so the name column does not read as a white block beside the
+   grid; once the grid has scrolled sideways the fill comes back. Browsers without scroll-state
+   queries keep the always-opaque header. */
+@supports (container-type: scroll-state) {
+  .gb-scroll,
+  .rub-scroll,
+  .isc-scroll,
+  .raci-scroll {
+    container-type: scroll-state;
+  }
+  .gb-rowh,
+  .rub-rowh,
+  .isc-rowh,
+  .raci-rowh {
+    background: transparent;
+  }
+  @container scroll-state(scrollable: inline-start) {
+    .gb-rowh,
+    .rub-rowh,
+    .isc-rowh,
+    .raci-rowh {
+      background: var(--surface-elevated);
+    }
+  }
 }

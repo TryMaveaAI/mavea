@@ -5,17 +5,46 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = CircleOfFifthsProps & { delay?: number };
 
-// The signature labels ride at R_SIG+6 from the centre and are centred text, so their glyphs reach
-// roughly a half-width past that radius. PAD widens the square viewBox around the ring on every side
-// so even the outermost "6♭" sits fully inside (the .card clips with overflow:hidden, so the labels
-// must live within the viewBox — overflow:visible can't save them).
-const PAD = 12;
+// PAD widens the square viewBox around the ring on every side so the rim's signature labels sit
+// fully inside (the .card clips with overflow:hidden, so they must live within the viewBox).
+const PAD = 14;
 const RING = 220; // diameter the ring + labels are laid out within
 const VB = RING + PAD * 2; // square viewBox, padded so rim labels never clip
 const C = VB / 2; // centre
 const R_OUTER = 96; // major-key ring radius
 const R_INNER = 60; // relative-minor ring radius
-const R_SIG = 108; // key-signature text radius (just outside the major ring)
+const KEY_R = 15; // major-key chip radius
+const SIG_FS = 9; // .cof-sig
+const SIG_GAP = 2.5;
+
+/** Centre radius for a signature label at angle `a`: just clear of its key's chip. A centred
+ *  label reaches half its width past its centre at 3 and 9 o'clock and half its height at 12
+ *  and 6, so one fixed radius either sat on the chip at the top or floated off it at the sides. */
+const sigRadius = (a: number, text: string) =>
+  R_OUTER +
+  KEY_R +
+  SIG_GAP +
+  (Math.abs(Math.cos(a)) * text.length * SIG_FS * 0.6) / 2 +
+  (Math.abs(Math.sin(a)) * SIG_FS * 0.75) / 2;
+
+/** A key name with its accidental set upright: the italic face has no ♯/♭, and the fallback
+ *  glyph it borrows carries wide side bearings that read as "B ♭ m". */
+function KeyName({ name }: { name: string }) {
+  const parts = name.split(/([♯♭])/).filter(Boolean);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p === '♯' || p === '♭' ? (
+          <tspan key={i} className="cof-acc">
+            {p}
+          </tspan>
+        ) : (
+          p
+        ),
+      )}
+    </>
+  );
+}
 
 // The circle of fifths, clockwise from C at twelve o'clock. Each entry pairs a major key with its
 // relative minor and the key signature (sharps positive, flats negative). This is the canonical,
@@ -158,10 +187,11 @@ export function CircleOfFifths({
 
                 {/* Key signature on the rim */}
                 <text
-                  x={px(R_SIG + 6, a)}
-                  y={py(R_SIG + 6, a) + 3}
+                  x={px(sigRadius(a, sigText(s.sig)), a)}
+                  y={py(sigRadius(a, sigText(s.sig)), a)}
                   className="cof-sig"
                   textAnchor="middle"
+                  dominantBaseline="central"
                 >
                   {sigText(s.sig)}
                 </text>
@@ -174,7 +204,7 @@ export function CircleOfFifths({
                     className={`cof-minor ${isHi ? 'cof-minor--hi' : ''}`}
                     textAnchor="middle"
                   >
-                    {s.minor}
+                    <KeyName name={s.minor} />
                   </text>
                 )}
               </g>

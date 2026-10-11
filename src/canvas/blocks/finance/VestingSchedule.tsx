@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { formatDate, formatValue } from '../../lib';
 import type { VestingScheduleProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { pctVested } from './vesting';
 
 type Props = VestingScheduleProps & { delay?: number };
 
@@ -23,21 +24,10 @@ function monthsBetween(a: Date, b: Date): number | null {
   return (b.getTime() - a.getTime()) / MS_PER_MONTH;
 }
 
-/** Ownership % at `elapsed` months: flat at 0 through the cliff, then linear to 100 at
- *  `vestMonths`. Never authored — the only inputs are the cliff/vest lengths and the clock. */
-function pctVested(elapsed: number, cliffMonths: number, vestMonths: number): number {
-  if (vestMonths <= 0 || elapsed >= vestMonths) return elapsed >= vestMonths ? 100 : 0;
-  if (elapsed < cliffMonths) return 0;
-  const rampSpan = vestMonths - cliffMonths;
-  if (rampSpan <= 0) return 100;
-  return Math.min(100, Math.max(0, ((elapsed - cliffMonths) / rampSpan) * 100));
-}
-
 // One row per equity grant, all sharing a single calendar timeline (like a Gantt track) so a
-// "today" needle can cross every row at once. Each bar splits into its cliff span (always
-// unfilled — nothing vests yet) and its ramp span, whose fill grows at exactly the calendar
-// rate — the fill edge lands under the needle the instant a grant clears its cliff, and stays
-// there for as long as the schedule runs.
+// "today" needle can cross every row at once. Each bar marks its cliff, and its fill is the share
+// vested: nothing until the cliff, then the whole cliff tranche at once and the rest at the
+// calendar rate, so from the cliff on the fill edge sits under the needle.
 export function VestingSchedule({
   title,
   icon = 'clock',
@@ -124,18 +114,8 @@ export function VestingSchedule({
                 style={{ left: `${r.leftPct}%`, width: `${Math.max(r.widthPct, 1.5)}%` }}
               >
                 <div className="fin-vs-cliff" style={{ width: `${r.cliffLocalPct}%` }} />
-                <div
-                  className="fin-vs-ramp"
-                  style={{
-                    left: `${r.cliffLocalPct}%`,
-                    width: `${Math.max(0, 100 - r.cliffLocalPct)}%`,
-                  }}
-                >
-                  <span
-                    className="fin-vs-ramp-fill"
-                    style={{ width: `${r.pct}%`, background: r.color }}
-                  />
-                </div>
+                <span className="fin-vs-fill" style={{ width: `${r.pct}%`, background: r.color }} />
+                <span className="fin-vs-cliff-mark" style={{ left: `${r.cliffLocalPct}%` }} />
               </div>
             </div>
             <div

@@ -35,10 +35,12 @@ export function ChordDiagram({
   const stringCount = Math.min(12, Math.max(3, frets.length || DEFAULT_STRINGS));
   const safe = Array.from({ length: stringCount }, (_, i) => frets[i] ?? 'x');
 
-  // Find the barre fret range (min non-zero/non-x fret)
-  const numericFrets = safe.filter((f): f is number => typeof f === 'number' && f > 0) as number[];
+  // A shape that fits under the nut is drawn from the nut — an open G (320003) is read at the
+  // first frets, not as a "2fr" shape. Only a shape reaching past the window moves up the neck.
+  const numericFrets = safe.filter((f): f is number => typeof f === 'number' && f > 0);
   const minFret = numericFrets.length ? Math.min(...numericFrets) : 0;
-  const startFret = capoFret ?? (minFret > 1 ? minFret : 1);
+  const maxFret = numericFrets.length ? Math.max(...numericFrets) : 0;
+  const startFret = capoFret ?? (maxFret > FRET_ROWS ? minFret : 1);
 
   return (
     <div
@@ -109,17 +111,19 @@ export function ChordDiagram({
             })}
           </div>
 
-          {/* Note names below strings. Longer spellings (e.g. "F♯m", "B♭") on a wide neck
-              (up to 12 strings) can outgrow their even flex share — wrap instead of
-              overflowing past the label or colliding with its neighbours. */}
+          {/* Note names, one column per string centred under it: the outer strings run along
+              the board's edges, so the row overhangs the board by half a column each side.
+              Longer spellings ("F♯m") on a wide neck wrap inside their column. */}
           {notes && notes.length > 0 && (
-            <div className="cd-notes">
+            <div
+              className="cd-notes"
+              style={{
+                gridTemplateColumns: `repeat(${stringCount}, minmax(0, 1fr))`,
+                marginInline: `calc(-50% / ${stringCount - 1})`,
+              }}
+            >
               {Array.from({ length: stringCount }, (_, i) => (
-                <div
-                  key={i}
-                  className="cd-note-label"
-                  style={{ overflowWrap: 'break-word', minWidth: 0 }}
-                >
+                <div key={i} className="cd-note-label">
                   {notes[i] ?? ''}
                 </div>
               ))}

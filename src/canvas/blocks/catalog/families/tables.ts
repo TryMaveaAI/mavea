@@ -164,7 +164,8 @@ export const CATALOG_TABLES: ComponentCatalog = [
     colMin: 8,
     coercer: 'generic',
     itemShapes: [{ prop: 'panels', text: 'label', textAliases: ['name', 'title'] }],
-    blurb: 'Grid of same-scale mini bar or line charts; shared domain across all panels.',
+    blurb:
+      "Grid of mini bar or line charts. Panels in one unit share a scale; mixed units (ms, bpm, kg) each get their own. Set a panel's good: false when its rise is bad (resting heart rate, cost).",
   }),
   createMeta('comparebars', {
     family: 'tables',

@@ -278,130 +278,132 @@ export function QQPlot({
         </div>
       )}
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-        role="img"
-        aria-label={title ?? 'Q-Q plot'}
-      >
-        <defs>
-          <clipPath id={clipId}>
-            <rect x={padL} y={PAD.t} width={W - padL - PAD.r} height={H - PAD.t - PAD.b} />
-          </clipPath>
-        </defs>
-
-        {xTicks.map((t, i) => (
-          <line
-            key={`gx${i}`}
-            x1={sx(t)}
-            y1={PAD.t}
-            x2={sx(t)}
-            y2={H - PAD.b}
-            className="cx-grid-l"
-          />
-        ))}
-        {yTicks.map((t, i) => (
-          <line
-            key={`gy${i}`}
-            x1={padL}
-            y1={sy(t)}
-            x2={W - PAD.r}
-            y2={sy(t)}
-            className="cx-grid-l"
-          />
-        ))}
-
-        <line x1={padL} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} className="cx-axis-l" />
-        <line x1={padL} y1={PAD.t} x2={padL} y2={H - PAD.b} className="cx-axis-l" />
-
-        {/* Reference line clipped so steep slopes don't bleed outside the plot frame */}
-        <line
-          x1={sx(xLo)}
-          y1={sy(Math.max(yLo, Math.min(yHi, intercept + slope * xLo)))}
-          x2={sx(xHi)}
-          y2={sy(Math.max(yLo, Math.min(yHi, intercept + slope * xHi)))}
-          stroke="var(--text-muted)"
-          strokeWidth={1}
-          strokeDasharray="4 3"
-          clipPath={`url(#${clipId})`}
-        />
-
-        <g clipPath={`url(#${clipId})`}>
-          {pts.map((p, i) => {
-            const expected = intercept + slope * p.theoretical;
-            // Points hugging the line get a near-surface fill to reveal alignment; outliers pop
-            const dev = yRange > 0 ? Math.abs(p.sample - expected) / yRange : 0;
-            const fill = dev < 0.05 ? 'var(--surface-elevated)' : 'var(--presence)';
-            return (
-              <circle
-                key={i}
-                cx={sx(p.theoretical)}
-                cy={sy(p.sample)}
-                r={2.5}
-                fill={fill}
-                opacity={0.8}
-                stroke="var(--presence)"
-                strokeWidth={0.7}
-              />
-            );
-          })}
-        </g>
-
-        {xTicks.map((t, i) => (
-          <text
-            key={`xt${i}`}
-            x={sx(t)}
-            y={H - PAD.b + 12}
-            className="cx-tick"
-            style={TICK_STYLE}
-            textAnchor="middle"
-          >
-            {formatValue(t)}
-          </text>
-        ))}
-        {yTicks.map((t, i) => (
-          <text
-            key={`yt${i}`}
-            x={padL - TICK_GAP}
-            y={sy(t) + 3.5}
-            className="cx-tick"
-            style={TICK_STYLE}
-            textAnchor="end"
-          >
-            {formatValue(t)}
-          </text>
-        ))}
-
-        <text x={innerMidX} y={H - 4} className="cx-axlbl" style={AXIS_STYLE} textAnchor="middle">
-          {xlabel}
-        </text>
-
-        {/* translate+rotate keeps x/y in the pre-rotation coordinate space */}
-        <text
-          x={0}
-          y={0}
-          className="cx-axlbl"
-          style={AXIS_STYLE}
-          textAnchor="middle"
-          transform={`translate(11, ${innerMidY}) rotate(-90)`}
+      <div className="canvas-figure">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+          role="img"
+          aria-label={title ?? 'Q-Q plot'}
         >
-          {ylabel}
-        </text>
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={padL} y={PAD.t} width={W - padL - PAD.r} height={H - PAD.t - PAD.b} />
+            </clipPath>
+          </defs>
 
-        {annotation && (
-          <text
-            x={annotX}
-            y={annotY}
-            fill="var(--text-muted)"
-            fontSize={ANNOT_FS}
-            fontStyle="italic"
-            textAnchor={annotAnchor}
-          >
-            {annotation}
+          {xTicks.map((t, i) => (
+            <line
+              key={`gx${i}`}
+              x1={sx(t)}
+              y1={PAD.t}
+              x2={sx(t)}
+              y2={H - PAD.b}
+              className="cx-grid-l"
+            />
+          ))}
+          {yTicks.map((t, i) => (
+            <line
+              key={`gy${i}`}
+              x1={padL}
+              y1={sy(t)}
+              x2={W - PAD.r}
+              y2={sy(t)}
+              className="cx-grid-l"
+            />
+          ))}
+
+          <line x1={padL} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} className="cx-axis-l" />
+          <line x1={padL} y1={PAD.t} x2={padL} y2={H - PAD.b} className="cx-axis-l" />
+
+          {/* Reference line clipped so steep slopes don't bleed outside the plot frame */}
+          <line
+            x1={sx(xLo)}
+            y1={sy(Math.max(yLo, Math.min(yHi, intercept + slope * xLo)))}
+            x2={sx(xHi)}
+            y2={sy(Math.max(yLo, Math.min(yHi, intercept + slope * xHi)))}
+            stroke="var(--text-muted)"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+            clipPath={`url(#${clipId})`}
+          />
+
+          <g clipPath={`url(#${clipId})`}>
+            {pts.map((p, i) => {
+              const expected = intercept + slope * p.theoretical;
+              // Points hugging the line get a near-surface fill to reveal alignment; outliers pop
+              const dev = yRange > 0 ? Math.abs(p.sample - expected) / yRange : 0;
+              const fill = dev < 0.05 ? 'var(--surface-elevated)' : 'var(--presence)';
+              return (
+                <circle
+                  key={i}
+                  cx={sx(p.theoretical)}
+                  cy={sy(p.sample)}
+                  r={2.5}
+                  fill={fill}
+                  opacity={0.8}
+                  stroke="var(--presence)"
+                  strokeWidth={0.7}
+                />
+              );
+            })}
+          </g>
+
+          {xTicks.map((t, i) => (
+            <text
+              key={`xt${i}`}
+              x={sx(t)}
+              y={H - PAD.b + 12}
+              className="cx-tick"
+              style={TICK_STYLE}
+              textAnchor="middle"
+            >
+              {formatValue(t)}
+            </text>
+          ))}
+          {yTicks.map((t, i) => (
+            <text
+              key={`yt${i}`}
+              x={padL - TICK_GAP}
+              y={sy(t) + 3.5}
+              className="cx-tick"
+              style={TICK_STYLE}
+              textAnchor="end"
+            >
+              {formatValue(t)}
+            </text>
+          ))}
+
+          <text x={innerMidX} y={H - 4} className="cx-axlbl" style={AXIS_STYLE} textAnchor="middle">
+            {xlabel}
           </text>
-        )}
-      </svg>
+
+          {/* translate+rotate keeps x/y in the pre-rotation coordinate space */}
+          <text
+            x={0}
+            y={0}
+            className="cx-axlbl"
+            style={AXIS_STYLE}
+            textAnchor="middle"
+            transform={`translate(11, ${innerMidY}) rotate(-90)`}
+          >
+            {ylabel}
+          </text>
+
+          {annotation && (
+            <text
+              x={annotX}
+              y={annotY}
+              fill="var(--text-muted)"
+              fontSize={ANNOT_FS}
+              fontStyle="italic"
+              textAnchor={annotAnchor}
+            >
+              {annotation}
+            </text>
+          )}
+        </svg>
+      </div>
 
       {footer && (
         <div

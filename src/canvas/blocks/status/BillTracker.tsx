@@ -105,7 +105,9 @@ export function BillTracker({
               style={{ ['--i' as string]: i } as CSSProperties}
             >
               {i > 0 && (
-                <span className={`bt-connector ${deadIdx === i - 1 ? 'dead' : ''}`}>
+                <span
+                  className={`bt-connector ${deadIdx === i - 1 ? 'dead' : status === 'done' || status === 'current' ? 'reached' : ''}`}
+                >
                   {deadIdx === i - 1 && <Icon.x className="bt-dead-ic" aria-hidden="true" />}
                 </span>
               )}

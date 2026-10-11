@@ -9,14 +9,15 @@ import { richInnerHtml } from '../../../lib/richText';
 type Props = TitrationCurveProps & { delay?: number };
 
 const W = 340;
-const H = 236;
+const H = 248;
 const PAD_L = 34;
 const PAD_R = 16;
 // .lr-tc-veq-label, in user units, and the gap between that label and its line.
 const VEQ_FS = 9;
 const VEQ_GAP = 4;
 const PAD_T = 16;
-const PAD_B = 30;
+// The tick row, then the x-axis title on its own row beneath it.
+const PAD_B = 42;
 
 export function TitrationCurve({
   title,
@@ -206,10 +207,9 @@ export function TitrationCurve({
             />
           ))}
 
-          {/* axis labels — both sit on the top row (not the bottom tick row, where a title this
-              long would run into the rightmost volume tick) mirroring how yLabel already sits
-              opposite the plot from xLabel in the shared Cartesian scaffold. */}
-          <text x={W - PAD_R} y={PAD_T - 4} className="lr-tc-axlbl" textAnchor="end">
+          {/* The x title under its axis, on a row of its own below the tick labels; the pH unit
+              heads its axis, where a y unit reads. */}
+          <text x={(PAD_L + W - PAD_R) / 2} y={H - 6} className="lr-tc-axlbl" textAnchor="middle">
             Volume added (mL)
           </text>
           <text x={PAD_L + 2} y={PAD_T - 4} className="lr-tc-axlbl" textAnchor="start">

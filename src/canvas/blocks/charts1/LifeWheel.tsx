@@ -63,99 +63,101 @@ export function LifeWheel({
       )}
 
       <div className="c1-radar-wrap">
-        <svg
-          role="img"
-          aria-label={title || 'Wheel of life'}
-          viewBox={`${-PAD_X} ${-PAD_Y} ${VB_W} ${VB_H}`}
-          width="100%"
-          className="c1-radar c1-lw"
-        >
-          {/* felt-scale rings, faint ticks at 2/4/6/8/10 */}
-          {rings.map((r, i) => (
+        <div className="canvas-figure">
+          <svg
+            role="img"
+            aria-label={title || 'Wheel of life'}
+            viewBox={`${-PAD_X} ${-PAD_Y} ${VB_W} ${VB_H}`}
+            width="100%"
+            className="c1-radar c1-lw"
+          >
+            {/* felt-scale rings, faint ticks at 2/4/6/8/10 */}
+            {rings.map((r, i) => (
+              <polygon
+                key={i}
+                points={angles.map((a) => pt(a, R * (r / SCALE)).join(',')).join(' ')}
+                fill="none"
+                stroke="var(--grid-line)"
+                strokeWidth={r === SCALE ? 1.25 : 1}
+              />
+            ))}
+
+            {/* spokes */}
+            {angles.map((a, i) => {
+              const [x, y] = pt(a, R);
+              return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--grid-line)" />;
+            })}
+
+            {/* the balance polygon — reach of each spoke = its felt score */}
             <polygon
-              key={i}
-              points={angles.map((a) => pt(a, R * (r / SCALE)).join(',')).join(' ')}
-              fill="none"
-              stroke="var(--grid-line)"
-              strokeWidth={r === SCALE ? 1.25 : 1}
+              points={angles.map((a, i) => pt(a, R * (scores[i] / SCALE)).join(',')).join(' ')}
+              fill="var(--presence)"
+              fillOpacity={0.16}
+              stroke="var(--presence)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              className="c1-lw-poly"
             />
-          ))}
 
-          {/* spokes */}
-          {angles.map((a, i) => {
-            const [x, y] = pt(a, R);
-            return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--grid-line)" />;
-          })}
-
-          {/* the balance polygon — reach of each spoke = its felt score */}
-          <polygon
-            points={angles.map((a, i) => pt(a, R * (scores[i] / SCALE)).join(',')).join(' ')}
-            fill="var(--presence)"
-            fillOpacity={0.16}
-            stroke="var(--presence)"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            className="c1-lw-poly"
-          />
-
-          {/* score node + on-spoke value per domain — offset away from the node in whichever
+            {/* score node + on-spoke value per domain — offset away from the node in whichever
               direction points outward from center, so labels fan out instead of stacking on
               top of each other once the wheel is crowded (16+ spokes puts nodes close together). */}
-          {angles.map((a, i) => {
-            const [x, y] = pt(a, R * (scores[i] / SCALE));
-            const active = hover === i;
-            const outX = x - CX;
-            const outY = y - CY;
-            const nearCenterCol = Math.abs(outX) < 8;
-            return (
-              <g key={i}>
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={active ? 5 : 3.5}
-                  fill="var(--presence)"
-                  data-mark={i === lowIdx ? 'circle' : undefined}
-                />
+            {angles.map((a, i) => {
+              const [x, y] = pt(a, R * (scores[i] / SCALE));
+              const active = hover === i;
+              const outX = x - CX;
+              const outY = y - CY;
+              const nearCenterCol = Math.abs(outX) < 8;
+              return (
+                <g key={i}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={active ? 5 : 3.5}
+                    fill="var(--presence)"
+                    data-mark={i === lowIdx ? 'circle' : undefined}
+                  />
+                  <text
+                    x={x}
+                    y={y}
+                    dx={nearCenterCol ? 0 : outX > 0 ? 4 : -4}
+                    dy={outY > 0 ? 12 : -6}
+                    fontSize="9"
+                    fontWeight={700}
+                    textAnchor={nearCenterCol ? 'middle' : outX > 0 ? 'start' : 'end'}
+                    fill="var(--text-primary)"
+                    className="c1-lw-score"
+                    style={{ opacity: active ? 1 : 0.85 }}
+                  >
+                    {scores[i]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* domain labels around the rim — anchored by side so they never clip the card */}
+            {domains.map((d, i) => {
+              const a = angles[i];
+              const [x, y] = pt(a, R + 18);
+              return (
                 <text
+                  key={i}
                   x={x}
                   y={y}
-                  dx={nearCenterCol ? 0 : outX > 0 ? 4 : -4}
-                  dy={outY > 0 ? 12 : -6}
-                  fontSize="9"
-                  fontWeight={700}
-                  textAnchor={nearCenterCol ? 'middle' : outX > 0 ? 'start' : 'end'}
-                  fill="var(--text-primary)"
-                  className="c1-lw-score"
-                  style={{ opacity: active ? 1 : 0.85 }}
+                  textAnchor={Math.abs(x - CX) < 8 ? 'middle' : x > CX ? 'start' : 'end'}
+                  dominantBaseline="middle"
+                  fontSize="10.5"
+                  fill={hover === i ? 'var(--text-primary)' : 'var(--text-muted)'}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
                 >
-                  {scores[i]}
+                  {d.label}
                 </text>
-              </g>
-            );
-          })}
-
-          {/* domain labels around the rim — anchored by side so they never clip the card */}
-          {domains.map((d, i) => {
-            const a = angles[i];
-            const [x, y] = pt(a, R + 18);
-            return (
-              <text
-                key={i}
-                x={x}
-                y={y}
-                textAnchor={Math.abs(x - CX) < 8 ? 'middle' : x > CX ? 'start' : 'end'}
-                dominantBaseline="middle"
-                fontSize="10.5"
-                fill={hover === i ? 'var(--text-primary)' : 'var(--text-muted)'}
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-              >
-                {d.label}
-              </text>
-            );
-          })}
-        </svg>
+              );
+            })}
+          </svg>
+        </div>
 
         <div className="c1-lw-side">
           <div className="c1-lw-balance">

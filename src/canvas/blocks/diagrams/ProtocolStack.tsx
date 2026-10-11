@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ProtocolStackProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { AVG_CHAR_W, LBL_FONT_INNER, PAYLOAD_LINE_H, payloadLines } from './protocolStackLayout';
 
 type Props = ProtocolStackProps & { delay?: number };
 
@@ -26,8 +27,6 @@ const PAYLOAD_MIN = 34;
 // slice-and-ellipsis approach EtymTree uses for its fixed-width boxes; the untruncated text
 // survives as a native <title> tooltip so nothing is silently lost.
 const LBL_FONT_OUTER = 4.2; // px, viewBox units — must track .pst-box-lbl
-const LBL_FONT_INNER = 5; // px, viewBox units — must track .pst-box-lbl--inner
-const AVG_CHAR_W = 0.62; // bold sans average glyph width as a fraction of font-size
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, Math.max(1, max - 1)).trimEnd() + '…' : text;
@@ -71,7 +70,8 @@ export function ProtocolStack({
       // whole square); every other box sizes off the header band's own width, which is what's
       // actually available to the label — both shrink with depth, so the tightest budget always
       // lands on the smallest, most deeply-nested box.
-      const maxChars = maxCharsFor(size, inner ? LBL_FONT_INNER : LBL_FONT_OUTER);
+      const maxChars = maxCharsFor(size, LBL_FONT_OUTER);
+      const payload = inner ? payloadLines(f.header, size) : null;
       return {
         key: `${f.header}-${i}`,
         header: f.header,
@@ -82,6 +82,7 @@ export function ProtocolStack({
         labelH,
         inner,
         maxChars,
+        payload,
         depth: i,
       };
     });
@@ -134,40 +135,66 @@ export function ProtocolStack({
         {encaps && (
           <figure className="pst-encaps">
             <figcaption className="pst-encaps-cap">Encapsulation</figcaption>
-            <svg
-              viewBox={`0 0 ${ENC_VB} ${ENC_VB}`}
-              className="pst-encaps-svg"
-              role="img"
-              aria-label="Packet encapsulation: each layer wraps the one inside it"
-            >
-              {encaps.map((e) => {
-                const on = e.layer != null && hot === e.layer;
-                return (
-                  <g
-                    key={e.key}
-                    className={'pst-box' + (e.inner ? ' pst-box--inner' : '') + (on ? ' on' : '')}
-                    onMouseEnter={() => e.layer && setHot(e.layer)}
-                    onMouseLeave={() => setHot(null)}
-                  >
-                    {/* The tooltip for a truncated header hangs off the box, not its <text>: it
+            <div className="canvas-figure">
+              <svg
+                viewBox={`0 0 ${ENC_VB} ${ENC_VB}`}
+                className="pst-encaps-svg"
+                role="img"
+                aria-label="Packet encapsulation: each layer wraps the one inside it"
+              >
+                {encaps.map((e) => {
+                  const on = e.layer != null && hot === e.layer;
+                  return (
+                    <g
+                      key={e.key}
+                      className={'pst-box' + (e.inner ? ' pst-box--inner' : '') + (on ? ' on' : '')}
+                      onMouseEnter={() => e.layer && setHot(e.layer)}
+                      onMouseLeave={() => setHot(null)}
+                    >
+                      {/* The tooltip for a truncated header hangs off the box, not its <text>: it
                         would otherwise inherit the label's few-user-unit font-size, and the whole
                         box is a far easier hover target than a handful of tiny glyphs. */}
-                    {e.header.length > e.maxChars && <title>{e.header}</title>}
-                    <rect x={e.x} y={e.y} width={e.size} height={e.size} rx={2.4} />
-                    {/* Header label sits in the top band of each box; the payload label centres. */}
-                    <text
-                      x={e.x + e.size / 2}
-                      y={e.inner ? e.y + e.size / 2 : e.y + e.labelH / 2 + 1}
-                      className={e.inner ? 'pst-box-lbl pst-box-lbl--inner' : 'pst-box-lbl'}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                    >
-                      {truncate(e.header, e.maxChars)}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                      {(e.payload ? e.payload.clipped : e.header.length > e.maxChars) && (
+                        <title>{e.header}</title>
+                      )}
+                      <rect x={e.x} y={e.y} width={e.size} height={e.size} rx={2.4} />
+                      {/* Header label sits in the top band of each box; the payload label centres. */}
+                      {e.payload ? (
+                        <text
+                          className="pst-box-lbl pst-box-lbl--inner"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          {e.payload.lines.map((ln, k, all) => (
+                            <tspan
+                              key={k}
+                              x={e.x + e.size / 2}
+                              y={
+                                e.y +
+                                e.size / 2 +
+                                (k - (all.length - 1) / 2) * LBL_FONT_INNER * PAYLOAD_LINE_H
+                              }
+                            >
+                              {ln}
+                            </tspan>
+                          ))}
+                        </text>
+                      ) : (
+                        <text
+                          x={e.x + e.size / 2}
+                          y={e.y + e.labelH / 2 + 1}
+                          className="pst-box-lbl"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          {truncate(e.header, e.maxChars)}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
             <div className="pst-flow-note">
               <span className="pst-flow-arrow" aria-hidden="true">
                 ↓

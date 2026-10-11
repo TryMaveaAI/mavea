@@ -1115,7 +1115,7 @@
 }
 .cg-colh span {
   display: inline-block;
-  max-width: 70px;
+  max-width: 100%;
   line-height: 1.2;
 }
 .cg-rowh {
@@ -2398,10 +2398,11 @@
   width: 10px;
   text-align: right;
 }
+/* The same star glyph the headline rating draws, so the rows read as star counts. */
 .rv-dist-ic {
-  width: 11px;
-  height: 11px;
   flex: none;
+  font-size: var(--fs-2xs);
+  line-height: 1;
   color: var(--warning);
 }
 .rv-dist-track {
@@ -3021,29 +3022,32 @@
   margin: 0 -4px;
   padding: 0 4px;
 }
-/* Fixed layout + explicit <colgroup> widths, not `width: 100%` on an auto-layout table: the
-   element column carries wrappable prose (no natural max-content width to anchor a column on)
-   while the reference/cell columns are compact marks — left to the browser's auto algorithm,
-   the prose column collapsed to a sliver and the mark columns ballooned to fill the remainder.
-   Explicit column widths (deliberately NOT summing to 100%, so a wide reference list overflows
-   into `.pcc-scroll`'s scrollbar rather than being squeezed) make every column's width a fact,
-   not a negotiation. */
+/* Fixed layout + explicit <colgroup> widths, not an auto-layout table: the element column carries
+   wrappable prose with no natural max-content width to anchor on, so left to the browser it
+   collapsed to a sliver while the mark columns ballooned. */
 .pcc-table {
   border-collapse: separate;
   border-spacing: 4px;
   table-layout: fixed;
-}
-.pcc-col-el {
-  width: min(240px, 100%);
+  /* A fixed-layout table with no width of its own ignores its column widths, which is how the
+     reference columns ended up ~40px with their names broken a letter at a time. The table fills
+     the card, the element column takes what the references leave, and it never drops under its
+     floor: past that the table outgrows the card into .pcc-scroll. */
+  inline-size: max(100%, calc(14rem + var(--pcc-refs, 1) * 6rem));
 }
 .pcc-col-ref {
-  width: min(108px, 100%);
+  inline-size: 6rem;
 }
-.pcc-corner {
-  width: min(240px, 100%);
+/* A phone card keeps both columns on screen: narrower marks, a shorter prose floor. */
+@container (width <= 420px) {
+  .pcc-table {
+    inline-size: max(100%, calc(9rem + var(--pcc-refs, 1) * 4.25rem));
+  }
+  .pcc-col-ref {
+    inline-size: 4.25rem;
+  }
 }
 .pcc-refh {
-  width: min(108px, 100%);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
@@ -3054,7 +3058,6 @@
   overflow-wrap: break-word;
 }
 .pcc-elh {
-  width: min(240px, 100%);
   text-align: left;
   vertical-align: top;
   padding: 6px 12px 6px 2px;
@@ -3079,7 +3082,6 @@
   overflow-wrap: break-word;
 }
 .pcc-cell {
-  width: 40px;
   height: 36px;
   border-radius: var(--r-sm);
   cursor: pointer;

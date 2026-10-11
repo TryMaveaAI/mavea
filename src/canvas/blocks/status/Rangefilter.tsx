@@ -6,6 +6,9 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = RangefilterProps & { delay?: number };
 
+/** Track share (%) below which the two bound labels would collide on a phone-width card. */
+const BOUNDS_MIN_GAP = 30;
+
 export function Rangefilter({
   title,
   icon = 'table',
@@ -77,7 +80,6 @@ export function Rangefilter({
       </div>
 
       <div className="rf-head">
-        <span className="rf-bound tab-num">{fmt(lo)}</span>
         <span className="rf-count">
           {/* the in-range count is the single salient figure Mavéa underlines */}
           <strong className="tab-num" data-mark="underline" style={{ color }}>
@@ -85,7 +87,6 @@ export function Rangefilter({
           </strong>{' '}
           {unitLabel}
         </span>
-        <span className="rf-bound tab-num">{fmt(hi)}</span>
       </div>
 
       <div className="rf-track" ref={trackRef}>
@@ -108,6 +109,35 @@ export function Rangefilter({
           onPointerUp={release}
           aria-label="Maximum"
         />
+      </div>
+
+      {/* Each bound reads under its own handle — at the card's corners they named the slider's
+          ends, not the range picked. A label at X% shifted back by X% of its own width stays
+          inside the track at either extreme; handles too close for two labels share one. */}
+      <div className="rf-scale">
+        {hiPct - loPct < BOUNDS_MIN_GAP ? (
+          <span
+            className="rf-bound tab-num"
+            style={{ ['--at' as string]: (loPct + hiPct) / 2 + '%' } as CSSProperties}
+          >
+            {fmt(lo)} – {fmt(hi)}
+          </span>
+        ) : (
+          <>
+            <span
+              className="rf-bound tab-num"
+              style={{ ['--at' as string]: loPct + '%' } as CSSProperties}
+            >
+              {fmt(lo)}
+            </span>
+            <span
+              className="rf-bound tab-num"
+              style={{ ['--at' as string]: hiPct + '%' } as CSSProperties}
+            >
+              {fmt(hi)}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="rf-list">

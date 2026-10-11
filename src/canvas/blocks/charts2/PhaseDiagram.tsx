@@ -4,6 +4,9 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceStep, ticks } from '../../lib/scale';
 import type { PhaseDiagramProps, PhaseBoundary, PhasePoint } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { boxHits, placeClear, ringCandidates, splitTwo } from './chartMath';
+import type { Box, Pt } from './chartMath';
 
 type Props = PhaseDiagramProps & { delay?: number };
 
@@ -28,6 +31,46 @@ const REGION_TINT: Record<string, string> = {
 /** Trim float dust from a coordinate read-out so point labels stay clean. */
 function fmt(n: number): string {
   return (Math.round(n * 1000) / 1000).toString();
+}
+
+// Label type sizes, mirrored from styles.css (.phd-region-lbl / .phd-pt-lbl / .phd-pt-sub) so the
+// placement below measures the text it will actually draw.
+const REGION_FS = 11;
+const PT_FS = 9.5;
+const PT_SUB_FS = 8.5;
+
+/** "(273.16 K, 0.006 atm)" — a special point's coordinates with their units. */
+function coords(pt: PhasePoint, tUnit?: string, pUnit?: string): string {
+  return `(${fmt(pt.t)}${tUnit ? ` ${tUnit}` : ''}, ${fmt(pt.p)}${pUnit ? ` ${pUnit}` : ''})`;
+}
+
+/** A special point's two-line label, hung in whichever corner around the point no boundary curve
+ *  crosses — `prefer` names the corner tried first. A curve ending AT the point leaves at most
+ *  three corners clear, and which three depends on the data, so no fixed corner is safe. */
+function placePointLabel(
+  at: Pt,
+  title: string,
+  sub: string,
+  prefer: 'above-right' | 'below-left',
+  bounds: Box,
+  lines: Pt[][],
+  avoid: Box[],
+): Box {
+  const w = Math.max(estimateTextWidth(title, PT_FS, true), estimateTextWidth(sub, PT_SUB_FS));
+  const h = 24;
+  const gap = 7;
+  const ar = { x: at.x + gap, y: at.y - h - 2, w, h };
+  const al = { x: at.x - gap - w, y: at.y - h - 2, w, h };
+  const br = { x: at.x + gap, y: at.y + 4, w, h };
+  const bl = { x: at.x - gap - w, y: at.y + 4, w, h };
+  const corners = prefer === 'above-right' ? [ar, br, al, bl] : [bl, al, br, ar];
+  // Then the same corners stepped further from the dot, for when a region name already sits in
+  // the near corner (water's supercritical label crowds its critical point).
+  const order = [12, 24, 36].reduce(
+    (all, d) => [...all, ...corners.map((c) => ({ ...c, y: c.y < at.y ? c.y - d : c.y + d }))],
+    corners,
+  );
+  return placeClear(order, bounds, lines, avoid);
 }
 
 /** Bounds of every supplied (t, p) — boundary vertices plus the two special points — so the
@@ -107,19 +150,79 @@ export function PhaseDiagram({
       pts: b.points.map(project),
     }));
 
-    // Region tint patches are simple soft discs centred on each label's anchor — enough to
-    // colour-key the areas without claiming a precise (and easily-wrong) closed-polygon fill.
-    const tintPatches = regions.map((r) => ({
-      ...project(r),
-      tint: r.color || REGION_TINT[r.phase] || 'var(--text-muted)',
-    }));
-
     const regionLabels = regions.map((r) => ({
       ...project(r),
       text: r.label,
       tint: r.color || REGION_TINT[r.phase] || 'var(--text-secondary)',
       anchor: (r.anchor || 'middle') as 'start' | 'middle' | 'end',
     }));
+
+    // Labels are placed against the curves they annotate. Each region name is nudged off any
+    // boundary that runs through its authored spot, never across one: the anchor is the model's
+    // guess at "somewhere inside the area", and a name centred on it is routinely cut by the very
+    // line that bounds the area. The special points go last, since each has four corners to
+    // choose from and a region name has only its own area.
+    const plot = { x: PAD_L + 2, y: PAD_T, w: W - PAD_L - PAD_R - 4, h: H - PAD_T - PAD_B - 2 };
+    const lines = curves.map((c) => c.pts);
+    const dots: Box[] = [triplePoint, criticalPoint]
+      .filter((pt): pt is PhasePoint => !!pt)
+      .map((pt) => {
+        const c = project(pt);
+        return { x: c.x - 5, y: c.y - 5, w: 10, h: 10 };
+      });
+    const taken: Box[] = [...dots];
+    const placedRegions = regionLabels.map((r) => {
+      // One line first; when no spot near the anchor is clear (a narrow wedge such as ice, between
+      // the axis and a steep fusion line), the name breaks onto two lines and tries again.
+      const attempt = (rows: string[]) => {
+        const w = Math.max(...rows.map((t) => estimateTextWidth(t, REGION_FS, true)));
+        const h = rows.length * (REGION_FS + 2) + 1;
+        const cx = r.anchor === 'start' ? r.x + w / 2 : r.anchor === 'end' ? r.x - w / 2 : r.x;
+        const home = { x: r.x, y: r.y };
+        const box = placeClear(
+          ringCandidates({ x: cx, y: r.y }, w, h, 6, 12),
+          plot,
+          lines,
+          taken,
+          home,
+        );
+        return { rows, box, hits: boxHits(box, lines, taken) };
+      };
+      let best = attempt([r.text]);
+      const split = splitTwo(r.text);
+      if (best.hits > 0 && split) {
+        const two = attempt(split);
+        if (two.hits < best.hits) best = two;
+      }
+      taken.push(best.box);
+      return {
+        ...r,
+        rows: best.rows,
+        x: best.box.x + best.box.w / 2,
+        y: best.box.y + best.box.h / 2,
+      };
+    });
+    const triple = triplePoint
+      ? (() => {
+          const at = project(triplePoint);
+          const sub = coords(triplePoint, tUnit, pUnit);
+          const box = placePointLabel(at, 'Triple point', sub, 'above-right', plot, lines, taken);
+          return { ...at, data: triplePoint, sub, box };
+        })()
+      : null;
+    const critical = criticalPoint
+      ? (() => {
+          const at = project(criticalPoint);
+          const sub = coords(criticalPoint, tUnit, pUnit);
+          const avoid = triple ? [...taken, triple.box] : taken;
+          const box = placePointLabel(at, 'Critical point', sub, 'below-left', plot, lines, avoid);
+          return { ...at, data: criticalPoint, sub, box };
+        })()
+      : null;
+    // Region tint patches are simple soft discs under each name — enough to colour-key the areas
+    // without claiming a precise (and easily-wrong) closed-polygon fill. The disc follows the name
+    // wherever it settled.
+    const tintPatches = placedRegions.map((r) => ({ x: r.x, y: r.y, tint: r.tint }));
 
     const tStep = niceStep(tMax - tMin);
     const pStep = niceStep(pMax - pMin);
@@ -133,13 +236,13 @@ export function PhaseDiagram({
       pMax,
       curves,
       tintPatches,
-      regionLabels,
-      triple: triplePoint ? { ...project(triplePoint), data: triplePoint } : null,
-      critical: criticalPoint ? { ...project(criticalPoint), data: criticalPoint } : null,
+      regionLabels: placedRegions,
+      triple,
+      critical,
       tticks: ticks(tMin, tMax, tStep),
       pticks: ticks(pMin, pMax, pStep),
     };
-  }, [boundaries, triplePoint, criticalPoint, regions, tDomain, pDomain]);
+  }, [boundaries, triplePoint, criticalPoint, regions, tDomain, pDomain, tUnit, pUnit]);
 
   const xTitle = tUnit ? `${tLabel} (${tUnit})` : tLabel;
   const yTitle = pUnit ? `${pLabel} (${pUnit})` : pLabel;
@@ -262,64 +365,36 @@ export function PhaseDiagram({
               <text
                 key={`rl${i}`}
                 x={r.x}
-                y={r.y}
+                y={r.y - ((r.rows.length - 1) * (REGION_FS + 2)) / 2}
                 fill={r.tint}
                 className="phd-region-lbl"
-                textAnchor={r.anchor}
+                textAnchor="middle"
                 dominantBaseline="middle"
               >
-                {r.text}
+                {r.rows.map((row, j) => (
+                  <tspan key={j} x={r.x} dy={j ? REGION_FS + 2 : 0}>
+                    {row}
+                  </tspan>
+                ))}
               </text>
             ))}
 
-            {/* triple point */}
-            {model.triple && (
-              <g data-mark="point">
-                <circle cx={model.triple.x} cy={model.triple.y} r={4} className="phd-pt" />
-                <text
-                  x={model.triple.x + 7}
-                  y={model.triple.y - 15}
-                  className="phd-pt-lbl"
-                  textAnchor="start"
-                >
-                  Triple point
-                </text>
-                <text
-                  x={model.triple.x + 7}
-                  y={model.triple.y - 4}
-                  className="phd-pt-sub"
-                  textAnchor="start"
-                >
-                  ({fmt(model.triple.data.t)}
-                  {tUnit ? ` ${tUnit}` : ''}, {fmt(model.triple.data.p)}
-                  {pUnit ? ` ${pUnit}` : ''})
-                </text>
-              </g>
-            )}
-
-            {/* critical point */}
-            {model.critical && (
-              <g data-mark="point">
-                <circle cx={model.critical.x} cy={model.critical.y} r={4} className="phd-pt" />
-                <text
-                  x={model.critical.x - 7}
-                  y={model.critical.y + 15}
-                  className="phd-pt-lbl"
-                  textAnchor="end"
-                >
-                  Critical point
-                </text>
-                <text
-                  x={model.critical.x - 7}
-                  y={model.critical.y + 26}
-                  className="phd-pt-sub"
-                  textAnchor="end"
-                >
-                  ({fmt(model.critical.data.t)}
-                  {tUnit ? ` ${tUnit}` : ''}, {fmt(model.critical.data.p)}
-                  {pUnit ? ` ${pUnit}` : ''})
-                </text>
-              </g>
+            {/* triple and critical points, each label in its clear corner */}
+            {[
+              { pt: model.triple, title: 'Triple point' },
+              { pt: model.critical, title: 'Critical point' },
+            ].map(({ pt, title: name }) =>
+              pt ? (
+                <g key={name} data-mark="point">
+                  <circle cx={pt.x} cy={pt.y} r={4} className="phd-pt" />
+                  <text x={pt.box.x} y={pt.box.y + 9} className="phd-pt-lbl">
+                    {name}
+                  </text>
+                  <text x={pt.box.x} y={pt.box.y + 21} className="phd-pt-sub">
+                    {pt.sub}
+                  </text>
+                </g>
+              ) : null,
             )}
           </svg>
         </div>

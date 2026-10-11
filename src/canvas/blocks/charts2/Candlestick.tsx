@@ -1,24 +1,18 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
-import { extent, niceDomain } from '../../lib/scale';
+import { extent, niceDomain, niceStep, ticks } from '../../lib/scale';
 import { formatValue } from '../../lib/format';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { labelStride } from './chartMath';
 import type { CandlestickProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = CandlestickProps & { delay?: number };
 
-// .c2-cs-axis is a `justify-content: space-between` row holding the first/last candle's period
-// label. Real date/period strings run much longer than the short demo fixture ("Jan '24" vs.
-// "Week ending March 3rd, 2024 (pre-market)") and would otherwise wrap or push the opposite
-// label past the card edge — cap each label at half the row and ellipsize, same fix as
-// Bubble's point-label tip in this family.
-const AXIS_LABEL_STYLE: CSSProperties = {
-  maxWidth: '48%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
+// The plot stretches to its box (preserveAspectRatio="none"), so strokes are drawn with
+// non-scaling-stroke: in viewBox units a wick was several pixels wide on a wide card.
+const X_LABEL_PX = 11; // .c2-cs-xt at --fs-xs
 
 export function Candlestick({
   title,
@@ -32,6 +26,7 @@ export function Candlestick({
   const Ic = Icon[icon] || Icon.chart;
   const [hot, setHot] = useState<number | null>(null);
   const [showVol, setShowVol] = useState(true);
+  const [axisRef, axisW] = useHostWidth<HTMLDivElement>();
   const fmt = (v: number) => formatValue(v, { unit: unit || undefined });
 
   const hasVol = candles.some((c) => c.vol != null);
@@ -45,11 +40,23 @@ export function Candlestick({
   const { hi, span, priceTicks } = useMemo(() => {
     const ext = extent(candles.flatMap((c) => [c.h, c.l]));
     const [d0, d1] = niceDomain(ext ? ext[0] : 0, ext ? ext[1] : 1);
-    const ticks = [d0, d0 + (d1 - d0) / 2, d1];
-    return { hi: d1, span: d1 - d0 || 1, priceTicks: ticks };
+    // The same round step niceDomain snapped to, so each gridline is a price worth reading
+    // (500, 1,000…) rather than the domain's midpoint (1,250).
+    return { hi: d1, span: d1 - d0 || 1, priceTicks: ticks(d0, d1, niceStep(d1 - d0)) };
   }, [candles]);
   const y = (v: number) => ((hi - v) / span) * (H - 10) + 5;
+  const volOn = hasVol && showVol;
+  // Everything positioned in HTML over the plot is a share of the WHOLE viewBox height, which
+  // grows by the volume band when it shows.
+  const totalH = H + (volOn ? volH : 0);
   const step = 100 / (candles.length || 1);
+  const stride = labelStride(
+    candles.map((c) => c.label),
+    axisW * (1 - step / 100),
+    X_LABEL_PX,
+  );
+  const lastI = candles.length - 1;
+  const showX = (i: number) => i === lastI || (i % stride === 0 && lastI - i >= stride);
   const bw = Math.min(step * 0.6, 7);
 
   // The candle with the widest high-low range dominates the chart visually.
@@ -89,6 +96,11 @@ export function Candlestick({
             <span>
               C <b className="tab-num mono">{fmt(sel.c)}</b>
             </span>
+            {sel.vol != null && (
+              <span>
+                Vol <b className="tab-num mono">{formatValue(sel.vol, { compact: true })}</b>
+              </span>
+            )}
           </div>
         ) : (
           <span className="faint">{candles.length} periods · hover a candle</span>
@@ -105,16 +117,23 @@ export function Candlestick({
             .slice()
             .reverse()
             .map((t) => (
-              <span key={t} className="c2-cs-yt" style={{ top: `${(y(t) / H) * 100}%` }}>
+              <span key={t} className="c2-cs-yt" style={{ top: `${(y(t) / totalH) * 100}%` }}>
                 {formatValue(t)}
               </span>
             ))}
+          {volOn && (
+            // The volume band's own scale: its tallest bar is this much.
+            <span className="c2-cs-yt c2-cs-vt" style={{ top: `${(H / totalH) * 100}%` }}>
+              <span>vol</span>
+              {formatValue(maxVol, { compact: true })}
+            </span>
+          )}
         </div>
         <div className="c2-cs" onMouseLeave={() => setHot(null)}>
           <svg
             role="img"
             aria-label={title}
-            viewBox={`0 0 100 ${H + (hasVol && showVol ? volH : 0)}`}
+            viewBox={`0 0 100 ${totalH}`}
             preserveAspectRatio="none"
             className="c2-cs-svg"
           >
@@ -126,9 +145,21 @@ export function Candlestick({
                 x2="100"
                 y2={y(t)}
                 stroke="var(--grid-line)"
-                strokeWidth="0.3"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
               />
             ))}
+            {volOn && (
+              <line
+                x1="0"
+                y1={H}
+                x2="100"
+                y2={H}
+                stroke="var(--line)"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {candles.map((c, i) => {
               const cx = step * i + step / 2;
               const up = c.c >= c.o;
@@ -146,7 +177,15 @@ export function Candlestick({
                   }}
                 >
                   <rect x={cx - step / 2} y="0" width={step} height={H} fill="transparent" />
-                  <line x1={cx} y1={y(c.h)} x2={cx} y2={y(c.l)} stroke={col} strokeWidth="0.5" />
+                  <line
+                    x1={cx}
+                    y1={y(c.h)}
+                    x2={cx}
+                    y2={y(c.l)}
+                    stroke={col}
+                    strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
                   <rect
                     x={cx - bw / 2}
                     y={top}
@@ -156,7 +195,7 @@ export function Candlestick({
                     rx="0.6"
                     data-mark={i === salient ? 'circle' : undefined}
                   />
-                  {hasVol && showVol && (
+                  {volOn && (
                     <rect
                       x={cx - bw / 2}
                       y={H + (volH - ((c.vol || 0) / maxVol) * (volH - 4))}
@@ -174,7 +213,8 @@ export function Candlestick({
                       x2={cx}
                       y2={H}
                       stroke="var(--hover-line)"
-                      strokeWidth="0.4"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
                     />
                   )}
                 </g>
@@ -183,16 +223,20 @@ export function Candlestick({
           </svg>
         </div>
       </div>
-      <div className="c2-cs-axis">
-        {/* Real date/period labels run much longer than the demo fixture's short strings —
-            each span caps at half the row and ellipsizes instead of wrapping or pushing its
-            sibling past the card edge, same fix as Bubble's point-label tip. */}
-        <span className="faint" style={AXIS_LABEL_STYLE}>
-          {candles[0]?.label}
-        </span>
-        <span className="faint" style={AXIS_LABEL_STYLE}>
-          {candles[candles.length - 1]?.label}
-        </span>
+      <div className="c2-cs-axis" ref={axisRef}>
+        {candles.map((c, i) =>
+          showX(i) ? (
+            <span
+              key={i}
+              className="c2-cs-xt faint"
+              // The CSS ellipsis can cut an over-long period; the full name stays on hover.
+              title={c.label}
+              style={{ ['--at' as string]: `${step * i + step / 2}%` } as CSSProperties}
+            >
+              {c.label}
+            </span>
+          ) : null,
+        )}
       </div>
       {footer && (
         <div

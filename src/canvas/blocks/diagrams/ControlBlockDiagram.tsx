@@ -6,12 +6,17 @@
 // the non-feedback wire graph — a Kahn-style longest-path relax, the same technique DiagramFlow's
 // `layered` layout uses for its column assignment, collapsed here to one row since a control loop
 // reads left-to-right rather than in bands — so a PID loop or a thermostat's closed loop the
-// model describes as pure graph data still lays out like a textbook figure.
+// model describes as pure graph data still lays out like a textbook figure. A block that only
+// lives on a return path (a sensor fed by the plant and feeding the junction, both as feedback)
+// has no forward rank at all, so it goes on a return row under the span it closes, signal running
+// right to left, rather than stacking onto the first column beside the setpoint.
 import { useId, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ControlBlockDiagramProps, ControlBlockNode, ControlWire } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { RIM_GAP, elbow, returnPathIds, signAt } from './controlBlockLayout';
+import type { Placed, Pt } from './controlBlockLayout';
 
 type Props = ControlBlockDiagramProps & { delay?: number };
 
@@ -20,7 +25,10 @@ const PAD_X = 130;
 const TOP = 40;
 const Y_BAND = 260; // vertical span a 0..100 manual `y` maps onto
 const ROW_Y = TOP + Y_BAND / 2;
-const STACK_GAP = 78; // vertical offset between same-rank auto-placed blocks
+const STACK_GAP = 100; // same-rank pitch: a box's height plus clear air, so stacked boxes never touch
+const RETURN_GAP = 56; // air between the forward row and a return row (and between return rows)
+const RETURN_SPACING = 40; // least clear air between two blocks sharing a return row
+
 const LOOP_STEP = 64; // extra vertical depth per nested feedback loop
 const BOX_H = 74;
 const BOX_MIN_W = 148;
@@ -39,17 +47,6 @@ function clamp01(n: number): number {
 
 function boxWidth(label: string): number {
   return Math.min(BOX_MAX_W, Math.max(BOX_MIN_W, 46 + label.length * 11));
-}
-
-interface Placed {
-  id: string;
-  renderId: string;
-  label: string;
-  kind: 'block' | 'sum';
-  cx: number;
-  cy: number;
-  halfW: number;
-  halfH: number;
 }
 
 /** Rank every block by longest path over non-feedback wires in O(blocks + wires). A stray
@@ -88,14 +85,16 @@ function rankBlocks(blocks: ControlBlockNode[], wires: ControlWire[]): Map<strin
 function layoutBlocks(
   blocks: ControlBlockNode[],
   wires: ControlWire[],
-): { placed: Placed[]; vbH: number } {
+): { placed: Placed[]; vbH: number; onReturn: Set<string> } {
+  const onReturn = returnPathIds(blocks, wires);
   const rank = rankBlocks(blocks, wires);
-  const maxRank = Math.max(0, ...blocks.map((b) => rank.get(b.id) ?? 0));
+  const forwardIds = blocks.filter((b) => !onReturn.has(b.id)).map((b) => b.id);
+  const maxRank = Math.max(0, ...forwardIds.map((id) => rank.get(id) ?? 0));
   const innerW = VIEW_W - PAD_X * 2;
 
   const byRank = new Map<number, ControlBlockNode[]>();
   for (const b of blocks) {
-    if (b.x !== undefined && b.y !== undefined) continue;
+    if (onReturn.has(b.id) || (Number.isFinite(b.x) && Number.isFinite(b.y))) continue;
     const r = rank.get(b.id) ?? 0;
     if (!byRank.has(r)) byRank.set(r, []);
     byRank.get(r)!.push(b);
@@ -103,45 +102,38 @@ function layoutBlocks(
   const rankCursor = new Map<number, number>();
 
   const placed: Placed[] = blocks.map((b, index) => {
-    const kind = b.kind === 'sum' ? 'sum' : 'block';
+    const kind: Placed['kind'] = b.kind === 'sum' ? 'sum' : 'block';
     const label = typeof b.label === 'string' && b.label ? b.label : kind === 'sum' ? 'Σ' : 'Block';
     const halfW = kind === 'sum' ? SUM_R : boxWidth(label) / 2;
     const halfH = kind === 'sum' ? SUM_R : BOX_H / 2;
+    const base = { id: b.id, renderId: `${b.id || 'block'}:${index}`, label, kind, halfW, halfH };
 
     if (Number.isFinite(b.x) && Number.isFinite(b.y)) {
       return {
-        id: b.id,
-        renderId: `${b.id || 'block'}:${index}`,
-        label,
-        kind,
+        ...base,
         cx: PAD_X + clamp01(b.x as number) * innerW,
         cy: TOP + clamp01(b.y as number) * Y_BAND,
-        halfW,
-        halfH,
       };
     }
+    // Placed below, once the forward row it hangs under is known.
+    if (onReturn.has(b.id)) return { ...base, cx: VIEW_W / 2, cy: ROW_Y };
 
     const r = rank.get(b.id) ?? 0;
     const siblings = byRank.get(r) ?? [b];
     const idx = rankCursor.get(r) ?? 0;
     rankCursor.set(r, idx + 1);
-    const n = siblings.length;
-    // Bound the total spread of a crowded rank (many unranked blocks sharing one column)
-    // so the card stays a sane height instead of growing linearly with a long, flat input.
-    const gap = n > 5 ? (STACK_GAP * 4) / (n - 1) : STACK_GAP;
-    const mid = (n - 1) / 2;
+    const mid = (siblings.length - 1) / 2;
     const cx = maxRank === 0 ? VIEW_W / 2 : PAD_X + (r / maxRank) * innerW;
-    const cy = ROW_Y + (idx - mid) * gap;
-    return { id: b.id, renderId: `${b.id || 'block'}:${index}`, label, kind, cx, cy, halfW, halfH };
+    return { ...base, cx, cy: ROW_Y + (idx - mid) * STACK_GAP };
   });
 
-  // Only a feedback wire that will actually be DRAWN earns a loop track below the row — the
-  // renderer skips one whose endpoints name no block, and depth reserved for a wire nothing
-  // draws is empty space the card is sized around.
+  placeReturnRows(placed, wires, onReturn);
+
+  // Only a feedback wire that will actually be DRAWN as a loop under the row earns a track — the
+  // renderer skips one whose endpoints name no block, and a return-path block's wires are elbows,
+  // not tracks. Depth reserved for a wire nothing draws there is empty space the card is sized around.
   const drawable = new Set(placed.map((p) => p.id).filter(Boolean));
-  const feedbackCount = wires.filter(
-    (w) => w.feedback && drawable.has(w.from) && drawable.has(w.to),
-  ).length;
+  const feedbackCount = wires.filter((w) => isTrack(w, drawable, onReturn)).length;
   // A sum node's label sits ABOVE its circle (the "+"/"−" signs live at the sides/below), so
   // its effective top reaches further up than a block's own half-height.
   const topReach = (p: Placed) => p.cy - p.halfH - (p.kind === 'sum' ? 30 : 0);
@@ -153,7 +145,89 @@ function layoutBlocks(
     ? Math.max(...placed.map((p) => p.cy + p.halfH))
     : ROW_Y + BOX_H / 2;
   const vbH = maxBottom + feedbackCount * LOOP_STEP + BOTTOM_PAD;
-  return { placed, vbH };
+  return { placed, vbH, onReturn };
+}
+
+/** A feedback wire drawn as the classic loop under the whole row: both ends resolve and neither
+ *  sits on a return row (those join the loop with elbows instead). */
+function isTrack(w: ControlWire, drawable: Set<string>, onReturn: Set<string>): boolean {
+  return (
+    !!w.feedback &&
+    drawable.has(w.from) &&
+    drawable.has(w.to) &&
+    !onReturn.has(w.from) &&
+    !onReturn.has(w.to)
+  );
+}
+
+/** Seat each return-path block under the span its loop closes: between the block that feeds it
+ *  and the one it feeds back into, in the order the signal passes through, one row per loop with
+ *  the shorter loop nested nearest the forward row. */
+function placeReturnRows(placed: Placed[], wires: ControlWire[], onReturn: Set<string>): void {
+  if (!onReturn.size) return;
+  const byId = new Map<string, Placed>();
+  for (const p of placed) if (p.id && !byId.has(p.id)) byId.set(p.id, p);
+  const fbIn = new Map<string, string>();
+  const fbOut = new Map<string, string>();
+  for (const w of wires) {
+    if (!w.feedback || !byId.has(w.from) || !byId.has(w.to)) continue;
+    if (!fbIn.has(w.to)) fbIn.set(w.to, w.from);
+    if (!fbOut.has(w.from)) fbOut.set(w.from, w.to);
+  }
+  const walk = (start: string, next: Map<string, string>) => {
+    const seen = new Set([start]);
+    let at = start;
+    let steps = 0;
+    for (;;) {
+      const n = next.get(at);
+      if (n === undefined || seen.has(n)) return { end: null, steps };
+      steps++;
+      if (!onReturn.has(n)) return { end: n, steps };
+      seen.add(n);
+      at = n;
+    }
+  };
+
+  const groups = new Map<string, { from?: Placed; to?: Placed; members: [number, Placed][] }>();
+  for (const id of onReturn) {
+    const back = walk(id, fbIn);
+    const ahead = walk(id, fbOut);
+    const key = `${back.end ?? ''}\u0000${ahead.end ?? ''}`;
+    const g = groups.get(key) ?? {
+      from: back.end ? byId.get(back.end) : undefined,
+      to: ahead.end ? byId.get(ahead.end) : undefined,
+      members: [],
+    };
+    const p = byId.get(id);
+    if (p) g.members.push([back.steps, p]);
+    groups.set(key, g);
+  }
+
+  const forward = placed.filter((p) => !onReturn.has(p.id));
+  const rowBottom = forward.length
+    ? Math.max(...forward.map((p) => p.cy + p.halfH))
+    : ROW_Y + BOX_H / 2;
+  const spanOf = (g: { from?: Placed; to?: Placed }) =>
+    g.from && g.to ? Math.abs(g.from.cx - g.to.cx) : Infinity;
+  const ordered = [...groups.values()].sort((a, b) => spanOf(a) - spanOf(b));
+  let top = rowBottom + RETURN_GAP;
+  for (const g of ordered) {
+    const members = g.members.sort((a, b) => a[0] - b[0]).map(([, p]) => p);
+    const startX = g.from?.cx ?? g.to?.cx ?? VIEW_W / 2;
+    const endX = g.to?.cx ?? g.from?.cx ?? VIEW_W / 2;
+    const n = members.length;
+    const widest = Math.max(...members.map((m) => m.halfW * 2));
+    const dir = endX >= startX ? 1 : -1;
+    const step = Math.max(Math.abs(endX - startX) / (n + 1), widest + RETURN_SPACING);
+    const mid = (startX + endX) / 2;
+    const tallest = Math.max(...members.map((m) => m.halfH));
+    members.forEach((m, i) => {
+      const x = mid + dir * (i - (n - 1) / 2) * step;
+      m.cx = Math.min(VIEW_W - m.halfW - 8, Math.max(m.halfW + 8, x));
+      m.cy = top + tallest;
+    });
+    top += tallest * 2 + RETURN_GAP;
+  }
 }
 
 /** Trim a straight connection to the rim of each endpoint's box (ellipse-approximated, exactly
@@ -175,19 +249,6 @@ function rimFrom(from: Placed, to: Placed): { x: number; y: number } {
   };
 }
 
-/** Where a "+"/"−" sign reads best: just outside the target on the side the signal arrives
- *  from. `travel` is the final segment's direction of motion (mostly horizontal for a forward
- *  wire on the row, straight up for a feedback wire entering from its loop below) — walking
- *  backward from the target center along that direction lands the label near the rim the wire
- *  actually touches, whichever shape it approached from. */
-function signPos(target: Placed, travel: { x: number; y: number }): { x: number; y: number } {
-  const len = Math.hypot(travel.x, travel.y) || 1;
-  const ux = travel.x / len;
-  const uy = travel.y / len;
-  const reach = target.halfH + 20;
-  return { x: target.cx - ux * reach, y: target.cy - uy * reach };
-}
-
 export function ControlBlockDiagram({
   title,
   icon = 'sliders',
@@ -204,7 +265,7 @@ export function ControlBlockDiagram({
   const safeBlocks = useMemo(() => (Array.isArray(blocks) ? blocks : []), [blocks]);
   const safeWires = useMemo(() => (Array.isArray(wires) ? wires : []), [wires]);
 
-  const { placed, vbH } = useMemo(
+  const { placed, vbH, onReturn } = useMemo(
     () => layoutBlocks(safeBlocks, safeWires),
     [safeBlocks, safeWires],
   );
@@ -223,12 +284,12 @@ export function ControlBlockDiagram({
         i,
         span: Math.abs((byId.get(w.to)?.cx ?? 0) - (byId.get(w.from)?.cx ?? 0)),
       }))
-      .filter((e) => e.w.feedback && byId.has(e.w.from) && byId.has(e.w.to))
+      .filter((e) => isTrack(e.w, new Set(byId.keys()), onReturn))
       .sort((a, b) => a.span - b.span);
     const depth = new Map<number, number>();
     withSpan.forEach((e, order) => depth.set(e.i, order + 1));
     return depth;
-  }, [safeWires, byId]);
+  }, [safeWires, byId, onReturn]);
 
   return (
     <div
@@ -267,55 +328,58 @@ export function ControlBlockDiagram({
             if (!a || !b) return null;
             const sign = b.kind === 'sum' ? (w.sign === 'minus' ? '−' : '+') : null;
 
-            if (w.feedback) {
-              const depth = feedbackOrder.get(i) ?? 1;
-              const trackY = vbH - BOTTOM_PAD - (feedbackOrder.size - depth) * LOOP_STEP;
-              const startY = a.cy + a.halfH;
-              const endY = b.cy + b.halfH;
-              const points = `${a.cx},${startY} ${a.cx},${trackY} ${b.cx},${trackY} ${b.cx},${endY + 6}`;
-              const label = sign && (
+            const signText = (tip: Pt, travel: Pt) => {
+              if (!sign) return null;
+              const at = signAt(tip, travel);
+              return (
                 <text
-                  x={b.cx + 16}
-                  y={endY + 20}
+                  x={at.x}
+                  y={at.y}
                   className="dg-cbd-sign"
-                  textAnchor="start"
+                  textAnchor="middle"
                   dominantBaseline="middle"
                 >
                   {sign}
                 </text>
               );
+            };
+
+            if (w.feedback && (onReturn.has(w.from) || onReturn.has(w.to))) {
+              const pts = elbow(a, b);
+              const tip = pts[pts.length - 1];
+              const prev = pts[pts.length - 2];
+              return (
+                <g key={`w${i}`} className="dg-cbd-wire">
+                  <polyline
+                    points={pts.map((q) => `${q.x},${q.y}`).join(' ')}
+                    fill="none"
+                    markerEnd={`url(#${arrowId})`}
+                  />
+                  {signText(tip, { x: tip.x - prev.x, y: tip.y - prev.y })}
+                </g>
+              );
+            }
+
+            if (w.feedback) {
+              const depth = feedbackOrder.get(i) ?? 1;
+              const trackY = vbH - BOTTOM_PAD - (feedbackOrder.size - depth) * LOOP_STEP;
+              const startY = a.cy + a.halfH;
+              const endY = b.cy + b.halfH + RIM_GAP;
+              const points = `${a.cx},${startY} ${a.cx},${trackY} ${b.cx},${trackY} ${b.cx},${endY}`;
               return (
                 <g key={`w${i}`} className="dg-cbd-wire">
                   <polyline points={points} fill="none" markerEnd={`url(#${arrowId})`} />
-                  {label}
+                  {signText({ x: b.cx, y: endY }, { x: 0, y: -1 })}
                 </g>
               );
             }
 
             const s = rimFrom(a, b);
             const t = rim(a, b);
-            const pos = sign ? signPos(b, { x: t.x - s.x, y: t.y - s.y }) : null;
-            const anchor = pos
-              ? pos.x > b.cx + 2
-                ? 'start'
-                : pos.x < b.cx - 2
-                  ? 'end'
-                  : 'middle'
-              : 'middle';
             return (
               <g key={`w${i}`} className="dg-cbd-wire">
                 <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} markerEnd={`url(#${arrowId})`} />
-                {pos && (
-                  <text
-                    x={pos.x}
-                    y={pos.y}
-                    className="dg-cbd-sign"
-                    textAnchor={anchor}
-                    dominantBaseline="middle"
-                  >
-                    {sign}
-                  </text>
-                )}
+                {signText(t, { x: t.x - s.x, y: t.y - s.y })}
               </g>
             );
           })}

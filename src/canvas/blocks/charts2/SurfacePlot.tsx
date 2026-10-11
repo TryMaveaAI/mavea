@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SurfacePlotProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { isoSegments } from './chartMath';
 
 type Props = SurfacePlotProps & { delay?: number };
 
@@ -78,53 +79,32 @@ export function SurfacePlot({
       }
     }
 
-    // Contour iso-lines
+    // Each sample is the CENTRE of its cell, so contours and ticks are placed at cell centres.
+    const cx = (j: number) => PAD.l + (j + 0.5) * cellW;
+    const cy = (i: number) => PAD.t + (i + 0.5) * cellH;
+
+    // Contour iso-lines, traced through the sample centres so each level reads as one continuous
+    // line rather than a scatter of cell-wide dashes.
     const isoLines: { x1: number; y1: number; x2: number; y2: number }[] = [];
     if (mode === 'contour' && levels > 0) {
       for (let li = 1; li < levels; li++) {
         const zISO = zMin + (li / levels) * zSpan;
-        // Horizontal edges: between row i and i+1, along each column j..j+1
-        for (let i = 0; i < rows - 1; i++) {
-          for (let j = 0; j < cols; j++) {
-            const za = grid[i][j];
-            const zb = grid[i + 1][j];
-            if ((za - zISO) * (zb - zISO) < 0) {
-              const t = (zISO - za) / (zb - za);
-              const y = PAD.t + (i + t) * cellH;
-              const x1 = PAD.l + j * cellW;
-              const x2 = x1 + cellW;
-              isoLines.push({ x1, y1: y, x2, y2: y });
-            }
-          }
-        }
-        // Vertical edges: between col j and j+1, along each row i..i+1
-        for (let i = 0; i < rows; i++) {
-          for (let j = 0; j < cols - 1; j++) {
-            const za = grid[i][j];
-            const zb = grid[i][j + 1];
-            if ((za - zISO) * (zb - zISO) < 0) {
-              const t = (zISO - za) / (zb - za);
-              const x = PAD.l + (j + t) * cellW;
-              const y1 = PAD.t + i * cellH;
-              const y2 = y1 + cellH;
-              isoLines.push({ x1: x, y1, x2: x, y2 });
-            }
-          }
+        for (const [a, b] of isoSegments((i, j) => grid[i]?.[j], rows, cols, zISO)) {
+          isoLines.push({ x1: cx(a.j), y1: cy(a.i), x2: cx(b.j), y2: cy(b.i) });
         }
       }
     }
 
-    // Axis tick positions
-    const xTicks = [
-      { label: '0', x: PAD.l },
-      { label: String(Math.round((cols - 1) / 2)), x: PAD.l + plotW / 2 },
-      { label: String(cols - 1), x: PAD.l + plotW },
-    ];
-    const yTicks = [
-      { label: String(rows - 1), y: PAD.t },
-      { label: String(Math.round((rows - 1) / 2)), y: PAD.t + plotH / 2 },
-      { label: '0', y: PAD.t + plotH },
-    ];
+    // Axis ticks label sample indices, so they sit on sample centres: the ends, plus the middle
+    // only when there IS a middle sample — an even count has none, and "3" at the midpoint of a
+    // six-sample axis named a position halfway between samples 2 and 3.
+    const midTick = (n: number) => ((n - 1) % 2 === 0 && n > 2 ? [(n - 1) / 2] : []);
+    const xTicks = [0, ...midTick(cols), cols - 1]
+      .filter((k, idx, all) => all.indexOf(k) === idx)
+      .map((k) => ({ label: String(k), x: cx(k) }));
+    const yTicks = [rows - 1, ...midTick(rows), 0]
+      .filter((k, idx, all) => all.indexOf(k) === idx)
+      .map((k) => ({ label: String(k), y: cy(rows - 1 - k) }));
 
     return {
       rows,
@@ -248,146 +228,149 @@ export function SurfacePlot({
       <div className="card-eyebrow">
         <Ic className="ic" style={{ color: iconColor }} /> {title || 'Surface Plot'}
       </div>
-      <svg
-        role="img"
-        aria-label={title || 'surface plot'}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {mode !== 'surface3d' ? (
-          <>
-            {/* Heatmap cells */}
-            {cells.map((c, idx) => (
-              <rect key={idx} x={c.x} y={c.y} width={c.w} height={c.h} fill={c.color} />
-            ))}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title || 'surface plot'}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          {mode !== 'surface3d' ? (
+            <>
+              {/* Heatmap cells */}
+              {cells.map((c, idx) => (
+                <rect key={idx} x={c.x} y={c.y} width={c.w} height={c.h} fill={c.color} />
+              ))}
 
-            {/* Contour iso-lines */}
-            {isoLines.map((l, idx) => (
-              <line
-                key={idx}
-                x1={l.x1}
-                y1={l.y1}
-                x2={l.x2}
-                y2={l.y2}
-                stroke="white"
-                strokeWidth={0.6}
-                opacity={0.5}
-              />
-            ))}
+              {/* Contour iso-lines */}
+              {isoLines.map((l, idx) => (
+                <line
+                  key={idx}
+                  x1={l.x1}
+                  y1={l.y1}
+                  x2={l.x2}
+                  y2={l.y2}
+                  stroke="white"
+                  strokeWidth={0.6}
+                  strokeLinecap="round"
+                  opacity={0.5}
+                />
+              ))}
 
-            {/* X-axis ticks */}
-            {xTicks.map((t, i) => (
+              {/* X-axis ticks */}
+              {xTicks.map((t, i) => (
+                <text
+                  key={i}
+                  x={t.x}
+                  y={H - PAD.b + 12}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                >
+                  {t.label}
+                </text>
+              ))}
+
+              {/* X-axis label */}
+              {xLabel && (
+                <text
+                  x={PAD.l + (W - PAD.l - PAD.r) / 2}
+                  y={H - 4}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                >
+                  {xLabel}
+                </text>
+              )}
+
+              {/* Y-axis ticks */}
+              {yTicks.map((t, i) => (
+                <text
+                  key={i}
+                  x={PAD.l - 4}
+                  y={t.y + 3}
+                  textAnchor="end"
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                >
+                  {t.label}
+                </text>
+              ))}
+
+              {/* Y-axis label */}
+              {yLabel && (
+                <text
+                  x={0}
+                  y={0}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                  transform={`translate(10, ${PAD.t + plotH / 2}) rotate(-90)`}
+                >
+                  {yLabel}
+                </text>
+              )}
+
+              {/* Color legend */}
+              {Array.from({ length: legendSteps }, (_, i) => (
+                <rect
+                  key={i}
+                  x={legendX}
+                  y={PAD.t + i * legendCellH}
+                  width={6}
+                  height={legendCellH + 0.5}
+                  fill={zToHsl((legendSteps - 1 - i) / (legendSteps - 1))}
+                />
+              ))}
               <text
-                key={i}
-                x={t.x}
-                y={H - PAD.b + 12}
-                textAnchor="middle"
-                fontSize={9}
+                x={legendX + 8}
+                y={PAD.t - 2}
+                textAnchor="start"
+                fontSize={8}
                 fill="var(--text-muted)"
               >
-                {t.label}
+                {fmt(zMax)}
               </text>
-            ))}
-
-            {/* X-axis label */}
-            {xLabel && (
               <text
-                x={PAD.l + (W - PAD.l - PAD.r) / 2}
-                y={H - 4}
-                textAnchor="middle"
-                fontSize={9}
+                x={legendX + 8}
+                y={PAD.t + legendH + 9}
+                textAnchor="start"
+                fontSize={8}
                 fill="var(--text-muted)"
               >
-                {xLabel}
+                {fmt(zMin)}
               </text>
-            )}
-
-            {/* Y-axis ticks */}
-            {yTicks.map((t, i) => (
-              <text
-                key={i}
-                x={PAD.l - 4}
-                y={t.y + 3}
-                textAnchor="end"
-                fontSize={9}
-                fill="var(--text-muted)"
-              >
-                {t.label}
-              </text>
-            ))}
-
-            {/* Y-axis label */}
-            {yLabel && (
-              <text
-                x={0}
-                y={0}
-                textAnchor="middle"
-                fontSize={9}
-                fill="var(--text-muted)"
-                transform={`translate(10, ${PAD.t + plotH / 2}) rotate(-90)`}
-              >
-                {yLabel}
-              </text>
-            )}
-
-            {/* Color legend */}
-            {Array.from({ length: legendSteps }, (_, i) => (
-              <rect
-                key={i}
-                x={legendX}
-                y={PAD.t + i * legendCellH}
-                width={6}
-                height={legendCellH + 0.5}
-                fill={zToHsl((legendSteps - 1 - i) / (legendSteps - 1))}
-              />
-            ))}
-            <text
-              x={legendX + 8}
-              y={PAD.t - 2}
-              textAnchor="start"
-              fontSize={8}
-              fill="var(--text-muted)"
-            >
-              {fmt(zMax)}
-            </text>
-            <text
-              x={legendX + 8}
-              y={PAD.t + legendH + 9}
-              textAnchor="start"
-              fontSize={8}
-              fill="var(--text-muted)"
-            >
-              {fmt(zMin)}
-            </text>
-          </>
-        ) : wireframe ? (
-          <>
-            {wireframe.segments.map((s, idx) => (
-              <line
-                key={idx}
-                x1={s.p1.px}
-                y1={s.p1.py}
-                x2={s.p2.px}
-                y2={s.p2.py}
-                stroke={s.color}
-                strokeWidth={0.9}
-              />
-            ))}
-            {zLabel && (
-              <text
-                x={wireframe.topPt.px - 8}
-                y={wireframe.topPt.py}
-                fontSize={9}
-                fill="var(--text-muted)"
-                textAnchor="end"
-              >
-                {zLabel}
-              </text>
-            )}
-          </>
-        ) : null}
-      </svg>
+            </>
+          ) : wireframe ? (
+            <>
+              {wireframe.segments.map((s, idx) => (
+                <line
+                  key={idx}
+                  x1={s.p1.px}
+                  y1={s.p1.py}
+                  x2={s.p2.px}
+                  y2={s.p2.py}
+                  stroke={s.color}
+                  strokeWidth={0.9}
+                />
+              ))}
+              {zLabel && (
+                <text
+                  x={wireframe.topPt.px - 8}
+                  y={wireframe.topPt.py}
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                  textAnchor="end"
+                >
+                  {zLabel}
+                </text>
+              )}
+            </>
+          ) : null}
+        </svg>
+      </div>
       {caption && (
         <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.3 }}>
           {caption}

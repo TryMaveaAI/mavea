@@ -1,5 +1,7 @@
-import { type CSSProperties, type ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
+import { estimateTextWidth } from '../../lib/fitText';
+import { useHostWidth } from '../../lib/useBoxSize';
 import type { ArtAnalysisProps, ArtOverlay } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -14,20 +16,26 @@ const sy = (y: number) => (y / 100) * VB_H;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-// Region labels sit inside a box whose width varies with the model's own geometry (`rg.w`), so a
-// fixed character budget either wastes a large box or overflows a small one. .art-region-lbl is a
-// 4.4px bold face at ~2.6px average advance; budget from the box's inner width (minus the x+2.5
-// label inset on both sides) and always keep the untruncated string as a native <title> tooltip so
-// a long label is never silently lost, only visually shortened.
-const LBL_CHAR_W = 2.6;
-function truncateLabel(text: string, boxW: number): string {
-  const max = Math.max(3, Math.floor((boxW - 5) / LBL_CHAR_W));
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
+// Region names are set at a fixed SCREEN size: the frame is laid out in 160 units and stretched
+// to the card, so a size in units would paint at 4px on a phone and at display size on a desktop
+// (which is what got the whole figure held to a third of its card). `unit` converts.
+const LABEL_PX = 11;
+const NODE_PX = 3.5;
+const FALLBACK_PX = 480;
+
+/** The longest prefix of `text` (with an ellipsis) whose width at `fontSize` fits `room`. */
+function fitLabel(text: string, room: number, fontSize: number): string {
+  if (estimateTextWidth(text, fontSize, true) <= room) return text;
+  for (let n = text.length - 1; n > 1; n--) {
+    const cut = text.slice(0, n).trimEnd() + '…';
+    if (estimateTextWidth(cut, fontSize, true) <= room) return cut;
+  }
+  return text.slice(0, 1) + '…';
 }
 
 // Each overlay is a small piece of computed geometry — the classic compositional guide drawn to
 // scale over the frame. No image: the canvas is a soft gradient field; the value here is the guide.
-function overlayGeometry(overlay: ArtOverlay): ReactNode {
+function overlayGeometry(overlay: ArtOverlay, nodeR: number): ReactNode {
   switch (overlay) {
     case 'leadinglines': {
       // Diagonals + converging lines drawing the eye to a focal third.
@@ -38,7 +46,7 @@ function overlayGeometry(overlay: ArtOverlay): ReactNode {
           <line x1={0} y1={VB_H} x2={fx} y2={fy} />
           <line x1={VB_W} y1={VB_H} x2={fx} y2={fy} />
           <line x1={0} y1={0} x2={fx} y2={fy} />
-          <circle cx={fx} cy={fy} r={3.2} className="art-guide-node" />
+          <circle cx={fx} cy={fy} r={nodeR * 1.3} className="art-guide-node" />
         </g>
       );
     }
@@ -58,7 +66,7 @@ function overlayGeometry(overlay: ArtOverlay): ReactNode {
             d={`M${VB_W} ${gy} A${rBig} ${rBig} 0 0 1 ${gx} ${VB_H} A${gx} ${gx} 0 0 1 0 ${gy} A${rSmall} ${rSmall} 0 0 1 ${gx - rSmall} ${VB_H - rSmall * phi}`}
             className="art-guide-arc"
           />
-          <circle cx={gx} cy={gy} r={3.2} className="art-guide-node" />
+          <circle cx={gx} cy={gy} r={nodeR * 1.3} className="art-guide-node" />
         </g>
       );
     }
@@ -93,7 +101,7 @@ function overlayGeometry(overlay: ArtOverlay): ReactNode {
           {cols
             .flatMap((x) => rows.map((y) => [x, y] as const))
             .map(([x, y], i) => (
-              <circle key={`p${i}`} cx={x} cy={y} r={2.4} className="art-guide-node" />
+              <circle key={`p${i}`} cx={x} cy={y} r={nodeR} className="art-guide-node" />
             ))}
         </g>
       );
@@ -114,6 +122,14 @@ export function ArtAnalysis({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.image;
+  // Two analyses on one board must not share a gradient id, or the second paints the first's.
+  const fieldId = `art-field-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const [figRef, hostW] = useHostWidth<HTMLDivElement>();
+  // Screen px per frame unit.
+  const unit = VB_W / (hostW || FALLBACK_PX);
+  const fs = LABEL_PX * unit;
+  const padX = 5 * unit;
+  const chipH = fs * 1.5;
 
   return (
     <div
@@ -126,10 +142,10 @@ export function ArtAnalysis({
         </div>
       )}
 
-      <div className="art-figwrap">
+      <div className="art-figwrap" ref={figRef}>
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="art-svg" role="img" aria-label={title}>
           <defs>
-            <linearGradient id="art-field" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id={fieldId} x1="0" y1="0" x2="1" y2="1">
               <stop
                 offset="0%"
                 stopColor="color-mix(in oklab, var(--presence) 22%, var(--surface-elevated))"
@@ -142,9 +158,9 @@ export function ArtAnalysis({
             </linearGradient>
           </defs>
           {/* the abstract picture plane (no supplied image) */}
-          <rect x={0} y={0} width={VB_W} height={VB_H} fill="url(#art-field)" />
+          <rect x={0} y={0} width={VB_W} height={VB_H} fill={`url(#${fieldId})`} />
 
-          {overlayGeometry(overlay)}
+          {overlayGeometry(overlay, NODE_PX * unit)}
 
           {/* labeled focal regions */}
           {(regions ?? []).map((rg, i) => {
@@ -152,6 +168,12 @@ export function ArtAnalysis({
             const y = sy(clamp(rg.y, 0, 100));
             const w = Math.min(sx(rg.w), VB_W - x);
             const h = Math.min(sy(rg.h), VB_H - y);
+            const label = fitLabel(rg.label, Math.max(0, w - padX * 2), fs);
+            const chipW = estimateTextWidth(label, fs, true) + padX * 2;
+            // The name rides a chip in the box's top-left corner: it covers whatever guide line or
+            // power point runs under it, and reads on any picture behind it.
+            const chipFits = chipW <= w && chipH <= h;
+            const chipY = chipFits ? y : Math.max(0, y - chipH);
             return (
               <g key={i} className="art-region">
                 <rect
@@ -163,9 +185,23 @@ export function ArtAnalysis({
                   className="art-region-box"
                   {...(i === 0 ? { 'data-mark': 'box' } : {})}
                 />
-                <text x={x + 2.5} y={y + 6.5} className="art-region-lbl">
-                  {truncateLabel(rg.label, w) !== rg.label && <title>{rg.label}</title>}
-                  {truncateLabel(rg.label, w)}
+                <rect
+                  x={x}
+                  y={chipY}
+                  width={Math.min(chipW, VB_W - x)}
+                  height={chipH}
+                  rx={2}
+                  className="art-region-chip"
+                />
+                <text
+                  x={x + padX}
+                  y={chipY + chipH / 2}
+                  dominantBaseline="central"
+                  className="art-region-lbl"
+                  style={{ fontSize: fs }}
+                >
+                  {label !== rg.label && <title>{rg.label}</title>}
+                  {label}
                 </text>
               </g>
             );

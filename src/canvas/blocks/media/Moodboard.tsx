@@ -18,7 +18,10 @@ function tileStyle(t: MoodTile): CSSProperties {
   // valid CSS: gate both at the render boundary, same principle as richInnerHtml/safeImageUrl.
   if (t.kind === 'image')
     s.background = `linear-gradient(135deg, ${safeCssColor(t.from)}, ${safeCssColor(t.to, 'var(--presence-soft)')})`;
-  else if (t.kind === 'color') s.background = safeCssColor(t.swatch);
+  // A colour tile prints its hex, so the hex IS the claim the tile makes: paint it whenever it
+  // is a usable colour, and fall back to the token swatch only when there is no hex to honour.
+  // Painting the token beside a different printed value labels one colour with another's code.
+  else if (t.kind === 'color') s.background = safeCssColor(t.hex, safeCssColor(t.swatch));
   return s;
 }
 
@@ -73,7 +76,13 @@ export function Moodboard({
                 />
               )}
               {t.kind === 'text' && <span className="me-mood-text">{t.text || t.label}</span>}
-              {t.kind === 'color' && <span className="me-mood-hex tab-num">{t.hex || ''}</span>}
+              {t.kind === 'color' && (t.label || t.hex) && (
+                <span className="me-mood-hex">
+                  {t.label}
+                  {t.label && t.hex ? ' · ' : ''}
+                  {t.hex && <span className="tab-num">{t.hex}</span>}
+                </span>
+              )}
               {t.kind === 'image' && t.label && <span className="me-mood-imglabel">{t.label}</span>}
             </div>
           );

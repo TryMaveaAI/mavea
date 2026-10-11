@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { TrendtileProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { deltaMove } from './deltaMove';
 
 type Props = TrendtileProps & { delay?: number };
 
@@ -47,13 +48,13 @@ export function Trendtile({
           <div className="tt-value tab-num" data-mark="underline" style={{ color }}>
             {value}
           </div>
-          <div className={`tt-delta delta ${deltaDir}`}>
+          <div className="tt-delta">
             <Icon.arrowUp
               className="ic"
               style={{
                 width: 14,
                 height: 14,
-                transform: deltaDir === 'down' ? 'rotate(180deg)' : 'none',
+                transform: deltaMove(delta, deltaDir, bars) === 'down' ? 'rotate(180deg)' : 'none',
               }}
             />
             {delta}

@@ -12,6 +12,7 @@ import { usePathDraw } from '../../lib/motion';
 import { formatValue } from '../../lib/format';
 import type { TimeSeriesDecompositionProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { evenTicks } from './chartMath';
 
 type Props = TimeSeriesDecompositionProps & { delay?: number };
 
@@ -21,6 +22,8 @@ const PANEL_H = 56;
 const PANEL_GAP = 8;
 const BOTTOM_AXIS_H = 20;
 const TICK_MAX_CHARS = 9;
+const MAX_TICKS = 6;
+
 // A reserved strip at the top of each panel for its label + latest-value readout — without it,
 // a series that (after niceDomain pulls the floor down to 0) rides high in its own panel draws
 // its line right through the value text instead of under it.
@@ -103,12 +106,7 @@ export function TimeSeriesDecomposition({
     });
 
     const axisY = PAD.t + panels.length * (PANEL_H + PANEL_GAP) - PANEL_GAP;
-    const tickCount = Math.min(6, n);
-    const tickIdx =
-      n <= 1
-        ? [0]
-        : Array.from({ length: tickCount }, (_, i) => Math.round((i / (tickCount - 1)) * (n - 1)));
-    const uniqueTicks = [...new Set(tickIdx)];
+    const uniqueTicks = evenTicks(n, MAX_TICKS);
 
     return { H, panels: built, px, axisY, uniqueTicks };
   }, [dates, observed, trend, seasonal, residual]);

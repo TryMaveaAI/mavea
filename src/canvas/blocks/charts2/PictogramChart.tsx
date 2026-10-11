@@ -22,7 +22,7 @@ const PALETTE = [
 interface Cell {
   cat: string;
   color: string;
-  icon: IconKey | null;
+  icon: IconKey;
 }
 
 export function PictogramChart({
@@ -61,9 +61,9 @@ export function PictogramChart({
         cells.push({ cat: c.label, color: c.color, icon: c.iconKey });
       }
     }
-    while (cells.length < 100) cells.push({ cat: '', color: 'var(--cell-empty)', icon: null });
-
-    return { list, total, unit, cells: cells.slice(0, 100) };
+    // One cell per glyph and no blank padding: thirty days drawn as a hundred-cell grid read as
+    // thirty out of a hundred, and left the glyphs a third of the panel.
+    return { list, total, unit, cells };
   }, [categories, unitValue]);
 
   if (!hasData(geom.list.map((c) => c.count))) {
@@ -91,13 +91,9 @@ export function PictogramChart({
       <div className="c2-pic-wrap">
         <div className="c2-pic-grid" onMouseLeave={() => setHot(null)}>
           {geom.cells.map((c, i) => {
-            const isEmpty = !c.cat;
             const active = hot === c.cat;
-            const dim = hot != null && !active && !isEmpty;
-            if (isEmpty) {
-              return <span key={i} className="c2-pic-cell c2-pic-cell-empty" />;
-            }
-            const GlyphIcon = c.icon ? Icon[c.icon] : Icon[DEFAULT_ICON];
+            const dim = hot != null && !active;
+            const GlyphIcon = Icon[c.icon];
             return (
               <span
                 key={i}

@@ -4,6 +4,8 @@ import { Icon } from '../../../icons/icons';
 import { niceStep, ticks } from '../../lib/scale';
 import type { PayoffDiagramProps, OptionLeg } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { besideMarker, clearQuadrant } from './chartMath';
 
 type Props = PayoffDiagramProps & { delay?: number };
 
@@ -282,21 +284,22 @@ export function PayoffDiagram({
           {/* the payoff line */}
           <polyline points={linePts} className="pay-line" data-mark="line" />
 
-          {/* breakeven markers on the zero line — a strategy with more than one breakeven
-              (a spread, a butterfly) can land two of them close enough on screen that a label
-              fixed just above the line every time collides with its neighbour; alternate the
-              label above/below whenever consecutive breakevens are closer than that. */}
+          {/* breakeven markers on the zero line. The payoff line runs through every one of them,
+              so the label hangs into a quadrant the line leaves empty, picked from the slope there.
+              Two breakevens close on screen (a tight straddle) take opposite empty quadrants. */}
           {breakevens.map((be, i) => {
             const px = sx(be);
-            const below = i > 0 && Math.abs(px - sx(breakevens[i - 1])) < 44 && i % 2 === 1;
+            const rising = totalPnl(legs, be + 1e-3) > totalPnl(legs, be - 1e-3);
+            const crowded = i > 0 && Math.abs(px - sx(breakevens[i - 1])) < 60 && i % 2 === 1;
+            const at = clearQuadrant(rising, crowded);
             return (
               <g key={`be${i}`}>
                 <circle cx={px} cy={zeroY} r={3.5} className="pay-be-dot" data-mark="point" />
                 <text
-                  x={px}
-                  y={below ? zeroY + 15 : zeroY - 7}
+                  x={px + at.dx}
+                  y={zeroY + at.dy}
                   className="pay-be-lbl"
-                  textAnchor="middle"
+                  textAnchor={at.anchor}
                 >
                   BE {pricePrefix}
                   {Math.round(be * 100) / 100}
@@ -305,16 +308,36 @@ export function PayoffDiagram({
             );
           })}
 
-          {/* spot price marker (today's underlying), if given */}
-          {typeof spot === 'number' && spot >= geom.xLo && spot <= geom.xHi && (
-            <g>
-              <line x1={sx(spot)} y1={PAD_T} x2={sx(spot)} y2={H - PAD_B} className="pay-spot" />
-              <text x={sx(spot)} y={PAD_T + 9} className="pay-spot-lbl" textAnchor="middle">
-                spot {pricePrefix}
-                {spot}
-              </text>
-            </g>
-          )}
+          {/* spot price marker (today's underlying), if given. Its label sits beside the dashed
+              line, at whichever end of the plot the payoff line is farther from. */}
+          {typeof spot === 'number' &&
+            spot >= geom.xLo &&
+            spot <= geom.xHi &&
+            (() => {
+              const text = `spot ${pricePrefix}${spot}`;
+              const side = besideMarker(sx(spot), estimateTextWidth(text, 8.5, true), plotR);
+              const lineY = sy(totalPnl(legs, spot));
+              const top = lineY > (PAD_T + H - PAD_B) / 2;
+              return (
+                <g>
+                  <line
+                    x1={sx(spot)}
+                    y1={PAD_T}
+                    x2={sx(spot)}
+                    y2={H - PAD_B}
+                    className="pay-spot"
+                  />
+                  <text
+                    x={side.x}
+                    y={top ? PAD_T + 9 : H - PAD_B - 5}
+                    className="pay-spot-lbl"
+                    textAnchor={side.anchor}
+                  >
+                    {text}
+                  </text>
+                </g>
+              );
+            })()}
 
           {/* axis titles, each on its own row clear of the tick baseline */}
           <text

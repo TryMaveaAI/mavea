@@ -11,6 +11,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { CastMapProps, CastMapNode, CastMapLink, CastMapEdgeKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { LABEL_H, placeEdgeLabels, truncate } from './castMapLayout';
+import type { Placed, Routed } from './castMapLayout';
 
 type Props = CastMapProps & { delay?: number };
 
@@ -58,15 +60,6 @@ const FACTION_TOKENS = [
   'var(--insight-soft)',
 ];
 
-interface Placed extends CastMapNode {
-  cx: number;
-  cy: number;
-  /** faction accent, or the neutral line token for an unaligned node */
-  color: string;
-  rx: number;
-  ry: number;
-}
-
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
@@ -76,21 +69,31 @@ function edgeKind(k: CastMapEdgeKind | undefined): CastMapEdgeKind {
   return k && k in KIND_COLOR ? k : 'other';
 }
 
-/** Trim a segment endpoint to the rim of a node's chip (approximated as an ellipse), so a
- *  connector meets the chip border instead of its centre and any arrowhead lands cleanly. */
-function rim(
-  node: Placed,
-  towardX: number,
-  towardY: number,
-  out: boolean,
-): { x: number; y: number } {
-  const ang = Math.atan2(towardY - node.cy, towardX - node.cx);
-  const s = out ? 1 : -1;
-  // The extra 4px lifts the line just off the border so it doesn't kiss the stroke.
-  return {
-    x: node.cx + s * Math.cos(ang) * (node.rx + 4),
-    y: node.cy + s * Math.sin(ang) * (node.ry + 4),
-  };
+/** Where a connector leaves (or meets) a node's chip: the point on the chip's RECTANGLE along
+ *  the line to `toward`, lifted 4 units off the border. An inscribed ellipse put that point inside
+ *  the chip's corners on any diagonal, so a mentor's arrowhead landed under the chip it named. */
+function rim(node: Placed, towardX: number, towardY: number): { x: number; y: number } {
+  const dx = towardX - node.cx;
+  const dy = towardY - node.cy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const tx = Math.abs(ux) > 1e-9 ? node.rx / Math.abs(ux) : Infinity;
+  const ty = Math.abs(uy) > 1e-9 ? node.ry / Math.abs(uy) : Infinity;
+  const d = Math.min(tx, ty) + 4;
+  return { x: node.cx + ux * d, y: node.cy + uy * d };
+}
+
+/** A connector from rim to rim, bowed so A→B and B→A never sit on top of each other. */
+function routeEdge(e: { link: CastMapLink; a: Placed; b: Placed; kind: CastMapEdgeKind }): Routed {
+  const s = rim(e.a, e.b.cx, e.b.cy);
+  const t = rim(e.b, e.a.cx, e.a.cy);
+  const dx = t.x - s.x;
+  const dy = t.y - s.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const bow = Math.min(64, len * 0.14);
+  const c = { x: (s.x + t.x) / 2 - (dy / len) * bow, y: (s.y + t.y) / 2 + (dx / len) * bow };
+  return { ...e, s, t, c };
 }
 
 export function CastMap({
@@ -162,9 +165,11 @@ export function CastMap({
         .map((l) => ({ link: l, a: byId.get(l.from), b: byId.get(l.to), kind: edgeKind(l.kind) }))
         .filter((e): e is { link: CastMapLink; a: Placed; b: Placed; kind: CastMapEdgeKind } =>
           Boolean(e.a && e.b && e.a !== e.b),
-        ),
+        )
+        .map(routeEdge),
     [links, byId],
   );
+  const labels = useMemo(() => placeEdgeLabels(edges, placed), [edges, placed]);
 
   // Emit an arrowhead marker only for the directed tints actually present.
   const usedArrowKinds = useMemo(
@@ -213,7 +218,8 @@ export function CastMap({
               ))}
             </defs>
 
-            {/* Edges under the chips so connectors never cross over a name. */}
+            {/* Edges under the chips so connectors never cross over a name; their labels go over
+                both, below. */}
             {edges.map((e, i) => (
               <Edge key={i} edge={e} uid={uid} />
             ))}
@@ -221,6 +227,35 @@ export function CastMap({
             {placed.map((p) => (
               <Chip key={p.id} node={p} />
             ))}
+
+            {labels.map((l, i) =>
+              l ? (
+                <g
+                  key={i}
+                  className="cast-edge-label"
+                  transform={`translate(${l.x.toFixed(1)}, ${l.y.toFixed(1)})`}
+                >
+                  {l.text !== l.full && <title>{l.full}</title>}
+                  <rect
+                    className="cast-edge-lbl-bg"
+                    x={-l.w / 2}
+                    y={-LABEL_H / 2}
+                    width={l.w}
+                    height={LABEL_H}
+                    rx={6}
+                  />
+                  <text
+                    className="cast-edge-lbl"
+                    x={0}
+                    y={1}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {l.text}
+                  </text>
+                </g>
+              ) : null,
+            )}
           </svg>
         </div>
       )}
@@ -251,32 +286,15 @@ export function CastMap({
   );
 }
 
-function Edge({
-  edge,
-  uid,
-}: {
-  edge: { link: CastMapLink; a: Placed; b: Placed; kind: CastMapEdgeKind };
-  uid: string;
-}) {
-  const { a, b, kind, link } = edge;
-  const s = rim(a, b.cx, b.cy, true);
-  const t = rim(b, a.cx, a.cy, false);
-  // A gentle bow keeps A→B and B→A from overlapping and softens the web.
-  const mx = (s.x + t.x) / 2;
-  const my = (s.y + t.y) / 2;
-  const dx = t.x - s.x;
-  const dy = t.y - s.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const bow = Math.min(64, len * 0.14);
-  const bx = mx - (dy / len) * bow;
-  const by = my + (dx / len) * bow;
+function Edge({ edge, uid }: { edge: Routed; uid: string }) {
+  const { s, t, c, kind } = edge;
   const color = KIND_COLOR[kind];
   const arrow = DIRECTED.has(kind) ? `url(#cast-arrow-${uid}-${kind})` : undefined;
 
   return (
     <g className="cast-edge">
       <path
-        d={`M ${s.x.toFixed(1)} ${s.y.toFixed(1)} Q ${bx.toFixed(1)} ${by.toFixed(1)} ${t.x.toFixed(1)} ${t.y.toFixed(1)}`}
+        d={`M ${s.x.toFixed(1)} ${s.y.toFixed(1)} Q ${c.x.toFixed(1)} ${c.y.toFixed(1)} ${t.x.toFixed(1)} ${t.y.toFixed(1)}`}
         fill="none"
         stroke={color}
         strokeWidth={2.4}
@@ -284,21 +302,6 @@ function Edge({
         markerEnd={arrow}
         opacity={0.82}
       />
-      {link.label && (
-        <g transform={`translate(${bx.toFixed(1)}, ${(by - 16).toFixed(1)})`}>
-          <rect
-            className="cast-edge-lbl-bg"
-            x={-labelW(link.label) / 2}
-            y={-11}
-            width={labelW(link.label)}
-            height={20}
-            rx={6}
-          />
-          <text className="cast-edge-lbl" x={0} y={0} textAnchor="middle" dominantBaseline="middle">
-            {truncate(link.label, 16)}
-          </text>
-        </g>
-      )}
     </g>
   );
 }
@@ -362,11 +365,6 @@ function Chip({ node }: { node: Placed }) {
   );
 }
 
-/** Rough pixel width for an edge-label pill's background, in viewBox units. */
-function labelW(text: string): number {
-  return Math.min(text.length, 16) * 9 + 14;
-}
-
 /** Greedy word-wrap to `maxLines`, ellipsising the last line if it still overflows. Pure and
  *  bounded — a pathological single long word is hard-truncated, never looped. */
 function wrap(text: string, perLine: number, maxLines: number): string[] {
@@ -397,8 +395,4 @@ function wrap(text: string, perLine: number, maxLines: number): string[] {
     lines[li] = last;
   }
   return lines.length ? lines : [''];
-}
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }

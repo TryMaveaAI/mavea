@@ -8,11 +8,11 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { BinaryTreeProps, BinaryTreeNode } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { NODE_R, rimToRim } from './binaryTreeLayout';
 
 type Props = BinaryTreeProps & { delay?: number };
 
 // ── layout ──────────────────────────────────────────────────────────────────
-const NODE_R = 16;
 const H_STEP = 44; // horizontal px per inorder slot
 const V_STEP = 60; // vertical px per depth level
 const PAD = 24;
@@ -181,37 +181,25 @@ export function BinaryTree({
         role="img"
         style={{ overflow: 'visible' } as CSSProperties}
       >
-        {/* Edges */}
+        {/* Edges, rim to rim: the state fills are translucent tints, so a line drawn centre to
+            centre shows straight through a visited or found node and its value. */}
         {placed.map((p) => (
           <g key={`edges-${p.id}`}>
-            {p.left &&
-              (() => {
-                const ch = posMap.get(p.left);
-                return ch ? (
-                  <line
-                    key={`e-${p.id}-l`}
-                    x1={p.x}
-                    y1={p.y}
-                    x2={ch.x}
-                    y2={ch.y}
-                    className="dg-bt-edge"
-                  />
-                ) : null;
-              })()}
-            {p.right &&
-              (() => {
-                const ch = posMap.get(p.right);
-                return ch ? (
-                  <line
-                    key={`e-${p.id}-r`}
-                    x1={p.x}
-                    y1={p.y}
-                    x2={ch.x}
-                    y2={ch.y}
-                    className="dg-bt-edge"
-                  />
-                ) : null;
-              })()}
+            {[p.left, p.right].map((childId, side) => {
+              const ch = childId ? posMap.get(childId) : undefined;
+              if (!ch) return null;
+              const e = rimToRim(p, ch);
+              return e ? (
+                <line
+                  key={`e-${p.id}-${side ? 'r' : 'l'}`}
+                  x1={e.x1}
+                  y1={e.y1}
+                  x2={e.x2}
+                  y2={e.y2}
+                  className="dg-bt-edge"
+                />
+              ) : null;
+            })}
           </g>
         ))}
 

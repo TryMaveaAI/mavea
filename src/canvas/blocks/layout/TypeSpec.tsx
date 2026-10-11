@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { specimenStack } from './specimenStack';
 import type { TypeSpecProps, TypeStyle } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -79,7 +80,7 @@ export function TypeSpec({
                   fontWeight: s.weight ?? 500,
                   lineHeight: s.lineHeight ?? 1.15,
                   letterSpacing: s.tracking,
-                  fontFamily: s.family,
+                  fontFamily: specimenStack(s.family),
                 }}
               >
                 {s.sample || DEFAULT_SAMPLE}
@@ -92,10 +93,13 @@ export function TypeSpec({
       {pairing && (
         <div className="lay-tspec-pairing">
           <div className="lay-tspec-pair-tag">Pairing</div>
-          <div className="lay-tspec-pair-head" style={{ fontFamily: pairing.heading }}>
+          <div
+            className="lay-tspec-pair-head"
+            style={{ fontFamily: specimenStack(pairing.heading) }}
+          >
             {pairing.heading}
           </div>
-          <div className="lay-tspec-pair-body" style={{ fontFamily: pairing.body }}>
+          <div className="lay-tspec-pair-body" style={{ fontFamily: specimenStack(pairing.body) }}>
             <span className="lay-tspec-pair-faces tab-num">
               {pairing.heading} {'·'} {pairing.body}
             </span>{' '}

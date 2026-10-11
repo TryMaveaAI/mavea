@@ -28,9 +28,9 @@ export function ApprovalFlow({
                 <strong>{approver.name}</strong>
                 <StatusBadge status={approver.status} />
               </div>
-              {approver.role && <span>{approver.role}</span>}
+              {approver.role && <span className="brf-step-role">{approver.role}</span>}
               {approver.note && <p>{approver.note}</p>}
-              {approver.decidedAt && <small>{approver.decidedAt}</small>}
+              {approver.decidedAt && <small className="brf-step-when">{approver.decidedAt}</small>}
             </div>
           </li>
         ))}

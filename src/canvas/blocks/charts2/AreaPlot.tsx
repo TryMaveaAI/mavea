@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { niceStep, ticks } from '../../lib/scale';
+import { estimateTextWidth } from '../../lib/fitText';
+import { boxHits, type Box, type Pt } from './chartMath';
 import type { AreaPlotProps, AreaCurve, AreaRects, AreaPoint } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -89,16 +91,41 @@ function fmtArea(v: number): string {
   return Number(v.toFixed(digits)).toString();
 }
 
-// The area badge sits centred inside the shaded region, but a caller-supplied `areaLabel` is
-// unbounded text while the region's horizontal span shrinks with a narrow integration interval —
-// unclipped SVG <text> doesn't wrap, so a long label bleeds past the fill on both sides. Truncate
-// to a character budget derived from the region's actual pixel width at .apl-area's 11px bold
-// face (~6.2px average advance), leaving a small inset so the ellipsis never touches the fill's
-// edge; the full string still reaches the DOM via a native <title> tooltip.
-const APL_AREA_CHAR_W = 6.2;
-function truncateAreaLabel(text: string, regionWidth: number): string {
-  const max = Math.max(3, Math.floor((regionWidth - 8) / APL_AREA_CHAR_W));
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
+const AREA_FS = 11; // .apl-area
+
+/**
+ * Where the area badge can sit INSIDE the shaded region: a box that clears the region's top and
+ * bottom edges at every sampled x across its width and that no rectangle edge crosses. Spots are
+ * tried from the region's centre outward. Null when none fits — a convex region is often tall
+ * only where the approximating rectangles crowd it, and a badge squeezed onto the curve there
+ * reads as part of the drawing; the caller then states the area under the plot instead.
+ */
+function badgeInside(
+  w: number,
+  h: number,
+  x0: number,
+  x1: number,
+  edge: (x: number) => { top: number; bot: number },
+  rectEdges: readonly (readonly Pt[])[],
+): Box | null {
+  const span = x1 - x0;
+  if (span < w + 8) return null;
+  for (const f of [0.5, 0.62, 0.38, 0.74, 0.26]) {
+    const cx = x0 + span * f;
+    const bx = cx - w / 2;
+    if (bx < x0 + 4 || bx + w > x1 - 4) continue;
+    let top = -Infinity;
+    let bot = Infinity;
+    for (let k = 0; k <= 6; k++) {
+      const e = edge(bx + (w * k) / 6);
+      top = Math.max(top, e.top);
+      bot = Math.min(bot, e.bot);
+    }
+    if (bot - top < h + 6) continue;
+    const box = { x: bx, y: (top + bot) / 2 - h / 2, w, h };
+    if (boxHits(box, rectEdges) === 0) return box;
+  }
+  return null;
 }
 
 // A Cartesian plot that SHADES a region and labels its area — the calculus workhorse:
@@ -240,16 +267,31 @@ export function AreaPlot({
     return `area ≈ ${fmtArea(region.area)}`;
   }, [showArea, region, areaLabel]);
 
-  // Place the area badge at the region's horizontal centre, vertically inside the fill, and
-  // truncate its text to the region's own pixel width — a long areaLabel or a narrow integration
-  // interval must never let the badge bleed past the shaded fill.
-  const badgePos = useMemo(() => {
-    if (!region) return null;
-    const xc = (region.x0 + region.x1) / 2;
-    const yMid = (region.top(xc) + region.bot(xc)) / 2;
-    const regionWidth = Math.max(0, sx(region.x1) - sx(region.x0));
-    return { x: sx(xc), y: sy(yMid), regionWidth };
-  }, [region, sx, sy]);
+  // In the region when it has a clear spot for the badge, otherwise under the plot.
+  const badge = useMemo(() => {
+    if (!region || !areaText) return null;
+    const w = estimateTextWidth(areaText, AREA_FS, true);
+    const xOf = (px: number) =>
+      region.x0 +
+      ((px - sx(region.x0)) / (sx(region.x1) - sx(region.x0))) * (region.x1 - region.x0);
+    const edges = (approx?.cells ?? []).map((c) =>
+      c.d.split(' ').map((pair) => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x, y };
+      }),
+    );
+    return badgeInside(
+      w,
+      AREA_FS + 2,
+      sx(region.x0),
+      sx(region.x1),
+      (px) => {
+        const x = xOf(px);
+        return { top: sy(region.top(x)), bot: sy(region.bot(x)) };
+      },
+      edges,
+    );
+  }, [region, areaText, approx, sx, sy]);
 
   return (
     <div
@@ -342,22 +384,17 @@ export function AreaPlot({
             </>
           )}
 
-          {/* area read-out badge, centred in the region — text truncates to the region's own
-              pixel width so a long areaLabel or a narrow integration interval can't bleed past
-              the shaded fill; the full string still reaches the DOM via <title>. */}
-          {areaText && badgePos && (
+          {/* area read-out badge, inside the region when it has a clear spot for it */}
+          {areaText && badge && (
             <text
-              x={badgePos.x}
-              y={badgePos.y}
+              x={badge.x + badge.w / 2}
+              y={badge.y + badge.h / 2}
               className="apl-area"
               textAnchor="middle"
               dominantBaseline="middle"
               data-mark="point"
             >
-              {truncateAreaLabel(areaText, badgePos.regionWidth) !== areaText && (
-                <title>{areaText}</title>
-              )}
-              {truncateAreaLabel(areaText, badgePos.regionWidth)}
+              {areaText}
             </text>
           )}
 
@@ -375,23 +412,42 @@ export function AreaPlot({
         </svg>
       </div>
 
-      {/* legend (only when there's more than one curve to tell apart) */}
-      {curves.length > 1 && (
-        <div className="apl-legend">
-          {curves.map((c, ci) => (
-            <span key={ci} className="apl-leg">
-              <i style={{ background: c.color || PALETTE[ci % PALETTE.length] }} />
-              {c.label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* approximation note: which rule, how many rectangles, and its estimate */}
-      {approx && (
-        <div className="apl-note faint">
-          {approx.rule === 'trap' ? 'trapezoid' : `${approx.rule} Riemann`} sum, n={approx.n} {'→'}{' '}
-          <span className="tab-num">{fmtArea(approx.estimate)}</span>
+      {/* The legend and the readouts share the plot's own measure, so on a wide card they sit
+          under the chart they describe rather than at the card's left edge. */}
+      {(curves.length > 1 || approx || (areaText && !badge)) && (
+        <div className="apl-foot">
+          {curves.length > 1 && (
+            <div className="apl-legend">
+              {curves.map((c, ci) => (
+                <span key={ci} className="apl-leg">
+                  <i style={{ background: c.color || PALETTE[ci % PALETTE.length] }} />
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          )}
+          {((areaText && !badge) || approx) && (
+            <div className="apl-note">
+              {areaText && !badge && (
+                <span className="apl-note-area" data-mark="point">
+                  {region && (
+                    <i
+                      style={{
+                        background: `color-mix(in oklab, ${region.color} 30%, transparent)`,
+                      }}
+                    />
+                  )}
+                  {areaText}
+                </span>
+              )}
+              {approx && (
+                <span className="faint">
+                  {approx.rule === 'trap' ? 'trapezoid' : `${approx.rule} Riemann`} sum, n=
+                  {approx.n} {'→'} <span className="tab-num">{fmtArea(approx.estimate)}</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain } from '../../lib/scale';
 import type { PhyloNode, PhyloTreeProps, PhyloTrait } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { CLADE_LBL_PX_PER_CHAR, CLADE_MAX_CHARS, assignCladeColumns } from './phyloLayout';
 
 type Props = PhyloTreeProps & { delay?: number };
 
@@ -25,11 +26,8 @@ const DEFAULT_BRANCH = 'var(--line-strong)';
 // past its gutter into the clade brackets / the card edge. Truncate to a conservative character
 // budget derived from the actual gutter width and keep the full name as a native <title> tooltip —
 // same idiom as EtymTree/ParseTree/FreeBodyDiagram/PianoKeys/WaveDiagram.
-const TIP_LBL_PX_PER_CHAR = 5.4; // matches the estimate used to size labelPx below
-// .phy-clade-lbl is 10px semibold — a shade wider per character than the italic tip labels.
-const CLADE_LBL_PX_PER_CHAR = 5.8;
-const BRACKET_PX = 14; // the bracket itself (4 wide) plus the gaps either side of it
-
+const TIP_LBL_PX_PER_CHAR = 5.8; // matches the estimate used to size labelPx below
+const TIP_LBL_TAIL = 6; // clear space between the end of a taxon name and the first bracket
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
@@ -153,61 +151,59 @@ export function PhyloTree({
     // past it. Deriving both from the same per-char estimate keeps them in lockstep: short trees
     // (uncapped labelPx) never truncate, long ones clip exactly at the reserved gutter.
     const longest = tipLabels(root).reduce((m, s) => Math.max(m, s.length), 0);
-    const labelPx = Math.min(150, 7 + longest * TIP_LBL_PX_PER_CHAR);
+    const labelPx = Math.min(150, TIP_GAP + TIP_LBL_TAIL + longest * TIP_LBL_PX_PER_CHAR);
     // A clade needs room for its bracket AND the name beside it. Reserving only the bracket left the
     // name to run off the right edge of the viewBox — invisible while the SVG is letterboxed to its
     // max-height on a wide card, but plainly cut off the moment a narrow card scales it to the width.
     // Reserve and truncate off the same per-char estimate, exactly as the tip gutter above does.
-    const longestClade = clades.reduce((m, c) => Math.max(m, c.label.length), 0);
-    const cladePx = clades.length
-      ? BRACKET_PX + Math.min(90, 4 + longestClade * CLADE_LBL_PX_PER_CHAR)
-      : 0;
-    const tipX = W - labelPx - cladePx - 6;
-    const tipMaxChars = Math.max(3, Math.round((labelPx - 7) / TIP_LBL_PX_PER_CHAR));
-    const cladeMaxChars = Math.max(
+    // Rows depend only on the tip order, so the brackets' y-extents are known before x is, and
+    // the gutter can be sized for however many columns the nesting needs.
+    const tipRow = new Map<string, number>();
+    tipLabels(root).forEach((name, row) => {
+      if (name && !tipRow.has(name)) tipRow.set(name, row);
+    });
+    const rowY = (row: number) => TOP + row * rowH + rowH / 2;
+    // A bracket overhangs its outer tips by a third of a row, so a one-tip clade still draws a
+    // bracket and two clades on neighbouring rows read as two.
+    const overhang = rowH / 3;
+    const cladeRows = clades.map((c) => {
+      const rows = c.tips.map((t) => tipRow.get(t)).filter((r): r is number => r != null);
+      if (rows.length === 0) return null;
+      return {
+        clade: c,
+        y1: rowY(Math.min(...rows)) - overhang,
+        y2: rowY(Math.max(...rows)) + overhang,
+        labelPx: 4 + c.label.length * CLADE_LBL_PX_PER_CHAR,
+      };
+    });
+    const drawn = cladeRows.filter((c): c is NonNullable<typeof c> => !!c);
+    const cols = assignCladeColumns(drawn);
+    const tipX = W - labelPx - cols.total - 6;
+    const tipMaxChars = Math.max(
       3,
-      Math.round((cladePx - BRACKET_PX - 4) / CLADE_LBL_PX_PER_CHAR),
+      Math.round((labelPx - TIP_GAP - TIP_LBL_TAIL) / TIP_LBL_PX_PER_CHAR),
     );
 
     // Distance scale maps [0, maxDepth] → [LEFT, tipX]; ticks come from scale.ts.
     const [dMin, dMax] = phylogram ? niceDomain(0, md) : [0, md];
     const sx = scaleLinear([dMin, dMax], [LEFT, tipX]);
 
-    // Tip rows are centered within their band so labels align with branch tips.
-    const rowY = (row: number) => TOP + row * rowH + rowH / 2;
-
     const { placed } = layout(root, phylogram, sx, rowY, tipX);
     const byName = new Map<string, Placed>();
     for (const p of placed) if (p.node.name) byName.set(p.node.name, p);
 
-    // Resolve clade brackets to the y-span of their member tips.
-    const bracketX = tipX + labelPx + 3;
-    const cladeBrackets = clades
-      .map((c) => {
-        const ys = c.tips
-          .map((t) => byName.get(t))
-          .filter((p): p is Placed => !!p)
-          .map((p) => p.y);
-        if (ys.length === 0) return null;
-        return {
-          label: truncate(c.label, cladeMaxChars),
-          full: c.label,
-          color: c.color,
-          y1: Math.min(...ys),
-          y2: Math.max(...ys),
-        };
-      })
-      .filter(
-        (
-          b,
-        ): b is {
-          label: string;
-          full: string;
-          color: string | undefined;
-          y1: number;
-          y2: number;
-        } => !!b,
-      );
+    // Each clade's bracket sits in its own column, past the tip labels.
+    const bracketX = tipX + labelPx;
+    const cladeBrackets = drawn.map((d, i) => {
+      return {
+        label: truncate(d.clade.label, CLADE_MAX_CHARS),
+        full: d.clade.label,
+        color: d.clade.color,
+        x: bracketX + cols.offsets[cols.column[i]],
+        y1: d.y1,
+        y2: d.y2,
+      };
+    });
 
     return {
       H,
@@ -219,25 +215,12 @@ export function PhyloTree({
       xTicks: sx.ticks(5),
       tipX,
       tipMaxChars,
-      bracketX,
       cladeBrackets,
       axisY: TOP + plotH + 4,
     };
   }, [root, clades, distanceLabel]);
 
-  const {
-    H,
-    placed,
-    byName,
-    hasAxis,
-    sx,
-    xTicks,
-    tipX,
-    tipMaxChars,
-    bracketX,
-    cladeBrackets,
-    axisY,
-  } = model;
+  const { H, placed, byName, hasAxis, sx, xTicks, tipX, tipMaxChars, cladeBrackets, axisY } = model;
 
   return (
     <div
@@ -274,13 +257,13 @@ export function PhyloTree({
             return (
               <g key={`cl${i}`} className="phy-clade">
                 <path
-                  d={`M ${bracketX} ${b.y1} q 4 0 4 4 L ${bracketX + 4} ${b.y2 - 4} q 0 4 -4 4`}
+                  d={`M ${b.x} ${b.y1} q 4 0 4 4 L ${b.x + 4} ${b.y2 - 4} q 0 4 -4 4`}
                   stroke={col}
                   fill="none"
                   className="phy-bracket"
                 />
                 <text
-                  x={bracketX + 7}
+                  x={b.x + 7}
                   y={(b.y1 + b.y2) / 2}
                   fill={col}
                   className="phy-clade-lbl"

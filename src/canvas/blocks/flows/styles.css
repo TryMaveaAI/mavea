@@ -228,12 +228,14 @@
 .fl-wz-node.is-done .fl-wz-bubble {
   border-color: var(--insight);
   color: var(--insight);
-  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  /* Tinted over the surface, not over transparent: the progress track runs behind every bubble,
+     and a see-through fill let it strike through the check and the step number. */
+  background: color-mix(in oklab, var(--insight) 14%, var(--surface-elevated));
 }
 .fl-wz-node.is-active .fl-wz-bubble {
   border-color: var(--presence);
   color: var(--presence);
-  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 14%, transparent);
 }
 .fl-wz-lbl {
@@ -741,10 +743,15 @@
   font-size: var(--fs-2xs);
   font-weight: 600;
   line-height: 1.1;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
+  text-align: center;
+  text-wrap: balance;
+  /* A step name wraps to a second line before it is cut: "Partner meetings" in a node with room
+     for two lines of it read "Partner meeti…". Only a third line is clipped. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 100%;
 }
 .fl-dag-meta {
@@ -1061,6 +1068,68 @@
   overflow-wrap: anywhere;
 }
 
+/* A phone-width card cannot hold three steps side by side (each wants 116px against ~340px), and
+   a row that scrolls with its last step cut is not a flow a reader can follow. Under 420px of
+   card the stepper stands up: one step per row, the numbers threaded down the left. The card is
+   the query container (tokens-base.css). */
+@container (width <= 420px) {
+  .fl-pf {
+    flex-direction: column;
+    overflow-x: visible;
+    padding: 6px 0 0;
+  }
+  .fl-pf-step {
+    display: grid;
+    grid-template-columns: 28px 32px minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 3px;
+    align-items: center;
+    justify-items: start;
+    min-width: 0;
+    padding: 6px 0 12px;
+    text-align: left;
+  }
+  .fl-pf-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    top: 36px;
+    bottom: -4px;
+    left: 13px;
+    width: 2px;
+    background: var(--line);
+  }
+  /* The disc and icon hold the row's top, so a label that wraps grows the row downward and the
+     thread below still starts under the disc rather than through it. */
+  .fl-pf-rail {
+    grid-row: 1;
+    align-self: start;
+    width: 28px;
+    height: 28px;
+  }
+  .fl-pf-rail::before,
+  .fl-pf-rail::after {
+    display: none;
+  }
+  .fl-pf-ico {
+    grid-row: 1;
+    align-self: start;
+    width: 32px;
+    height: 32px;
+  }
+  .fl-pf-label {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .fl-pf-detail,
+  .fl-pf-branch {
+    grid-column: 3;
+    max-width: none;
+  }
+  .fl-pf-branch {
+    align-items: flex-start;
+  }
+}
+
 /* ============================================================
    JOURNEY MAP
    ============================================================ */
@@ -1080,20 +1149,21 @@
   border-radius: var(--r-md);
   /* A journey is a stage × lane matrix: below roughly 120px per stage the cells are too narrow to
      hold a sentence, and no amount of reflow changes that. Give the stages a readable floor and pan
-     the matrix sideways instead — the rounded box still clips vertically. */
+     the matrix sideways instead — the rounded box still clips vertically. The lane-name column is
+     as wide as its longest name: one grid shared by every row (each row a subgrid) is what lets it
+     size to content and still line up, where a fixed 78px broke "Touchpoints" mid-word. */
   overflow: auto hidden;
+  display: grid;
+  grid-template-columns: max-content repeat(var(--n), minmax(120px, 1fr));
 }
 .fl-jm-row {
   display: grid;
-  grid-template-columns: 78px repeat(var(--n), minmax(0, 1fr));
-  min-width: calc(78px + var(--n) * 120px);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   border-bottom: 1px solid var(--line);
 }
 .fl-jm-row:last-child {
   border-bottom: none;
-}
-.fl-jm-stages {
-  grid-template-columns: 78px repeat(var(--n), minmax(0, 1fr));
 }
 .fl-jm-stages .fl-jm-stage:first-child {
   grid-column: 2;
@@ -1165,6 +1235,9 @@
 }
 .fl-jm-emodot {
   position: absolute;
+  /* A button's default padding stretched the dot into a lozenge, and its centre with it. */
+  box-sizing: border-box;
+  padding: 0;
   width: 11px;
   height: 11px;
   border-radius: var(--r-full);
@@ -1301,56 +1374,66 @@
   border-color: var(--presence-soft);
 }
 .fl-org-kids {
+  /* The connector geometry, named once so the drop, the bus and the stubs can't drift apart:
+     the drop spans the space under the parent (the toggle straddles its foot), the stub the
+     space above each child, and the bus runs along the line between them. */
+  --org-drop: 22px;
+  --org-stub: 14px;
+  --org-gap: 14px;
+  --org-wire: 2px;
   display: flex;
-  gap: 14px;
-  margin-top: 22px;
+  gap: var(--org-gap);
+  margin-top: var(--org-drop);
   position: relative;
-  padding-top: 14px;
+  padding-top: var(--org-stub);
 }
-/* vertical connector down from parent */
+/* vertical connector from the parent's foot down to the bus */
 .fl-org-box.has-kids + .fl-org-kids::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: calc(-1 * var(--org-drop));
   left: 50%;
-  width: 2px;
-  height: 14px;
+  width: var(--org-wire);
+  height: var(--org-drop);
   background: var(--line-strong);
   transform: translateX(-50%);
 }
-/* each child's stub up to a horizontal bus */
+/* Each child's stub up to the bus. The pieces abut rather than overlap: the stroke colour is
+   translucent, so a doubled stretch prints as a darker blip at every joint. */
 .fl-org-kids > .fl-org-branch {
   position: relative;
 }
 .fl-org-kids > .fl-org-branch::before {
   content: '';
   position: absolute;
-  top: -14px;
+  top: calc(var(--org-wire) - var(--org-stub));
   left: 50%;
-  width: 2px;
-  height: 14px;
+  width: var(--org-wire);
+  height: calc(var(--org-stub) - var(--org-wire));
   background: var(--line-strong);
   transform: translateX(-50%);
 }
-/* horizontal bus spanning between first and last child */
-.fl-org-kids > .fl-org-branch:first-child::after,
-.fl-org-kids > .fl-org-branch:last-child::after {
+/* no bus over a lone child, so its stub carries straight on from the parent's drop */
+.fl-org-kids > .fl-org-branch:only-child::before {
+  top: calc(-1 * var(--org-stub));
+  height: var(--org-stub);
+}
+/* The bus: every child carries the stretch above itself plus half the gap either side, so the
+   run is unbroken however many children there are; the end children stop at their own centre. */
+.fl-org-kids > .fl-org-branch::after {
   content: '';
   position: absolute;
-  top: -14px;
-  height: 2px;
+  top: calc(-1 * var(--org-stub));
+  left: calc(var(--org-gap) / -2);
+  right: calc(var(--org-gap) / -2);
+  height: var(--org-wire);
   background: var(--line-strong);
 }
 .fl-org-kids > .fl-org-branch:first-child::after {
   left: 50%;
-  right: -7px;
 }
 .fl-org-kids > .fl-org-branch:last-child::after {
   right: 50%;
-  left: -7px;
-}
-.fl-org-kids > .fl-org-branch:only-child::before {
-  display: none;
 }
 .fl-org-kids > .fl-org-branch:only-child::after {
   display: none;
@@ -1464,7 +1547,8 @@
   padding: 0 10px;
   border-radius: var(--r-full);
   border: 1px solid color-mix(in oklab, var(--c, var(--presence)) 45%, transparent);
-  background: color-mix(in oklab, var(--c, var(--presence)) 16%, transparent);
+  /* Opaque: a bar spanning quarters crosses their dividers, which would strike through it. */
+  background: color-mix(in oklab, var(--c, var(--presence)) 16%, var(--surface-elevated));
   color: var(--text-primary);
   cursor: pointer;
   z-index: 1;
@@ -1475,7 +1559,7 @@
 }
 .fl-rm-bar.is-on {
   transform: translateY(-1px);
-  background: color-mix(in oklab, var(--c, var(--presence)) 26%, transparent);
+  background: color-mix(in oklab, var(--c, var(--presence)) 26%, var(--surface-elevated));
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--c, var(--presence)) 16%, transparent);
 }
 .fl-rm-bar-label {
@@ -1578,8 +1662,13 @@
   text-overflow: ellipsis;
 }
 .fl-ct-axis {
+  /* One caption row: a date, a two-line event name and the gaps between them. */
+  --ct-row-h: 4.1em;
+
   position: relative;
-  height: 44px;
+  /* Room under the track for a date and a two-line event name, per row a crowded axis needs. */
+  min-height: calc(5.4em + (var(--rows, 1) - 1) * var(--ct-row-h));
+  font-size: var(--fs-2xs);
 }
 .fl-ct-axis::before {
   content: '';
@@ -1594,7 +1683,6 @@
 .fl-ct-mark {
   position: absolute;
   top: 0;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1603,8 +1691,30 @@
   border: 0;
   padding: 0;
   cursor: pointer;
+  font: inherit;
+  text-align: center;
+  color: inherit;
+}
+/* A staggered caption's box reaches up over the rows above it; only its own dot, date and name
+   take the pointer, so it cannot steal a neighbour's hover. */
+.fl-ct-mark:not([data-row='0']) {
+  pointer-events: none;
+}
+.fl-ct-mark:not([data-row='0']) > * {
+  pointer-events: auto;
+}
+.fl-ct-mark[data-align='start'] {
+  align-items: flex-start;
+  text-align: start;
+}
+.fl-ct-mark[data-align='end'] {
+  align-items: flex-end;
+  text-align: end;
 }
 .fl-ct-dot {
+  align-self: flex-start;
+  /* The dot sits at the event's own position inside the caption box (ChronologicalTimeline). */
+  margin-inline-start: calc(var(--dot-x) - 5.5px);
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -1617,15 +1727,28 @@
   transform: scale(1.3);
 }
 .fl-ct-date {
-  font-size: var(--fs-2xs);
+  /* A staggered caption drops below the rows above it; its dot stays on the track. */
+  margin-top: calc(var(--row, 0) * var(--ct-row-h));
   color: var(--text-muted);
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
-  /* --dw narrows as event count grows (ChronologicalTimeline.tsx dateWidth) so a longer date
-     string or a dense event list clips to one line instead of colliding with the next marker. */
-  max-width: var(--dw, 72px);
+  /* The caption box is sized to the axis it owns (chronoLayout), so clipping here is only ever
+     a last resort on a very crowded axis. */
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.fl-ct-name {
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
 }
 .fl-ct-ends {
   display: flex;
@@ -1899,6 +2022,10 @@
   display: flex;
   align-items: center;
   gap: 7px;
+  /* An absolute box shrink-wraps to the room between its left edge and the container's right,
+     so a pill sitting at 83% got 17% of the width and cut "Integrals" to "Integ…" with a whole
+     band share to spare. Its own content decides, capped at that share. */
+  width: max-content;
   max-width: var(--max-node-w, 38%);
   padding: 7px 11px 7px 8px;
   border: 1.5px solid var(--c, var(--text-muted));
@@ -2141,53 +2268,64 @@
   overflow-wrap: anywhere;
 }
 .fl-it-kids {
+  /* The org chart's connector geometry turned on its side: the drop bridges the space right of
+     the parent, the stub the space left of each child, and the bus runs down between them. */
+  --it-drop: 22px;
+  --it-stub: 14px;
+  --it-gap: 14px;
+  --it-wire: 2px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-left: 22px;
-  padding-left: 14px;
+  gap: var(--it-gap);
+  margin-left: var(--it-drop);
+  padding-left: var(--it-stub);
   position: relative;
 }
-/* horizontal stub out of a parent box, into the shared vertical bus */
+/* horizontal connector out of the parent box to the bus */
 .fl-it-box.has-kids + .fl-it-kids::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: calc(-1 * var(--it-drop));
   top: 50%;
-  width: 14px;
-  height: 2px;
+  width: var(--it-drop);
+  height: var(--it-wire);
   background: var(--line-strong);
   transform: translateY(-50%);
 }
-/* each child's stub in from the bus */
+/* Each child's stub in from the bus. The pieces abut rather than overlap: the stroke colour is
+   translucent, so a doubled stretch prints as a darker blip at every joint. */
 .fl-it-kids > .fl-it-branch::before {
   content: '';
   position: absolute;
-  left: -14px;
+  left: calc(var(--it-wire) - var(--it-stub));
   top: 50%;
-  width: 14px;
-  height: 2px;
+  width: calc(var(--it-stub) - var(--it-wire));
+  height: var(--it-wire);
   background: var(--line-strong);
   transform: translateY(-50%);
 }
-/* vertical bus spanning between the first and last sibling */
-.fl-it-kids > .fl-it-branch:first-child::after,
-.fl-it-kids > .fl-it-branch:last-child::after {
+/* no bus beside a lone child, so its stub carries straight on from the parent's connector */
+.fl-it-kids > .fl-it-branch:only-child::before {
+  left: calc(-1 * var(--it-stub));
+  width: var(--it-stub);
+}
+/* The bus: every child carries the stretch beside itself plus half the gap above and below, so
+   the run is unbroken however many children there are; the end children stop at their centre. */
+.fl-it-kids > .fl-it-branch::after {
   content: '';
   position: absolute;
-  left: -14px;
-  width: 2px;
+  left: calc(-1 * var(--it-stub));
+  top: calc(var(--it-gap) / -2);
+  bottom: calc(var(--it-gap) / -2);
+  width: var(--it-wire);
   background: var(--line-strong);
 }
 .fl-it-kids > .fl-it-branch:first-child::after {
   top: 50%;
-  bottom: -7px;
 }
 .fl-it-kids > .fl-it-branch:last-child::after {
   bottom: 50%;
-  top: -7px;
 }
-.fl-it-kids > .fl-it-branch:only-child::before,
 .fl-it-kids > .fl-it-branch:only-child::after {
   display: none;
 }

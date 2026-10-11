@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { WaterfallProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { signedUnit, waterfallLabel } from './chartMath';
 
 type Props = WaterfallProps & { delay?: number };
 
@@ -71,99 +72,98 @@ export function Waterfall({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        <line
-          x1={PAD.l}
-          x2={W - PAD.r}
-          y1={model.y(0)}
-          y2={model.y(0)}
-          stroke="var(--grid-strong)"
-        />
-        {model.bars.map((b, i) => {
-          const cx = PAD.l + slot * i + slot / 2;
-          const yTop = model.y(Math.max(b.start, b.end));
-          const yBot = model.y(Math.min(b.start, b.end));
-          const h = Math.max(2, yBot - yTop);
-          const col = colorOf(b);
-          const active = hover === i;
-          // Hovering a bar dims its neighbors so the eye follows the one under the cursor —
-          // same "spotlight the hovered slice" convention as PieDonut's arc opacity.
-          const dim = hover != null && !active;
-          return (
-            <g
-              key={i}
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover(null)}
-              style={{
-                cursor: 'pointer',
-                opacity: dim ? 0.45 : 1,
-                transition: 'opacity var(--m-fast)',
-              }}
-            >
-              {i < model.bars.length - 1 && (
-                <line
-                  x1={cx + bw / 2}
-                  x2={cx + slot - bw / 2}
-                  y1={model.y(b.end)}
-                  y2={model.y(b.end)}
-                  stroke="var(--grid-line)"
-                  strokeDasharray="3 3"
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          <line
+            x1={PAD.l}
+            x2={W - PAD.r}
+            y1={model.y(0)}
+            y2={model.y(0)}
+            stroke="var(--grid-strong)"
+          />
+          {model.bars.map((b, i) => {
+            const cx = PAD.l + slot * i + slot / 2;
+            const yTop = model.y(Math.max(b.start, b.end));
+            const yBot = model.y(Math.min(b.start, b.end));
+            const h = Math.max(2, yBot - yTop);
+            const col = colorOf(b);
+            const active = hover === i;
+            // Hovering a bar dims its neighbors so the eye follows the one under the cursor —
+            // same "spotlight the hovered slice" convention as PieDonut's arc opacity.
+            const dim = hover != null && !active;
+            return (
+              <g
+                key={i}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                style={{
+                  cursor: 'pointer',
+                  opacity: dim ? 0.45 : 1,
+                  transition: 'opacity var(--m-fast)',
+                }}
+              >
+                {i < model.bars.length - 1 && (
+                  <line
+                    x1={cx + bw / 2}
+                    x2={cx + slot - bw / 2}
+                    y1={model.y(b.end)}
+                    y2={model.y(b.end)}
+                    stroke="var(--grid-line)"
+                    strokeDasharray="3 3"
+                  />
+                )}
+                <rect
+                  className="c1-waterfall-bar"
+                  x={cx - bw / 2}
+                  y={yTop}
+                  width={bw}
+                  height={h}
+                  rx={4}
+                  fill={`color-mix(in oklab, ${col} ${active ? 78 : 55}%, transparent)`}
+                  stroke={col}
+                  strokeWidth={active ? 1.6 : 1}
+                  data-mark={i === salient ? 'circle' : undefined}
+                  style={
+                    { ['--bar-idx' as string]: i, transition: 'all var(--m-fast)' } as CSSProperties
+                  }
                 />
-              )}
-              <rect
-                className="c1-waterfall-bar"
-                x={cx - bw / 2}
-                y={yTop}
-                width={bw}
-                height={h}
-                rx={4}
-                fill={`color-mix(in oklab, ${col} ${active ? 78 : 55}%, transparent)`}
-                stroke={col}
-                strokeWidth={active ? 1.6 : 1}
-                data-mark={i === salient ? 'circle' : undefined}
-                style={
-                  { ['--bar-idx' as string]: i, transition: 'all var(--m-fast)' } as CSSProperties
-                }
-              />
-              <text
-                x={cx}
-                y={yTop - 6}
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="600"
-                fill="var(--text-primary)"
-                className="tab-num"
-              >
-                {!b.total && b.value > 0 ? '+' : ''}
-                {unit}
-                {b.value.toLocaleString()}
-              </text>
-              <text
-                x={cx}
-                y={H - PAD.b + 18}
-                textAnchor="middle"
-                fontSize="10.5"
-                fill="var(--text-muted)"
-              >
-                {b.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                <text
+                  x={cx}
+                  y={yTop - 6}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="600"
+                  fill="var(--text-primary)"
+                  className="tab-num"
+                >
+                  {waterfallLabel(b.value, unit, b.total)}
+                </text>
+                <text
+                  x={cx}
+                  y={H - PAD.b + 18}
+                  textAnchor="middle"
+                  fontSize="10.5"
+                  fill="var(--text-muted)"
+                >
+                  {b.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 8 }}>
         {hover != null ? (
           <span>
             <strong style={{ color: 'var(--text-primary)' }}>{model.bars[hover].label}</strong> ·
-            running total {unit}
-            {model.bars[hover].running.toLocaleString()}
+            running total {signedUnit(model.bars[hover].running, unit)}
           </span>
         ) : footer ? (
           <span dangerouslySetInnerHTML={richInnerHtml(footer)} />

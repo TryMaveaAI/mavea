@@ -10,6 +10,8 @@ const W = 300;
 const WHOLE_CY = 40;
 const WHOLE_R = 30;
 const PART_CY = 132;
+/** Air between a connector's end and the circle it meets. */
+const LINK_GAP = 2;
 
 const PART_ACCENTS = [
   'var(--insight)',
@@ -135,17 +137,27 @@ export function NumberBond({
           role="img"
           aria-label={title || 'Number bond'}
         >
-          {/* Connectors (behind the circles) */}
-          {partVals.map((_, i) => (
-            <line
-              key={`ln${i}`}
-              x1={wholeCx}
-              y1={WHOLE_CY + WHOLE_R * 0.5}
-              x2={partCx(i)}
-              y2={PART_CY - partR * 0.5}
-              className="nb-link"
-            />
-          ))}
+          {/* Connectors run rim to rim along the line between centres: the circles are tinted,
+              not opaque, so a line drawn to a point inside one shows through beside the numeral. */}
+          {partVals.map((_, i) => {
+            const dx = partCx(i) - wholeCx;
+            const dy = PART_CY - WHOLE_CY;
+            const len = Math.hypot(dx, dy);
+            const ux = dx / len;
+            const uy = dy / len;
+            const from = WHOLE_R + LINK_GAP;
+            const to = len - partR - LINK_GAP;
+            return (
+              <line
+                key={`ln${i}`}
+                x1={wholeCx + ux * from}
+                y1={WHOLE_CY + uy * from}
+                x2={wholeCx + ux * to}
+                y2={WHOLE_CY + uy * to}
+                className="nb-link"
+              />
+            );
+          })}
 
           <BondCircle
             cx={wholeCx}

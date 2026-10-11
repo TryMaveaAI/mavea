@@ -23,6 +23,8 @@ const MAX_RIBS = 8;
 const RIB_RUN = 0.577;
 const CAT_F = 15; // category label font size
 const CAUSE_F = 12.5;
+/** Air between a cause's text and the rib it hangs off. */
+const TWIG_GAP = 6;
 
 // Ribs cycle a small accent palette so each category reads as its own branch at a glance.
 const RIB_ACCENTS = ['var(--presence)', 'var(--insight)', 'var(--warning)', 'var(--presence-deep)'];
@@ -84,7 +86,9 @@ export function Fishbone({
     const pairs = Math.max(1, Math.ceil(cats.length / 2));
     const usable = spineX2 - spineX1 - ribDx;
     const pairStep = usable / pairs;
-    const twigLen = Math.min(150, Math.max(70, pairStep * 0.72));
+    // Up to 80% of the pitch: the neighbouring rib sits a full pitch to the left at the same height,
+    // so a twig this long still ends a fifth of a pitch short of it.
+    const twigLen = Math.min(190, Math.max(70, pairStep * 0.8));
 
     const ribs = cats.map((cat, i) => {
       const pair = Math.floor(i / 2);
@@ -231,15 +235,24 @@ export function Fishbone({
                     const px = rib.jx - geo.ribDx * t;
                     const py = rib.top ? geo.spineY - geo.ribH * t : geo.spineY + geo.ribH * t;
                     const endX = Math.max(PAD + 4, px - geo.twigLen);
+                    // The rib leans back over its own twigs' text (it runs up-left on a top rib,
+                    // down-left on a bottom one), so a line set h units off the twig has to end
+                    // h·RIB_RUN further left than the twig's root or the rib strikes through it.
+                    // The width is fitted against the deepest line the twig may use.
+                    const lineH = CAUSE_F * 1.15;
+                    const clear = (depth: number) => px - TWIG_GAP - depth * RIB_RUN;
                     const fit = fitText(cause, {
-                      maxWidth: Math.max(40, px - endX - 10),
+                      maxWidth: Math.max(40, clear(4 + twigLines * lineH) - endX - 2),
                       fontSize: CAUSE_F,
                       minFontSize: 9,
                       maxLines: twigLines,
                       lineHeight: 1.15,
                     });
                     // Text stacks on the side of the twig AWAY from the spine, so a twig
-                    // sitting nearest the spine can never run its label across it.
+                    // sitting nearest the spine can never run its label across it. `depth` is
+                    // the far edge of line j, measured from the twig.
+                    const depth = (j: number) =>
+                      4 + (rib.top ? fit.lines.length - j : j + 1) * fit.lineHeightPx;
                     const lineY = (j: number) =>
                       rib.top
                         ? py - 4 - (fit.lines.length - 1 - j + 0.5) * fit.lineHeightPx
@@ -249,7 +262,12 @@ export function Fishbone({
                         <line className="fsb-twig" x1={px} y1={py} x2={endX} y2={py} />
                         <text className="fsb-cause" textAnchor="end" fontSize={fit.fontSize}>
                           {fit.lines.map((ln, j) => (
-                            <tspan key={j} x={px - 8} y={lineY(j)} dominantBaseline="middle">
+                            <tspan
+                              key={j}
+                              x={clear(depth(j))}
+                              y={lineY(j)}
+                              dominantBaseline="middle"
+                            >
                               {ln}
                             </tspan>
                           ))}

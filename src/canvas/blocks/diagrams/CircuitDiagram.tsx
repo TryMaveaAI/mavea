@@ -1,12 +1,17 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
-import type { CircuitDiagramProps, CircuitComponent, CircuitKind } from './types';
+import type { CircuitDiagramProps, CircuitKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { extent, knownKind, labelY, routeWires, type RoutedPart } from './circuitRoute';
 
 type Props = CircuitDiagramProps & { delay?: number };
 
-const W = 100;
-const H = 100;
+/** Components are authored on a 0–100 grid. The frame always spans that grid's width, so a
+ *  sparse circuit keeps the same scale as a full one, and hugs the drawing vertically so a
+ *  one-row loop is not floated in a square of empty card. */
+const GRID_L = -10;
+const GRID_R = 110;
+const PAD = 6;
 
 // Each component is an inline schematic glyph centred on (0,0), ~14 units wide.
 function glyph(kind: CircuitKind): ReactNode {
@@ -71,27 +76,6 @@ function glyph(kind: CircuitKind): ReactNode {
   }
 }
 
-// Top edge (min y) of each glyph's drawn geometry, read off the coordinates above — glyphs are
-// centred on (0,0) but aren't symmetric in height (e.g. ground's lead runs to y=-7, the resistor's
-// zigzag only to y=-3). A fixed label offset tuned for the shortest glyph collides with the
-// tallest ones (ground, battery, bulb); computing it per kind keeps the label clear of every glyph.
-const GLYPH_TOP: Record<CircuitKind, number> = {
-  battery: -5,
-  resistor: -3,
-  capacitor: -4,
-  bulb: -5,
-  switch: -4,
-  ground: -7,
-  node: -1.6,
-};
-const LABEL_GAP = 3;
-
-/** Label baseline sits `LABEL_GAP` units above the glyph's own top edge, so longer labels or a
- *  taller glyph (ground, battery) never collide with the glyph they annotate. */
-function labelY(kind: CircuitKind): number {
-  return (GLYPH_TOP[kind] ?? GLYPH_TOP.node) - LABEL_GAP;
-}
-
 // SVG text neither wraps nor clips itself, so a long label (or many tightly-spaced components)
 // runs into neighbouring glyphs. Truncate to a conservative character budget and keep the full
 // text as a native <title> tooltip so nothing is silently lost — same idiom as GraphTrace.
@@ -111,7 +95,32 @@ export function CircuitDiagram({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark || Icon.share;
-  const byId = (id: string): CircuitComponent | undefined => components.find((c) => c.id === id);
+  const parts = useMemo<(RoutedPart & { full?: string })[]>(
+    () =>
+      (Array.isArray(components) ? components : [])
+        .filter((c) => c && Number.isFinite(c.x) && Number.isFinite(c.y))
+        .map((c) => {
+          const full = typeof c.label === 'string' && c.label ? c.label : undefined;
+          return {
+            id: c.id,
+            kind: knownKind(c.kind),
+            x: c.x,
+            y: c.y,
+            label: full && truncate(full, LABEL_MAX_CHARS),
+            full,
+          };
+        }),
+    [components],
+  );
+  const routes = useMemo(
+    () => routeWires(parts, Array.isArray(wires) ? wires : []),
+    [parts, wires],
+  );
+  const box = extent(parts, routes);
+  const vx = Math.min(GRID_L, box.l - PAD);
+  const vy = box.t - PAD;
+  const vw = Math.max(GRID_R, box.r + PAD) - vx;
+  const vh = box.b + PAD - vy;
 
   return (
     <div
@@ -123,33 +132,27 @@ export function CircuitDiagram({
       </div>
       <div className="dg-cir">
         <svg
-          viewBox={`-10 -15 ${W + 20} ${H + 30}`}
+          viewBox={`${vx} ${vy} ${vw} ${vh}`}
           className="dg-cir-svg"
           role="img"
           aria-label={title}
         >
-          {/* wires (drawn under components), routed as right-angle Manhattan paths */}
-          {wires.map((w, i) => {
-            const a = byId(w.from);
-            const b = byId(w.to);
-            if (!a || !b) return null;
-            return (
-              <polyline
-                key={i}
-                points={`${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y}`}
-                className="dg-cir-wire"
-                fill="none"
-              />
-            );
-          })}
-          {/* components */}
-          {components.map((c, index) => (
+          {/* wires under the parts, lead to lead */}
+          {routes.map((r) => (
+            <polyline
+              key={r.index}
+              points={r.points.map((q) => `${q.x},${q.y}`).join(' ')}
+              className="dg-cir-wire"
+              fill="none"
+            />
+          ))}
+          {parts.map((c, index) => (
             <g key={`${c.id}-${index}`} transform={`translate(${c.x} ${c.y})`}>
               {glyph(c.kind)}
-              {typeof c.label === 'string' && c.label && (
+              {c.label && (
                 <text x={0} y={labelY(c.kind)} className="dg-cir-lbl" textAnchor="middle">
-                  {c.label.length > LABEL_MAX_CHARS && <title>{c.label}</title>}
-                  {truncate(c.label, LABEL_MAX_CHARS)}
+                  {c.full !== c.label && <title>{c.full}</title>}
+                  {c.label}
                 </text>
               )}
             </g>

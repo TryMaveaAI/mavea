@@ -13,6 +13,7 @@ import { Icon } from '../../../icons/icons';
 import type { SynthesisRouteProps, SynthesisNode, SynthesisEdge, SynthesisRole } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
+import { edgeLabelSpots } from './synthesisRouteLayout';
 
 type Props = SynthesisRouteProps & { delay?: number };
 
@@ -236,6 +237,8 @@ function Edge({
   const yieldText = yieldOk
     ? `${Math.round(Math.max(0, Math.min(100, edge.yieldPct as number)))}%`
     : '';
+  const aboveText = above ? truncate(above, 28) : '';
+  const { over, under } = edgeLabelSpots(s, { x: cx, y: cy }, t, aboveText, yieldText);
 
   return (
     <g className="sr-edge">
@@ -245,13 +248,25 @@ function Edge({
         className={retro ? 'sr-line sr-line-retro' : 'sr-line'}
         markerEnd={`url(#${retro ? retroArrow : forwardArrow})`}
       />
-      {above && (
-        <text className="dg-edge-label" x={cx} y={cy - 12} textAnchor="middle">
-          {truncate(above, 28)}
+      {aboveText && (
+        <text
+          className="dg-edge-label"
+          x={over.x}
+          y={over.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {aboveText}
         </text>
       )}
       {yieldText && (
-        <text className="sr-yield" x={cx} y={cy + 22} textAnchor="middle">
+        <text
+          className="sr-yield"
+          x={under.x}
+          y={under.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
           {yieldText}
         </text>
       )}

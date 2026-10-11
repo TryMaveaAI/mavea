@@ -269,6 +269,9 @@ export interface MediaCardProps {
   iconColor?: AccentVar;
   /** Poster art: a real image `src`, with a from/to gradient placeholder behind it (or instead). */
   cover: { src?: string; from?: AccentVar; to?: AccentVar };
+  /** The work's own name ("Arrival", "Piranesi"). `title` is the card's framing line, so
+   *  without this a recommendation never says what it recommends. */
+  name?: string;
   /** Release year, e.g. "2024". */
   year?: string;
   /** Runtime or length, e.g. "2h 8m" / "412 pages". */
@@ -298,8 +301,8 @@ export interface DimensionLine {
   to: [number, number];
   /** The dimension text, e.g. "60" or "Ø12". */
   label: string;
-  /** How far the dimension line sits off the part, in drawing units (signed → which side).
-   *  Default ±10 picked from the span's orientation. */
+  /** Accepted for older specs and ignored: the renderer sets every dimension outside the part on
+   *  the side its span faces, stacking spans that share a side. */
   offset?: number;
 }
 export interface DimensionDrawingProps {

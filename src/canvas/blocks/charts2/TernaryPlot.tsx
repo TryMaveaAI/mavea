@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
-import { fitText } from '../../lib/fitText';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import { BlockEmpty } from '../../lib/BlockEmpty';
 import type { TernaryPlotProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { boxHits, placeClear, type Box, type Pt } from './chartMath';
 
 type Props = TernaryPlotProps & { delay?: number };
 
@@ -192,6 +193,107 @@ export function TernaryPlot({
     return { lines, ticksBottom, ticksRight, ticksLeft };
   }, []);
 
+  // Label layout for the zone names and the point names, decided together so neither lands on
+  // the other or on a line. Zone names stay inside the triangle (a corner zone's centroid sits
+  // so close to the frame that a centred word straddled the edge), sliding toward the middle
+  // only as far as they must. Point names try the eight spots around their marker and take the
+  // first that crosses no frame edge, no zone border and no other label: a hand-tuned "left of
+  // the point unless a zone label is near" rule put a name across the frame at one corner and
+  // flush against a zone border at another.
+  const labels = useMemo(() => {
+    const frame: Pt[] = [
+      { x: BX, y: BY },
+      { x: AX, y: AY },
+      { x: CX, y: BY },
+      { x: BX, y: BY },
+    ];
+    const borders: Pt[][] = validZones.map((z) => [...z.verts, z.verts[0]]);
+    const textBox = (
+      x: number,
+      baseline: number,
+      w: number,
+      fit: { fontSize: number; lineHeightPx: number; lines: string[] },
+    ): Box => ({
+      x,
+      y: baseline - fit.fontSize * 0.78,
+      w,
+      h: (fit.lines.length - 1) * fit.lineHeightPx + fit.fontSize,
+    });
+    const widthOf = (fit: { fontSize: number; lines: string[] }, bold: boolean) =>
+      Math.max(...fit.lines.map((ln) => estimateTextWidth(ln, fit.fontSize, bold)));
+    const tickBoxes: Box[] = [
+      ...grid.ticksBottom.map((t) => ({ x: t.x - 9, y: t.y + TICK_LABEL_GAP - 9, w: 18, h: 11 })),
+      ...grid.ticksRight.map((t) => ({ x: t.x + EDGE_NX - 7, y: t.y - EDGE_NY - 9, w: 14, h: 14 })),
+      ...grid.ticksLeft.map((t) => ({ x: t.x - EDGE_NX - 7, y: t.y - EDGE_NY - 9, w: 14, h: 14 })),
+    ];
+    const view: Box = { x: 2, y: 2, w: W - 4, h: BY + 4 };
+
+    const zones = validZones.map((z, i) => {
+      if (!z.label) return null;
+      const fit = fitText(z.label, {
+        maxWidth: Math.max(40, Math.min(z.width * 0.9, 110)),
+        fontSize: LABEL_FS,
+        minFontSize: MIN_FS,
+        maxLines: 2,
+      });
+      const w = widthOf(fit, true);
+      const cy = zoneLabelY[i] ?? z.cy;
+      const baseline = cy - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
+      const toward = Math.sign(AX - z.cx) || 1;
+      const candidates = Array.from({ length: 13 }, (_, k) =>
+        textBox(z.cx - w / 2 + toward * k * 4, baseline, w, fit),
+      );
+      const box = placeClear(candidates, view, [frame]);
+      return { fit, box, x: box.x + w / 2, baseline };
+    });
+
+    const placed: Box[] = zones.flatMap((z) => (z ? [z.box] : []));
+    const markers: Box[] = validPoints.map((p) => ({
+      x: p.x - POINT_R,
+      y: p.y - POINT_R,
+      w: POINT_R * 2,
+      h: POINT_R * 2,
+    }));
+    const points = validPoints.map((p, i) => {
+      const fit = fitText(p.label, {
+        maxWidth: 86,
+        fontSize: LABEL_FS,
+        minFontSize: MIN_FS,
+        maxLines: 2,
+      });
+      const w = widthOf(fit, true);
+      const h = (fit.lines.length - 1) * fit.lineHeightPx + fit.fontSize;
+      const gap = POINT_R + 3;
+      const spots: Box[] = [
+        { x: p.x + gap, y: p.y - h / 2, w, h },
+        { x: p.x - gap - w, y: p.y - h / 2, w, h },
+        { x: p.x + gap - 2, y: p.y - gap - h, w, h },
+        { x: p.x - gap + 2 - w, y: p.y - gap - h, w, h },
+        { x: p.x + gap - 2, y: p.y + gap, w, h },
+        { x: p.x - gap + 2 - w, y: p.y + gap, w, h },
+        { x: p.x - w / 2, y: p.y - gap - h, w, h },
+        { x: p.x - w / 2, y: p.y + gap, w, h },
+      ];
+      // A point inside a zone cannot name itself without crossing that zone's border, so when
+      // no spot is clear of everything, borders are the first thing given up — a name over a
+      // thin line still reads; a name over another name does not.
+      const others = [...placed, ...tickBoxes, ...markers.filter((_, j) => j !== i)];
+      const strict = placeClear(spots, view, [frame, ...borders], others);
+      const box =
+        boxHits(strict, [frame, ...borders], others) === 0
+          ? strict
+          : placeClear(spots, view, [frame], others);
+      placed.push(box);
+      // Anchor the text on the side that faces its marker: the width is an estimate, and a name
+      // set from the far edge of an over-wide box drifts away from the point it names.
+      const anchor: 'start' | 'middle' | 'end' =
+        box.x + box.w <= p.x ? 'end' : box.x >= p.x ? 'start' : 'middle';
+      const x = anchor === 'end' ? box.x + box.w : anchor === 'start' ? box.x : box.x + box.w / 2;
+      return { fit, x, anchor, baseline: box.y + fit.fontSize * 0.78 };
+    });
+    return { zones, points };
+  }, [validZones, validPoints, zoneLabelY, grid]);
+
   const hasContent = validPoints.length > 0 || validZones.length > 0;
   const active = hover !== null ? validPoints[hover] : null;
 
@@ -237,48 +339,37 @@ export function TernaryPlot({
             ))}
 
             {/* zones beneath the points */}
-            {validZones.map((z, i) => (
-              <g
-                key={i}
-                className="m-stagger-item"
-                style={{ ['--i' as string]: i } as CSSProperties}
-              >
-                <polygon
-                  points={z.verts.map((v) => `${v.x.toFixed(1)},${v.y.toFixed(1)}`).join(' ')}
-                  fill={`color-mix(in oklab, ${z.color} 16%, transparent)`}
-                  stroke={`color-mix(in oklab, ${z.color} 45%, transparent)`}
-                  className="ter-zone"
-                />
-                {z.label &&
-                  (() => {
-                    // Sized from the component's own floor, not a literal: MIN_FS is what clears
-                    // 9px once the 380-unit viewBox is scaled into a card, and a shrink-to-fit
-                    // that ignores it just relocates the illegibility into the wrap path.
-                    const fit = fitText(z.label, {
-                      maxWidth: Math.max(40, Math.min(z.width * 0.9, 110)),
-                      fontSize: LABEL_FS,
-                      minFontSize: MIN_FS,
-                      maxLines: 2,
-                    });
-                    const y0 =
-                      (zoneLabelY[i] ?? z.cy) - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
-                    return (
-                      <text
-                        textAnchor="middle"
-                        fontSize={fit.fontSize}
-                        className="ter-zone-lbl"
-                        style={{ fill: `color-mix(in oklab, ${z.color} 55%, var(--text-muted))` }}
-                      >
-                        {fit.lines.map((ln, li) => (
-                          <tspan key={li} x={z.cx} y={y0 + li * fit.lineHeightPx}>
-                            {ln}
-                          </tspan>
-                        ))}
-                      </text>
-                    );
-                  })()}
-              </g>
-            ))}
+            {validZones.map((z, i) => {
+              const zl = labels.zones[i];
+              return (
+                <g
+                  key={i}
+                  className="m-stagger-item"
+                  style={{ ['--i' as string]: i } as CSSProperties}
+                >
+                  <polygon
+                    points={z.verts.map((v) => `${v.x.toFixed(1)},${v.y.toFixed(1)}`).join(' ')}
+                    fill={`color-mix(in oklab, ${z.color} 16%, transparent)`}
+                    stroke={`color-mix(in oklab, ${z.color} 45%, transparent)`}
+                    className="ter-zone"
+                  />
+                  {zl && (
+                    <text
+                      textAnchor="middle"
+                      fontSize={zl.fit.fontSize}
+                      className="ter-zone-lbl"
+                      style={{ fill: `color-mix(in oklab, ${z.color} 55%, var(--text-muted))` }}
+                    >
+                      {zl.fit.lines.map((ln, li) => (
+                        <tspan key={li} x={zl.x} y={zl.baseline + li * zl.fit.lineHeightPx}>
+                          {ln}
+                        </tspan>
+                      ))}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
             {/* triangle frame */}
             <polygon
@@ -352,18 +443,7 @@ export function TernaryPlot({
 
             {/* points + labels */}
             {validPoints.map((p, i) => {
-              const left = p.x > CX - 70;
-              const nearbyZone = validZones
-                .map((z, zi) => ({ z, y: zoneLabelY[zi] ?? z.cy }))
-                .find(({ z, y }) => z.label && Math.abs(p.x - z.cx) < 60 && Math.abs(p.y - y) < 28);
-              const labelY = nearbyZone ? p.y + (p.y >= nearbyZone.y ? 13 : -14) : p.y - 5;
-              const labelOnLeft = left || !!nearbyZone;
-              const fit = fitText(p.label, {
-                maxWidth: 86,
-                fontSize: LABEL_FS,
-                minFontSize: MIN_FS,
-                maxLines: 2,
-              });
+              const lbl = labels.points[i];
               return (
                 <g key={i}>
                   <circle
@@ -375,17 +455,9 @@ export function TernaryPlot({
                   >
                     <title>{`${p.label} — ${labA.split(' (')[0]} ${pct(p.bary.a)}, ${labB.split(' (')[0]} ${pct(p.bary.b)}, ${labC.split(' (')[0]} ${pct(p.bary.c)}`}</title>
                   </circle>
-                  <text
-                    textAnchor={labelOnLeft ? 'end' : 'start'}
-                    fontSize={fit.fontSize}
-                    className="ter-pt-lbl"
-                  >
-                    {fit.lines.map((ln, li) => (
-                      <tspan
-                        key={li}
-                        x={p.x + (labelOnLeft ? -7 : 7)}
-                        y={labelY + li * fit.lineHeightPx}
-                      >
+                  <text fontSize={lbl.fit.fontSize} textAnchor={lbl.anchor} className="ter-pt-lbl">
+                    {lbl.fit.lines.map((ln, li) => (
+                      <tspan key={li} x={lbl.x} y={lbl.baseline + li * lbl.fit.lineHeightPx}>
                         {ln}
                       </tspan>
                     ))}

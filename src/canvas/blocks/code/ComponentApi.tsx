@@ -3,6 +3,7 @@ import { Icon } from '../../../icons/icons';
 import type { ComponentApiProps } from './types';
 import './styles.css';
 import { richInnerHtml } from '../../../lib/richText';
+import { withInlineCode } from '../../lib/inlineCode';
 
 type Props = ComponentApiProps & { delay?: number };
 
@@ -95,7 +96,7 @@ export function ComponentApi({
 
                 {p.desc && (
                   <div className="cap-desc" role="cell">
-                    {p.desc}
+                    {withInlineCode(p.desc)}
                   </div>
                 )}
               </div>

@@ -85,7 +85,7 @@ export function BrandGuide({
       </div>
 
       {swatches.length ? (
-        <div className="me-pal">
+        <div className="me-pal" style={{ ['--pal-n' as string]: swatches.length } as CSSProperties}>
           {swatches.map((s, i) => {
             const hex = asStr(s?.hex);
             const name = asStr(s?.name) || `Color ${i + 1}`;

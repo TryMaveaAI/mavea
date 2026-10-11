@@ -247,10 +247,8 @@ export const hiring: ConversationSpec = {
           },
           {
             topic: 'Closing',
-            dont: 'Promise a decision date the recruiter has not agreed to.',
-          },
-          {
             do: 'Leave the last five minutes for their questions, every time.',
+            dont: 'Promise a decision date the recruiter has not agreed to.',
           },
         ],
         footer:

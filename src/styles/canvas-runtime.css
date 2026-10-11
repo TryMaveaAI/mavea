@@ -1,4 +1,31 @@
-/* Shared only by routes that actually mount TopicCanvas. */
+/* Shared only by routes that actually mount TopicCanvas. Every block the canvas can render brings
+   its own styles here, never from a route sheet: the core build/slide/action/replay cards once
+   lived in Live's chrome and rendered unstyled anywhere else the canvas mounted. */
 @import './canvas.css';
 @import './visualizations-extra.css';
 @import './visualizations-harvested.css';
+@import './build-layer.css';
+@import './slide.css';
+@import './action-card.css';
+@import './replay-card.css';
+
+/* Ticked code inside model prose (canvas/lib/inlineCode). Sized to sit in the line it interrupts:
+   monospace runs wide, so it steps down a touch rather than bulging the sentence. */
+.inline-code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 0.05em 0.35em;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--text-primary) 7%, transparent);
+  overflow-wrap: anywhere;
+}
+
+/* A highlight the model wrote into card prose (richText allows <mark>). Without this it paints the
+   browser's own yellow, which is unreadable on the dark theme. `:where` keeps it the weakest rule,
+   so a family that styles its own marks still wins. */
+:where(.card) mark {
+  background: color-mix(in oklab, var(--warning) 26%, transparent);
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: var(--r-sm);
+}

@@ -178,45 +178,47 @@ export function ParliamentSeats({
       </div>
 
       <div className="prl-wrap">
-        <svg viewBox={`0 0 ${W} ${H}`} className="prl-svg" role="img" aria-label={title}>
-          <g className="m-fade-rise">
-            {model.seats.map((s, i) => {
-              const pi = model.partyOfSeat[i];
-              const dim = focus !== null && pi !== focus && pi !== undefined;
-              return (
-                <circle
-                  key={i}
-                  cx={s.x}
-                  cy={s.y}
-                  r={model.dotPx}
-                  fill={pi !== undefined ? clean[pi].color : 'var(--track)'}
-                  opacity={dim ? 0.18 : 1}
-                  className="prl-dot"
-                />
-              );
-            })}
-          </g>
+        <div className="canvas-figure">
+          <svg viewBox={`0 0 ${W} ${H}`} className="prl-svg" role="img" aria-label={title}>
+            <g className="m-fade-rise">
+              {model.seats.map((s, i) => {
+                const pi = model.partyOfSeat[i];
+                const dim = focus !== null && pi !== focus && pi !== undefined;
+                return (
+                  <circle
+                    key={i}
+                    cx={s.x}
+                    cy={s.y}
+                    r={model.dotPx}
+                    fill={pi !== undefined ? clean[pi].color : 'var(--track)'}
+                    opacity={dim ? 0.18 : 1}
+                    className="prl-dot"
+                  />
+                );
+              })}
+            </g>
 
-          {/* majority marker: a thin radial line at the top-center aisle */}
-          <line x1={CXP} y1={lineY1} x2={CXP} y2={lineY2} className="prl-maj-line" />
-          <text x={CXP} y={Math.max(10, lineY1 - 4)} textAnchor="middle" className="prl-maj-lbl">
-            majority {majority.toLocaleString('en-US')}
-          </text>
+            {/* majority marker: a thin radial line at the top-center aisle */}
+            <line x1={CXP} y1={lineY1} x2={CXP} y2={lineY2} className="prl-maj-line" />
+            <text x={CXP} y={Math.max(10, lineY1 - 4)} textAnchor="middle" className="prl-maj-lbl">
+              majority {majority.toLocaleString('en-US')}
+            </text>
 
-          {/* running total inside the open center */}
-          <text x={CXP} y={CYP - 26} textAnchor="middle" className="prl-total">
-            {countUp}
-          </text>
-          <text
-            x={CXP}
-            y={CYP - 10}
-            textAnchor="middle"
-            className="prl-total-lbl"
-            style={{ fontSize: labelFit.fontSize }}
-          >
-            {labelFit.lines[0]}
-          </text>
-        </svg>
+            {/* running total inside the open center */}
+            <text x={CXP} y={CYP - 26} textAnchor="middle" className="prl-total">
+              {countUp}
+            </text>
+            <text
+              x={CXP}
+              y={CYP - 10}
+              textAnchor="middle"
+              className="prl-total-lbl"
+              style={{ fontSize: labelFit.fontSize }}
+            >
+              {labelFit.lines[0]}
+            </text>
+          </svg>
+        </div>
 
         {model.unit > 1 && (
           <div className="prl-note">1 dot ≈ {model.unit.toLocaleString('en-US')} seats</div>

@@ -12,7 +12,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ClassDiagramProps, UmlClass, UmlRelation, ClassRelationKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
-import { fitText, type FitTextResult } from '../../lib/fitText';
+import { estimateTextWidth, fitText, type FitTextResult } from '../../lib/fitText';
+import { captionAt } from './whiteboard';
 import { BlockEmpty } from '../../lib/BlockEmpty';
 
 type Props = ClassDiagramProps & { delay?: number };
@@ -24,6 +25,18 @@ const V_GAP = 78; // between layers — room for edge labels and glyphs
 const ROW_GAP = 46; // between wrapped rows inside one layer
 const PAD = 24;
 const PER_ROW = Math.floor((VIEW_W - PAD * 2 + H_GAP) / (BOX_W + H_GAP));
+const REL_F = 14;
+const REL_MAX_W = 170;
+/** Clear air either side of a relation label set between two neighbours on one row — enough for
+ *  the line's end glyph (13–17 units) to sit outside it. */
+const REL_MARGIN = 16;
+
+/** The clear width a relation label wants on one line; a row without that much room wraps it. */
+function relationLabelW(label: string): number {
+  return Math.min(REL_MAX_W, estimateTextWidth(label, REL_F, true));
+}
+
+const pairKey = (a: string, b: string) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
 const NAME_F = 15;
 // The stage caps the 1000-unit viewBox at 760px, so a user unit renders at ~0.76 CSS pixels —
 // «interface» at 11 units came out under the ~9px legibility floor. STEREO_H is the band the
@@ -274,22 +287,39 @@ export function ClassDiagram({
       layers.get(r)!.push(b);
     }
 
+    // A labelled relation between two classes that end up side by side on one row runs across
+    // the gap between them, and its label has to fit in that gap or it lands on a box header.
+    const labelNeed = new Map<string, number>();
+    for (const rel of cleanRelations) {
+      if (!rel.label || rel.from === rel.to) continue;
+      const k = pairKey(rel.from, rel.to);
+      labelNeed.set(k, Math.max(labelNeed.get(k) ?? 0, relationLabelW(rel.label) + REL_MARGIN * 2));
+    }
+
     let y = PAD;
     for (const key of [...layers.keys()].sort((a, b) => a - b)) {
       const layer = layers.get(key)!;
       for (let start = 0; start < layer.length; start += PER_ROW) {
         const row = layer.slice(start, start + PER_ROW);
-        const rowW = row.length * BOX_W + (row.length - 1) * H_GAP;
+        const want = row
+          .slice(1)
+          .map((b, j) => Math.max(H_GAP, labelNeed.get(pairKey(row[j].cls.name, b.cls.name)) ?? 0));
+        // Widen only as far as the row has room; past that the label wraps and shrinks instead.
+        const room = VIEW_W - PAD * 2 - row.length * BOX_W - want.length * H_GAP;
+        const extra = want.reduce((sum, g) => sum + g - H_GAP, 0);
+        const k = extra > room && extra > 0 ? Math.max(0, room) / extra : 1;
+        const gaps = want.map((g) => H_GAP + (g - H_GAP) * k);
+        const rowW = row.length * BOX_W + gaps.reduce((sum, g) => sum + g, 0);
         let x = (VIEW_W - rowW) / 2;
         let rowH = 0;
-        for (const b of row) {
+        row.forEach((b, j) => {
           b.x = x;
           b.y = y;
           b.cx = x + b.w / 2;
           b.cy = y + b.h / 2;
-          x += BOX_W + H_GAP;
+          x += BOX_W + (gaps[j] ?? 0);
           rowH = Math.max(rowH, b.h);
-        }
+        });
         y += rowH + ROW_GAP;
       }
       y += V_GAP - ROW_GAP;
@@ -453,17 +483,24 @@ export function ClassDiagram({
               if (!a || !b || a === b) return null;
               const s = rectRim(a, b.cx, b.cy);
               const t = rectRim(b, a.cx, a.cy);
+              // Between row neighbours the label has the gap and no more; elsewhere its own cap.
+              const sameRow = a.y === b.y;
+              const gap = sameRow ? Math.abs(a.cx - b.cx) - BOX_W - REL_MARGIN * 2 : REL_MAX_W;
               // Shrink-to-fit, never char-cap: the label wraps to two lines then shrinks.
               const fit = fitText(rel.label, {
-                maxWidth: 170,
-                fontSize: 14,
+                maxWidth: Math.max(48, Math.min(REL_MAX_W, gap)),
+                fontSize: REL_F,
                 minFontSize: MIN_LEGIBLE_F,
                 maxLines: 2,
                 lineHeight: 1.15,
                 bold: true,
               });
-              const mx = (s.x + t.x) / 2;
-              const my = (s.y + t.y) / 2 - 14 - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
+              // Beside the line, clear of it, rather than centred on a vertical one.
+              const { x: mx, y0: my } = captionAt(s, t, {
+                lines: fit.lines,
+                fontSize: fit.fontSize,
+                lineHeight: fit.lineHeightPx,
+              });
               return (
                 <text
                   key={`l${i}`}

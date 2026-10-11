@@ -20,13 +20,15 @@ function fmtFold(v: number): string {
 }
 
 /** The diverging fill for an already-normalized t ∈ [-1, 1]: blue toward −1 (down-regulated),
- *  red toward +1 (up-regulated), and genuinely untinted — not a faint floor of either color —
- *  at exactly zero, so "unchanged" reads as neutral rather than a washed-out color. */
+ *  red toward +1 (up-regulated), and a hueless neutral at exactly zero so "unchanged" reads as a
+ *  measured cell rather than a missing one. Mixed into the card surface instead of into
+ *  transparent so the fill is opaque: the cell's ink is derived from it (`.eh-cell` in the
+ *  stylesheet), and a translucent fill's channels say nothing about what the reader sees. */
 function fill(t: number): string {
-  if (t === 0) return 'transparent';
+  if (t === 0) return 'color-mix(in oklab, var(--text-muted) 10%, var(--surface-elevated))';
   const accent = t > 0 ? 'var(--danger)' : 'var(--presence)';
   const strength = Math.abs(t);
-  return `color-mix(in oklab, ${accent} ${(strength * 88).toFixed(1)}%, transparent)`;
+  return `color-mix(in oklab, ${accent} ${(strength * 88).toFixed(1)}%, var(--surface-elevated))`;
 }
 
 // A gene-expression heat map: genes × samples, each cell a log2 fold-change tinted on a
@@ -82,30 +84,32 @@ export function ExpressionHeatmap({
         <BlockEmpty message="Needs at least one gene and one sample to plot" />
       ) : (
         <div className="eh-wrap">
-          <div
-            className="eh-grid"
-            style={{
-              gridTemplateColumns: `minmax(0, auto) repeat(${cols.length}, minmax(0, var(--eh-cell)))`,
-            }}
-          >
-            <span className="eh-corner" />
-            {cols.map((c, ci) => (
-              <span key={ci} className={`eh-colh ${hover?.c === ci ? 'on' : ''}`} title={c}>
-                {c}
-              </span>
-            ))}
-            {rows.map((gene, ri) => (
-              <Row
-                key={ri}
-                ri={ri}
-                label={gene}
-                vals={grid[ri]}
-                colCount={cols.length}
-                norm={norm}
-                hover={hover}
-                setHover={setHover}
-              />
-            ))}
+          <div className="eh-scroll">
+            <div
+              className="eh-grid"
+              style={{
+                gridTemplateColumns: `minmax(0, auto) repeat(${cols.length}, minmax(0, var(--eh-cell)))`,
+              }}
+            >
+              <span className="eh-corner" />
+              {cols.map((c, ci) => (
+                <span key={ci} className={`eh-colh ${hover?.c === ci ? 'on' : ''}`} title={c}>
+                  {c}
+                </span>
+              ))}
+              {rows.map((gene, ri) => (
+                <Row
+                  key={ri}
+                  ri={ri}
+                  label={gene}
+                  vals={grid[ri]}
+                  colCount={cols.length}
+                  norm={norm}
+                  hover={hover}
+                  setHover={setHover}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="eh-legend">
@@ -161,10 +165,7 @@ function Row({
           <div
             key={ci}
             className={`eh-cell ${on ? 'hot' : ''} ${cross && !on ? 'cross' : ''}`}
-            style={{
-              background: fill(t),
-              color: Math.abs(t) > 0.55 ? 'var(--surface-deep)' : 'var(--text-secondary)',
-            }}
+            style={{ ['--eh-fill' as string]: fill(t) } as CSSProperties}
             onMouseEnter={() => setHover({ r: ri, c: ci })}
             onMouseLeave={() => setHover(null)}
           >

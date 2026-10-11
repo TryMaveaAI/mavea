@@ -30,11 +30,19 @@ const ANGLE_LABELS = [
 
 interface CurvePath {
   points: string;
+  /** The same points as numbers, for placing the scale label clear of the curves. */
+  xy: [number, number][];
   color: string;
   label?: string;
 }
 
-function buildPolarPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurvePath[] {
+interface CurveSet {
+  paths: CurvePath[];
+  /** The data value the outer ring stands for: every curve is scaled so this reaches MAX_R. */
+  extent: number;
+}
+
+function buildPolarPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurveSet {
   const N = 300;
   const evaluators = crvs.map((c) => makeEvaluator(c.fn));
 
@@ -54,11 +62,12 @@ function buildPolarPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurveP
   }
   if (maxAbsR === 0) maxAbsR = 1;
 
-  return crvs.map((curve, ci) => {
+  const paths = crvs.map((curve, ci) => {
     const ev = evaluators[ci];
-    if (!ev) return { points: '', color: PALETTE[ci % PALETTE.length] };
+    if (!ev) return { points: '', xy: [], color: PALETTE[ci % PALETTE.length] };
 
     const pts: string[] = [];
+    const xy: [number, number][] = [];
 
     for (let i = 0; i <= N; i++) {
       const t = tMin + (i / N) * (tMax - tMin);
@@ -69,6 +78,7 @@ function buildPolarPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurveP
           const x = CX + (r / maxAbsR) * MAX_R * Math.cos(t);
           const y = CY - (r / maxAbsR) * MAX_R * Math.sin(t);
           pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+          xy.push([x, y]);
         }
       } catch {
         // non-finite point — skip
@@ -77,13 +87,15 @@ function buildPolarPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurveP
 
     return {
       points: pts.join(' '),
+      xy,
       color: curve.color ?? PALETTE[ci % PALETTE.length],
       label: curve.label,
     };
   });
+  return { paths, extent: maxAbsR };
 }
 
-function buildParametricPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurvePath[] {
+function buildParametricPaths(crvs: PolarCurve[], tMin: number, tMax: number): CurveSet {
   const N = 300;
 
   // Parse each fn into separate x(t) and y(t) evaluators by splitting on the first comma.
@@ -120,26 +132,62 @@ function buildParametricPaths(crvs: PolarCurve[], tMin: number, tMax: number): C
   if (maxExtent === 0) maxExtent = 1;
   const scale = MAX_R / maxExtent;
 
-  return crvs.map((curve, ci) => {
+  const paths = crvs.map((curve, ci) => {
     const pts = parsed[ci];
     if (!pts || pts.length === 0) {
-      return { points: '', color: PALETTE[ci % PALETTE.length] };
+      return { points: '', xy: [], color: PALETTE[ci % PALETTE.length] };
     }
 
-    const svgPts = pts.map((p) => {
-      const sx = CX + p.x * scale;
-      // y is inverted: positive data-y maps upward in SVG
-      const sy = CY - p.y * scale;
-      return `${sx.toFixed(2)},${sy.toFixed(2)}`;
-    });
+    // y is inverted: positive data-y maps upward in SVG
+    const xy = pts.map((p): [number, number] => [CX + p.x * scale, CY - p.y * scale]);
 
     return {
-      points: svgPts.join(' '),
+      points: xy.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '),
+      xy,
       color: curve.color ?? PALETTE[ci % PALETTE.length],
       label: curve.label,
     };
   });
+  return { paths, extent: maxExtent };
 }
+
+/** Clear of the spokes, so the label sits between two of them. */
+const SCALE_LABEL_ANGLES = Array.from({ length: 12 }, (_, i) => 15 + i * 30);
+const SCALE_LABEL_R = MAX_R - 9;
+
+/**
+ * Where the outer ring's value is written: on the ring, in the direction the curves leave
+ * emptiest. A fixed spot at 0° lands on whatever the curve does there — a rose's petal tip, a
+ * cardioid's widest point — and those reach the outer ring by construction.
+ */
+function scaleLabelAngle(paths: readonly CurvePath[]): number {
+  const crowding = (deg: number) => {
+    let hits = 0;
+    for (const path of paths) {
+      for (const [x, y] of path.xy) {
+        const dx = x - CX;
+        const dy = CY - y;
+        if (Math.hypot(dx, dy) < MAX_R * 0.6) continue;
+        const off = Math.abs((((Math.atan2(dy, dx) * 180) / Math.PI - deg + 540) % 360) - 180);
+        if (off < 12) hits++;
+      }
+    }
+    return hits;
+  };
+  let best = SCALE_LABEL_ANGLES[0];
+  let bestHits = Infinity;
+  for (const deg of SCALE_LABEL_ANGLES) {
+    const hits = crowding(deg);
+    if (hits < bestHits) {
+      best = deg;
+      bestHits = hits;
+    }
+  }
+  return best;
+}
+
+/** Three significant figures, without trailing zeros. */
+const formatExtent = (v: number) => String(Number(v.toPrecision(3)));
 
 export function PolarPlot({
   title,
@@ -154,14 +202,15 @@ export function PolarPlot({
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
 
-  const curvePaths = useMemo(() => {
+  const { paths: curvePaths, extent } = useMemo((): CurveSet => {
     const crvs = curves ?? (fn ? [{ fn }] : []);
-    if (crvs.length === 0) return [];
+    if (crvs.length === 0) return { paths: [], extent: 1 };
     const [tMin, tMax] = domain ?? [0, 2 * Math.PI];
     return type === 'parametric'
       ? buildParametricPaths(crvs, tMin, tMax)
       : buildPolarPaths(crvs, tMin, tMax);
   }, [type, fn, curves, domain]);
+  const scaleAngle = useMemo(() => scaleLabelAngle(curvePaths), [curvePaths]);
 
   return (
     <div
@@ -174,73 +223,83 @@ export function PolarPlot({
         </div>
       )}
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-        role="img"
-        aria-label={title ?? (type === 'polar' ? 'Polar plot' : 'Parametric curve')}
-      >
-        {/* Concentric rings at 25% / 50% / 75% / 100% of MAX_R */}
-        {RING_FRACTIONS.map((f) => (
-          <circle
-            key={`ring-${f}`}
-            cx={CX}
-            cy={CY}
-            r={MAX_R * f}
-            fill="none"
-            stroke="var(--grid-line)"
-            strokeWidth={0.5}
-          />
-        ))}
+      <div className="canvas-figure">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+          role="img"
+          aria-label={title ?? (type === 'polar' ? 'Polar plot' : 'Parametric curve')}
+        >
+          {/* Concentric rings at 25% / 50% / 75% / 100% of MAX_R */}
+          {RING_FRACTIONS.map((f) => (
+            <circle
+              key={`ring-${f}`}
+              cx={CX}
+              cy={CY}
+              r={MAX_R * f}
+              fill="none"
+              stroke="var(--grid-line)"
+              strokeWidth={0.5}
+            />
+          ))}
 
-        {/* 12 radial spokes at 30° steps */}
-        {RADIAL_ANGLES.map((a, i) => (
-          <line
-            key={`spoke-${i}`}
-            x1={CX}
-            y1={CY}
-            x2={CX + MAX_R * Math.cos(a)}
-            y2={CY - MAX_R * Math.sin(a)}
-            stroke="var(--grid-line)"
-            strokeWidth={0.5}
-          />
-        ))}
+          {/* 12 radial spokes at 30° steps */}
+          {RADIAL_ANGLES.map((a, i) => (
+            <line
+              key={`spoke-${i}`}
+              x1={CX}
+              y1={CY}
+              x2={CX + MAX_R * Math.cos(a)}
+              y2={CY - MAX_R * Math.sin(a)}
+              stroke="var(--grid-line)"
+              strokeWidth={0.5}
+            />
+          ))}
 
-        {/* Angle labels just outside the outer ring */}
-        {ANGLE_LABELS.map(({ x, y, text, anchor }) => (
+          {/* Angle labels just outside the outer ring */}
+          {ANGLE_LABELS.map(({ x, y, text, anchor }) => (
+            <text
+              key={`albl-${text}`}
+              x={x}
+              y={y}
+              fontSize={9}
+              fill="var(--text-muted)"
+              textAnchor={anchor}
+            >
+              {text}
+            </text>
+          ))}
+
+          {/* The outer ring's value — the curves' own largest reach, not a fixed 1. */}
           <text
-            key={`albl-${text}`}
-            x={x}
-            y={y}
+            x={CX + SCALE_LABEL_R * Math.cos((scaleAngle * Math.PI) / 180)}
+            y={CY - SCALE_LABEL_R * Math.sin((scaleAngle * Math.PI) / 180)}
             fontSize={9}
             fill="var(--text-muted)"
-            textAnchor={anchor}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="pp-scale-lbl"
           >
-            {text}
+            {formatExtent(extent)}
           </text>
-        ))}
 
-        {/* r = 1 scale marker; positioned inside the outer ring so it reads at the boundary */}
-        <text x={CX + MAX_R - 6} y={CY - 5} fontSize={9} fill="var(--text-muted)" textAnchor="end">
-          1
-        </text>
-
-        {/* Curve polylines, one per entry */}
-        {curvePaths.map((path, i) =>
-          path.points ? (
-            <polyline
-              key={`crv-${i}`}
-              points={path.points}
-              fill="none"
-              stroke={path.color}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          ) : null,
-        )}
-      </svg>
+          {/* Curve polylines, one per entry */}
+          {curvePaths.map((path, i) =>
+            path.points ? (
+              <polyline
+                key={`crv-${i}`}
+                points={path.points}
+                fill="none"
+                stroke={path.color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ) : null,
+          )}
+        </svg>
+      </div>
 
       {/* Legend for any named curves — an inline label at each curve's last plotted point
           (the old approach) collides whenever curves share a domain, since every curve then

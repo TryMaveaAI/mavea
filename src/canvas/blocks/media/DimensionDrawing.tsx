@@ -1,16 +1,24 @@
 import { useId, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { extent } from '../../lib';
-import type { DimensionDrawingProps, DimensionLine } from './types';
+import type { DimensionDrawingProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { placeDimensions, type DimSide, type PlacedDimension } from './dimensionLayout';
 
 type Props = DimensionDrawingProps & { delay?: number };
 
-// The viewBox the part + its dimension callouts are fitted into. A generous margin leaves room
-// for the dimension lines, which sit off the part edges, plus their measurement text.
+// The viewBox the part + its dimension callouts are fitted into. Each side's margin is sized from
+// the dimensions actually stacked on it, so a bare profile is drawn large and a heavily
+// dimensioned one still keeps every callout inside the frame.
 const VB_W = 200;
 const VB_H = 130;
-const MARGIN = 30;
+const EDGE = 6;
+/** Gap from the part to the first dimension line, and between stacked lines (viewBox units). */
+const FIRST_OFF = 11;
+const TIER_STEP = 11;
+/** Room past the outermost dimension line for its text (.dim-text is 5 units, monospace). */
+const TEXT_ROOM = 8;
+const CHAR_W = 3.05;
 
 // A shop drawing: a part profile drawn to scale with proper dimension lines, fitted to the frame.
 // We compute a single uniform transform (scale + offset) that maps the authored drawing-unit
@@ -31,8 +39,10 @@ export function DimensionDrawing({
   const Ic = Icon[icon] || Icon.edit;
   const arrowId = `med-dim-arrow-${useId().replace(/:/g, '')}`;
 
-  // Fit every authored point (the profile + both ends of each dimension) so dimension callouts
-  // that sit outside the part still land inside the frame.
+  const placed = placeDimensions(outline, dimensions);
+
+  // Fit every authored point (the profile + both ends of each dimension), leaving each side the
+  // room its own stack of dimension lines and labels needs.
   const xs: number[] = [];
   const ys: number[] = [];
   for (const p of outline) {
@@ -43,20 +53,42 @@ export function DimensionDrawing({
     xs.push(d.from[0], d.to[0]);
     ys.push(d.from[1], d.to[1]);
   }
+  const margin = (side: DimSide) => {
+    const onSide = placed.filter((p) => p.side === side);
+    if (!onSide.length) return EDGE;
+    const outer = FIRST_OFF + Math.max(...onSide.map((p) => p.tier)) * TIER_STEP;
+    // A side label runs across the margin, so it needs its full width; a top/bottom one a line.
+    const text =
+      side === 'left' || side === 'right'
+        ? Math.max(...onSide.map((p) => p.d.label.length * CHAR_W)) + 3
+        : TEXT_ROOM;
+    return outer + text + EDGE;
+  };
+  const m = {
+    top: margin('top'),
+    bottom: margin('bottom'),
+    left: margin('left'),
+    right: margin('right'),
+  };
   const ex = extent(xs);
   const ey = extent(ys);
   const [minX, maxX] = ex ?? [0, 1];
   const [minY, maxY] = ey ?? [0, 1];
   const spanX = maxX - minX || 1;
   const spanY = maxY - minY || 1;
-  const k = Math.min((VB_W - MARGIN * 2) / spanX, (VB_H - MARGIN * 2) / spanY);
-  // Centre the drawing in the frame. SVG y grows downward, drawing y grows upward, so flip.
+  const k = Math.max(
+    0.01,
+    Math.min((VB_W - m.left - m.right) / spanX, (VB_H - m.top - m.bottom) / spanY),
+  );
+  // Centre the drawing in the room the margins leave. SVG y grows downward, drawing y grows
+  // upward, so flip.
   const cw = spanX * k;
   const ch = spanY * k;
-  const ox = (VB_W - cw) / 2;
-  const oy = (VB_H - ch) / 2;
+  const ox = m.left + (VB_W - m.left - m.right - cw) / 2;
+  const oy = m.top + (VB_H - m.top - m.bottom - ch) / 2;
   const tx = (x: number) => ox + (x - minX) * k;
   const ty = (y: number) => oy + (maxY - y) * k;
+  const box = { x0: tx(minX), x1: tx(maxX), y0: ty(maxY), y1: ty(minY) };
 
   const path =
     outline.length >= 3
@@ -93,8 +125,8 @@ export function DimensionDrawing({
           {/* the part profile */}
           <path d={path} className="dim-part" data-mark="circle" />
 
-          {dimensions.map((d, i) => (
-            <Dimension key={i} d={d} tx={tx} ty={ty} k={k} arrowId={arrowId} />
+          {placed.map((p, i) => (
+            <Dimension key={i} placed={p} tx={tx} ty={ty} box={box} arrowId={arrowId} />
           ))}
         </svg>
       </div>
@@ -141,60 +173,49 @@ export function DimensionDrawing({
   );
 }
 
-// One dimension callout: a measurement line offset off the part with extension lines back to the
-// two measured points, double arrowheads, and the label centred on the dimension line. Horizontal
-// spans offset vertically, vertical spans horizontally — the usual drafting convention.
+// One dimension callout: a measurement line set off the part on its side, with extension lines
+// back to the two measured points, double arrowheads, and the label beside the line on the side
+// away from the part.
 function Dimension({
-  d,
+  placed,
   tx,
   ty,
-  k,
+  box,
   arrowId,
 }: {
-  d: DimensionLine;
+  placed: PlacedDimension;
   tx: (x: number) => number;
   ty: (y: number) => number;
-  k: number;
+  box: { x0: number; x1: number; y0: number; y1: number };
   arrowId: string;
 }) {
-  const [fx, fy] = d.from;
-  const [gx, gy] = d.to;
-  const horizontal = Math.abs(gx - fx) >= Math.abs(gy - fy);
-  // Offset is in drawing units; scale it into viewBox units. Sign chooses the side.
-  const off = (d.offset ?? 10) * k;
+  const { d, side, tier } = placed;
+  const p1 = { x: tx(d.from[0]), y: ty(d.from[1]) };
+  const p2 = { x: tx(d.to[0]), y: ty(d.to[1]) };
+  // Measured from the part's outer edge, not the span's own points, so a span on an inner edge
+  // (the L's step) still clears the whole profile instead of cutting back across it.
+  const off = FIRST_OFF + tier * TIER_STEP;
+  const lineAt =
+    side === 'top'
+      ? box.y0 - off
+      : side === 'bottom'
+        ? box.y1 + off
+        : side === 'left'
+          ? box.x0 - off
+          : box.x1 + off;
+  const horizontal = side === 'top' || side === 'bottom';
+  const a1 = horizontal ? { x: p1.x, y: lineAt } : { x: lineAt, y: p1.y };
+  const a2 = horizontal ? { x: p2.x, y: lineAt } : { x: lineAt, y: p2.y };
 
-  // The two measured points on the part, in viewBox space.
-  const p1 = { x: tx(fx), y: ty(fy) };
-  const p2 = { x: tx(gx), y: ty(gy) };
-
-  // The dimension line itself sits `off` away, perpendicular to the span.
-  let a1, a2, mid;
-  if (horizontal) {
-    const dy = -Math.abs(off); // above the part by default (screen-up)
-    a1 = { x: p1.x, y: Math.min(p1.y, p2.y) + dy };
-    a2 = { x: p2.x, y: Math.min(p1.y, p2.y) + dy };
-    mid = { x: (a1.x + a2.x) / 2, y: a1.y - 2 };
-  } else {
-    const dx = Math.abs(off); // right of the part by default
-    a1 = { x: Math.max(p1.x, p2.x) + dx, y: p1.y };
-    a2 = { x: Math.max(p1.x, p2.x) + dx, y: p2.y };
-    mid = { x: a1.x + 3, y: (a1.y + a2.y) / 2 };
-  }
-
-  // The demo's dimension strings are short ("60", "18") and never approach the viewBox edge;
-  // a longer label (a custom callout rather than a bare number) can. Estimate the label's
-  // rendered half-width at .dim-text's 5px monospace font (~3 units/char) and, rather than
-  // letting it run past the boundary, clamp a centred label back inside the margin or flip a
-  // right-growing one to grow left instead.
-  const halfW = (d.label.length * 3) / 2;
-  const textAnchor = horizontal ? 'middle' : 'start';
-  let textX = mid.x;
-  if (horizontal) {
-    textX = Math.min(Math.max(mid.x, halfW + 2), VB_W - halfW - 2);
-  } else if (mid.x + d.label.length * 3 > VB_W - 2) {
-    textX = a1.x - 3;
-  }
-  const flippedAnchor = !horizontal && textX !== mid.x ? 'end' : textAnchor;
+  const textW = d.label.length * CHAR_W;
+  const midX = (a1.x + a2.x) / 2;
+  const textX = horizontal
+    ? Math.min(Math.max(midX, textW / 2 + 2), VB_W - textW / 2 - 2)
+    : side === 'left'
+      ? lineAt - 2.5
+      : lineAt + 2.5;
+  const textY = horizontal ? (side === 'top' ? lineAt - 2 : lineAt + 6) : (a1.y + a2.y) / 2;
+  const anchor = horizontal ? 'middle' : side === 'left' ? 'end' : 'start';
 
   return (
     <g>
@@ -213,9 +234,9 @@ function Dimension({
       />
       <text
         x={textX}
-        y={mid.y}
+        y={textY}
         className="dim-text"
-        textAnchor={flippedAnchor}
+        textAnchor={anchor}
         dominantBaseline={horizontal ? 'auto' : 'middle'}
       >
         {d.label}

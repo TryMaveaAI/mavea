@@ -88,7 +88,9 @@ export function AreaModel({
   }, [products]);
 
   const cols = factorA.length;
-  const colTemplate = `min-content repeat(${cols}, minmax(56px, 1fr))`;
+  // The row-header column fits its terms on one line, up to 40% of the grid. Sized to
+  // min-content, the card's break-anywhere wrapping let it shrink to one digit: "10" read "1/0".
+  const colTemplate = `fit-content(40%) repeat(${cols}, minmax(56px, 1fr))`;
 
   return (
     <div

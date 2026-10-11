@@ -64,10 +64,12 @@ export function Rehearsal({
       {exit && (
         <div className="rh-exit">
           <Icon.check className="ic rh-exit-ic" style={{ width: 14, height: 14 }} />
-          <span>
-            <span className="rh-exit-tag">If you need to wrap it up</span>{' '}
-            <span dangerouslySetInnerHTML={richInnerHtml(exit)} />
-          </span>
+          {/* Tagged above its line, like the opener, so the cue never reads as the first words
+              of what to say. */}
+          <div className="rh-exit-body">
+            <span className="rh-exit-tag">If you need to wrap it up</span>
+            <span className="rh-exit-line" dangerouslySetInnerHTML={richInnerHtml(exit)} />
+          </div>
         </div>
       )}
 

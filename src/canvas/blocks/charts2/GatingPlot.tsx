@@ -15,6 +15,7 @@ type Props = GatingPlotProps & { delay?: number };
 const W = 480;
 const H = 300;
 const PAD = { l: 46, r: 20, t: 16, b: 38 };
+const GATE_LABEL_ROOM = 16;
 const PALETTE = [
   'var(--presence)',
   'var(--insight)',
@@ -151,8 +152,15 @@ export function GatingPlot({
   const geom = useMemo(() => {
     const xLog = xScale === 'log';
     const yLog = yScale === 'log';
-    const regionXs = safeGates.flatMap((g) => g.region.map((r) => r[0]));
-    const regionYs = safeGates.flatMap((g) => g.region.map((r) => r[1]));
+    // An ellipse gate is [centre, radii]: its reach is centre ± radius, not the radii read as a
+    // second point — reading them that way left the domain short of the ellipse, so a gate drawn
+    // around the highest population ran off the top of the axes.
+    const reach = (g: SafeGate, k: 0 | 1) =>
+      g.shape === 'ellipse' && g.region.length >= 2
+        ? [g.region[0][k] - Math.abs(g.region[1][k]), g.region[0][k] + Math.abs(g.region[1][k])]
+        : g.region.map((r) => r[k]);
+    const regionXs = safeGates.flatMap((g) => reach(g, 0));
+    const regionYs = safeGates.flatMap((g) => reach(g, 1));
     const xVals = validPoints.map((p) => p.x).concat(regionXs);
     const yVals = validPoints.map((p) => p.y).concat(regionYs);
 
@@ -161,7 +169,8 @@ export function GatingPlot({
     const plotT = PAD.t;
     const plotB = H - PAD.b;
     const xAxis = buildAxis(xVals, xLog, [plotL, plotR]);
-    const yAxis = buildAxis(yVals, yLog, [plotB, plotT]);
+    // A gate's name sits above its shape, so the data stops a label's height short of the top.
+    const yAxis = buildAxis(yVals, yLog, [plotB, plotT + (safeGates.length ? GATE_LABEL_ROOM : 0)]);
     if (!xAxis || !yAxis) return null;
 
     const plotted = validPoints.filter((p) => xAxis.ok(p.x) && yAxis.ok(p.y));

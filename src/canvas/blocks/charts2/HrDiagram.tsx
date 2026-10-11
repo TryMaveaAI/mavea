@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
-import { fitText } from '../../lib/fitText';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import { BlockEmpty } from '../../lib/BlockEmpty';
 import type { HrDiagramProps, HrStar } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -48,6 +48,9 @@ const SPECTRAL: { cls: string; lo: number; hi: number }[] = [
   { cls: 'K', lo: 3700, hi: 5200 },
   { cls: 'M', lo: 2400, hi: 3700 },
 ];
+
+/** `.hrd-region-lbl`'s size in user units, for measuring where a region name fits. */
+const REGION_FS = 9.5;
 
 // Canonical regions in (log₁₀T, log₁₀L) space. The main sequence is a diagonal band; the
 // other three are loose ellipses around where those populations actually cluster.
@@ -173,16 +176,43 @@ export function HrDiagram({
     const inPlot = (x: number, y: number) =>
       x > PAD_L + 8 && x < W - PAD_R - 8 && y > PAD_T + 8 && y < H - PAD_B - 8;
 
+    // A region's name may sit anywhere inside its region, but its centre is exactly where that
+    // population's stars cluster, and a star under the word reads as part of it. Take the spot
+    // nearest the centre that clears every star, staying inside the region and the plot.
+    const labelSpot = (cx: number, cy: number, rx: number, ry: number, label: string) => {
+      const halfW = estimateTextWidth(label, REGION_FS, true) / 2 + 2;
+      const halfH = REGION_FS * 0.6 + 2;
+      const hits = (x: number, y: number) =>
+        pts.filter((p) => Math.abs(p.x - x) < halfW + p.r && Math.abs(p.y - y) < halfH + p.r)
+          .length;
+      const spots = [0, -0.4, 0.4, -0.75, 0.75]
+        .flatMap((fy) =>
+          [0, -0.4, 0.4, -0.75, 0.75].map((fx) => ({ x: cx + fx * rx, y: cy + fy * ry })),
+        )
+        .filter((q) => inPlot(q.x - halfW + 8, q.y) && inPlot(q.x + halfW - 8, q.y))
+        .sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
+      let best = { x: cx, y: cy, n: hits(cx, cy) };
+      for (const q of spots) {
+        if (best.n === 0) break;
+        const n = hits(q.x, q.y);
+        if (n < best.n) best = { ...q, n };
+      }
+      return best;
+    };
+
     const ellipses = ELLIPSES.map((e) => {
       const cx = sx(e.t);
       const cy = sy(e.l);
+      const rx = Math.abs(sx(e.t + e.dt) - sx(e.t - e.dt)) / 2;
+      const ry = Math.abs(sy(e.l + e.dl) - sy(e.l - e.dl)) / 2;
       return {
         label: e.label,
         tint: e.tint,
         cx,
         cy,
-        rx: Math.abs(sx(e.t + e.dt) - sx(e.t - e.dt)) / 2,
-        ry: Math.abs(sy(e.l + e.dl) - sy(e.l - e.dl)) / 2,
+        rx,
+        ry,
+        at: labelSpot(cx, cy, rx, ry, e.label),
         labeled: inPlot(cx, cy),
       };
     });
@@ -234,207 +264,209 @@ export function HrDiagram({
       </div>
 
       <div className="hrd-wrap" onMouseLeave={() => setHover(null)}>
-        <svg viewBox={`0 0 ${W} ${H}`} className="hrd-svg" role="img" aria-label={title}>
-          <defs>
-            <clipPath id={clipId}>
-              <rect x={PAD_L} y={PAD_T} width={W - PAD_L - PAD_R} height={H - PAD_T - PAD_B} />
-            </clipPath>
-          </defs>
+        <div className="canvas-figure">
+          <svg viewBox={`0 0 ${W} ${H}`} className="hrd-svg" role="img" aria-label={title}>
+            <defs>
+              <clipPath id={clipId}>
+                <rect x={PAD_L} y={PAD_T} width={W - PAD_L - PAD_R} height={H - PAD_T - PAD_B} />
+              </clipPath>
+            </defs>
 
-          {/* frame + gridlines */}
-          {geom.tempTicks.map((t, i) => (
-            <line
-              key={`gt${i}`}
-              x1={geom.sx(Math.log10(t))}
-              y1={PAD_T}
-              x2={geom.sx(Math.log10(t))}
-              y2={H - PAD_B}
-              className="hrd-grid"
-            />
-          ))}
-          {geom.lumTicks.map((e, i) => (
-            <line
-              key={`gl${i}`}
-              x1={PAD_L}
-              y1={geom.sy(e)}
-              x2={W - PAD_R}
-              y2={geom.sy(e)}
-              className="hrd-grid"
-            />
-          ))}
-
-          {/* soft population regions, clipped so the blur never bleeds past the plot */}
-          {showRegions && (
-            <g clipPath={`url(#${clipId})`}>
+            {/* frame + gridlines */}
+            {geom.tempTicks.map((t, i) => (
               <line
-                x1={geom.ms.x1}
-                y1={geom.ms.y1}
-                x2={geom.ms.x2}
-                y2={geom.ms.y2}
-                className="hrd-region"
-                stroke="color-mix(in oklab, var(--presence) 14%, transparent)"
-                strokeWidth={30}
-                strokeLinecap="round"
+                key={`gt${i}`}
+                x1={geom.sx(Math.log10(t))}
+                y1={PAD_T}
+                x2={geom.sx(Math.log10(t))}
+                y2={H - PAD_B}
+                className="hrd-grid"
               />
-              {geom.ellipses.map((e, i) => (
-                <ellipse
-                  key={i}
-                  cx={e.cx}
-                  cy={e.cy}
-                  rx={e.rx}
-                  ry={e.ry}
+            ))}
+            {geom.lumTicks.map((e, i) => (
+              <line
+                key={`gl${i}`}
+                x1={PAD_L}
+                y1={geom.sy(e)}
+                x2={W - PAD_R}
+                y2={geom.sy(e)}
+                className="hrd-grid"
+              />
+            ))}
+
+            {/* soft population regions, clipped so the blur never bleeds past the plot */}
+            {showRegions && (
+              <g clipPath={`url(#${clipId})`}>
+                <line
+                  x1={geom.ms.x1}
+                  y1={geom.ms.y1}
+                  x2={geom.ms.x2}
+                  y2={geom.ms.y2}
                   className="hrd-region"
-                  fill={`color-mix(in oklab, ${e.tint} 14%, transparent)`}
+                  stroke="color-mix(in oklab, var(--presence) 14%, transparent)"
+                  strokeWidth={30}
+                  strokeLinecap="round"
                 />
+                {geom.ellipses.map((e, i) => (
+                  <ellipse
+                    key={i}
+                    cx={e.cx}
+                    cy={e.cy}
+                    rx={e.rx}
+                    ry={e.ry}
+                    className="hrd-region"
+                    fill={`color-mix(in oklab, ${e.tint} 14%, transparent)`}
+                  />
+                ))}
+              </g>
+            )}
+            {/* spectral-class strip */}
+            {geom.bands.map((b, i) => (
+              <g key={i}>
+                <text x={b.x} y={PAD_T - 10} textAnchor="middle" className="hrd-cls">
+                  {b.cls}
+                </text>
+                {b.edge !== null && (
+                  <line
+                    x1={b.edge}
+                    y1={BAND_TOP}
+                    x2={b.edge}
+                    y2={PAD_T - 6}
+                    className="hrd-cls-sep"
+                  />
+                )}
+              </g>
+            ))}
+
+            {/* axes */}
+            <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="hrd-axis" />
+            <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} className="hrd-axis" />
+            {geom.tempTicks.map((t, i) => (
+              <text
+                key={`tt${i}`}
+                x={geom.sx(Math.log10(t))}
+                y={H - PAD_B + 14}
+                textAnchor="middle"
+                className="hrd-tick"
+              >
+                {fmtTemp(t)}
+              </text>
+            ))}
+            {geom.lumTicks.map((e, i) => (
+              <text
+                key={`lt${i}`}
+                x={PAD_L - 6}
+                y={geom.sy(e) + 3}
+                textAnchor="end"
+                className="hrd-tick"
+              >
+                10
+                <tspan dy={-3.5} className="hrd-exp">
+                  {e}
+                </tspan>
+              </text>
+            ))}
+            <text
+              x={PAD_L + (W - PAD_L - PAD_R) / 2}
+              y={H - 8}
+              textAnchor="middle"
+              className="hrd-axis-lbl"
+            >
+              Surface temperature (K), hot → cool
+            </text>
+            <text
+              transform={`translate(12, ${(PAD_T + H - PAD_B) / 2}) rotate(-90)`}
+              textAnchor="middle"
+              className="hrd-axis-lbl"
+            >
+              Luminosity (L☉)
+            </text>
+
+            {/* Sun reference */}
+            <g>
+              <circle cx={geom.sun.x} cy={geom.sun.y} r={3} className="hrd-sun" />
+              <text x={geom.sun.x + 6} y={geom.sun.y + 3} className="hrd-sun-lbl">
+                Sun
+              </text>
+            </g>
+
+            {/* stars */}
+            <g className="m-fade-rise">
+              {geom.pts.map((p) => (
+                <circle
+                  key={p.i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={hover === p.i ? p.r + 1.6 : p.r}
+                  fill={p.color}
+                  className="hrd-star"
+                  onMouseEnter={() => setHover(p.i)}
+                >
+                  <title>{`${p.name} — ${p.tempK.toLocaleString('en-US')} K, ${fmtLum(p.luminosity)} L☉`}</title>
+                </circle>
               ))}
             </g>
-          )}
-          {/* spectral-class strip */}
-          {geom.bands.map((b, i) => (
-            <g key={i}>
-              <text x={b.x} y={PAD_T - 10} textAnchor="middle" className="hrd-cls">
-                {b.cls}
-              </text>
-              {b.edge !== null && (
-                <line
-                  x1={b.edge}
-                  y1={BAND_TOP}
-                  x2={b.edge}
-                  y2={PAD_T - 6}
-                  className="hrd-cls-sep"
+
+            {/* Region labels paint last, so their surface halo still holds where no spot inside a
+              crowded band clears every star. */}
+            {showRegions && (
+              <g>
+                <text
+                  transform={`translate(${(geom.ms.x1 + geom.ms.x2) / 2}, ${(geom.ms.y1 + geom.ms.y2) / 2 - 20}) rotate(${Math.round(geom.msAngle)})`}
+                  className="hrd-region-lbl"
+                  textAnchor="middle"
+                  style={{ fill: 'color-mix(in oklab, var(--presence) 55%, var(--text-muted))' }}
+                >
+                  Main sequence
+                </text>
+                {geom.ellipses.map(
+                  (e, i) =>
+                    e.labeled && (
+                      <text
+                        key={i}
+                        x={e.at.x}
+                        y={e.at.y}
+                        className="hrd-region-lbl"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        style={{ fill: `color-mix(in oklab, ${e.tint} 55%, var(--text-muted))` }}
+                      >
+                        {e.label}
+                      </text>
+                    ),
+                )}
+              </g>
+            )}
+
+            {/* persistent highlight ring + label */}
+            {highlighted && hlFit && (
+              <g>
+                <circle
+                  cx={highlighted.x}
+                  cy={highlighted.y}
+                  r={highlighted.r + 4}
+                  className="hrd-ring"
                 />
-              )}
-            </g>
-          ))}
-
-          {/* axes */}
-          <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="hrd-axis" />
-          <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} className="hrd-axis" />
-          {geom.tempTicks.map((t, i) => (
-            <text
-              key={`tt${i}`}
-              x={geom.sx(Math.log10(t))}
-              y={H - PAD_B + 14}
-              textAnchor="middle"
-              className="hrd-tick"
-            >
-              {fmtTemp(t)}
-            </text>
-          ))}
-          {geom.lumTicks.map((e, i) => (
-            <text
-              key={`lt${i}`}
-              x={PAD_L - 6}
-              y={geom.sy(e) + 3}
-              textAnchor="end"
-              className="hrd-tick"
-            >
-              10
-              <tspan dy={-3.5} className="hrd-exp">
-                {e}
-              </tspan>
-            </text>
-          ))}
-          <text
-            x={PAD_L + (W - PAD_L - PAD_R) / 2}
-            y={H - 8}
-            textAnchor="middle"
-            className="hrd-axis-lbl"
-          >
-            Surface temperature (K), hot → cool
-          </text>
-          <text
-            transform={`translate(12, ${(PAD_T + H - PAD_B) / 2}) rotate(-90)`}
-            textAnchor="middle"
-            className="hrd-axis-lbl"
-          >
-            Luminosity (L☉)
-          </text>
-
-          {/* Sun reference */}
-          <g>
-            <circle cx={geom.sun.x} cy={geom.sun.y} r={3} className="hrd-sun" />
-            <text x={geom.sun.x + 6} y={geom.sun.y + 3} className="hrd-sun-lbl">
-              Sun
-            </text>
-          </g>
-
-          {/* stars */}
-          <g className="m-fade-rise">
-            {geom.pts.map((p) => (
-              <circle
-                key={p.i}
-                cx={p.x}
-                cy={p.y}
-                r={hover === p.i ? p.r + 1.6 : p.r}
-                fill={p.color}
-                className="hrd-star"
-                onMouseEnter={() => setHover(p.i)}
-              >
-                <title>{`${p.name} — ${p.tempK.toLocaleString('en-US')} K, ${fmtLum(p.luminosity)} L☉`}</title>
-              </circle>
-            ))}
-          </g>
-
-          {/* Region labels paint last so their surface halo keeps them legible even where a
-              star legitimately falls inside a band (e.g. a giant sitting on the "Giants" label). */}
-          {showRegions && (
-            <g>
-              <text
-                transform={`translate(${(geom.ms.x1 + geom.ms.x2) / 2}, ${(geom.ms.y1 + geom.ms.y2) / 2 - 20}) rotate(${Math.round(geom.msAngle)})`}
-                className="hrd-region-lbl"
-                textAnchor="middle"
-                style={{ fill: 'color-mix(in oklab, var(--presence) 55%, var(--text-muted))' }}
-              >
-                Main sequence
-              </text>
-              {geom.ellipses.map(
-                (e, i) =>
-                  e.labeled && (
-                    <text
+                <text
+                  x={highlighted.x + (hlLeft ? -(highlighted.r + 8) : highlighted.r + 8)}
+                  textAnchor={hlLeft ? 'end' : 'start'}
+                  fontSize={hlFit.fontSize}
+                  className="hrd-hl-lbl"
+                >
+                  {hlFit.lines.map((ln, i) => (
+                    <tspan
                       key={i}
-                      x={e.cx}
-                      y={e.cy}
-                      className="hrd-region-lbl"
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      style={{ fill: `color-mix(in oklab, ${e.tint} 55%, var(--text-muted))` }}
+                      x={highlighted.x + (hlLeft ? -(highlighted.r + 8) : highlighted.r + 8)}
+                      y={hlY + i * hlFit.lineHeightPx}
                     >
-                      {e.label}
-                    </text>
-                  ),
-              )}
-            </g>
-          )}
-
-          {/* persistent highlight ring + label */}
-          {highlighted && hlFit && (
-            <g>
-              <circle
-                cx={highlighted.x}
-                cy={highlighted.y}
-                r={highlighted.r + 4}
-                className="hrd-ring"
-              />
-              <text
-                x={highlighted.x + (hlLeft ? -(highlighted.r + 8) : highlighted.r + 8)}
-                textAnchor={hlLeft ? 'end' : 'start'}
-                fontSize={hlFit.fontSize}
-                className="hrd-hl-lbl"
-              >
-                {hlFit.lines.map((ln, i) => (
-                  <tspan
-                    key={i}
-                    x={highlighted.x + (hlLeft ? -(highlighted.r + 8) : highlighted.r + 8)}
-                    y={hlY + i * hlFit.lineHeightPx}
-                  >
-                    {ln}
-                  </tspan>
-                ))}
-              </text>
-            </g>
-          )}
-        </svg>
+                      {ln}
+                    </tspan>
+                  ))}
+                </text>
+              </g>
+            )}
+          </svg>
+        </div>
 
         {/* hover read-out (falls back to the highlighted star), height reserved so nothing shifts */}
         <div className="hrd-read" aria-live="polite">

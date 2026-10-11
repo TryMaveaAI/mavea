@@ -145,162 +145,164 @@ export function ConfusionMatrix({
 
       {model && (
         <div className="cfm-wrap">
-          <svg viewBox={`0 0 ${W} ${H}`} className="cfm-svg" role="img" aria-label={title}>
-            {/* Cells: a heat-filled square per (actual i, predicted j) with the count centred.
+          <div className="canvas-figure">
+            <svg viewBox={`0 0 ${W} ${H}`} className="cfm-svg" role="img" aria-label={title}>
+              {/* Cells: a heat-filled square per (actual i, predicted j) with the count centred.
                 Diagonal cells (i===j) are "correct" and tinted the correct color; off-diagonal
                 cells are misclassifications and tinted the error color. */}
-            {model.grid.map((row, i) =>
-              row.map((count, j) => {
-                const cx = model.ex(j);
-                const cy = model.ey(i);
-                const diag = i === j;
-                const base = diag ? correctColor : errorColor;
-                const strength = model.heat(count);
-                const fill = `color-mix(in oklab, ${base} ${(8 + strength * 80).toFixed(1)}%, transparent)`;
-                // Text turns to the badge ink once a cell is dark enough to swamp body text.
-                const dark = strength > 0.55;
-                return (
-                  <g key={`c${i}-${j}`}>
-                    <rect
-                      x={cx + 1}
-                      y={cy + 1}
-                      width={model.cell - 2}
-                      height={model.cell - 2}
-                      rx={4}
-                      fill={fill}
-                      className={diag ? 'cfm-cell cfm-cell--diag' : 'cfm-cell'}
-                    />
-                    <text
-                      x={cx + model.cell / 2}
-                      y={cy + model.cell / 2}
-                      className={dark ? 'cfm-count cfm-count--on' : 'cfm-count'}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      data-mark={diag ? 'point' : undefined}
-                    >
-                      {count.toLocaleString()}
-                    </text>
-                  </g>
-                );
-              }),
-            )}
+              {model.grid.map((row, i) =>
+                row.map((count, j) => {
+                  const cx = model.ex(j);
+                  const cy = model.ey(i);
+                  const diag = i === j;
+                  const base = diag ? correctColor : errorColor;
+                  const strength = model.heat(count);
+                  const fill = `color-mix(in oklab, ${base} ${(8 + strength * 80).toFixed(1)}%, transparent)`;
+                  // Text turns to the badge ink once a cell is dark enough to swamp body text.
+                  const dark = strength > 0.55;
+                  return (
+                    <g key={`c${i}-${j}`}>
+                      <rect
+                        x={cx + 1}
+                        y={cy + 1}
+                        width={model.cell - 2}
+                        height={model.cell - 2}
+                        rx={4}
+                        fill={fill}
+                        className={diag ? 'cfm-cell cfm-cell--diag' : 'cfm-cell'}
+                      />
+                      <text
+                        x={cx + model.cell / 2}
+                        y={cy + model.cell / 2}
+                        className={dark ? 'cfm-count cfm-count--on' : 'cfm-count'}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        data-mark={diag ? 'point' : undefined}
+                      >
+                        {count.toLocaleString()}
+                      </text>
+                    </g>
+                  );
+                }),
+              )}
 
-            {/* Grid frame */}
-            <rect
-              x={model.x0}
-              y={model.y0}
-              width={model.side}
-              height={model.side}
-              className="cfm-frame"
-              fill="none"
-            />
+              {/* Grid frame */}
+              <rect
+                x={model.x0}
+                y={model.y0}
+                width={model.side}
+                height={model.side}
+                className="cfm-frame"
+                fill="none"
+              />
 
-            {/* Row (actual) class labels down the left, right-aligned into the LEFT gutter.
+              {/* Row (actual) class labels down the left, right-aligned into the LEFT gutter.
                 Gutter width is fixed regardless of class count, so long labels are clipped to
                 what actually fits — the span between the rotated axis title and the grid edge —
                 and the untruncated string rides along as a <title> tooltip. */}
-            {classes.map((label, i) => {
-              const rowLabel = truncateLabel(label, LEFT - CLASS_PAD - CLASS_GUTTER_X);
-              return (
-                <text
-                  key={`rl${i}`}
-                  x={model.x0 - CLASS_PAD}
-                  y={model.ey(i) + model.cell / 2}
-                  className="cfm-class"
-                  textAnchor="end"
-                  dominantBaseline="central"
-                >
-                  {rowLabel !== label && <title>{label}</title>}
-                  {rowLabel}
-                </text>
-              );
-            })}
+              {classes.map((label, i) => {
+                const rowLabel = truncateLabel(label, LEFT - CLASS_PAD - CLASS_GUTTER_X);
+                return (
+                  <text
+                    key={`rl${i}`}
+                    x={model.x0 - CLASS_PAD}
+                    y={model.ey(i) + model.cell / 2}
+                    className="cfm-class"
+                    textAnchor="end"
+                    dominantBaseline="central"
+                  >
+                    {rowLabel !== label && <title>{label}</title>}
+                    {rowLabel}
+                  </text>
+                );
+              })}
 
-            {/* Column (predicted) class labels across the top, centred over each column. Each
+              {/* Column (predicted) class labels across the top, centred over each column. Each
                 column's share of the grid shrinks as the class count grows, so the budget is
                 sized to the live cell width rather than a fixed constant. */}
-            {classes.map((label, j) => {
-              const colLabel = truncateLabel(label, model.cell - 4);
-              return (
-                <text
-                  key={`cl${j}`}
-                  x={model.ex(j) + model.cell / 2}
-                  y={model.y0 - 8}
-                  className="cfm-class"
-                  textAnchor="middle"
-                >
-                  {colLabel !== label && <title>{label}</title>}
-                  {colLabel}
-                </text>
-              );
-            })}
-
-            {/* Axis TITLES on their own rows, away from the per-class tick baseline */}
-            <text
-              x={0}
-              y={0}
-              transform={`translate(${AXIS_TITLE_X}, ${model.y0 + model.side / 2}) rotate(-90)`}
-              className="cfm-axis-title"
-              textAnchor="middle"
-            >
-              {actualLabel} ↓
-            </text>
-            <text
-              x={model.x0 + model.side / 2}
-              y={18}
-              className="cfm-axis-title"
-              textAnchor="middle"
-            >
-              {predictedLabel} →
-            </text>
-
-            {/* Optional row / column totals strip */}
-            {showTotals && (
-              <g className="cfm-totals">
-                {model.rowTotals.map((t, i) => (
+              {classes.map((label, j) => {
+                const colLabel = truncateLabel(label, model.cell - 4);
+                return (
                   <text
-                    key={`rt${i}`}
-                    x={model.x0 + model.side + TOTAL_BAND / 2}
-                    y={model.ey(i) + model.cell / 2}
-                    className="cfm-total"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                  >
-                    {t.toLocaleString()}
-                  </text>
-                ))}
-                {model.colTotals.map((t, j) => (
-                  <text
-                    key={`ct${j}`}
+                    key={`cl${j}`}
                     x={model.ex(j) + model.cell / 2}
-                    y={model.y0 + model.side + TOTAL_BAND / 2}
-                    className="cfm-total"
+                    y={model.y0 - 8}
+                    className="cfm-class"
                     textAnchor="middle"
+                  >
+                    {colLabel !== label && <title>{label}</title>}
+                    {colLabel}
+                  </text>
+                );
+              })}
+
+              {/* Axis TITLES on their own rows, away from the per-class tick baseline */}
+              <text
+                x={0}
+                y={0}
+                transform={`translate(${AXIS_TITLE_X}, ${model.y0 + model.side / 2}) rotate(-90)`}
+                className="cfm-axis-title"
+                textAnchor="middle"
+              >
+                {actualLabel} ↓
+              </text>
+              <text
+                x={model.x0 + model.side / 2}
+                y={18}
+                className="cfm-axis-title"
+                textAnchor="middle"
+              >
+                {predictedLabel} →
+              </text>
+
+              {/* Optional row / column totals strip */}
+              {showTotals && (
+                <g className="cfm-totals">
+                  {model.rowTotals.map((t, i) => (
+                    <text
+                      key={`rt${i}`}
+                      x={model.x0 + model.side + TOTAL_BAND / 2}
+                      y={model.ey(i) + model.cell / 2}
+                      className="cfm-total"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {t.toLocaleString()}
+                    </text>
+                  ))}
+                  {model.colTotals.map((t, j) => (
+                    <text
+                      key={`ct${j}`}
+                      x={model.ex(j) + model.cell / 2}
+                      y={model.y0 + model.side + TOTAL_BAND / 2}
+                      className="cfm-total"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {t.toLocaleString()}
+                    </text>
+                  ))}
+                  <text
+                    x={model.x0 + model.side + TOTAL_BAND / 2}
+                    y={model.y0 - 8}
+                    className="cfm-total-hd"
+                    textAnchor="middle"
+                  >
+                    Σ
+                  </text>
+                  <text
+                    x={model.x0 - 8}
+                    y={model.y0 + model.side + TOTAL_BAND / 2}
+                    className="cfm-total-hd"
+                    textAnchor="end"
                     dominantBaseline="central"
                   >
-                    {t.toLocaleString()}
+                    Σ
                   </text>
-                ))}
-                <text
-                  x={model.x0 + model.side + TOTAL_BAND / 2}
-                  y={model.y0 - 8}
-                  className="cfm-total-hd"
-                  textAnchor="middle"
-                >
-                  Σ
-                </text>
-                <text
-                  x={model.x0 - 8}
-                  y={model.y0 + model.side + TOTAL_BAND / 2}
-                  className="cfm-total-hd"
-                  textAnchor="end"
-                  dominantBaseline="central"
-                >
-                  Σ
-                </text>
-              </g>
-            )}
-          </svg>
+                </g>
+              )}
+            </svg>
+          </div>
 
           {/* Derived read-out: overall accuracy headline, or a per-class precision/recall table */}
           {readout === 'accuracy' && (

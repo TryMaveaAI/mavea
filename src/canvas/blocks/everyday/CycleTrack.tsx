@@ -75,63 +75,65 @@ export function CycleTrack({
       )}
       {caption && <div className="ct-caption">{caption}</div>}
 
-      <svg
-        className="ct-band"
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`Cycle of ${len} days, ${period} period days`}
-      >
-        {days.map((d) => {
-          const kind = dayKind(d);
-          return (
-            <rect
-              key={d}
-              className={`ct-day ct-day--${kind}`}
-              x={dayX(d) + 0.6}
-              y={TRACK_Y}
-              width={Math.max(0.5, slot - 1.2)}
-              height={TRACK_H}
-              rx={2}
+      <div className="canvas-figure">
+        <svg
+          className="ct-band"
+          viewBox={`0 0 ${VB_W} ${VB_H}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`Cycle of ${len} days, ${period} period days`}
+        >
+          {days.map((d) => {
+            const kind = dayKind(d);
+            return (
+              <rect
+                key={d}
+                className={`ct-day ct-day--${kind}`}
+                x={dayX(d) + 0.6}
+                y={TRACK_Y}
+                width={Math.max(0.5, slot - 1.2)}
+                height={TRACK_H}
+                rx={2}
+              />
+            );
+          })}
+
+          {/* Ovulation day — a ring on its cell. */}
+          {ov !== undefined && (
+            <circle
+              className="ct-ovulation"
+              cx={dayX(ov) + slot / 2}
+              cy={TRACK_Y + TRACK_H / 2}
+              r={Math.min(slot, TRACK_H) / 2 - 0.5}
             />
-          );
-        })}
+          )}
 
-        {/* Ovulation day — a ring on its cell. */}
-        {ov !== undefined && (
-          <circle
-            className="ct-ovulation"
-            cx={dayX(ov) + slot / 2}
-            cy={TRACK_Y + TRACK_H / 2}
-            r={Math.min(slot, TRACK_H) / 2 - 0.5}
-          />
-        )}
+          {/* Today — a marker line + tick above the band. */}
+          {todayX !== undefined && (
+            <g className="ct-today">
+              <line x1={todayX} y1={TRACK_Y - 8} x2={todayX} y2={TRACK_Y + TRACK_H + 2} />
+              <text
+                x={todayX}
+                y={TRACK_Y - 11}
+                textAnchor={
+                  todayX < TODAY_HALF ? 'start' : todayX > VB_W - TODAY_HALF ? 'end' : 'middle'
+                }
+                className="ct-today-label"
+              >
+                Today
+              </text>
+            </g>
+          )}
 
-        {/* Today — a marker line + tick above the band. */}
-        {todayX !== undefined && (
-          <g className="ct-today">
-            <line x1={todayX} y1={TRACK_Y - 8} x2={todayX} y2={TRACK_Y + TRACK_H + 2} />
-            <text
-              x={todayX}
-              y={TRACK_Y - 11}
-              textAnchor={
-                todayX < TODAY_HALF ? 'start' : todayX > VB_W - TODAY_HALF ? 'end' : 'middle'
-              }
-              className="ct-today-label"
-            >
-              Today
-            </text>
-          </g>
-        )}
-
-        {/* Day-1 / mid / last axis ticks. */}
-        <text x={dayX(1) + slot / 2} y={VB_H - 4} className="ct-axis">
-          1
-        </text>
-        <text x={dayX(len) + slot / 2} y={VB_H - 4} className="ct-axis ct-axis--end">
-          {len}
-        </text>
-      </svg>
+          {/* Day-1 / mid / last axis ticks. */}
+          <text x={dayX(1) + slot / 2} y={VB_H - 4} className="ct-axis">
+            1
+          </text>
+          <text x={dayX(len) + slot / 2} y={VB_H - 4} className="ct-axis ct-axis--end">
+            {len}
+          </text>
+        </svg>
+      </div>
 
       <div className="ct-legend">
         <span className="ct-leg ct-leg--period">Period · days 1–{period}</span>

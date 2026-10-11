@@ -16,6 +16,7 @@ import { SkyChart } from '../src/canvas/blocks/media/SkyChart';
 import { SpaceFit } from '../src/canvas/blocks/media/SpaceFit';
 import { WeldSymbol } from '../src/canvas/blocks/media/WeldSymbol';
 import { SportsPitch } from '../src/canvas/blocks/media/SportsPitch';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 import type {
   ArtRegion,
   CarouselSlide,
@@ -75,12 +76,13 @@ describe('ArtAnalysis', () => {
     const boxes = Array.from(container.querySelectorAll('rect.art-region-box'));
     expect(boxes).toHaveLength(2);
 
-    // Every rendered label's visible glyph count must fit within its own box width (in viewBox
-    // units, at ~2.6px average glyph advance for the 4.4px bold face) — no fixed/unbounded text.
+    // Every label that sits inside its box fits the box at its own rendered size; one too long
+    // for the box is cut, never painted across the neighbouring region.
     labels.forEach((node, i) => {
       const boxW = Number(boxes[i].getAttribute('width'));
-      const maxChars = Math.max(3, Math.floor((boxW - 5) / 2.6));
-      expect(visibleText(node).length).toBeLessThanOrEqual(maxChars);
+      const fs = parseFloat((node as HTMLElement).style.fontSize);
+      const text = visibleText(node);
+      if (text.endsWith('…')) expect(estimateTextWidth(text, fs, true)).toBeLessThanOrEqual(boxW);
     });
 
     // The long label was actually shortened (with an ellipsis)...
@@ -391,8 +393,9 @@ describe('WeldSymbol', () => {
     // The query needs an element to measure, and it cannot be the grid it restyles.
     expect(container.querySelector('.wld-wrap > .wld-grid')).toBeTruthy();
     expect(rule('wld-wrap')).toMatch(/container-type:\s*inline-size/);
-    // Stacked by default; two columns only once the container is wide enough for both drawings.
-    expect(rule('wld-grid')).toMatch(/grid-template-columns:\s*1fr/);
+    // Stacked by default, on a track that can shrink below a widened figure so it pans inside its
+    // cell; two columns only once the container is wide enough for both drawings.
+    expect(rule('wld-grid')).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\);/);
     const split = css.match(/@container \(min-width: (\d+)px\) \{\s*\.wld-grid \{([^}]*)\}/);
     expect(split, 'expected a container query that splits .wld-grid into two columns').toBeTruthy();
     expect(Number(split![1])).toBeGreaterThanOrEqual(400);
@@ -409,26 +412,28 @@ describe('Diagram', () => {
     return container.querySelector('svg.med-diag-svg') as SVGSVGElement;
   }
 
-  it('grows the viewBox further for a long label than the old flat estimate would', () => {
-    const longText = 'x'.repeat(25); // > 20 chars, hits the widened per-glyph tier
-    const labels: DiagLabel[] = [{ x: 50, y: 50, text: longText, side: 'right' }];
-    const { container } = render(<Diagram title="Fig" shapes={[]} labels={labels} />);
-    const vb = svgOf(container).getAttribute('viewBox')!.split(' ').map(Number);
-    const [, , vbW] = vb;
-    // Old flat-1.9 estimate would have produced x1 = 50 + 7 + 25*1.9 + 1 = 105.5; the new
-    // length-tiered estimate (2.1/char past 20 chars) must exceed that.
-    expect(vbW).toBeGreaterThan(105.5);
+  it('grows the viewBox further for a long label than for a short one', () => {
+    const vbWidth = (text: string) => {
+      const labels: DiagLabel[] = [{ x: 90, y: 50, text, side: 'right' }];
+      const { container } = render(<Diagram title="Fig" shapes={[]} labels={labels} />);
+      return Number(svgOf(container).getAttribute('viewBox')!.split(' ')[2]);
+    };
+    const short = vbWidth('short');
+    const long = vbWidth('x'.repeat(25));
+    // A label near the right edge opens the box past the 100-wide figure, by its own length.
+    expect(short).toBeGreaterThan(100);
+    expect(long).toBeGreaterThan(short);
   });
 
-  it('keeps a short label at the original, tighter estimate', () => {
-    // x=90 pushes the estimated extent past the default 100-wide figure box, so the viewBox
-    // reflects the label estimate itself rather than being floored at the default width.
-    const labels: DiagLabel[] = [{ x: 90, y: 50, text: 'short', side: 'right' }];
+  // A top callout's baseline sits 0.3em over its lead and the face's ascent ~1em above that;
+  // the box reserved only 1em, and the audit measured "no-slip wall" cut by 4px on a phone.
+  it('keeps the whole em box of a top callout inside the viewBox', () => {
+    const labels: DiagLabel[] = [{ x: 50, y: 4, text: 'no-slip wall', side: 'top' }];
     const { container } = render(<Diagram title="Fig" shapes={[]} labels={labels} />);
-    const vb = svgOf(container).getAttribute('viewBox')!.split(' ').map(Number);
-    const [, , vbW] = vb;
-    // 90 + 7 + 5*1.9 + 1 = 107.5
-    expect(vbW).toBeCloseTo(107.5, 1);
+    const minY = Number(svgOf(container).getAttribute('viewBox')!.split(' ')[1]);
+    const text = container.querySelector('text.med-diag-lbl') as SVGTextElement;
+    const fs = parseFloat(text.style.fontSize);
+    expect(Number(text.getAttribute('y')) - fs).toBeGreaterThanOrEqual(minY - 0.05);
   });
 
   it('renders with no labels at all', () => {
@@ -449,14 +454,17 @@ describe('DimensionDrawing', () => {
     { x: 0, y: 60 },
   ];
 
-  it('flips a long vertical dimension label to grow left when it would overflow the right edge', () => {
-    const dimensions: DimensionLine[] = [
-      { from: [100, 0], to: [100, 60], label: 'Overall part height measurement' },
-    ];
+  it('sets a long label on a right-edge span outside the part and keeps it in the frame', () => {
+    const label = 'Overall part height measurement';
+    const dimensions: DimensionLine[] = [{ from: [100, 0], to: [100, 60], label }];
     const { container } = render(<DimensionDrawing outline={outline} dimensions={dimensions} />);
     const text = container.querySelector('text.dim-text');
     expect(text).toBeTruthy();
-    expect(text!.getAttribute('text-anchor')).toBe('end');
+    // It reads outward from the dimension line, on the part's right…
+    expect(text!.getAttribute('text-anchor')).toBe('start');
+    // …and the frame keeps room for it (.dim-text is monospace at ~3.05 units a glyph).
+    const vbW = Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2]);
+    expect(Number(text!.getAttribute('x')) + label.length * 3.05).toBeLessThanOrEqual(vbW + 0.5);
   });
 
   it('leaves a short label at its default position', () => {
@@ -948,38 +956,33 @@ describe('SkyChart', () => {
 // glyph width undershoots the real one. Same bug class already fixed for FloorPlan/EtymTree/
 // TamSam/Treemap: budget a hard truncation from the box's own width at the chosen font-size.
 describe('SpaceFit', () => {
-  it('truncates a long item label instead of letting it overflow the footprint', () => {
+  it('wraps or cuts a long item label instead of letting it overflow the footprint', () => {
     const items: SpaceItem[] = [
-      // Long label on a modest footprint — wide enough to clear the "hide label" gate
-      // (min(w,d) > max(W,D)*0.12) but not wide enough to hold this label at its shrunk size.
       { label: 'Reclining Sectional Sofa With Chaise', w: 6, d: 3, x: 2, y: 2 },
-      // Short label — must render untouched.
       { label: 'Rug', w: 4, d: 4, x: 12, y: 2 },
     ];
     const { container } = render(
       <SpaceFit title="Living Room" room={{ w: 20, d: 12, unit: 'ft' }} items={items} />,
     );
-
     const labels = Array.from(container.querySelectorAll('text.spf-item-lbl'));
     expect(labels).toHaveLength(2);
-
-    // Every rendered label's visible glyph count must fit within its own item's width (in
-    // viewBox units, at the label's own font-size) — no unbounded text past the footprint.
     labels.forEach((node, i) => {
-      const boxW = items[i].w * 0.84;
-      const fontSize = parseFloat((node as HTMLElement).style.fontSize);
-      const maxChars = Math.max(2, Math.floor(boxW / (fontSize * 0.56)));
-      expect(visibleText(node).length).toBeLessThanOrEqual(maxChars);
+      const fs = parseFloat((node as HTMLElement).style.fontSize);
+      const lines = Array.from(node.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        expect(estimateTextWidth(line, fs, true)).toBeLessThanOrEqual(items[i].w * 0.84 + 1e-6);
+      }
+      const shown = lines.join(' ');
+      // Either every word is shown, or the cut is marked and the whole name is a tooltip.
+      if (shown !== items[i].label) {
+        expect(shown.endsWith('…')).toBe(true);
+        expect(node.querySelector('title')?.textContent).toBe(items[i].label);
+      }
     });
-
-    // The long label was actually shortened (with an ellipsis)...
-    expect(visibleText(labels[0]).endsWith('…')).toBe(true);
-    // ...but the untruncated text survives as a native <title> tooltip, so nothing is lost.
-    const titles = Array.from(container.querySelectorAll('title')).map((t) => t.textContent);
-    expect(titles).toContain('Reclining Sectional Sofa With Chaise');
-
-    // The short label renders untouched, with no tooltip attached to it.
-    expect(visibleText(labels[1])).toBe('Rug');
+    expect(Array.from(labels[1].querySelectorAll('tspan')).map((t) => t.textContent)).toEqual([
+      'Rug',
+    ]);
   });
 
   it('leaves a short label on a roomy footprint untouched', () => {

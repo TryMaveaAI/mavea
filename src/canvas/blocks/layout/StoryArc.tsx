@@ -9,6 +9,7 @@ import { useMemo, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ArcBeat, StoryArcProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { placeAxisLabels } from './beatAxis';
 
 type Props = StoryArcProps & { delay?: number };
 
@@ -80,6 +81,27 @@ const py = (nt: number) => PAD + (1 - nt) * DRAW_H;
 const BEAT_LABEL_MAX = 22;
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
+}
+
+const STAGE_FS = 9; // .sa-stage-lbl
+const STAGE_ROW_H = 11;
+
+// Stage names sit just under the baseline they name, every one centred on its point and
+// clamped inside the drawing; two that would touch step onto a second row instead of running
+// together. Pinned to the bottom of the frame they floated well clear of the axis, and the end
+// names, anchored at their outer edges, sat at a different spacing from the rest.
+function stageLabels(points: { x: number; text: string }[]) {
+  return placeAxisLabels(points, VB_W, STAGE_FS).map((l, i) => (
+    <text
+      key={i}
+      x={l.x}
+      y={py(0) + 14 + l.row * STAGE_ROW_H}
+      textAnchor="middle"
+      className="sa-stage-lbl"
+    >
+      {l.text}
+    </text>
+  ));
 }
 
 // Find which stage index a beat maps to by name prefix match (case-insensitive).
@@ -181,10 +203,20 @@ function drawFreytag(beats: ArcBeat[]) {
       const nt = FREYTAG_TENSIONS[si];
       const bx = px(nx);
       const by = py(nt);
+      // Centred over a point on a slope, a name straddles the line it sits on. Set it on the
+      // open side instead: up and to the left on the rise, up and to the right on the fall,
+      // where the curve has already dropped away beneath it.
+      const last = FREYTAG_STAGES.length - 1;
+      const side = si > 0 && nx < 0.5 ? -1 : si < last && nx > 0.5 ? 1 : 0;
       return (
         <g key={i}>
           <circle cx={bx} cy={by} r={4} className="sa-beat-dot" />
-          <text x={bx} y={by - 10} textAnchor="middle" className="sa-beat-lbl">
+          <text
+            x={bx + side * 7}
+            y={by - (side ? 6 : 10)}
+            textAnchor={side < 0 ? 'end' : side > 0 ? 'start' : 'middle'}
+            className="sa-beat-lbl"
+          >
             {truncate(b.label, BEAT_LABEL_MAX)}
             {b.label.length > BEAT_LABEL_MAX && <title>{b.label}</title>}
           </text>
@@ -192,8 +224,6 @@ function drawFreytag(beats: ArcBeat[]) {
       );
     })
     .filter(Boolean);
-
-  const labelY = VB_H - 6;
 
   return (
     <>
@@ -204,20 +234,7 @@ function drawFreytag(beats: ArcBeat[]) {
       {/* Baseline */}
       <line x1={px(0)} y1={py(0)} x2={px(1)} y2={py(0)} className="sa-baseline" />
       {/* Stage labels */}
-      {FREYTAG_STAGES.map((s, i) => {
-        const anchor = i === 0 ? 'start' : i === FREYTAG_STAGES.length - 1 ? 'end' : 'middle';
-        return (
-          <text
-            key={i}
-            x={px(FREYTAG_POINTS[i])}
-            y={labelY}
-            textAnchor={anchor}
-            className="sa-stage-lbl"
-          >
-            {s}
-          </text>
-        );
-      })}
+      {stageLabels(FREYTAG_STAGES.map((s, i) => ({ x: px(FREYTAG_POINTS[i]), text: s })))}
       {/* Beat pins */}
       {beatPins}
     </>
@@ -230,8 +247,6 @@ function drawThreeAct(beats: ArcBeat[]) {
     'color-mix(in oklab, var(--warning) 12%, transparent)',
     'color-mix(in oklab, var(--insight) 12%, transparent)',
   ];
-  const labelY = VB_H - 6;
-
   const beatPins = beats
     .map((b, i) => {
       const si = matchStage(
@@ -277,17 +292,7 @@ function drawThreeAct(beats: ArcBeat[]) {
         </g>
       ))}
       {/* Act labels */}
-      {THREEACT_STAGES.map((a, i) => (
-        <text
-          key={i}
-          x={px((a.x0 + a.x1) / 2)}
-          y={labelY}
-          textAnchor="middle"
-          className="sa-stage-lbl"
-        >
-          {a.label}
-        </text>
-      ))}
+      {stageLabels(THREEACT_STAGES.map((a) => ({ x: px((a.x0 + a.x1) / 2), text: a.label })))}
       {beatPins}
     </>
   );

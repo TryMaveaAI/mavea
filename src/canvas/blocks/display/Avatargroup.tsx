@@ -45,7 +45,9 @@ export function Avatargroup({
   // Faces whose photo URL failed to load — they fall back to initials instead of a broken image.
   const [failed, setFailed] = useState<ReadonlySet<number>>(() => new Set());
   const px = SIZE_PX[size] ?? SIZE_PX.md;
-  const overlap = Math.round(px * 0.36);
+  // Two initials span roughly the middle half of a face, so the next face may cover only the
+  // margin outside them — any deeper and the stack reads "M", "D", "L" instead of whose it is.
+  const overlap = Math.round(px * 0.22);
 
   // cap visible faces so a large `max` can't overflow the card; the rest collapse into "+N"
   const visibleMax = Math.max(1, Math.min(max, 8));

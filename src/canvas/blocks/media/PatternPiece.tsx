@@ -1,6 +1,8 @@
 import { useId, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { formatValue } from '../../lib';
+import { estimateTextWidth } from '../../lib/fitText';
+import { grainSegments } from './grainline';
 import type { PatternPieceProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -18,6 +20,12 @@ function truncatePieceLabel(text: string, boxW: number, fontSize: number): strin
 }
 
 // The same calm family cycle CutList/FloorPlan use, so the three rect-on-sheet figures read as one.
+/** Mirrors `.pat-fabriclabel`'s font-size (user units) and the gap it keeps above the cloth. */
+const LABEL_FS = 2.8;
+const LABEL_GAP = 0.8;
+/** Mirrors `.pat-foldlabel`'s font-size: the FOLD word is set just outside the fold edge. */
+const FOLD_FS = 2.6;
+
 const PIECE_FILLS = [
   'color-mix(in oklab, var(--presence) 13%, transparent)',
   'color-mix(in oklab, var(--insight) 13%, transparent)',
@@ -59,6 +67,19 @@ export function PatternPiece({
   const PAD = Math.max(fabW, fabH) * 0.04;
   const vbW = fabW + PAD * 2;
   const vbH = fabH + PAD * 2;
+  // The fabric label is set at a FIXED user-unit size while the padding scales with the cloth, so
+  // on a small or narrow fabric it would rise past the top edge or run off the left. The viewBox
+  // opens upward and leftward by exactly what the label needs and no further.
+  const labelBase = PAD - LABEL_GAP;
+  const vbTop = fabric.label ? Math.min(0, labelBase - LABEL_FS) : 0;
+  // FOLD is set in the margin left of the fold edge — inside the cloth it sat on top of every
+  // piece cut on the fold, which is the whole point of those pieces.
+  const foldBase = PAD - LABEL_GAP;
+  const vbLeft = Math.min(
+    0,
+    foldBase - FOLD_FS,
+    fabric.label ? PAD + fabW - 1 - estimateTextWidth(fabric.label, LABEL_FS, true) : 0,
+  );
 
   // Yield: every piece's footprint × its quantity over the fabric area. A piece is counted only for
   // the area that lands on the fabric, so an overhang never inflates the number past 100%.
@@ -81,7 +102,12 @@ export function PatternPiece({
       )}
 
       <div className="pat-figwrap">
-        <svg viewBox={`0 0 ${vbW} ${vbH}`} className="pat-svg" role="img" aria-label={title}>
+        <svg
+          viewBox={`${vbLeft} ${vbTop} ${vbW - vbLeft} ${vbH - vbTop}`}
+          className="pat-svg"
+          role="img"
+          aria-label={title}
+        >
           <defs>
             {/* a double-ended grainline arrowhead, reused by every piece */}
             <marker
@@ -108,19 +134,14 @@ export function PatternPiece({
           />
           <text
             className="pat-foldlabel"
-            transform={`translate(${PAD + fabW * 0.022},${PAD + fabH / 2}) rotate(-90)`}
+            transform={`translate(${foldBase},${PAD + fabH / 2}) rotate(-90)`}
           >
             <tspan x={0} y={0}>
               FOLD
             </tspan>
           </text>
           {fabric.label && (
-            <text
-              x={PAD + fabW - 1}
-              y={PAD - PAD * 0.35}
-              textAnchor="end"
-              className="pat-fabriclabel"
-            >
+            <text x={PAD + fabW - 1} y={labelBase} textAnchor="end" className="pat-fabriclabel">
               {fabric.label}
             </text>
           )}
@@ -132,10 +153,31 @@ export function PatternPiece({
             const y = PAD + p.y;
             const midX = x + p.w / 2;
             const midY = y + p.h / 2;
-            // The grainline runs the height of the piece, down its centre, inset off the edges.
-            const gInset = p.h * 0.14;
-            const small = Math.min(p.w, p.h) < Math.max(fabW, fabH) * 0.1;
             const qty = Math.max(1, p.qty ?? 1);
+            const fontSize = Math.max(fabW * 0.026, 2.4);
+            const shortLabel = truncatePieceLabel(p.label, p.w - fontSize, fontSize);
+            const sub = qty > 1 || p.fold ? (p.fold ? 'cut 1 on fold' : `cut ${qty}`) : null;
+            // The label block: the name centred half a line above the middle, the sub line
+            // (0.78em) 1.4em below it. A piece is labelled whenever that block fits inside it.
+            const blockTop = midY - fontSize;
+            const blockBottom = sub ? midY + fontSize * 1.3 : midY;
+            const labelFits = blockBottom - blockTop + fontSize * 0.4 <= p.h && p.w > fontSize * 3;
+            const halfWidth =
+              Math.max(
+                estimateTextWidth(shortLabel, fontSize, true),
+                sub ? estimateTextWidth(sub, fontSize * 0.78) : 0,
+              ) / 2;
+            const grain = grainSegments(
+              { x, y, w: p.w, h: p.h },
+              labelFits
+                ? {
+                    top: blockTop - fontSize * 0.35,
+                    bottom: blockBottom + fontSize * 0.35,
+                    halfWidth: halfWidth + fontSize * 0.5,
+                  }
+                : null,
+              fontSize * 1.2,
+            );
 
             return (
               <g key={i}>
@@ -162,42 +204,39 @@ export function PatternPiece({
                   />
                 )}
                 {/* grainline arrow — the straight grain the piece must be cut along */}
-                <line
-                  x1={midX}
-                  y1={y + gInset}
-                  x2={midX}
-                  y2={y + p.h - gInset}
-                  className="pat-grain"
-                  strokeWidth={Math.max(0.3, fabW * 0.0035)}
-                  markerStart={`url(#pat-grain-${uid})`}
-                  markerEnd={`url(#pat-grain-${uid})`}
-                />
-                {!small &&
-                  (() => {
-                    const fontSize = Math.max(fabW * 0.026, 2.4);
-                    const shortLabel = truncatePieceLabel(p.label, p.w - fontSize, fontSize);
-                    const isTruncated = shortLabel !== p.label;
-                    return (
-                      <text
-                        x={midX}
-                        y={midY}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        className="pat-piece-lbl"
-                        style={{ fontSize }}
-                      >
-                        {isTruncated && <title>{p.label}</title>}
-                        <tspan x={midX} dy="-0.5em">
-                          {shortLabel}
-                        </tspan>
-                        {(qty > 1 || p.fold) && (
-                          <tspan x={midX} dy="1.4em" className="pat-piece-sub">
-                            {p.fold ? 'cut 1 on fold' : `cut ${qty}`}
-                          </tspan>
-                        )}
-                      </text>
-                    );
-                  })()}
+                {grain.map((g, k) => (
+                  <line
+                    key={k}
+                    x1={g.x}
+                    y1={g.y1}
+                    x2={g.x}
+                    y2={g.y2}
+                    className="pat-grain"
+                    strokeWidth={Math.max(0.3, fabW * 0.0035)}
+                    markerStart={g.start ? `url(#pat-grain-${uid})` : undefined}
+                    markerEnd={g.end ? `url(#pat-grain-${uid})` : undefined}
+                  />
+                ))}
+                {labelFits && (
+                  <text
+                    x={midX}
+                    y={midY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="pat-piece-lbl"
+                    style={{ fontSize }}
+                  >
+                    {shortLabel !== p.label && <title>{p.label}</title>}
+                    <tspan x={midX} dy="-0.5em">
+                      {shortLabel}
+                    </tspan>
+                    {sub && (
+                      <tspan x={midX} dy="1.4em" className="pat-piece-sub">
+                        {sub}
+                      </tspan>
+                    )}
+                  </text>
+                )}
               </g>
             );
           })}

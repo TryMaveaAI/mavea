@@ -148,75 +148,78 @@ export function CutList({
           </div>
         </div>
 
-        <div className="cut-figwrap">
-          <svg viewBox={`0 0 ${vbW} ${vbH}`} className="cut-svg" role="img" aria-label={title}>
-            {/* the stock sheet */}
-            <rect x={pad} y={padTop} width={sheetW} height={sheetH} className="cut-sheet" />
-            {placed.map((p, i) => {
-              const stroke = PART_STROKES[p.ci % PART_STROKES.length];
-              const fill = PART_FILLS[p.ci % PART_FILLS.length];
-              const small = Math.min(p.w, p.h) < sheetW * 0.12;
-              return (
-                <g key={i}>
-                  <rect
-                    x={pad + p.x}
-                    y={padTop + p.y}
-                    width={p.w}
-                    height={p.h}
-                    rx={sheetW * 0.006}
-                    fill={fill}
-                    stroke={stroke}
-                    strokeWidth={sheetW * 0.0028}
-                    {...(i === 0 ? { 'data-mark': 'circle' } : {})}
-                  />
-                  {!small &&
-                    (() => {
-                      const shortLabel = truncateCutLabel(
-                        p.label,
-                        p.w - pieceLabelSize * 0.5,
-                        pieceLabelSize,
-                      );
-                      const isTruncated = shortLabel !== p.label;
-                      return (
-                        <text
-                          x={pad + p.x + p.w / 2}
-                          y={padTop + p.y + p.h / 2}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          className="cut-piece-lbl"
-                          style={{ fontSize: pieceLabelSize }}
-                        >
-                          {isTruncated && <title>{p.label}</title>}
-                          {shortLabel}
-                        </text>
-                      );
-                    })()}
-                </g>
-              );
-            })}
-            {stock.label &&
-              (() => {
-                // Left-aligned with the sheet's own edge, on a baseline that leaves room for the
-                // descenders above the sheet; a long stock name is budgeted to the sheet width so
-                // it can't run off the figure, keeping the full text as a tooltip.
-                const shortLabel = truncateCutLabel(stock.label, sheetW, sheetLabelSize);
+        {/* The caption describes the nesting, so it sits under the sheet it describes rather
+            than under the whole row, where it read as a note on the parts table. */}
+        <figure className="cut-figure">
+          <div className="cut-figwrap">
+            <svg viewBox={`0 0 ${vbW} ${vbH}`} className="cut-svg" role="img" aria-label={title}>
+              {/* the stock sheet */}
+              <rect x={pad} y={padTop} width={sheetW} height={sheetH} className="cut-sheet" />
+              {placed.map((p, i) => {
+                const stroke = PART_STROKES[p.ci % PART_STROKES.length];
+                const fill = PART_FILLS[p.ci % PART_FILLS.length];
+                const small = Math.min(p.w, p.h) < sheetW * 0.12;
                 return (
-                  <text
-                    x={pad}
-                    y={padTop - sheetLabelSize * 0.3}
-                    className="cut-sheet-lbl"
-                    style={{ fontSize: sheetLabelSize }}
-                  >
-                    {shortLabel !== stock.label && <title>{stock.label}</title>}
-                    {shortLabel}
-                  </text>
+                  <g key={i}>
+                    <rect
+                      x={pad + p.x}
+                      y={padTop + p.y}
+                      width={p.w}
+                      height={p.h}
+                      rx={sheetW * 0.006}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={sheetW * 0.0028}
+                      {...(i === 0 ? { 'data-mark': 'circle' } : {})}
+                    />
+                    {!small &&
+                      (() => {
+                        const shortLabel = truncateCutLabel(
+                          p.label,
+                          p.w - pieceLabelSize * 0.5,
+                          pieceLabelSize,
+                        );
+                        const isTruncated = shortLabel !== p.label;
+                        return (
+                          <text
+                            x={pad + p.x + p.w / 2}
+                            y={padTop + p.y + p.h / 2}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            className="cut-piece-lbl"
+                            style={{ fontSize: pieceLabelSize }}
+                          >
+                            {isTruncated && <title>{p.label}</title>}
+                            {shortLabel}
+                          </text>
+                        );
+                      })()}
+                  </g>
                 );
-              })()}
-          </svg>
-        </div>
+              })}
+              {stock.label &&
+                (() => {
+                  // Left-aligned with the sheet's own edge, on a baseline that leaves room for the
+                  // descenders above the sheet; a long stock name is budgeted to the sheet width so
+                  // it can't run off the figure, keeping the full text as a tooltip.
+                  const shortLabel = truncateCutLabel(stock.label, sheetW, sheetLabelSize);
+                  return (
+                    <text
+                      x={pad}
+                      y={padTop - sheetLabelSize * 0.3}
+                      className="cut-sheet-lbl"
+                      style={{ fontSize: sheetLabelSize }}
+                    >
+                      {shortLabel !== stock.label && <title>{stock.label}</title>}
+                      {shortLabel}
+                    </text>
+                  );
+                })()}
+            </svg>
+          </div>
+          {caption && <figcaption className="cut-caption">{caption}</figcaption>}
+        </figure>
       </div>
-
-      {caption && <div className="cut-caption">{caption}</div>}
 
       {footer && (
         <div

@@ -1150,28 +1150,28 @@
    rangefilter — dual-handle min/max
    ════════════════════════════════════════════════════════════ */
 .rf-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
   margin-bottom: 16px;
 }
+.rf-scale {
+  position: relative;
+  height: 1.5em;
+  margin: 8px 10px 0;
+  font-size: var(--fs-md);
+}
 .rf-bound {
-  font-size: var(--fs-lg);
+  position: absolute;
+  top: 0;
+  left: var(--at);
+  transform: translateX(calc(-1 * var(--at)));
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term: one figure, or one "a – b" range */
   white-space: nowrap;
 }
 .rf-count {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  flex-shrink: 0;
-  text-align: center;
 }
 .rf-count strong {
   font-size: var(--fs-md);
@@ -1239,18 +1239,21 @@
   overflow: hidden;
   background: var(--surface-glass);
 }
+/* Where the row's value sits on the slider's scale: a strip along the row's foot, strong enough
+   to read (a full-row wash at 9% under half opacity was invisible) without sitting under text. */
 .rf-item-bar {
   position: absolute;
-  inset: 0;
-  opacity: 0.5;
+  inset: auto 0 0;
+  height: 3px;
+  background: color-mix(in oklab, var(--rf-c) 10%, transparent);
 }
 .rf-item-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  background: color-mix(in oklab, var(--rf-c) 9%, transparent);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: color-mix(in oklab, var(--rf-c) 70%, transparent);
+  border-radius: 0 var(--r-full) var(--r-full) 0;
   transition: width var(--m-normal) var(--ease-out);
 }
 .rf-item-label {
@@ -2079,28 +2082,34 @@
   overflow-wrap: anywhere;
 }
 .bt-rail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  row-gap: 18px;
+  /* One equal column per stage across the card's full width, so the stepper reads as one
+     rail rather than a cluster at the left edge with stub connectors between labels. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: start;
 }
 .bt-unit {
+  position: relative;
   display: flex;
-  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
+/* The connector runs from the previous node's edge to this one's, through the node centres:
+   each column is centred on its node, so the previous centre is half a column to the left. */
 .bt-connector {
-  position: relative;
-  width: 20px;
-  min-width: 20px;
+  position: absolute;
+  top: 12px;
+  left: calc(-50% + 17px);
+  right: calc(50% + 17px);
   height: 2px;
   background: var(--line);
-  margin: 0 2px;
-  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: visible;
+}
+.bt-connector.reached {
+  background: color-mix(in oklab, var(--insight) 70%, var(--line));
 }
 .bt-connector.dead {
   background: repeating-linear-gradient(to right, var(--danger) 0 4px, transparent 4px 8px);
@@ -2118,8 +2127,9 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  min-width: min(76px, 100%);
-  max-width: 128px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 4px;
   text-align: center;
 }
 .bt-stage.moot {
@@ -2160,14 +2170,16 @@
   font-weight: 650;
   color: var(--text-primary);
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  /* A narrow column breaks a long stage name at a hyphenation point, not mid-letter. */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .bt-vote {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  width: 100%;
+  width: min(88px, 100%);
 }
 .bt-vote-n {
   font-size: var(--fs-xs);
@@ -2191,6 +2203,37 @@
 .bt-empty {
   font-size: var(--fs-sm);
   padding: 8px 0;
+}
+/* Too narrow for a column per stage: names would break mid-word. The rail turns vertical — one
+   row per stage, the line running from each node down to the next. */
+@container (max-width: 420px) {
+  .bt-rail {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    row-gap: 12px;
+  }
+  .bt-connector {
+    display: none;
+  }
+  .bt-unit:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 28px;
+    bottom: -12px;
+    width: 2px;
+    background: var(--line);
+  }
+  .bt-stage {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    text-align: left;
+  }
+  .bt-vote {
+    width: min(72px, 30cqi);
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2320,16 +2363,20 @@
   border-radius: var(--r-full);
   border: 1px solid var(--line);
 }
+/* prompt · dots · score · anchor share one set of columns across every row, so the dot groups
+   line up however long each prompt or anchor is. */
 .mhs-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  column-gap: 10px;
+  row-gap: 9px;
   margin-bottom: 16px;
 }
 .mhs-row {
-  display: flex;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 10px;
 }
 .mhs-prompt {
   flex: 1;
@@ -2363,10 +2410,9 @@
   color: var(--text-secondary);
 }
 .mhs-anchor {
-  flex-shrink: 0;
   font-size: var(--fs-xs);
-  max-width: 120px;
-  text-align: right;
+  max-width: min(120px, 100%);
+  text-align: left;
   overflow-wrap: anywhere;
 }
 /* prompt · dots · score · anchor is four things competing for a folded-phone card's width, and the
@@ -2374,16 +2420,16 @@
    pushed off the edge. Drop it to its own line under the row it belongs to. */
 @container (max-width: 340px) {
   .mhs-row {
-    flex-wrap: wrap;
     row-gap: 3px;
   }
   .mhs-anchor {
-    flex: 1 0 100%;
+    grid-column: 1 / -1;
     max-width: none;
     text-align: left;
   }
 }
 .mhs-empty {
+  grid-column: 1 / -1;
   font-size: var(--fs-sm);
   padding: 8px 0;
 }
@@ -2439,13 +2485,27 @@
   border-radius: var(--r-full);
 }
 .mhs-bar-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  display: grid;
+  grid-auto-flow: dense;
+  column-gap: 2px;
 }
 .mhs-bar-label {
+  grid-row: 1;
+  min-width: 0;
+  /* Break between words only — the card's last-resort word-break split "Moderate" in two. A
+     word longer than its band spills evenly into the gaps either side (centred, unsafe). */
+  overflow-wrap: normal;
+  word-break: normal;
+  justify-self: center;
   font-size: var(--fs-xs);
   font-weight: 650;
+  text-align: center;
+  line-height: 1.2;
+}
+@container (max-width: 340px) {
+  .mhs-bar-label {
+    font-size: var(--fs-2xs);
+  }
 }
 
 /* ════════════════════════════════════════════════════════════

@@ -84,17 +84,20 @@
   height: 100%;
   background: color-mix(in oklab, var(--text-muted) 10%, transparent);
 }
-.fin-vs-ramp {
+.fin-vs-fill {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 1px solid var(--line-strong);
-  background: color-mix(in oklab, var(--text-muted) 6%, transparent);
-}
-.fin-vs-ramp-fill {
-  display: block;
-  height: 100%;
+  left: 0;
   border-radius: 0 5px 5px 0;
+}
+/* where the cliff falls, drawn over the fill so it still reads once the grant is past it */
+.fin-vs-cliff-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-strong);
 }
 .fin-vs-readout {
   grid-column: 3;
@@ -229,12 +232,17 @@
   display: flex;
   align-items: flex-end;
   gap: clamp(6px, 1.6cqi, 16px);
-  height: clamp(170px, 40cqi, 220px);
-  padding-bottom: 40px;
+  height: clamp(186px, 40cqi, 236px);
+  /* name + two caption lines */
+  padding-bottom: 56px;
+  /* The chart is only as wide as its columns can use, so the gridlines end where the bars do
+     instead of running on across an empty right half. */
+  max-inline-size: calc(var(--n) * 190px);
+  margin-inline: auto;
 }
 .fin-fr-grid {
   position: absolute;
-  inset: 0 0 40px 0;
+  inset: 0 0 56px 0;
   pointer-events: none;
 }
 .fin-fr-gridline {
@@ -248,7 +256,7 @@
   position: relative;
   flex: 1 1 0;
   min-width: 58px;
-  max-width: 130px;
+  max-width: 170px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -530,19 +538,18 @@
   position: relative;
   min-width: calc(var(--fin-tl-panels, 3) * 160px);
 }
+/* Equal grid columns, so panel boundaries fall exactly at k/n of the width — the connector routes
+   are computed from that, with no per-panel measurement. The space they travel through is padding
+   on each panel's own edge (GUTTER in the component), not a grid `gap`. */
 .fin-tl-panels {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(var(--fin-tl-panels, 3), minmax(0, 1fr));
   height: 100%;
 }
 .fin-tl-panel {
-  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
 }
-/* The connector curves cross exactly at each 33.33/66.67% boundary (see the component's fixed
-   panelW math) — the visual gap they cross through is internal padding on each panel's own
-   edge, not a flex `gap`, so the boundary percentages stay exact with no DOM measurement. */
 .fin-tl-panel:not(:first-child) {
   padding-left: 14px;
 }
@@ -610,23 +617,57 @@
   height: 100%;
   pointer-events: none;
 }
-.fin-tl-link-labels {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.fin-tl-link {
+  fill: none;
+  stroke: color-mix(in oklab, var(--presence) 70%, transparent);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
 }
-.fin-tl-link-lbl {
-  position: absolute;
-  transform: translate(-50%, -100%) translateY(-3px);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
-  white-space: nowrap;
-  font-size: var(--fs-2xs, 10px);
-  font-weight: 650;
+.fin-tl-arrow {
+  fill: var(--presence);
+}
+.fin-tl-badge {
+  fill: var(--surface-elevated);
+  stroke: var(--presence);
+  stroke-width: 1;
+}
+.fin-tl-badge-n {
+  /* At exactly the 9px floor, a hair of letterboxing put the numeral under it and the legibility
+     guard panned all three statements to recover it. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG drawn 1:1 in px (measured width), so this is the rendered size */
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--presence);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+/* The key under the panels names each numbered connector: the words never sit on the figures. */
+.fin-tl-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.fin-tl-key li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.fin-tl-key-n {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.4em;
+  height: 1.4em;
+  border: 1px solid var(--presence);
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
   color: var(--presence);
-  background: var(--surface-elevated);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm, 4px);
-  padding: 1px 5px;
 }
 
 /* ── yieldcurve ───────────────────────────────────────────────────────────────────────── */
@@ -729,6 +770,12 @@
   font-size: 9px;
   fill: var(--text-muted);
 }
+.fin-ef-axtitle {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
 .fin-ef-ring {
   filter: drop-shadow(0 0 3px var(--glow-presence));
 }
@@ -749,13 +796,6 @@
   font-size: var(--fs-xs, 11px);
   pointer-events: none;
   z-index: 5;
-}
-.fin-ef-axlbl {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2px;
-  font-size: var(--fs-2xs, 10px);
-  color: var(--text-muted);
 }
 
 /* ── bondladder ───────────────────────────────────────────────────────────────────────── */

@@ -181,15 +181,26 @@ export function GeoMap({
         canvasContextAttributes: { preserveDrawingBuffer: true, powerPreference: 'low-power' },
       });
 
+      // `isStyleLoaded()` also waits on every tile source, so it is false through each
+      // `styledata` of a cold load and the overlay was never added. The style only has to be
+      // parsed for addSource to succeed — it throws if not — so try on every styledata and on
+      // idle (which also re-adds the overlay after a theme swap replaces the style).
       const addZones = () => {
-        if (!map || !ref.current || !map.isStyleLoaded() || map.getSource('mavea-zones')) return;
+        if (!map || !ref.current || !zonesValid.length || map.getLayer('mavea-zones-line')) return;
+        try {
+          drawZones(map, ref.current);
+        } catch {
+          // Style not parsed yet; the next styledata or idle tries again.
+        }
+      };
+      const drawZones = (m: MapLibreMap, host: HTMLElement) => {
         const features = zonesValid.map((zone, index) => ({
           type: 'Feature' as const,
           id: index,
           properties: {
             label: zone.label,
             category: CATEGORY_LABEL[zone.category],
-            color: resolvedColor(ref.current!, CATEGORY_COLOR[zone.category]),
+            color: resolvedColor(host, CATEGORY_COLOR[zone.category]),
           },
           geometry: {
             type: 'Polygon' as const,
@@ -201,17 +212,21 @@ export function GeoMap({
             ],
           },
         }));
-        map.addSource('mavea-zones', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features },
-        });
-        map.addLayer({
-          id: 'mavea-zones-fill',
-          type: 'fill',
-          source: 'mavea-zones',
-          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.22 },
-        });
-        map.addLayer({
+        if (!m.getSource('mavea-zones')) {
+          m.addSource('mavea-zones', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features },
+          });
+        }
+        if (!m.getLayer('mavea-zones-fill')) {
+          m.addLayer({
+            id: 'mavea-zones-fill',
+            type: 'fill',
+            source: 'mavea-zones',
+            paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.22 },
+          });
+        }
+        m.addLayer({
           id: 'mavea-zones-line',
           type: 'line',
           source: 'mavea-zones',
@@ -220,6 +235,7 @@ export function GeoMap({
       };
 
       map.on('styledata', addZones);
+      map.on('idle', addZones);
       map.on('idle', unveil);
 
       mapMarkers = pins.map((marker, index) => {

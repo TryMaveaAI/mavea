@@ -12,7 +12,15 @@ import {
   usePathDraw,
 } from '../../lib';
 import { withUnit } from '../../lib/format';
-import { fitText, type FitTextResult } from '../../lib/fitText';
+import { estimateTextWidth, fitText, type FitTextResult } from '../../lib/fitText';
+import {
+  amountLabelSide,
+  boxesOverlap,
+  shaftHitsBox,
+  tickLabelSpot,
+  type Anchor,
+  type LabelBox,
+} from './cashflowLabels';
 import type { CashflowTimelineProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -25,9 +33,20 @@ const ARROW_MAX = 104; // arrow length at the shared scale's nice top
 const ARROW_MIN = 12; // a nonzero flow always reads as an arrow, never a speck
 const HEAD = 6;
 const TICK_DY = 14;
+const TICK_FS = 9.5; // matches .fin-cf-tick
+const SIDE_GAP = 5; // a side-placed amount's distance from its own shaft
 
-function fmtAmt(a: number, sym: string): string {
-  return withUnit(a, sym, { compact: a >= 1e4 });
+// One format for the whole diagram, decided by its largest flow: per-amount compaction put
+// "$14K" beside "$8,000" on the same axis, which reads as two different units.
+function fmtAmt(a: number, sym: string, compact: boolean): string {
+  return withUnit(a, sym, { compact });
+}
+
+interface AmountLabel {
+  x: number;
+  anchor: Anchor;
+  /** Baseline of each line, top to bottom. */
+  ys: number[];
 }
 
 interface FlowNode {
@@ -40,6 +59,7 @@ interface FlowNode {
   dir: 1 | -1 | 0;
   len: number;
   fit: FitTextResult | null;
+  lab: AmountLabel | null;
 }
 
 // The textbook engineering-economics cash-flow diagram: a period axis with one arrow per
@@ -95,6 +115,7 @@ export function CashflowTimeline({
 
     // One shared nice scale for every arrow, so lengths compare across the whole diagram.
     const amtMax = clean.reduce((m, f) => Math.max(m, Math.abs(f.amount)), 0);
+    const compact = amtMax >= 1e4;
     const top = amtMax > 0 ? niceDomain(0, amtMax)[1] : 1;
     const lenOf = (a: number) =>
       a === 0 ? 0 : Math.max(ARROW_MIN, (Math.abs(a) / top) * ARROW_MAX);
@@ -144,8 +165,9 @@ export function CashflowTimeline({
       ...f,
       i,
       ...pre[i],
+      lab: null,
       fit: labeled.has(i)
-        ? fitText(fmtAmt(Math.abs(f.amount), sym), {
+        ? fitText(fmtAmt(Math.abs(f.amount), sym, compact), {
             maxWidth: 56,
             fontSize: 10,
             minFontSize: 8,
@@ -166,6 +188,76 @@ export function CashflowTimeline({
     }
     const axisY = PAD_T + reserveUp;
     const H = Math.ceil(axisY + reserveDown + 6);
+
+    // Amount labels: centred over their tips first (thinning above already keeps those apart),
+    // then the ones a taller neighbouring shaft would run through move beside their own tip —
+    // kept only if that side spot is clear of every shaft, every placed label and the frame.
+    const tipOf = (nd: FlowNode) => axisY - nd.dir * nd.len;
+    const boxes: LabelBox[] = [];
+    const sides = new Map<FlowNode, 'left' | 'right'>();
+    for (const nd of nodes) {
+      if (!nd.fit || nd.dir === 0) continue;
+      const fit = nd.fit;
+      const w = Math.max(...fit.lines.map((ln) => estimateTextWidth(ln, fit.fontSize, true)));
+      const peers = nodes.filter((o) => o !== nd && o.dir === nd.dir);
+      const side = amountLabelSide({ x: nd.x, len: nd.len }, w, peers);
+      if (side == null) nd.fit = null;
+      else if (side !== 'centre') sides.set(nd, side);
+      else {
+        const tip = tipOf(nd);
+        const n = fit.lines.length;
+        const ys = fit.lines.map((_, li) =>
+          nd.dir === 1
+            ? tip - 6 - (n - 1 - li) * fit.lineHeightPx
+            : tip + 12 + li * fit.lineHeightPx,
+        );
+        nd.lab = { x: nd.x, anchor: 'middle', ys };
+        boxes.push({
+          x0: nd.x - w / 2,
+          x1: nd.x + w / 2,
+          y0: ys[0] - fit.fontSize * 0.8,
+          y1: ys[n - 1] + fit.fontSize * 0.25,
+        });
+      }
+    }
+    for (const [nd, side] of sides) {
+      const fit = nd.fit!;
+      const w = Math.max(...fit.lines.map((ln) => estimateTextWidth(ln, fit.fontSize, true)));
+      const blockH = fit.lines.length * fit.lineHeightPx;
+      const tip = tipOf(nd);
+      const x = side === 'right' ? nd.x + SIDE_GAP : nd.x - SIDE_GAP;
+      const box: LabelBox = {
+        x0: side === 'right' ? x : x - w,
+        x1: side === 'right' ? x + w : x,
+        y0: tip - blockH / 2,
+        y1: tip + blockH / 2,
+      };
+      const clear =
+        box.x0 >= 0 &&
+        box.x1 <= W &&
+        !boxes.some((b) => boxesOverlap(b, box)) &&
+        !nodes.some((o) => o.dir !== 0 && shaftHitsBox(o.x, axisY, tipOf(o), box));
+      if (!clear) {
+        nd.fit = null;
+        continue;
+      }
+      // First baseline sits ~0.8em under the block top, so the block centres on the tip.
+      const top = box.y0 + fit.fontSize * 0.8;
+      nd.lab = {
+        x,
+        anchor: side === 'right' ? 'start' : 'end',
+        ys: fit.lines.map((_, li) => top + li * fit.lineHeightPx),
+      };
+      boxes.push(box);
+    }
+
+    // A period number under an outflow shaft steps beside it: the halo covers a glyph's outline
+    // but not the hole in a "0", so the shaft otherwise reads straight through the number.
+    const downShafts = nodes.filter((nd) => nd.dir === -1).map((nd) => nd.x);
+    const tickSpots = tickVals.map((t) => {
+      const text = formatValue(t, { compact: t >= 1e4 });
+      return { text, ...tickLabelSpot(xOf(t), estimateTextWidth(text, TICK_FS), downShafts) };
+    });
 
     const plan = densityPlan(tickVals.length, plotW);
 
@@ -188,6 +280,8 @@ export function CashflowTimeline({
     return {
       nodes,
       tickVals,
+      tickSpots,
+      compact,
       plan,
       W,
       H,
@@ -259,7 +353,7 @@ export function CashflowTimeline({
                         {(nd.label ? nd.label + ' — ' : '') +
                           `${periodLbl} ${nd.period}: ` +
                           (nd.amount < 0 ? '−' : nd.amount > 0 ? '+' : '') +
-                          fmtAmt(Math.abs(nd.amount), sym)}
+                          fmtAmt(Math.abs(nd.amount), sym, model.compact)}
                       </title>
                       {nd.dir === 0 ? (
                         <circle cx={nd.x} cy={model.axisY} r={2.6} className="fin-cf-zero" />
@@ -271,24 +365,14 @@ export function CashflowTimeline({
                           />
                         </g>
                       )}
-                      {nd.fit && (
+                      {nd.fit && nd.lab && (
                         <text
                           className={'fin-cf-amt ' + (nd.dir === 1 ? 'in' : 'out')}
-                          textAnchor="middle"
+                          textAnchor={nd.lab.anchor}
                           fontSize={nd.fit.fontSize}
                         >
                           {nd.fit.lines.map((ln, li) => (
-                            <tspan
-                              key={li}
-                              x={nd.x}
-                              y={
-                                nd.dir === 1
-                                  ? tipY -
-                                    6 -
-                                    (nd.fit!.lines.length - 1 - li) * nd.fit!.lineHeightPx
-                                  : tipY + 12 + li * nd.fit!.lineHeightPx
-                              }
-                            >
+                            <tspan key={li} x={nd.lab!.x} y={nd.lab!.ys[li]}>
                               {ln}
                             </tspan>
                           ))}
@@ -320,11 +404,11 @@ export function CashflowTimeline({
                     {i % model.plan.labelEvery === 0 && (
                       <text
                         className="fin-cf-tick"
-                        x={model.xOf(t)}
+                        x={model.tickSpots[i].x}
                         y={model.axisY + TICK_DY}
-                        textAnchor="middle"
+                        textAnchor={model.tickSpots[i].anchor}
                       >
-                        {formatValue(t, { compact: t >= 1e4 })}
+                        {model.tickSpots[i].text}
                       </text>
                     )}
                   </g>
@@ -345,7 +429,7 @@ export function CashflowTimeline({
                   </span>
                   <span className="tab-num">
                     {(hotNode.amount < 0 ? '−' : hotNode.amount > 0 ? '+' : '') +
-                      fmtAmt(Math.abs(hotNode.amount), sym)}
+                      fmtAmt(Math.abs(hotNode.amount), sym, model.compact)}
                   </span>
                 </div>
               )}

@@ -3,16 +3,10 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { DnaBase, DnaHelixProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { HELIX_W, helixGeometry, runPath } from './dnaHelixLayout';
 
 type Props = DnaHelixProps & { delay?: number };
 
-// Helix geometry constants
-const W = 240;
-const CX = W / 2;
-const AMPLITUDE = 52; // max x displacement from centre
-const V_STEP = 24; // vertical spacing per base pair
-const PAD_T = 20;
-const PAD_B = 24;
 const STRAND_W = 3;
 
 // Ladder geometry constants
@@ -26,6 +20,14 @@ const LADDER_PAD_T = 20;
 function isAT(pair: DnaBase['pair']): boolean {
   return pair === 'AT' || pair === 'TA';
 }
+
+function rungColor(base: DnaBase): string {
+  return base.highlight || isAT(base.pair)
+    ? 'var(--warning)'
+    : 'color-mix(in oklab, var(--presence) 60%, var(--insight))';
+}
+
+const strandColor = (strand: 1 | 2) => (strand === 1 ? 'var(--presence)' : 'var(--insight)');
 
 function leftBase(pair: DnaBase['pair']): string {
   return pair[0];
@@ -58,44 +60,7 @@ export function DnaHelix({
   const resolvedBases = bases ?? defaultBases(Math.min(count, 16));
   const n = resolvedBases.length;
 
-  const helixData = useMemo(() => {
-    if (mode !== 'helix') return null;
-
-    const H = PAD_T + n * V_STEP + PAD_B;
-    const totalAngle = n * 1.1; // radians swept for full helix twist
-
-    const pts1: { x: number; y: number; angle: number }[] = [];
-    const pts2: { x: number; y: number; angle: number }[] = [];
-
-    for (let i = 0; i <= n; i++) {
-      const t = n === 0 ? 0 : i / n;
-      const angle = t * totalAngle * 2 * Math.PI;
-      const y = PAD_T + i * V_STEP;
-      pts1.push({ x: CX + AMPLITUDE * Math.cos(angle), y, angle });
-      pts2.push({ x: CX - AMPLITUDE * Math.cos(angle), y, angle });
-    }
-
-    // Find base pair positions: draw the rung when the horizontal distance is near minimum
-    // i.e., when cos(angle) ≈ 0 → strands closest to centre
-    const rungs: {
-      x1: number;
-      y: number;
-      x2: number;
-      base: DnaBase;
-      idx: number;
-    }[] = [];
-
-    for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n;
-      const angle = t * totalAngle * 2 * Math.PI;
-      const y = PAD_T + (i + 0.5) * V_STEP;
-      const x1 = CX + AMPLITUDE * Math.cos(angle);
-      const x2 = CX - AMPLITUDE * Math.cos(angle);
-      rungs.push({ x1, y, x2, base: resolvedBases[i], idx: i });
-    }
-
-    return { pts1, pts2, rungs, H };
-  }, [mode, n, resolvedBases]);
+  const helixData = useMemo(() => (mode === 'helix' ? helixGeometry(n) : null), [mode, n]);
 
   const ladderData = useMemo(() => {
     if (mode !== 'ladder') return null;
@@ -103,12 +68,7 @@ export function DnaHelix({
     return { H };
   }, [mode, n]);
 
-  const H = mode === 'helix' ? (helixData?.H ?? 240) : (ladderData?.H ?? 240);
-
-  const polyPath = (pts: { x: number; y: number }[]) => {
-    if (pts.length === 0) return '';
-    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  };
+  const H = mode === 'helix' ? (helixData?.height ?? 240) : (ladderData?.H ?? 240);
 
   return (
     <div
@@ -121,116 +81,85 @@ export function DnaHelix({
 
       <div className="dh-wrap">
         {mode === 'helix' && helixData && (
-          <svg viewBox={`0 0 ${W} ${H}`} className="dh-svg" role="img" aria-label={title}>
-            {/* Base pair rungs — drawn first so strands overlay them */}
-            {helixData.rungs.map(({ x1, y, x2, base, idx }) => {
-              const hl = base.highlight;
-              const rungColor = hl
-                ? 'var(--warning)'
-                : isAT(base.pair)
-                  ? 'var(--warning)'
-                  : 'color-mix(in oklab, var(--presence) 60%, var(--insight))';
-              const inFront =
-                Math.cos(((idx + 0.5) / n) * helixData.rungs.length * 1.1 * 2 * Math.PI) > 0;
-              if (inFront) return null; // draw in-front rungs after strands
-
+          <svg viewBox={`0 0 ${HELIX_W} ${H}`} className="dh-svg" role="img" aria-label={title}>
+            {/* Back to front: the far stretches of both strands, the rungs between them, then the
+                near stretches, so each crossover shows which strand passes in front. */}
+            {helixData.back.map((run, k) => (
+              <path
+                key={`back-${k}`}
+                d={runPath(run.points)}
+                stroke={strandColor(run.strand)}
+                strokeWidth={STRAND_W}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.7}
+                className="dh-strand"
+              />
+            ))}
+            {helixData.rungs.map(({ idx, y, x1, x2 }) => {
+              const base = resolvedBases[idx];
               return (
-                <g key={`rung-bg-${idx}`}>
-                  <line
-                    x1={x1}
-                    y1={y}
-                    x2={x2}
-                    y2={y}
-                    stroke={rungColor}
-                    strokeWidth={hl ? 3 : 2}
-                    opacity={0.7}
-                    className="dh-rung"
-                  />
-                  {showLabels && (
-                    <>
-                      <text x={x1 + 6} y={y + 4} className="dh-base-label" textAnchor="start">
-                        {leftBase(base.pair)}
-                      </text>
-                      <text x={x2 - 6} y={y + 4} className="dh-base-label" textAnchor="end">
-                        {rightBase(base.pair)}
-                      </text>
-                    </>
-                  )}
-                </g>
+                <line
+                  key={`rung-${idx}`}
+                  x1={x1}
+                  y1={y}
+                  x2={x2}
+                  y2={y}
+                  stroke={rungColor(base)}
+                  strokeWidth={base.highlight ? 3 : 2}
+                  className="dh-rung"
+                />
               );
             })}
-
-            {/* Strand 1 (5'→3') */}
-            <path
-              d={polyPath(helixData.pts1)}
-              fill="none"
-              stroke="var(--presence)"
-              strokeWidth={STRAND_W}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="dh-strand"
-            />
-
-            {/* Strand 2 (3'→5') */}
-            <path
-              d={polyPath(helixData.pts2)}
-              fill="none"
-              stroke="var(--insight)"
-              strokeWidth={STRAND_W}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="dh-strand"
-            />
-
-            {/* In-front rungs (drawn over strands) */}
-            {helixData.rungs.map(({ x1, y, x2, base, idx }) => {
-              const angle = ((idx + 0.5) / n) * n * 1.1 * 2 * Math.PI;
-              const inFront = Math.cos(angle) > 0;
-              if (!inFront) return null;
-
-              const hl = base.highlight;
-              const rungColor = hl
-                ? 'var(--warning)'
-                : isAT(base.pair)
-                  ? 'var(--warning)'
-                  : 'color-mix(in oklab, var(--presence) 60%, var(--insight))';
-
-              return (
-                <g key={`rung-fg-${idx}`}>
-                  <line
-                    x1={x1}
-                    y1={y}
-                    x2={x2}
-                    y2={y}
-                    stroke={rungColor}
-                    strokeWidth={hl ? 3 : 2}
-                    className="dh-rung"
-                  />
-                  {showLabels && (
-                    <>
-                      <text x={x1 + 6} y={y + 4} className="dh-base-label" textAnchor="start">
-                        {leftBase(base.pair)}
-                      </text>
-                      <text x={x2 - 6} y={y + 4} className="dh-base-label" textAnchor="end">
-                        {rightBase(base.pair)}
-                      </text>
-                    </>
-                  )}
-                </g>
-              );
-            })}
+            {helixData.front.map((run, k) => (
+              <path
+                key={`front-${k}`}
+                d={runPath(run.points)}
+                stroke={strandColor(run.strand)}
+                strokeWidth={STRAND_W}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="dh-strand"
+              />
+            ))}
+            {showLabels &&
+              helixData.rungs.map(({ idx, y, base1, base2 }) => {
+                const pair = resolvedBases[idx].pair;
+                return (
+                  <g key={`bases-${idx}`}>
+                    <text
+                      x={base1.x}
+                      y={y}
+                      className="dh-base-label"
+                      textAnchor={base1.anchor}
+                      dominantBaseline="central"
+                    >
+                      {leftBase(pair)}
+                    </text>
+                    <text
+                      x={base2.x}
+                      y={y}
+                      className="dh-base-label"
+                      textAnchor={base2.anchor}
+                      dominantBaseline="central"
+                    >
+                      {rightBase(pair)}
+                    </text>
+                  </g>
+                );
+              })}
 
             {/* Direction labels */}
             <text x={16} y={14} className="dh-dir-label">
               5′
             </text>
-            <text x={W - 16} y={14} className="dh-dir-label" textAnchor="end">
+            <text x={HELIX_W - 16} y={14} className="dh-dir-label" textAnchor="end">
               3′
             </text>
             <text x={16} y={H - 8} className="dh-dir-label">
               3′
             </text>
-            <text x={W - 16} y={H - 8} className="dh-dir-label" textAnchor="end">
+            <text x={HELIX_W - 16} y={H - 8} className="dh-dir-label" textAnchor="end">
               5′
             </text>
           </svg>
@@ -270,11 +199,6 @@ export function DnaHelix({
             {resolvedBases.map((base, i) => {
               const y = LADDER_PAD_T + (i + 0.5) * LADDER_STEP;
               const hl = base.highlight;
-              const rungColor = hl
-                ? 'var(--warning)'
-                : isAT(base.pair)
-                  ? 'var(--warning)'
-                  : 'color-mix(in oklab, var(--presence) 60%, var(--insight))';
 
               return (
                 <g key={i}>
@@ -283,7 +207,7 @@ export function DnaHelix({
                     y1={y}
                     x2={LADDER_RIGHT}
                     y2={y}
-                    stroke={rungColor}
+                    stroke={rungColor(base)}
                     strokeWidth={hl ? 3 : 2}
                     className="dh-rung"
                   />

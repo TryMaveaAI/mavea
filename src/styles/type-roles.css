@@ -143,3 +143,19 @@ textarea:focus-visible,
 .source-chip .mono {
   font-family: var(--font-data);
 }
+
+/* Text utilities every surface's blocks use. They lived in Live's transcript sheet, so on any
+   other route (the gallery, a shared answer) a diff's code fell back to the body face and its
+   faint captions to full ink. */
+.tab-num {
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: var(--mono);
+}
+.dim {
+  color: var(--text-secondary);
+}
+.faint {
+  color: var(--text-muted);
+}

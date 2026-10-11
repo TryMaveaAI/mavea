@@ -19,32 +19,21 @@ describe('ChronologicalTimeline', () => {
     }));
   }
 
-  it('shrinks the per-marker date width as event count grows past the demo-sized fixture', () => {
+  it('gives each caption a narrower share of the axis as the event count grows', () => {
     const { container: small } = render(
       <ChronologicalTimeline title="History" events={events(4, (i) => `Q${i + 1}`)} />,
     );
     const { container: big } = render(
       <ChronologicalTimeline title="History" events={events(14, (i) => `Q${i + 1}`)} />,
     );
-
-    const smallWidth = Number(
-      small
-        .querySelector<HTMLButtonElement>('.fl-ct-mark')!
-        .style.getPropertyValue('--dw')
-        .replace('px', ''),
-    );
-    const bigWidth = Number(
-      big
-        .querySelector<HTMLButtonElement>('.fl-ct-mark')!
-        .style.getPropertyValue('--dw')
-        .replace('px', ''),
-    );
+    const widthOf = (c: HTMLElement) =>
+      parseFloat(c.querySelectorAll<HTMLButtonElement>('.fl-ct-mark')[1].style.width);
 
     // A dense timeline must claim a narrower per-marker slice than a sparse one — otherwise
-    // adjacent date labels bleed into each other.
-    expect(bigWidth).toBeLessThan(smallWidth);
-    // ...but never collapse to unreadable/zero — there's a floor.
-    expect(bigWidth).toBeGreaterThan(0);
+    // adjacent captions bleed into each other.
+    expect(widthOf(big)).toBeLessThan(widthOf(small));
+    // ...but never collapse to unreadable/zero.
+    expect(widthOf(big)).toBeGreaterThan(0);
   });
 
   it('preserves the full date as a tooltip when the string is longer than the demo fixture', () => {

@@ -32,6 +32,9 @@ export function CalendarHeatmap({
 }: Props) {
   const Ic = Icon[icon] || Icon.clock;
   const [hot, setHot] = useState<number | null>(null);
+  const list = Array.isArray(days) ? days : [];
+  const weeks = Math.max(1, Math.ceil(list.length / 7));
+  const labelled = Array.isArray(weekdays) && weekdays.length === 7;
 
   return (
     <div
@@ -42,38 +45,47 @@ export function CalendarHeatmap({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <div className="c2-cal-wrap">
-        {weekdays && weekdays.length === 7 && (
-          <div className="c2-cal-days">
-            {weekdays.map((d, i) => (
-              <span key={i} className="c2-cal-day">
-                {d}
-              </span>
+      {/* Cells share the card's width as one grid (weekday names in its first column, so they
+          stay on their rows at any cell size), capped so a short span does not balloon. The
+          legend sits under the grid's own right edge rather than the card's. */}
+      <div className="c2-cal-body" style={{ ['--weeks' as string]: weeks } as CSSProperties}>
+        <div className="c2-cal-wrap">
+          <div
+            className={'c2-cal-grid' + (labelled ? ' has-days' : '')}
+            onMouseLeave={() => setHot(null)}
+          >
+            {labelled &&
+              weekdays.map((d, i) => (
+                <span key={`d${i}`} className="c2-cal-day" style={{ gridRow: i + 1 }}>
+                  {d}
+                </span>
+              ))}
+            {list.map((d, i) => (
+              <span
+                key={i}
+                className="c2-cal-cell"
+                title={
+                  d.date ? `${d.date} · level ${Math.max(0, Math.min(4, d.level))}` : undefined
+                }
+                style={{
+                  gridRow: (i % 7) + 1,
+                  gridColumn: Math.floor(i / 7) + (labelled ? 2 : 1),
+                  background: cellColor(d.level, color),
+                  transform: hot === i ? 'scale(1.25)' : 'none',
+                }}
+                onMouseEnter={() => setHot(i)}
+              />
             ))}
           </div>
-        )}
-        <div className="c2-cal-grid" onMouseLeave={() => setHot(null)}>
-          {days.map((d, i) => (
-            <span
-              key={i}
-              className="c2-cal-cell"
-              title={d.date ? `${d.date} · level ${Math.max(0, Math.min(4, d.level))}` : undefined}
-              style={{
-                background: cellColor(d.level, color),
-                transform: hot === i ? 'scale(1.25)' : 'none',
-              }}
-              onMouseEnter={() => setHot(i)}
-            />
-          ))}
         </div>
-      </div>
 
-      <div className="c2-cal-legend">
-        <span className="c2-cal-leg-lbl">{legend[0]}</span>
-        {[0, 1, 2, 3, 4].map((lv) => (
-          <i key={lv} style={{ background: cellColor(lv, color) }} />
-        ))}
-        <span className="c2-cal-leg-lbl">{legend[1]}</span>
+        <div className="c2-cal-legend">
+          <span className="c2-cal-leg-lbl">{legend[0]}</span>
+          {[0, 1, 2, 3, 4].map((lv) => (
+            <i key={lv} style={{ background: cellColor(lv, color) }} />
+          ))}
+          <span className="c2-cal-leg-lbl">{legend[1]}</span>
+        </div>
       </div>
 
       {footer && (

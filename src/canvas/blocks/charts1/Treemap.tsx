@@ -99,78 +99,82 @@ export function Treemap({
         ))}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block' }}
-        className="c1-treemap"
-      >
-        {rects.map((r, i) => {
-          const drillable = !!(r.node.children && r.node.children.length);
-          const active = hover === r.node.label;
-          const cx = r.x + r.w / 2;
-          const cy = r.y + r.h / 2;
-          return (
-            <g
-              // Re-keyed by drill path so navigating in/out remounts every cell and replays
-              // the grow-in entrance — a bloom instead of an instant snap between levels.
-              key={`${path.join('-')}::${i}`}
-              className="c1-tm-cell"
-              style={{ ['--i' as string]: i, transformOrigin: `${cx}px ${cy}px` } as CSSProperties}
-              onMouseEnter={() => setHover(r.node.label)}
-              onMouseLeave={() => setHover(null)}
-              // squarify sorts by size, so a rect's position in `rects` is not its position
-              // in `children` — drilling in must resolve the real index or it opens the wrong node.
-              onClick={() => drillable && setPath([...path, children.indexOf(r.node)])}
-            >
-              <rect
-                className="c1-tm-rect"
-                x={r.x + 1.5}
-                y={r.y + 1.5}
-                width={Math.max(0, r.w - 3)}
-                height={Math.max(0, r.h - 3)}
-                rx={8}
-                fill={`color-mix(in oklab, ${colorOf(r.node, i)} ${active ? 38 : 20}%, transparent)`}
-                stroke={colorOf(r.node, i)}
-                strokeWidth={active ? 2 : 1}
-                data-mark={r.node === salientNode ? 'circle' : undefined}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block' }}
+          className="c1-treemap"
+        >
+          {rects.map((r, i) => {
+            const drillable = !!(r.node.children && r.node.children.length);
+            const active = hover === r.node.label;
+            const cx = r.x + r.w / 2;
+            const cy = r.y + r.h / 2;
+            return (
+              <g
+                // Re-keyed by drill path so navigating in/out remounts every cell and replays
+                // the grow-in entrance — a bloom instead of an instant snap between levels.
+                key={`${path.join('-')}::${i}`}
+                className="c1-tm-cell"
                 style={
-                  {
-                    cursor: drillable ? 'pointer' : 'default',
-                    transform: active ? 'scale(1.015)' : undefined,
-                    transformOrigin: `${cx}px ${cy}px`,
-                  } as CSSProperties
+                  { ['--i' as string]: i, transformOrigin: `${cx}px ${cy}px` } as CSSProperties
                 }
-              />
-              {r.w > 56 && r.h > 30 && (
-                <>
-                  <text
-                    x={r.x + 12}
-                    y={r.y + 24}
-                    fontSize="13"
-                    fontWeight="600"
-                    fill="var(--text-primary)"
-                  >
-                    {r.node.label}
-                  </text>
-                  <text
-                    x={r.x + 12}
-                    y={r.y + 42}
-                    fontSize="12"
-                    fill="var(--text-secondary)"
-                    className="tab-num"
-                  >
-                    {withUnit(effectiveValue(r.node), unit)}
-                    {drillable ? ' ›' : ''}
-                  </text>
-                </>
-              )}
-            </g>
-          );
-        })}
-      </svg>
+                onMouseEnter={() => setHover(r.node.label)}
+                onMouseLeave={() => setHover(null)}
+                // squarify sorts by size, so a rect's position in `rects` is not its position
+                // in `children` — drilling in must resolve the real index or it opens the wrong node.
+                onClick={() => drillable && setPath([...path, children.indexOf(r.node)])}
+              >
+                <rect
+                  className="c1-tm-rect"
+                  x={r.x + 1.5}
+                  y={r.y + 1.5}
+                  width={Math.max(0, r.w - 3)}
+                  height={Math.max(0, r.h - 3)}
+                  rx={8}
+                  fill={`color-mix(in oklab, ${colorOf(r.node, i)} ${active ? 38 : 20}%, transparent)`}
+                  stroke={colorOf(r.node, i)}
+                  strokeWidth={active ? 2 : 1}
+                  data-mark={r.node === salientNode ? 'circle' : undefined}
+                  style={
+                    {
+                      cursor: drillable ? 'pointer' : 'default',
+                      transform: active ? 'scale(1.015)' : undefined,
+                      transformOrigin: `${cx}px ${cy}px`,
+                    } as CSSProperties
+                  }
+                />
+                {r.w > 56 && r.h > 30 && (
+                  <>
+                    <text
+                      x={r.x + 12}
+                      y={r.y + 24}
+                      fontSize="13"
+                      fontWeight="600"
+                      fill="var(--text-primary)"
+                    >
+                      {r.node.label}
+                    </text>
+                    <text
+                      x={r.x + 12}
+                      y={r.y + 42}
+                      fontSize="12"
+                      fill="var(--text-secondary)"
+                      className="tab-num"
+                    >
+                      {withUnit(effectiveValue(r.node), unit)}
+                      {drillable ? ' ›' : ''}
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 12 }}>
         {hover ? (

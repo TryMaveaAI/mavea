@@ -681,6 +681,10 @@
   margin-top: 12px;
   min-height: 64px;
 }
+/* The hint is a caption on the stream, so it sits below the stream's own size. */
+.ai-ts-hint {
+  font-size: var(--fs-xs);
+}
 .ai-ts-pop {
   padding: 10px 12px;
   border-radius: var(--r-md);
@@ -1056,9 +1060,10 @@
   width: 14px;
   height: 14px;
 }
+/* Spans the whole row: Routing measures the query and every choice against it. */
 .ai-ro-wires {
   width: 40px;
-  height: 110px;
+  height: 100%;
   align-self: stretch;
 }
 .ai-ro-choices {
@@ -1499,4 +1504,45 @@
   .ai-ro-choice-meter span {
     transition: none;
   }
+}
+
+/* ───────────────────────── trainingcurve ───────────────────────── */
+/* The key lives above the plots: drawn inside them it sat on the very lines it named. */
+.ai-curve-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.ai-curve-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-curve-swatch {
+  inline-size: 16px;
+  block-size: 0;
+  border-top: 2px solid var(--insight);
+}
+.ai-curve-swatch.is-val {
+  border-top: 2px dashed var(--presence);
+}
+.ai-curve-swatch.is-best {
+  inline-size: 0;
+  block-size: 12px;
+  border-top: 0;
+  border-left: 2px dashed var(--warning);
+}
+.ai-curve-host {
+  inline-size: 100%;
+  margin-bottom: 10px;
+}
+.ai-trainingcurve-svg {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+  overflow: visible;
 }

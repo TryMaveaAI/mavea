@@ -151,7 +151,7 @@ export const compsci: ConversationSpec = {
           { x: 5, y: 24, text: 'inlet', side: 'bottom', color: 'var(--insight)' },
           { x: 95, y: 24, text: 'outlet', side: 'bottom', color: 'var(--warning)' },
           { x: 51, y: 8, text: 'no-slip wall', side: 'top', color: 'var(--text-muted)' },
-          { x: 36, y: 24, text: 'obstacle', side: 'right', color: 'var(--presence)' },
+          { x: 42, y: 24, text: 'obstacle', side: 'right', color: 'var(--presence)' },
         ],
         footer:
           'Uniform inflow left, pressure outlet right, no-slip on the walls and the obstacle.',

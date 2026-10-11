@@ -2,20 +2,25 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PrayerTimesProps, PrayerSlot } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { PRAYER_VB_W as VB_W, placeSlotLabels } from './prayerLabels';
 
 type Props = PrayerTimesProps & { delay?: number };
 
 // The arc's viewBox is a fixed width, so the horizontal room per slot shrinks as more slots are
-// plotted along it — text sized for a 5-slot demo (five daily salah) collides or runs past its
-// neighbour once a longer list (liturgical hours, a multi-service schedule) is authored. Scale
-// both the font size and the per-label character budget down as slot count grows, and truncate
-// with a native <title> tooltip so nothing is silently lost — same approach as EtymTree's gloss.
+// plotted along it. Type steps down a little for a long list but never under the 9px floor;
+// past that the names truncate (with a native <title> so nothing is lost) and the label row
+// splits into staggered rows.
 function labelFit(n: number): { nameSize: number; timeSize: number; maxChars: number } {
   if (n <= 6) return { nameSize: 11, timeSize: 10, maxChars: 12 };
-  if (n <= 9) return { nameSize: 9.5, timeSize: 8.5, maxChars: 9 };
-  if (n <= 13) return { nameSize: 8, timeSize: 7.2, maxChars: 7 };
-  return { nameSize: 7, timeSize: 6.4, maxChars: 5 };
+  if (n <= 9) return { nameSize: 10, timeSize: 9.5, maxChars: 10 };
+  return { nameSize: 9, timeSize: 9, maxChars: 8 };
 }
+
+const PAD_X = 22;
+const BASE_Y = 100; // the horizon line
+const PEAK_Y = 18; // apex of the arc
+const ROW_H = 26; // one name + time label pair
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
@@ -93,12 +98,7 @@ export function PrayerTimes({
       : null;
 
   // Arc geometry: a quadratic bezier from the left horizon to the right, peaking at solar noon. The
-  // SVG scales into this viewBox; the dot/label for each slot rides the curve at its day fraction.
-  const VB_W = 320;
-  const VB_H = 150;
-  const PAD_X = 22;
-  const BASE_Y = 116; // the horizon line
-  const PEAK_Y = 30; // apex of the arc
+  // SVG scales into this viewBox; the dot for each slot rides the curve at its day fraction.
   const arcX = (t: number) => PAD_X + t * (VB_W - PAD_X * 2);
   // Point on the quadratic Bézier P0=(x0,BASE_Y) P1=(mid,2*PEAK_Y-BASE_Y) P2=(x1,BASE_Y) at param t.
   const x0 = arcX(0);
@@ -108,6 +108,19 @@ export function PrayerTimes({
     const u = 1 - t;
     return u * u * BASE_Y + 2 * u * t * ctrlY + t * t * BASE_Y;
   };
+
+  const names = parsed.map((s) => truncate(s.name, fit.maxChars));
+  const labels = placeSlotLabels(
+    parsed.map((s) => arcX(frac(s.mins))),
+    parsed.map((s, i) =>
+      Math.max(
+        estimateTextWidth(names[i], fit.nameSize, true),
+        estimateTextWidth(s.time, fit.timeSize),
+      ),
+    ),
+  );
+  const labelRows = labels[0]?.rows ?? 1;
+  const VB_H = BASE_Y + 12 + labelRows * ROW_H;
 
   return (
     <div
@@ -135,58 +148,63 @@ export function PrayerTimes({
       {caption && <div className="pt-caption">{caption}</div>}
 
       {sunArc && parsed.length > 0 && (
-        <svg
-          className="pt-arc"
-          viewBox={`0 0 ${VB_W} ${VB_H}`}
-          role="img"
-          aria-label="Day arc of devotional times from dawn to dusk"
-        >
-          {/* horizon */}
-          <line className="pt-horizon" x1={0} y1={BASE_Y} x2={VB_W} y2={BASE_Y} />
-          {/* the day arc, dawn → dusk */}
-          <path
-            className="pt-curve"
-            d={`M ${x0} ${BASE_Y} Q ${(x0 + x1) / 2} ${ctrlY} ${x1} ${BASE_Y}`}
-            fill="none"
-          />
+        <div className="canvas-figure">
+          <svg
+            className="pt-arc"
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            role="img"
+            aria-label="Day arc of devotional times from dawn to dusk"
+          >
+            {/* horizon */}
+            <line className="pt-horizon" x1={0} y1={BASE_Y} x2={VB_W} y2={BASE_Y} />
+            {/* the day arc, dawn → dusk */}
+            <path
+              className="pt-curve"
+              d={`M ${x0} ${BASE_Y} Q ${(x0 + x1) / 2} ${ctrlY} ${x1} ${BASE_Y}`}
+              fill="none"
+            />
 
-          {parsed.map((s, i) => {
-            const t = frac(s.mins);
-            const cx = arcX(t);
-            const cy = arcY(t);
-            const isNext = i === nextIdx;
-            // Alternate the label above / below the dot near the apex to avoid two labels colliding.
-            const below = cy < PEAK_Y + 34;
-            const name = truncate(s.name, fit.maxChars);
-            const nameTruncated = name !== s.name;
-            return (
-              <g key={i} className={`pt-slot${isNext ? ' is-next' : ''}`}>
-                <line className="pt-stem" x1={cx} y1={cy} x2={cx} y2={BASE_Y} />
-                <circle className="pt-dot" cx={cx} cy={cy} r={isNext ? 6 : 3.6} />
-                {isNext && <circle className="pt-halo" cx={cx} cy={cy} r={11} />}
-                <text
-                  className="pt-name"
-                  x={cx}
-                  y={below ? cy + 18 : cy - 14}
-                  textAnchor="middle"
-                  fontSize={fit.nameSize}
-                >
-                  {name}
-                  {nameTruncated && <title>{s.name}</title>}
-                </text>
-                <text
-                  className="pt-time"
-                  x={cx}
-                  y={below ? cy + 30 : cy - 4}
-                  textAnchor="middle"
-                  fontSize={fit.timeSize}
-                >
-                  {s.time}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+            {parsed.map((s, i) => {
+              const t = frac(s.mins);
+              const cx = arcX(t);
+              const cy = arcY(t);
+              const isNext = i === nextIdx;
+              const name = names[i];
+              const nameTruncated = name !== s.name;
+              const lab = labels[i];
+              const ly = BASE_Y + 8 + lab.row * ROW_H;
+              return (
+                <g key={i} className={`pt-slot${isNext ? ' is-next' : ''}`}>
+                  <line className="pt-stem" x1={cx} y1={cy} x2={cx} y2={BASE_Y} />
+                  <circle className="pt-dot" cx={cx} cy={cy} r={isNext ? 6 : 3.6} />
+                  {isNext && <circle className="pt-halo" cx={cx} cy={cy} r={11} />}
+                  {/* A leader from the slot's point on the horizon to its label, which the row
+                    may have nudged aside or staggered down. */}
+                  <line className="pt-stem" x1={cx} y1={BASE_Y} x2={lab.x} y2={ly} />
+                  <text
+                    className="pt-name"
+                    x={lab.x}
+                    y={ly + fit.nameSize}
+                    textAnchor="middle"
+                    fontSize={fit.nameSize}
+                  >
+                    {name}
+                    {nameTruncated && <title>{s.name}</title>}
+                  </text>
+                  <text
+                    className="pt-time"
+                    x={lab.x}
+                    y={ly + fit.nameSize + fit.timeSize + 2}
+                    textAnchor="middle"
+                    fontSize={fit.timeSize}
+                  >
+                    {s.time}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       )}
 
       {/* The named slots as a list — the sole view when sunArc is off, and a tidy reference under

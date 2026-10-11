@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { GridTransformProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
 
 type Props = GridTransformProps & { delay?: number };
 
@@ -46,6 +47,37 @@ function arrowHead(
 
 // Grid range: -3 to 3, 7 values each axis
 const RANGE = [-3, -2, -1, 0, 1, 2, 3];
+
+/** Where a label naming a ray from (ox, oy) through (tx, ty) goes: beside the point `at` of the
+ *  way along it, pushed off the line along its normal by enough to clear a w×h box — the ray
+ *  itself, and for a basis vector the transformed axis it lies on, run straight through the
+ *  spot a label would otherwise take at the tip. `away` picks the side: the normal pointing
+ *  away from that point (another vector the label must not crowd), else upward. */
+function besideRay(
+  ox: number,
+  oy: number,
+  tx: number,
+  ty: number,
+  at: number,
+  w: number,
+  h: number,
+  away?: [number, number],
+): [number, number] {
+  const len = Math.hypot(tx - ox, ty - oy) || 1;
+  let nx = -(ty - oy) / len;
+  let ny = (tx - ox) / len;
+  const flip = away
+    ? nx * (away[0] - ox) + ny * (away[1] - oy) > 0
+    : ny > 0 || (ny === 0 && nx > 0);
+  if (flip) {
+    nx = -nx;
+    ny = -ny;
+  }
+  const dist = 4 + (Math.abs(nx) * w) / 2 + (Math.abs(ny) * h) / 2;
+  return [ox + (tx - ox) * at + nx * dist, oy + (ty - oy) * at + ny * dist];
+}
+
+const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(2));
 
 export function GridTransform({
   title = 'Linear Transformation',
@@ -133,6 +165,11 @@ export function GridTransform({
 
   // Eigen ray length — capped so rays stay within the W×H viewport.
   const RAY_LEN = Math.min(CX, W - CX, CY, H - CY) - 4;
+  // Each basis label on the side of its vector away from the other one, most of the way out so
+  // it clears the arrowhead.
+  const BASIS_W = estimateTextWidth('î', 10);
+  const iLabel = besideRay(ox, oy, iHatX, iHatY, 0.7, BASIS_W, 10, [jHatX, jHatY]);
+  const jLabel = besideRay(ox, oy, jHatX, jHatY, 0.7, BASIS_W, 10, [iHatX, iHatY]);
 
   return (
     <div
@@ -144,229 +181,226 @@ export function GridTransform({
         {title}
       </div>
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block' }}
-        role="img"
-        aria-label={title}
-      >
-        <defs>
-          <clipPath id={clipId}>
-            <rect x={0} y={0} width={W} height={H} />
-          </clipPath>
-        </defs>
-
-        {/* ── Original grid (faint, before transform) ── */}
-        <g clipPath={`url(#${clipId})`}>
-          {/* Horizontal lines at each integer y */}
-          {RANGE.map((y) => {
-            const [x1, y1] = toSVG(-3, y);
-            const [x2, y2] = toSVG(3, y);
-            const isAxis = y === 0;
-            return (
-              <line
-                key={`oh${y}`}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke={isAxis ? 'var(--text-muted)' : 'var(--surface-border)'}
-                strokeWidth={isAxis ? 1.2 : 0.8}
-                opacity={0.6}
-              />
-            );
-          })}
-          {/* Vertical lines at each integer x */}
-          {RANGE.map((x) => {
-            const [x1, y1] = toSVG(x, -3);
-            const [x2, y2] = toSVG(x, 3);
-            const isAxis = x === 0;
-            return (
-              <line
-                key={`ov${x}`}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke={isAxis ? 'var(--text-muted)' : 'var(--surface-border)'}
-                strokeWidth={isAxis ? 1.2 : 0.8}
-                opacity={0.6}
-              />
-            );
-          })}
-        </g>
-
-        {/* ── Transformed grid + basis vectors (animated in) ── */}
-        <g
-          clipPath={`url(#${clipId})`}
-          style={{ opacity: showTransform ? 1 : 0, transition: 'opacity 0.6s ease' }}
+      <div className="canvas-figure">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block' }}
+          role="img"
+          aria-label={title}
         >
-          {/* Transformed horizontal lines */}
-          {hLines.map((l, i) => (
-            <line
-              key={`th${i}`}
-              x1={l.x1}
-              y1={l.y1}
-              x2={l.x2}
-              y2={l.y2}
-              stroke="var(--insight)"
-              strokeWidth={l.isAxis ? 2 : 0.9}
-              opacity={l.isAxis ? 1 : 0.75}
-            />
-          ))}
-          {/* Transformed vertical lines */}
-          {vLines.map((l, i) => (
-            <line
-              key={`tv${i}`}
-              x1={l.x1}
-              y1={l.y1}
-              x2={l.x2}
-              y2={l.y2}
-              stroke="var(--insight)"
-              strokeWidth={l.isAxis ? 2 : 0.9}
-              opacity={l.isAxis ? 1 : 0.75}
-            />
-          ))}
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={0} y={0} width={W} height={H} />
+            </clipPath>
+          </defs>
 
-          {/* ── Eigenvectors (dashed rays through the origin) ── */}
-          {eigens.map((e, i) => {
-            // SVG y is flipped: data +y → screen -y, so eigenvector (vx, vy_data) → (vx, -vy) screen
-            const screenVx = e.vx;
-            const screenVy = -e.vy;
-            const mag = Math.hypot(screenVx, screenVy) || 1;
-            const nx = (screenVx / mag) * RAY_LEN;
-            const ny = (screenVy / mag) * RAY_LEN;
-            // Label placement: offset outward from positive ray end
-            const labelDist = RAY_LEN * 0.55;
-            const lx = ox + (screenVx / mag) * labelDist;
-            const ly = oy + (screenVy / mag) * labelDist - 4;
-            const lamStr = Number.isInteger(e.lambda) ? String(e.lambda) : e.lambda.toFixed(2);
-            return (
-              <g key={`eig${i}`}>
-                {/* Positive ray */}
+          {/* ── Original grid (faint, before transform) ── */}
+          <g clipPath={`url(#${clipId})`}>
+            {/* Horizontal lines at each integer y */}
+            {RANGE.map((y) => {
+              const [x1, y1] = toSVG(-3, y);
+              const [x2, y2] = toSVG(3, y);
+              const isAxis = y === 0;
+              return (
                 <line
-                  x1={ox}
-                  y1={oy}
-                  x2={ox + nx}
-                  y2={oy + ny}
-                  stroke="var(--danger)"
-                  strokeWidth={1.5}
-                  strokeDasharray="3 2"
+                  key={`oh${y}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={isAxis ? 'var(--text-muted)' : 'var(--surface-border)'}
+                  strokeWidth={isAxis ? 1.2 : 0.8}
+                  opacity={0.6}
                 />
-                {/* Negative ray */}
+              );
+            })}
+            {/* Vertical lines at each integer x */}
+            {RANGE.map((x) => {
+              const [x1, y1] = toSVG(x, -3);
+              const [x2, y2] = toSVG(x, 3);
+              const isAxis = x === 0;
+              return (
+                <line
+                  key={`ov${x}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={isAxis ? 'var(--text-muted)' : 'var(--surface-border)'}
+                  strokeWidth={isAxis ? 1.2 : 0.8}
+                  opacity={0.6}
+                />
+              );
+            })}
+          </g>
+
+          {/* ── Transformed grid + basis vectors (animated in) ── */}
+          <g
+            clipPath={`url(#${clipId})`}
+            style={{ opacity: showTransform ? 1 : 0, transition: 'opacity 0.6s ease' }}
+          >
+            {/* Transformed horizontal lines */}
+            {hLines.map((l, i) => (
+              <line
+                key={`th${i}`}
+                x1={l.x1}
+                y1={l.y1}
+                x2={l.x2}
+                y2={l.y2}
+                stroke="var(--insight)"
+                strokeWidth={l.isAxis ? 2 : 0.9}
+                opacity={l.isAxis ? 1 : 0.75}
+              />
+            ))}
+            {/* Transformed vertical lines */}
+            {vLines.map((l, i) => (
+              <line
+                key={`tv${i}`}
+                x1={l.x1}
+                y1={l.y1}
+                x2={l.x2}
+                y2={l.y2}
+                stroke="var(--insight)"
+                strokeWidth={l.isAxis ? 2 : 0.9}
+                opacity={l.isAxis ? 1 : 0.75}
+              />
+            ))}
+
+            {/* ── Eigenvectors (dashed rays through the origin) ── */}
+            {eigens.map((e, i) => {
+              // SVG y is flipped: data +y → screen -y, so eigenvector (vx, vy_data) → (vx, -vy) screen
+              const screenVx = e.vx;
+              const screenVy = -e.vy;
+              const mag = Math.hypot(screenVx, screenVy) || 1;
+              const nx = (screenVx / mag) * RAY_LEN;
+              const ny = (screenVy / mag) * RAY_LEN;
+              const lamStr = fmt(e.lambda);
+              // Near the far end of the ray, past the basis vectors that start at the origin.
+              const [lx, ly] = besideRay(
+                ox,
+                oy,
+                ox + nx,
+                oy + ny,
+                0.82,
+                estimateTextWidth(`λ=${lamStr}`, 9),
+                9,
+              );
+              return (
+                <g key={`eig${i}`}>
+                  {/* Positive ray */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox + nx}
+                    y2={oy + ny}
+                    stroke="var(--danger)"
+                    strokeWidth={1.5}
+                    strokeDasharray="3 2"
+                  />
+                  {/* Negative ray */}
+                  <line
+                    x1={ox}
+                    y1={oy}
+                    x2={ox - nx}
+                    y2={oy - ny}
+                    stroke="var(--danger)"
+                    strokeWidth={1.5}
+                    strokeDasharray="3 2"
+                  />
+                  <text
+                    x={lx}
+                    y={ly}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="var(--danger)"
+                    fontSize={9}
+                    className="gtf-label"
+                  >
+                    λ={lamStr}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* ── i-hat basis vector (presence) ── */}
+            {(iHatX !== ox || iHatY !== oy) && (
+              <g>
                 <line
                   x1={ox}
                   y1={oy}
-                  x2={ox - nx}
-                  y2={oy - ny}
-                  stroke="var(--danger)"
-                  strokeWidth={1.5}
-                  strokeDasharray="3 2"
+                  x2={iHatX}
+                  y2={iHatY}
+                  stroke="var(--presence)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+                <polygon
+                  points={arrowHead(ox, oy, iHatX, iHatY, 'var(--presence)')}
+                  fill="var(--presence)"
                 />
                 <text
-                  x={lx}
-                  y={ly}
+                  x={iLabel[0]}
+                  y={iLabel[1]}
+                  fill="var(--presence)"
+                  fontSize={10}
+                  className="gtf-label"
                   textAnchor="middle"
-                  fill="var(--danger)"
-                  fontSize={9}
-                  fontFamily="inherit"
+                  dominantBaseline="central"
                 >
-                  λ={lamStr}
+                  î
                 </text>
               </g>
-            );
-          })}
+            )}
 
-          {/* ── i-hat basis vector (presence) ── */}
-          {(iHatX !== ox || iHatY !== oy) && (
-            <g>
-              <line
-                x1={ox}
-                y1={oy}
-                x2={iHatX}
-                y2={iHatY}
-                stroke="var(--presence)"
-                strokeWidth={2}
-                strokeLinecap="round"
-              />
-              <polygon
-                points={arrowHead(ox, oy, iHatX, iHatY, 'var(--presence)')}
-                fill="var(--presence)"
-              />
-              <text
-                x={iHatX + (iHatX - ox > 0 ? 6 : -6)}
-                y={iHatY + (iHatY - oy > 0 ? 10 : -4)}
-                fill="var(--presence)"
-                fontSize={10}
-                fontFamily="inherit"
-                textAnchor={iHatX - ox > 0 ? 'start' : 'end'}
-              >
-                î→
-              </text>
-            </g>
-          )}
-
-          {/* ── j-hat basis vector (warning) ── */}
-          {(jHatX !== ox || jHatY !== oy) && (
-            <g>
-              <line
-                x1={ox}
-                y1={oy}
-                x2={jHatX}
-                y2={jHatY}
-                stroke="var(--warning)"
-                strokeWidth={2}
-                strokeLinecap="round"
-              />
-              <polygon
-                points={arrowHead(ox, oy, jHatX, jHatY, 'var(--warning)')}
-                fill="var(--warning)"
-              />
-              <text
-                x={jHatX + (jHatX - ox >= 0 ? 6 : -6)}
-                y={jHatY + (jHatY - oy >= 0 ? 10 : -4)}
-                fill="var(--warning)"
-                fontSize={10}
-                fontFamily="inherit"
-                textAnchor={jHatX - ox >= 0 ? 'start' : 'end'}
-              >
-                ĵ→
-              </text>
-            </g>
-          )}
-
-          {/* ── Determinant label (top-right corner) ── */}
-          <text
-            x={W - 8}
-            y={14}
-            textAnchor="end"
-            fill="var(--text-muted)"
-            fontSize={10}
-            fontFamily="inherit"
-          >
-            det = {det.toFixed(2)}
-          </text>
-          <text
-            x={W - 8}
-            y={26}
-            textAnchor="end"
-            fill="var(--text-muted)"
-            fontSize={9}
-            fontFamily="inherit"
-          >
-            area ×{Math.abs(det).toFixed(2)}
-          </text>
-
-          {/* ── Matrix display (bottom-left) ── */}
-          <text x={8} y={H - 20} fill="var(--text-secondary)" fontSize={9} fontFamily="monospace">
-            [{a} {b}]
-          </text>
-          <text x={8} y={H - 8} fill="var(--text-secondary)" fontSize={9} fontFamily="monospace">
-            [{c} {d}]
-          </text>
-        </g>
-      </svg>
+            {/* ── j-hat basis vector (warning) ── */}
+            {(jHatX !== ox || jHatY !== oy) && (
+              <g>
+                <line
+                  x1={ox}
+                  y1={oy}
+                  x2={jHatX}
+                  y2={jHatY}
+                  stroke="var(--warning)"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+                <polygon
+                  points={arrowHead(ox, oy, jHatX, jHatY, 'var(--warning)')}
+                  fill="var(--warning)"
+                />
+                <text
+                  x={jLabel[0]}
+                  y={jLabel[1]}
+                  fill="var(--warning)"
+                  fontSize={10}
+                  className="gtf-label"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  ĵ
+                </text>
+              </g>
+            )}
+          </g>
+        </svg>
+      </div>
+      {/* The matrix and what it does to area, under the figure rather than in a corner of it:
+          the transformed grid can sweep through any corner, depending on the matrix. */}
+      <div className="gtf-readout">
+        <span
+          className="gtf-matrix"
+          role="img"
+          aria-label={`T = [[${fmt(a)}, ${fmt(b)}], [${fmt(c)}, ${fmt(d)}]]`}
+        >
+          <span>{fmt(a)}</span>
+          <span>{fmt(b)}</span>
+          <span>{fmt(c)}</span>
+          <span>{fmt(d)}</span>
+        </span>
+        <span>det = {det.toFixed(2)}</span>
+        <span>area ×{Math.abs(det).toFixed(2)}</span>
+      </div>
 
       {footer && (
         <div

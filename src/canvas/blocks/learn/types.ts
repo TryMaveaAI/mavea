@@ -2309,7 +2309,7 @@ export interface KaryotypeAnomaly {
   pair: string | number;
   /** The chromosomal change. */
   kind: 'trisomy' | 'monosomy' | 'deletion' | 'duplication';
-  /** Short caption shown under the slot, e.g. "Down syndrome". */
+  /** Short caption shown beside the pair in the anomaly key, e.g. "Down syndrome". */
   note?: string;
 }
 export interface KaryotypeProps {

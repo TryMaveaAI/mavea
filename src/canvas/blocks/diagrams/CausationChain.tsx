@@ -9,8 +9,10 @@
 import { useMemo, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
+
 import type { CausationChainProps, CausationLink, CausationTerm } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { COL_W, NODE_LH, NODE_TEXT_X, cardHeight, nodeLines } from './causationChainLayout';
 
 type Props = CausationChainProps & { delay?: number };
 
@@ -19,15 +21,12 @@ const VB_W = 720;
 const PAD_X = 18; // left/right gutter so flush card edges never clip
 const PAD_TOP = 34; // room for the column-header row
 const PAD_BOT = 18;
-const COL_W = 190; // cause / consequence card width
-const CARD_H = 46; // node card height
+
 const ROW_GAP = 14; // vertical gap between stacked cards in a column
 const GROUP_GAP = 16; // extra gap between the short-term and long-term groups
 const EVENT_W = 168; // central event card width
 const EVENT_H = 64;
 const MIN_H = 210;
-const NODE_LH = 13; // line height for a wrapped node label (fits two lines inside CARD_H)
-const NODE_CHARS = 24; // characters that fit one line inside COL_W at the node font
 
 // x-anchors (computed once; columns are flush to their gutters, event centred).
 const CAUSE_X = PAD_X; // left edge of the cause column
@@ -48,6 +47,9 @@ const TERM_LABEL: Record<CausationTerm, string> = {
 
 interface Placed {
   link: CausationLink;
+  lines: string[];
+  /** card height: two lines fit the standard card, a third grows it */
+  h: number;
   /** card top-left in viewBox units */
   x: number;
   y: number;
@@ -90,14 +92,19 @@ export function CausationChain({
   const Ic = Icon[icon] || Icon.layers;
 
   const model = useMemo(() => {
-    const left = ordered(causes ?? []);
-    const right = ordered(consequences ?? []);
+    const withLines = (rows: { item: CausationLink; gap: boolean }[]) =>
+      rows.map((r) => {
+        const lines = nodeLines(r.item.label);
+        return { ...r, lines, h: cardHeight(lines.length) };
+      });
+    const left = withLines(ordered(causes ?? []));
+    const right = withLines(ordered(consequences ?? []));
 
     // A column's drawn height = its cards + inter-card gaps + the group gap(s).
-    const colHeight = (rows: { gap: boolean }[]) =>
+    const colHeight = (rows: { gap: boolean; h: number }[]) =>
       rows.length === 0
         ? 0
-        : rows.length * CARD_H +
+        : rows.reduce((t, r) => t + r.h, 0) +
           (rows.length - 1) * ROW_GAP +
           rows.filter((r) => r.gap).length * GROUP_GAP;
 
@@ -107,24 +114,26 @@ export function CausationChain({
     const vbH = Math.max(MIN_H, contentH + PAD_TOP + PAD_BOT);
 
     // Place a column's cards centred vertically within the content band.
-    const placeColumn = (rows: { item: CausationLink; gap: boolean }[], x: number): Placed[] => {
+    const placeColumn = (rows: typeof left, x: number): Placed[] => {
       const h = colHeight(rows);
       let y = PAD_TOP + (vbH - PAD_TOP - PAD_BOT - h) / 2;
       const out: Placed[] = [];
-      for (const { item, gap } of rows) {
+      for (const { item, gap, lines, h: cardH } of rows) {
         if (gap) y += GROUP_GAP;
         const w = Math.max(0, Math.min(1, item.weight ?? 0.5));
         out.push({
           link: item,
+          lines,
+          h: cardH,
           x,
           y,
-          cy: y + CARD_H / 2,
+          cy: y + cardH / 2,
           color: item.term ? TERM_COLOR[item.term] : 'var(--text-secondary)',
           // Weight → connector emphasis: thicker + more opaque for stronger links.
           sw: scaleLinear([0, 1], [1.6, 6])(w),
           op: scaleLinear([0, 1], [0.3, 0.92])(w),
         });
-        y += CARD_H + ROW_GAP;
+        y += cardH + ROW_GAP;
       }
       return out;
     };
@@ -148,7 +157,7 @@ export function CausationChain({
   // Render one column of node cards (cause = anchor on right edge, conseq = left edge).
   const renderNodes = (placed: Placed[]) =>
     placed.map((p, i) => {
-      const lines = wrapLabel(p.link.label);
+      const { lines } = p;
       const top = p.cy - ((lines.length - 1) * NODE_LH) / 2;
       return (
         <g key={i}>
@@ -156,13 +165,13 @@ export function CausationChain({
             x={p.x}
             y={p.y}
             width={COL_W}
-            height={CARD_H}
+            height={p.h}
             rx={10}
             className="cau-node"
             style={{ stroke: p.color }}
           />
           {/* A left rail tints the card by term. */}
-          <rect x={p.x} y={p.y} width={4} height={CARD_H} rx={2} fill={p.color} />
+          <rect x={p.x} y={p.y} width={4} height={p.h} rx={2} fill={p.color} />
           {p.link.term && (
             <circle
               cx={p.x + COL_W - 11}
@@ -174,10 +183,10 @@ export function CausationChain({
               <title>{TERM_LABEL[p.link.term]}</title>
             </circle>
           )}
-          <text x={p.x + 14} className="cau-node-lbl" dominantBaseline="middle">
+          <text x={p.x + NODE_TEXT_X} className="cau-node-lbl" dominantBaseline="middle">
             <title>{p.link.label}</title>
             {lines.map((ln, li) => (
-              <tspan key={li} x={p.x + 14} y={top + li * NODE_LH}>
+              <tspan key={li} x={p.x + NODE_TEXT_X} y={top + li * NODE_LH}>
                 {ln}
               </tspan>
             ))}
@@ -299,38 +308,6 @@ export function CausationChain({
       )}
     </div>
   );
-}
-
-/** Greedy word-wrap a node label to fit COL_W, max two lines, ellipsising the last if it overruns.
- *  Pure and bounded — a pathological single long word is hard-truncated, never looped. */
-function wrapLabel(label: string, perLine = NODE_CHARS, maxLines = 2): string[] {
-  const words = label.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let cur = '';
-  let truncated = false;
-  for (const w of words) {
-    const next = cur ? `${cur} ${w}` : w;
-    if (next.length <= perLine || !cur) {
-      cur = next;
-    } else {
-      lines.push(cur);
-      cur = w;
-      if (lines.length === maxLines) {
-        truncated = true;
-        cur = '';
-        break;
-      }
-    }
-  }
-  if (cur && lines.length < maxLines) lines.push(cur);
-  if (lines.length) {
-    const li = lines.length - 1;
-    let last = lines[li];
-    if (last.length > perLine) last = last.slice(0, perLine - 1).trimEnd();
-    if (truncated || lines[li].length > perLine) last = last.replace(/[…\s]*$/, '') + '…';
-    lines[li] = last;
-  }
-  return lines.length ? lines : [label];
 }
 
 /** Split a longer event label onto up to two centred lines so it fits the card. */

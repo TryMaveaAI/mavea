@@ -240,7 +240,8 @@ describe('BodyMap', () => {
 // this — a uranium-sized configuration does.
 
 describe('BohrModel', () => {
-  const GUTTER_LEFT = 360 - 96 + 6; // W - GUTTER + 6, mirrors BohrModel's internal leader-line x
+  const LABEL_X = 360 - 96 + 10; // W - GUTTER + 10, mirrors BohrModel's label column
+  const RIGHT_EDGE = 360 - 6;
   const CONFIG_FONT = 10.5; // viewBox units, mirrors CONFIG_FONT / .boh-config
   // The summary is digits joined by interpuncts and spaces; a tabular-nums digit is the widest of
   // those, measured at ~0.56em in the rendered face. Bounding a line by the widest glyph it can
@@ -259,13 +260,11 @@ describe('BohrModel', () => {
     // Wrapped across more than one line — a single unconstrained line is exactly the bug.
     expect(lines.length).toBeGreaterThan(1);
     for (const line of lines) {
-      // Every wrapped line stays right-anchored at the same x as the shell-occupancy labels,
-      // so it never drifts outside the gutter column horizontally.
-      expect(Number(line.getAttribute('x'))).toBe(350);
-      // No single line's width should exceed the gutter itself — the whole point of wrapping is
-      // that no rendered line runs past the leader-line column.
+      // Every wrapped line starts at the shell-occupancy labels' column…
+      expect(Number(line.getAttribute('x'))).toBe(LABEL_X);
+      // …and no line runs past the card's right edge.
       const text = line.textContent ?? '';
-      expect(text.length * WIDEST_GLYPH).toBeLessThanOrEqual(350 - GUTTER_LEFT);
+      expect(text.length * WIDEST_GLYPH).toBeLessThanOrEqual(RIGHT_EDGE - LABEL_X);
     }
     // The full configuration is preserved verbatim across the wrapped lines — wrapping must
     // never silently drop electrons the way a truncation with an ellipsis would.
@@ -284,6 +283,23 @@ describe('BohrModel', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].textContent).toBe('2·8·1 = 11 e⁻');
   });
+
+  it('sends each leader from its own point and closes the column with the total', () => {
+    const { container } = render(
+      <BohrModel title="Sodium" protons={11} neutrons={12} shells={[2, 8, 1]} />,
+    );
+    const starts = [...container.querySelectorAll('.boh-leader')].map(
+      (l) => `${l.getAttribute('x1')},${l.getAttribute('y1')}`,
+    );
+    expect(new Set(starts).size).toBe(3);
+    const rows = [...container.querySelectorAll('.boh-shell-lbl')].map((t) =>
+      Number(t.getAttribute('y')),
+    );
+    const total = Number(container.querySelector('.boh-config')!.getAttribute('y'));
+    // Directly under the last row, not parked at the bottom of the card.
+    expect(total).toBeGreaterThan(Math.max(...rows));
+    expect(total - Math.max(...rows)).toBeLessThan(30);
+  });
 });
 
 // Regression coverage for a real bug: organelle labels are plain SVG <text> drawn at fixed,
@@ -299,10 +315,13 @@ describe('CellDiagram', () => {
     );
     const labelNodes = Array.from(container.querySelectorAll('text.cel-label'));
     expect(labelNodes).toHaveLength(1);
-    // The visible glyphs must stay short enough to fit the gutter at the label's font-size —
-    // the untruncated 52-char override rendered far past the card edge before the fix.
-    expect(visibleText(labelNodes[0]).length).toBeLessThanOrEqual(20);
-    expect(visibleText(labelNodes[0]).endsWith('…')).toBe(true);
+    // The label wraps inside its fixed column and is cut at two lines — the untruncated
+    // 52-char override rendered far past the card edge before the fix.
+    const lines = Array.from(labelNodes[0].querySelectorAll('tspan')).map((t) => t.textContent!);
+    expect(lines).toHaveLength(2);
+    const column = estimateTextWidth('Golgi apparatus', 9, true);
+    for (const line of lines) expect(estimateTextWidth(line, 9, true)).toBeLessThanOrEqual(column);
+    expect(lines[1].endsWith('…')).toBe(true);
     // The full text is preserved, via a native <title> tooltip.
     const titles = Array.from(container.querySelectorAll('title')).map((t) => t.textContent);
     expect(titles).toContain(longLabel);
@@ -370,14 +389,12 @@ describe('CellDiagram', () => {
   });
 });
 
-// Regression coverage for a real bug: the note-name row lays each label out with an even
-// `flex: 1` share and no wrap constraint, so it only ever worked for the 6-string demo fixture's
-// single-character names ("G", "B", "D" …). A wider neck (up to the component's 12-string clamp)
-// paired with longer spellings ("F♯m", "B♭") had no room to render without overflowing its own
-// label box and bleeding into its neighbours — every rendered label must be able to wrap instead.
+// The note-name row is a grid with one column per string, each column centred under its
+// string (the outer strings run along the board's edges). Columns are minmax(0, 1fr) so a long
+// spelling ("F♯m") on a wide neck wraps inside its own column instead of spilling into the next.
 
 describe('ChordDiagram', () => {
-  it('lets long note names wrap instead of overflowing or colliding, past the 6-string demo', () => {
+  it('gives every string its own shrinkable note column, centred under it', () => {
     const stringCount = 9;
     const notes = Array.from({ length: stringCount }, (_, i) => (i % 2 === 0 ? 'F♯m' : 'B♭'));
     const frets = Array.from({ length: stringCount }, (_, i) => (i % 3) as number | 'x' | 'o');
@@ -385,21 +402,32 @@ describe('ChordDiagram', () => {
       <ChordDiagram title="Wide neck" chordName="F♯m" frets={frets} notes={notes} />,
     );
 
+    const row = container.querySelector<HTMLElement>('.cd-notes')!;
+    expect(row.style.gridTemplateColumns).toBe(`repeat(${stringCount}, minmax(0, 1fr))`);
+    // Half a column of overhang each side puts column i's centre on string i.
+    expect(row.style.marginInline).toBe(`calc(${-50 / (stringCount - 1)}%)`);
     const labels = Array.from(container.querySelectorAll<HTMLElement>('.cd-note-label'));
     expect(labels).toHaveLength(stringCount);
-    for (const label of labels) {
-      // Wrapping is what lets a label stay inside its own flex share instead of forcing
-      // its text onto one un-broken line that spills past the box and over its neighbours.
-      expect(label.style.overflowWrap).toBe('break-word');
-      // A `flex: 1` item's default min-width is `auto`, which floors its shrink at its
-      // content's natural (unwrapped) width — exactly what defeats overflow-wrap. Without an
-      // explicit override the label can never actually shrink below its longest note name.
-      expect(label.style.minWidth).toBe('0px');
-    }
 
     // The full note name is preserved verbatim, not truncated — wrapping, not clipping.
     expect(labels[0].textContent).toBe('F♯m');
     expect(labels[1].textContent).toBe('B♭');
+  });
+
+  it('draws an open-position shape from the nut', () => {
+    // Open G (320003) fits inside the first four frets; it is not a "2fr" shape.
+    const { container } = render(
+      <ChordDiagram title="G" chordName="G" frets={[3, 2, 0, 0, 0, 3]} />,
+    );
+    expect(container.querySelector('.cd-nut')).not.toBeNull();
+    expect(container.querySelector('.cd-fret-label')).toBeNull();
+  });
+
+  it('moves up the neck for a shape past the fourth fret', () => {
+    const { container } = render(
+      <ChordDiagram title="D" chordName="D" frets={['x', 5, 7, 7, 7, 5]} />,
+    );
+    expect(container.querySelector('.cd-fret-label')?.textContent).toBe('5fr');
   });
 
   it('still renders the short single-character demo fixture unchanged', () => {
@@ -1120,11 +1148,9 @@ describe('GridMatrix', () => {
   });
 });
 
-// Regression coverage for a real bug: the stroke-order index circles fan out across a
-// fixed-width band with a hardcoded radius, so they packed tighter as stroke count grew and
-// started to overlap illegibly well beyond the ~2-4 stroke demo fixture (letters with more
-// complex formation — e.g. a decorative capital, or a CJK-style stroke count — send many more).
-
+// The component knows a stroke's order and its description, never where on the glyph it starts,
+// so the order is told in the list alone. Numbered circles once fanned along the cap line read as
+// start points for each stroke and pointed at nothing.
 describe('LetterForm', () => {
   function strokes(n: number): LetterStroke[] {
     return Array.from({ length: n }, (_, i) => ({
@@ -1133,57 +1159,26 @@ describe('LetterForm', () => {
     }));
   }
 
-  function indexCircles(container: HTMLElement) {
-    return Array.from(container.querySelectorAll<SVGCircleElement>('circle.lr-lf-index')).map(
-      (c) => ({
-        cx: Number(c.getAttribute('cx')),
-        cy: Number(c.getAttribute('cy')),
-        r: Number(c.getAttribute('r')),
-      }),
-    );
-  }
-
-  it.each([2, 4, 8, 14, 20])(
-    'fans %i stroke-order indices without any circle overlapping its neighbor',
-    (n) => {
-      const { container } = render(
-        <LetterForm title="Formation" letter="a" strokes={strokes(n)} />,
-      );
-      const circles = indexCircles(container);
-      expect(circles).toHaveLength(n);
-
-      // Sorted left-to-right (they're already authored in fan order, but don't assume it).
-      circles.sort((a, b) => a.cx - b.cx);
-      for (let i = 1; i < circles.length; i++) {
-        const dx = circles[i].cx - circles[i - 1].cx;
-        // Two circles don't overlap iff the distance between centers is at least the sum of
-        // their radii. A fixed radius that ignored stroke count violated this once the fan
-        // packed circles closer together than 2×r.
-        expect(dx).toBeGreaterThanOrEqual(circles[i].r + circles[i - 1].r);
-      }
-    },
-  );
-
-  it('keeps a single stroke at the full-size radius (no shrinking needed)', () => {
-    const { container } = render(<LetterForm title="Formation" letter="l" strokes={strokes(1)} />);
-    const circles = indexCircles(container);
-    expect(circles).toHaveLength(1);
-    expect(circles[0].r).toBeGreaterThanOrEqual(8);
+  it('marks no stroke position on the letter it cannot locate', () => {
+    const { container } = render(<LetterForm title="Formation" letter="a" strokes={strokes(3)} />);
+    expect(container.querySelectorAll('svg circle')).toHaveLength(0);
   });
 
-  it('keeps circles positive-sized and non-overlapping even at an extreme stroke count', () => {
-    // Well beyond anything a real letter needs, but the invariant that matters is "never
-    // overlap" — a radius floor must never be allowed to win over that and collide circles.
-    const { container } = render(<LetterForm title="Formation" letter="m" strokes={strokes(40)} />);
-    const circles = indexCircles(container).sort((a, b) => a.cx - b.cx);
-    expect(circles).toHaveLength(40);
-    for (const c of circles) {
-      expect(c.r).toBeGreaterThan(0);
-    }
-    for (let i = 1; i < circles.length; i++) {
-      const dx = circles[i].cx - circles[i - 1].cx;
-      expect(dx).toBeGreaterThanOrEqual(circles[i].r + circles[i - 1].r);
-    }
+  it('lists the strokes in order, however they were sent', () => {
+    const { container } = render(
+      <LetterForm
+        title="Formation"
+        letter="a"
+        strokes={[
+          { order: 2, hint: 'Tail' },
+          { order: 1, hint: 'Bowl' },
+        ]}
+      />,
+    );
+    const items = Array.from(container.querySelectorAll('.lr-lf-stroke')).map(
+      (li) => li.textContent,
+    );
+    expect(items).toEqual(['1Bowl', '2Tail']);
   });
 });
 
@@ -1535,14 +1530,10 @@ describe('ParseTree', () => {
 // Regression coverage for two real bugs: equilibrium type labels ("SN"/"Sa"/"C"/…) were drawn at
 // a single fixed offset (px+6, py-5) from their marker, so any system whose equilibria cluster
 // closer together than that offset — a saddle flanked by two nearby centers is a textbook case —
-// rendered overlapping, illegible label text. Separately, the nullcline legend text sat at
-// hardcoded pixel offsets from the card's right edge with no width containment, so a label wider
-// than the "ẋ=0"/"ẏ=0" demo fixture could bleed past the card boundary.
+// rendered overlapping, illegible label text. The search for equilibria must also report each
+// one once, and the nullcline key must stay out of the field it describes.
 
 describe('PhasePortrait', () => {
-  const W = 320;
-  const PAD_RIGHT = 16;
-
   // dx/dt = 6y, dy/dt = -40x(x² - 0.09) has three equilibria on y=0 at x = -0.3, 0, 0.3 — a saddle
   // (x=0) flanked by two centers (x=±0.3). At the component's fixed viewBox they land ~8.8px apart
   // on the SAME horizontal line, which is exactly the configuration the old fixed offset (always
@@ -1608,35 +1599,39 @@ describe('PhasePortrait', () => {
     expect(markers[0].lx).toBe(markers[0].markerX + 6);
   });
 
-  it('constrains the nullcline legend text to the strip inside the card boundary', () => {
+  it('keys the nullclines under the plot, where no field arrow can cross the key', () => {
     const { container } = render(<PhasePortrait title="Legend" {...CLUSTERED_SYSTEM} />);
-    const legendTexts = Array.from(container.querySelectorAll('svg > g > text')).filter((t) =>
-      t.textContent?.includes('='),
-    );
-    expect(legendTexts.length).toBe(2);
-    for (const t of legendTexts) {
-      const x = Number(t.getAttribute('x'));
-      // Visible text (excluding the <title> tooltip, which carries the untruncated string but
-      // isn't rendered) must be short enough that even a generous per-character width estimate
-      // keeps it inside the card's right edge.
-      const visible = Array.from(t.childNodes)
-        .filter((n) => n.nodeType === Node.TEXT_NODE)
-        .map((n) => n.textContent)
-        .join('');
-      expect(visible.length).toBeLessThanOrEqual(6);
-      const estimatedWidth = visible.length * 5; // conservative px/char at fontSize 7
-      expect(x + estimatedWidth).toBeLessThanOrEqual(W - PAD_RIGHT);
-    }
+    const items = [...container.querySelectorAll('.pp-legend li')].map((n) => n.textContent);
+    expect(items).toEqual(['ẋ = 0', 'ẏ = 0']);
+    expect(container.querySelector('svg .pp-legend')).toBeNull();
   });
 
-  it('omits the legend entirely when nullclines are turned off (no stray overflow risk)', () => {
+  it('marks a centre once, however wide the patch of near-zero cells around it', () => {
+    // A gentle field (|f|, |g| < 0.3 across a 0.6-wide square) used to read as a dozen
+    // separate centres piled on the origin.
+    const { container } = render(
+      <PhasePortrait title="SHO" fx="y" gy="-x" xDomain={[-3, 3]} yDomain={[-3, 3]} />,
+    );
+    const markers = equilibriumMarkers(container);
+    expect(markers.map((m) => m.label)).toEqual(['C']);
+  });
+
+  it('finds each equilibrium of a double well exactly once', () => {
+    const { container } = render(
+      <PhasePortrait title="Duffing" fx="y" gy="x - x^3" xDomain={[-2, 2]} yDomain={[-2, 2]} />,
+    );
+    expect(
+      equilibriumMarkers(container)
+        .map((m) => m.label)
+        .sort(),
+    ).toEqual(['C', 'C', 'Sa']);
+  });
+
+  it('omits the key when nullclines are turned off', () => {
     const { container } = render(
       <PhasePortrait title="No nullclines" {...CLUSTERED_SYSTEM} showNullclines={false} />,
     );
-    const legendTexts = Array.from(container.querySelectorAll('svg text')).filter((t) =>
-      t.textContent?.includes('='),
-    );
-    expect(legendTexts).toHaveLength(0);
+    expect(container.querySelector('.pp-legend')).toBeNull();
   });
 });
 
@@ -2032,17 +2027,46 @@ describe('PyramidTiers', () => {
         }
       });
 
-      // The narrowest tier (top of the pyramid, rendered first in SVG order) is where a long
-      // label most needs help — for these long fixtures at n>=5 it must actually engage
+      // The narrowest tier (the apex — tiers run bottom → top, so it is rendered LAST) is where
+      // a long label most needs help — for these long fixtures at n>=5 it must actually engage
       // either the clamp or the smaller font step, not render untouched at full size.
       if (n >= 5) {
-        const narrowestLabel = labels[0]!;
+        const narrowestLabel = labels[labels.length - 1]!;
         const shrunk = narrowestLabel.style.fontSize !== '';
         const clamped = narrowestLabel.hasAttribute('textLength');
         expect(shrunk || clamped).toBe(true);
       }
     },
   );
+
+  it('draws the sides as one straight slope, apex tier included', () => {
+    const { container } = render(
+      <PyramidTiers
+        title="Bloom"
+        tiers={['Remember', 'Understand', 'Apply', 'Analyse', 'Evaluate', 'Create'].map(
+          (label) => ({ label }),
+        )}
+      />,
+    );
+    // Left edge of each band: [bottom x, bottom y, top x, top y], top tier first.
+    const sides = Array.from(container.querySelectorAll('svg polygon'))
+      .map((p) => {
+        const [bl, , , tl] = p
+          .getAttribute('points')!
+          .trim()
+          .split(/\s+/)
+          .map((pt) => pt.split(',').map(Number));
+        return { bx: bl![0]!, by: bl![1]!, tx: tl![0]!, ty: tl![1]! };
+      })
+      .reverse();
+    const slopes = sides.map((s) => (s.bx - s.tx) / (s.by - s.ty));
+    // A top tier with no slope is a box sitting on a pyramid.
+    for (const k of slopes) expect(k).toBeCloseTo(slopes[0]!, 6);
+    expect(slopes[0]).toBeLessThan(0);
+    // The apex label fits its band's top edge at full size, so it is never squeezed.
+    const apexLabel = Array.from(container.querySelectorAll('text.py-tier-label')).at(-1)!;
+    expect(apexLabel.hasAttribute('textLength')).toBe(false);
+  });
 
   it('leaves short labels that comfortably fit their band completely unclamped', () => {
     const { container } = render(
@@ -2462,57 +2486,71 @@ describe('UnitCircle', () => {
   });
 });
 
-// Regression coverage for a real bug: per-wave legend labels were rendered right-anchored at a
-// fixed x position (the plot's right edge) with no cap on the source string's length. The demo
-// fixture's short labels ("440 Hz") never exposed it, but a longer label — e.g. a descriptive
-// name a model might supply — ran leftward past the plot's left padding and off the card.
+// The wave's own names live in an HTML legend; the amplitude label is the only text inside the
+// plot, and it has to land where no curve runs.
+const pathPoints = (d: string) =>
+  [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }));
 
 describe('WaveDiagram', () => {
-  it('truncates a long per-wave legend label instead of letting it overflow the plot', () => {
+  it('keeps a long wave name whole in the legend', () => {
     const longLabel = 'Fundamental frequency of the driven oscillator (440 Hz reference)';
     const { container } = render(
       <WaveDiagram title="Waves" waves={[{ amplitude: 1, wavelength: 2, label: longLabel }]} />,
     );
-    const labelNode = container.querySelector('.wv-curve-lbl');
-    expect(labelNode).toBeTruthy();
-    const text = labelNode!.textContent ?? '';
-    // Well short of the full string, and ends with the truncation ellipsis.
-    expect(text.length).toBeLessThan(longLabel.length);
-    expect(text.endsWith('…')).toBe(true);
+    expect(container.querySelector('.wv-legend-item')?.textContent).toBe(longLabel);
   });
 
-  it('leaves a short legend label untouched', () => {
+  it('draws no legend when no wave is named', () => {
     const { container } = render(
-      <WaveDiagram title="Waves" waves={[{ amplitude: 1, wavelength: 2, label: '440 Hz' }]} />,
+      <WaveDiagram title="Waves" waves={[{ amplitude: 1, wavelength: 2 }]} />,
     );
-    const labelNode = container.querySelector('.wv-curve-lbl');
-    expect(labelNode?.textContent).toBe('440 Hz');
+    expect(container.querySelector('.wv-legend')).toBeNull();
   });
 
-  it('caps every wave label so its right-anchored end never runs past the plot padding', () => {
-    // Two waves, both with labels long enough that the old unbounded render would push their
-    // start position well left of the axis — every rendered label must stay within budget.
+  // Curve vertices inside the label's box, from the rendered DOM.
+  const crossings = (container: HTMLElement, x: number, y: number, anchor: string | null) => {
+    const w = 5.5 * 'A = 3'.length;
+    const x1 = anchor === 'end' ? x - w : x;
+    return [...container.querySelectorAll('.wv-curve')]
+      .flatMap((path) => pathPoints(path.getAttribute('d') ?? ''))
+      .filter((p) => p.x >= x1 && p.x <= x1 + w && p.y >= y - 5.5 && p.y <= y + 5.5).length;
+  };
+  const ampLabel = (container: HTMLElement) => {
+    const lbl = container.querySelector('.wv-measure-lbl')!;
+    const line = container.querySelector('.wv-amp-line')!;
+    return {
+      text: lbl.textContent,
+      x: Number(lbl.getAttribute('x')),
+      y: Number(lbl.getAttribute('y')),
+      anchor: lbl.getAttribute('text-anchor'),
+      lineX: Number(line.getAttribute('x1')),
+      mid: (Number(line.getAttribute('y1')) + Number(line.getAttribute('y2'))) / 2,
+    };
+  };
+
+  it('moves the amplitude label off a second wave that crosses the marker', () => {
+    // The harmonic crosses the marker's midpoint, where the label used to sit regardless.
     const { container } = render(
       <WaveDiagram
-        title="Waves"
+        title="Sound"
         waves={[
-          { amplitude: 1, wavelength: 2, label: 'A very long descriptive label for wave one' },
-          {
-            amplitude: 0.6,
-            wavelength: 3,
-            phase: 1,
-            label: 'An equally verbose label for wave two here',
-          },
+          { amplitude: 3, wavelength: 0.78, label: 'A4' },
+          { amplitude: 1.5, wavelength: 0.39, label: '2nd harmonic' },
         ]}
       />,
     );
-    const labels = Array.from(container.querySelectorAll('.wv-curve-lbl'));
-    expect(labels).toHaveLength(2);
-    for (const node of labels) {
-      // 20-char budget (incl. the ellipsis) at the class's ~9.5px font comfortably clears the
-      // plot's left padding before reaching the fixed right-anchor x used for every label.
-      expect((node.textContent ?? '').length).toBeLessThanOrEqual(20);
-    }
+    const a = ampLabel(container);
+    expect(a.text).toBe('A = 3');
+    const fixedSpot = crossings(container, a.lineX + 5, a.mid, 'start');
+    expect(crossings(container, a.x, a.y, a.anchor)).toBeLessThan(fixedSpot);
+  });
+
+  it('leaves the amplitude label untouched by a lone wave', () => {
+    const { container } = render(
+      <WaveDiagram title="Sound" waves={[{ amplitude: 3, wavelength: 0.78, label: 'A4' }]} />,
+    );
+    const a = ampLabel(container);
+    expect(crossings(container, a.x, a.y, a.anchor)).toBe(0);
   });
 });
 

@@ -6,6 +6,24 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = NumberstepperProps & { delay?: number };
 
+// The icon set has no minus, and a rotated × is a plus. Drawn with the set's own stroke so the two
+// buttons read as a pair.
+function MinusGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 export function Numberstepper({
   title,
   icon = 'edit',
@@ -67,7 +85,7 @@ export function Numberstepper({
           onClick={() => bump(-1)}
           aria-label="Decrease"
         >
-          <Icon.x className="ns-btn-ic minus" />
+          <MinusGlyph className="ns-btn-ic" />
         </button>
         <div className="ns-value-wrap">
           {prefix && <span className="ns-affix">{prefix}</span>}
@@ -98,15 +116,15 @@ export function Numberstepper({
         />
       </div>
       <div className="ns-bounds faint">
+        {/* The unit already sits beside the value; repeated here it ran into the number
+            ("1pizzas") and could not agree in number with both ends. */}
         <span>
-          {prefix}
+          min {prefix}
           {min}
-          {suffix}
         </span>
         <span>
-          {prefix}
+          max {prefix}
           {max}
-          {suffix}
         </span>
       </div>
 

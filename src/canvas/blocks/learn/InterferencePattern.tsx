@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
 import type { InterferencePatternProps, InterferenceSample } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { monotonePath } from './smoothPath';
 
 type Props = InterferencePatternProps & { delay?: number };
 
@@ -17,10 +18,10 @@ const SLIT_SEP = 22; // px between the two slit centres (illustrative, not to sc
 // Fringe-intensity plot viewBox.
 const W = 320;
 const H = 168;
-const PAD_L = 30;
+const PAD_L = 30; // holds the rotated "Intensity" title beside the axis
 const PAD_R = 14;
-const PAD_T = 10;
-const PAD_B = 24;
+const PAD_T = 8;
+const PAD_B = 36; // tick row, then the "Screen position" title centred under it
 
 // A short, real sine snippet for the incident wave, left of the barrier — the same per-sample
 // sin(kx) construction WaveDiagram uses, just fixed to a couple of legible cycles in schematic
@@ -90,14 +91,15 @@ export function InterferencePattern({
     const sy = scaleLinear([yLo, yHi], [H - PAD_B, PAD_T]);
     const baseline = sy(Math.max(0, yLo));
 
-    const linePts = valid.map((p) => `${sx(p.position).toFixed(2)},${sy(p.value).toFixed(2)}`);
-    const areaPts = [
-      `${sx(valid[0].position).toFixed(2)},${baseline.toFixed(2)}`,
-      ...linePts,
-      `${sx(valid[valid.length - 1].position).toFixed(2)},${baseline.toFixed(2)}`,
-    ].join(' ');
+    // Samples arrive as coarsely as the model cares to send them; joined with straight lines a
+    // dozen samples across five fringes drew a row of spikes. A monotone curve through the same
+    // points rounds each fringe without inventing a value the samples do not hold.
+    const path = monotonePath(valid.map((p) => ({ x: sx(p.position), y: sy(p.value) })));
+    const x0 = sx(valid[0].position).toFixed(2);
+    const x1 = sx(valid[valid.length - 1].position).toFixed(2);
+    const areaPath = `${path} L ${x1},${baseline.toFixed(2)} L ${x0},${baseline.toFixed(2)} Z`;
 
-    return { valid, sx, sy, xTicks: sx.ticks(5), path: linePts.join(' '), areaPath: areaPts };
+    return { valid, sx, sy, xTicks: sx.ticks(5), path, areaPath };
   }, [intensity]);
 
   return (
@@ -163,9 +165,10 @@ export function InterferencePattern({
                 className="lr-ip-grid"
               />
             ))}
-            <polygon points={model.areaPath} className="lr-ip-area" />
-            <polyline points={model.path} fill="none" className="lr-ip-curve" data-mark="line" />
+            <path d={model.areaPath} className="lr-ip-area" />
+            <path d={model.path} fill="none" className="lr-ip-curve" data-mark="line" />
             <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} className="lr-ip-axis" />
+            <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="lr-ip-axis" />
             {model.xTicks.map((t, i) => (
               <text
                 key={i}
@@ -177,12 +180,17 @@ export function InterferencePattern({
                 {t}
               </text>
             ))}
-            {/* Both axis labels sit on the top row — the bottom tick row runs a real x tick all
-                the way to the domain's own edge, which a label this long would collide with. */}
-            <text x={W - PAD_R} y={PAD_T - 2} className="lr-ip-axlbl" textAnchor="end">
+            {/* Each title on its own axis: the x title on a row of its own under the ticks, so the
+                ticks that run to the domain's edges never meet it; the y title turned along the
+                intensity axis, which has no ticks to compete with. */}
+            <text x={(PAD_L + W - PAD_R) / 2} y={H - 4} className="lr-ip-axlbl" textAnchor="middle">
               Screen position
             </text>
-            <text x={PAD_L + 2} y={PAD_T - 2} className="lr-ip-axlbl" textAnchor="start">
+            <text
+              transform={`translate(${PAD_L - 8}, ${(PAD_T + H - PAD_B) / 2}) rotate(-90)`}
+              className="lr-ip-axlbl"
+              textAnchor="middle"
+            >
               Intensity
             </text>
           </svg>

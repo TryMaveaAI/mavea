@@ -337,12 +337,12 @@ export const trivia: ConversationSpec = {
           { row: 7, col: 5, glyph: '♗', side: 'a' },
           { row: 7, col: 6, glyph: '♘', side: 'a' },
           { row: 4, col: 4, glyph: '♙', side: 'a' },
-          { row: 6, col: 4, glyph: '♟', side: 'b' },
-          { row: 5, col: 2, glyph: '♞', side: 'b' },
+          { row: 3, col: 4, glyph: '♟', side: 'b' },
+          { row: 2, col: 2, glyph: '♞', side: 'b' },
           { row: 0, col: 4, glyph: '♚', side: 'b' },
         ],
         highlights: [
-          { row: 5, col: 2 },
+          { row: 2, col: 2 },
           { row: 3, col: 1 },
         ],
         moves: [

@@ -9,7 +9,8 @@ type Props = EfficientFrontierProps & { delay?: number };
 
 const W = 320;
 const H = 220;
-const PAD = { l: 34, r: 12, t: 14, b: 26 };
+// Top and bottom hold the axis titles as well as the ticks, so the titles travel with the plot.
+const PAD = { l: 34, r: 12, t: 24, b: 36 };
 
 // ScatterRegression's axes+points scaffold, but the curve is never a computed fit here — it's
 // drawn exactly as given, the frontier itself as a caller-supplied ordered polyline, the same
@@ -92,6 +93,12 @@ export function EfficientFrontier({
           ))}
           <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} className="fin-ef-axis" />
           <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} className="fin-ef-axis" />
+          <text x={W - PAD.r} y={H - PAD.b + 26} className="fin-ef-axtitle" textAnchor="end">
+            risk →
+          </text>
+          <text x={PAD.l} y={PAD.t - 10} className="fin-ef-axtitle" textAnchor="middle">
+            ↑ return
+          </text>
 
           {safeFrontier.length > 1 && (
             <path
@@ -152,11 +159,6 @@ export function EfficientFrontier({
             </span>
           </div>
         )}
-      </div>
-
-      <div className="fin-ef-axlbl">
-        <span>risk →</span>
-        <span>↑ return</span>
       </div>
 
       {footer && (

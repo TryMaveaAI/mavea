@@ -508,7 +508,7 @@ describe('mobile fixed chrome — disclosure and demo controls preserve the read
 
   it('keeps a phone voice-status orb without overflowing its duplicate word label', () => {
     const css = read('src/live/livedock.css');
-    const phone = css.slice(css.indexOf('@media (width <= 560px)'));
+    const phone = css.slice(css.indexOf('@container (width <= 760px)'));
     expect(phone).toMatch(/\.live-voice \.vc-status-label\s*\{[^}]*display:\s*none/s);
   });
 

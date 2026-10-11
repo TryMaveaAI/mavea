@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { JourneyMapProps } from './types';
+import { emotionPoints } from './journeyMapLayout';
 
 type Props = JourneyMapProps & { delay?: number };
 
@@ -23,14 +24,7 @@ export function JourneyMap({
   // The stage with the lowest emotion score is the pain point Mavéa most naturally points to.
   const salient = stages.reduce((idx, s, i) => (s.emotion < stages[idx].emotion ? i : idx), 0);
 
-  // emotion polyline points in 0..100 box; emotion -2..2 -> y 90..10.
-  // x is inset 2% on each side so the end dots (centered at 0%/100% with translate(-50%,-50%))
-  // don't extend past the fl-jm overflow:hidden boundary.
-  const pts = stages.map((s, i) => {
-    const x = n > 1 ? 2 + (i / (n - 1)) * 96 : 50;
-    const y = 50 - (s.emotion / 2) * 40;
-    return { x, y };
-  });
+  const pts = emotionPoints(stages.map((s) => s.emotion));
   const path = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
 
   return (

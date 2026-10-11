@@ -40,3 +40,15 @@ describe('Casestudy rail structure', () => {
     expect(rails[3].querySelector('.lay-cs-line')).toBeNull();
   });
 });
+
+describe('Casestudy rail spacing', () => {
+  it('leaves the connector real length between collapsed stages', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('src/canvas/blocks/layout/styles.css', 'utf8');
+    const pad = Number(css.match(/--cs-row-pad:\s*(\d+)px/)?.[1]);
+    // A collapsed stage's rail is node + 2 x pad tall; the line gets what the node leaves
+    // (less its 2px top margin). At 6px that was a 4px stub between nodes that nearly touched.
+    expect(2 * pad - 2).toBeGreaterThanOrEqual(12);
+    expect(css).toMatch(/\.lay-cs-line\s*\{[^}]*background:\s*var\(--line-strong\)/);
+  });
+});

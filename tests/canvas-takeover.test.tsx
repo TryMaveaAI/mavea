@@ -75,6 +75,8 @@ describe('CanvasTakeover', () => {
     );
     const ask = document.body.querySelector('.cv-node-ask') as HTMLElement;
     expect(ask).toBeTruthy();
+    // In the title bar: pinned over the body it sat on the card's last line of text.
+    expect(ask.closest('.cv-node-label')).not.toBeNull();
     fireEvent.click(ask);
     expect(onAskBlock).toHaveBeenCalledTimes(1);
     expect(onAskBlock.mock.calls[0][0].id).toBe('a');

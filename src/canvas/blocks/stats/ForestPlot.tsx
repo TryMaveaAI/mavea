@@ -368,176 +368,192 @@ export function ForestPlot({
 
       {model && (
         <>
-          <svg
-            viewBox={`0 0 ${W} ${model.H}`}
-            className="fpl-svg"
-            role="img"
-            aria-label={title || 'Forest plot'}
-          >
-            {/* column headers */}
-            <text x={2} y={13} className="fpl-colhead" textAnchor="start">
-              Study
-            </text>
-            <text x={(PLOT_L + PLOT_R) / 2} y={13} className="fpl-colhead" textAnchor="middle">
-              {MEASURE_NAMES[model.mKey]}
-              {model.isRatio ? ' (log scale)' : ''}
-            </text>
-            <text x={W - 2} y={13} className="fpl-colhead" textAnchor="end">
-              Weight
-            </text>
+          <div className="canvas-figure">
+            <svg
+              viewBox={`0 0 ${W} ${model.H}`}
+              className="fpl-svg"
+              role="img"
+              aria-label={title || 'Forest plot'}
+            >
+              {/* column headers */}
+              <text x={2} y={13} className="fpl-colhead" textAnchor="start">
+                Study
+              </text>
+              <text x={(PLOT_L + PLOT_R) / 2} y={13} className="fpl-colhead" textAnchor="middle">
+                {MEASURE_NAMES[model.mKey]}
+                {model.isRatio ? ' (log scale)' : ''}
+              </text>
+              <text x={W - 2} y={13} className="fpl-colhead" textAnchor="end">
+                Weight
+              </text>
 
-            {/* null line: the "no effect" reference every row is read against */}
-            <line
-              className="fpl-null"
-              x1={model.x(model.nullValue)}
-              y1={TOP + 2}
-              x2={model.x(model.nullValue)}
-              y2={model.axisY}
-            />
+              {/* null line: the "no effect" reference every row is read against */}
+              <line
+                className="fpl-null"
+                x1={model.x(model.nullValue)}
+                y1={TOP + 2}
+                x2={model.x(model.nullValue)}
+                y2={model.axisY}
+              />
 
-            {/* one row per study */}
-            {model.rows.map((r, i) => {
-              const cy = model.rowsTop + i * model.rowH + model.rowH / 2;
-              const w = model.weights[i];
-              const s = model.side(w);
-              const maxLines = model.rowH >= 22 ? 2 : 1;
-              const fs = model.rowH >= 18 ? 10.5 : model.rowH >= 14 ? 9.5 : 8.5;
-              return (
+              {/* one row per study */}
+              {model.rows.map((r, i) => {
+                const cy = model.rowsTop + i * model.rowH + model.rowH / 2;
+                const w = model.weights[i];
+                const s = model.side(w);
+                const maxLines = model.rowH >= 22 ? 2 : 1;
+                const fs = model.rowH >= 18 ? 10.5 : model.rowH >= 14 ? 9.5 : 8.5;
+                return (
+                  <g
+                    key={r.key}
+                    className={
+                      r.clamped
+                        ? 'fpl-row fpl-row--clamped m-stagger-item'
+                        : 'fpl-row m-stagger-item'
+                    }
+                    style={{ ['--i' as string]: Math.min(i, 15) } as CSSProperties}
+                  >
+                    <title>
+                      {`${r.label}: ${fmtEffect(r.effect)} (95% CI ${fmtEffect(r.lo)} to ${fmtEffect(r.hi)})` +
+                        (w !== null ? `, weight ${formatValue(w, { decimals: 1 })}%` : '') +
+                        (r.clamped ? ' — clamped to fit the log axis' : '')}
+                    </title>
+                    <GutterLabel label={r.label} cy={cy} maxLines={maxLines} fontSize={fs} />
+                    <line
+                      className="fpl-ci"
+                      x1={model.x(r.lo)}
+                      y1={cy}
+                      x2={model.x(r.hi)}
+                      y2={cy}
+                    />
+                    <line
+                      className="fpl-ci"
+                      x1={model.x(r.lo)}
+                      y1={cy - capW / 2}
+                      x2={model.x(r.lo)}
+                      y2={cy + capW / 2}
+                    />
+                    <line
+                      className="fpl-ci"
+                      x1={model.x(r.hi)}
+                      y1={cy - capW / 2}
+                      x2={model.x(r.hi)}
+                      y2={cy + capW / 2}
+                    />
+                    <rect
+                      className="fpl-sq"
+                      x={model.x(r.effect) - s / 2}
+                      y={cy - s / 2}
+                      width={s}
+                      height={s}
+                    />
+                    <text
+                      x={W - 2}
+                      y={cy}
+                      className="fpl-wt"
+                      textAnchor="end"
+                      dominantBaseline="central"
+                    >
+                      {w !== null ? `${formatValue(w, { decimals: 1 })}%` : '—'}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* pooled diamond: width IS the pooled CI, waist at the pooled effect */}
+              {model.summary && (
                 <g
-                  key={r.key}
-                  className={
-                    r.clamped ? 'fpl-row fpl-row--clamped m-stagger-item' : 'fpl-row m-stagger-item'
-                  }
-                  style={{ ['--i' as string]: Math.min(i, 15) } as CSSProperties}
+                  className="fpl-row m-fade-rise m-stagger-item"
+                  style={{ ['--i' as string]: Math.min(model.rows.length, 16) } as CSSProperties}
                 >
                   <title>
-                    {`${r.label}: ${fmtEffect(r.effect)} (95% CI ${fmtEffect(r.lo)} to ${fmtEffect(r.hi)})` +
-                      (w !== null ? `, weight ${formatValue(w, { decimals: 1 })}%` : '') +
-                      (r.clamped ? ' — clamped to fit the log axis' : '')}
+                    {`${model.summary.label}: ${fmtEffect(model.summary.effect)} (95% CI ${fmtEffect(model.summary.lo)} to ${fmtEffect(model.summary.hi)})` +
+                      (model.summary.computed ? ' — fixed-effect inverse-variance pool' : '')}
                   </title>
-                  <GutterLabel label={r.label} cy={cy} maxLines={maxLines} fontSize={fs} />
-                  <line className="fpl-ci" x1={model.x(r.lo)} y1={cy} x2={model.x(r.hi)} y2={cy} />
+                  <line className="fpl-sep" x1={2} y1={model.sepY} x2={W - 2} y2={model.sepY} />
+                  {(() => {
+                    const cy = model.sepY + 5 + Math.max(model.rowH, 20) / 2;
+                    const dh = Math.min(7, Math.max(5, model.rowH / 2 - 1));
+                    const xl = model.x(model.summary.lo);
+                    const xr = model.x(model.summary.hi);
+                    const xe = model.x(model.summary.effect);
+                    return (
+                      <>
+                        <GutterLabel
+                          label={model.summary.label}
+                          cy={cy}
+                          maxLines={1}
+                          fontSize={10.5}
+                          bold
+                        />
+                        <polygon
+                          className="fpl-diamond"
+                          points={`${xl},${cy} ${xe},${cy - dh} ${xr},${cy} ${xe},${cy + dh}`}
+                        />
+                        <text
+                          x={W - 2}
+                          y={cy}
+                          className="fpl-wt fpl-wt--pooled"
+                          textAnchor="end"
+                          dominantBaseline="central"
+                        >
+                          100%
+                        </text>
+                      </>
+                    );
+                  })()}
+                </g>
+              )}
+
+              {/* shared x axis */}
+              <line
+                className="fpl-axis"
+                x1={PLOT_L}
+                y1={model.axisY}
+                x2={PLOT_R}
+                y2={model.axisY}
+              />
+              {model.axisTicks.map((tick) => (
+                <g key={`t${tick}`}>
                   <line
-                    className="fpl-ci"
-                    x1={model.x(r.lo)}
-                    y1={cy - capW / 2}
-                    x2={model.x(r.lo)}
-                    y2={cy + capW / 2}
-                  />
-                  <line
-                    className="fpl-ci"
-                    x1={model.x(r.hi)}
-                    y1={cy - capW / 2}
-                    x2={model.x(r.hi)}
-                    y2={cy + capW / 2}
-                  />
-                  <rect
-                    className="fpl-sq"
-                    x={model.x(r.effect) - s / 2}
-                    y={cy - s / 2}
-                    width={s}
-                    height={s}
+                    className="fpl-axis"
+                    x1={model.x(tick)}
+                    y1={model.axisY}
+                    x2={model.x(tick)}
+                    y2={model.axisY + 4}
                   />
                   <text
-                    x={W - 2}
-                    y={cy}
-                    className="fpl-wt"
-                    textAnchor="end"
-                    dominantBaseline="central"
+                    className="fpl-tick"
+                    x={model.x(tick)}
+                    y={model.axisY + 15}
+                    textAnchor="middle"
                   >
-                    {w !== null ? `${formatValue(w, { decimals: 1 })}%` : '—'}
+                    {Math.abs(tick) >= 1000
+                      ? formatValue(tick, { compact: true })
+                      : formatValue(tick)}
                   </text>
                 </g>
-              );
-            })}
+              ))}
 
-            {/* pooled diamond: width IS the pooled CI, waist at the pooled effect */}
-            {model.summary && (
-              <g
-                className="fpl-row m-fade-rise m-stagger-item"
-                style={{ ['--i' as string]: Math.min(model.rows.length, 16) } as CSSProperties}
-              >
-                <title>
-                  {`${model.summary.label}: ${fmtEffect(model.summary.effect)} (95% CI ${fmtEffect(model.summary.lo)} to ${fmtEffect(model.summary.hi)})` +
-                    (model.summary.computed ? ' — fixed-effect inverse-variance pool' : '')}
-                </title>
-                <line className="fpl-sep" x1={2} y1={model.sepY} x2={W - 2} y2={model.sepY} />
-                {(() => {
-                  const cy = model.sepY + 5 + Math.max(model.rowH, 20) / 2;
-                  const dh = Math.min(7, Math.max(5, model.rowH / 2 - 1));
-                  const xl = model.x(model.summary.lo);
-                  const xr = model.x(model.summary.hi);
-                  const xe = model.x(model.summary.effect);
-                  return (
-                    <>
-                      <GutterLabel
-                        label={model.summary.label}
-                        cy={cy}
-                        maxLines={1}
-                        fontSize={10.5}
-                        bold
-                      />
-                      <polygon
-                        className="fpl-diamond"
-                        points={`${xl},${cy} ${xe},${cy - dh} ${xr},${cy} ${xe},${cy + dh}`}
-                      />
-                      <text
-                        x={W - 2}
-                        y={cy}
-                        className="fpl-wt fpl-wt--pooled"
-                        textAnchor="end"
-                        dominantBaseline="central"
-                      >
-                        100%
-                      </text>
-                    </>
-                  );
-                })()}
-              </g>
-            )}
-
-            {/* shared x axis */}
-            <line className="fpl-axis" x1={PLOT_L} y1={model.axisY} x2={PLOT_R} y2={model.axisY} />
-            {model.axisTicks.map((tick) => (
-              <g key={`t${tick}`}>
-                <line
-                  className="fpl-axis"
-                  x1={model.x(tick)}
-                  y1={model.axisY}
-                  x2={model.x(tick)}
-                  y2={model.axisY + 4}
+              {/* directional reading of the axis halves */}
+              {typeof favorsLeft === 'string' && favorsLeft.trim() && (
+                <FavorsLabel
+                  text={`← ${favorsLeft.trim()}`}
+                  x={PLOT_L}
+                  anchor="start"
+                  y={model.axisY + 28}
                 />
-                <text
-                  className="fpl-tick"
-                  x={model.x(tick)}
-                  y={model.axisY + 15}
-                  textAnchor="middle"
-                >
-                  {Math.abs(tick) >= 1000
-                    ? formatValue(tick, { compact: true })
-                    : formatValue(tick)}
-                </text>
-              </g>
-            ))}
-
-            {/* directional reading of the axis halves */}
-            {typeof favorsLeft === 'string' && favorsLeft.trim() && (
-              <FavorsLabel
-                text={`← ${favorsLeft.trim()}`}
-                x={PLOT_L}
-                anchor="start"
-                y={model.axisY + 28}
-              />
-            )}
-            {typeof favorsRight === 'string' && favorsRight.trim() && (
-              <FavorsLabel
-                text={`${favorsRight.trim()} →`}
-                x={PLOT_R}
-                anchor="end"
-                y={model.axisY + 28}
-              />
-            )}
-          </svg>
+              )}
+              {typeof favorsRight === 'string' && favorsRight.trim() && (
+                <FavorsLabel
+                  text={`${favorsRight.trim()} →`}
+                  x={PLOT_R}
+                  anchor="end"
+                  y={model.axisY + 28}
+                />
+              )}
+            </svg>
+          </div>
 
           <p className="fpl-caption faint tab-num">
             {model.summary

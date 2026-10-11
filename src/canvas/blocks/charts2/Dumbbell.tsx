@@ -66,7 +66,9 @@ export function Dumbbell({
               onMouseLeave={() => setHot(null)}
             >
               <div className="c2-db-name">
-                <span className="c2-db-name-txt">{r.label}</span>
+                <span className="c2-db-name-txt" title={r.label}>
+                  {r.label}
+                </span>
                 {r.tag && <span className="c2-db-tag">{r.tag}</span>}
               </div>
               <div className="c2-db-track">

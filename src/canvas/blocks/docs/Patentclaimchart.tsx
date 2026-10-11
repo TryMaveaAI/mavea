@@ -101,7 +101,10 @@ export function Patentclaimchart({
       </div>
 
       <div className="pcc-scroll">
-        <table className="pcc-table">
+        <table
+          className="pcc-table"
+          style={{ ['--pcc-refs' as string]: refs.length } as CSSProperties}
+        >
           <colgroup>
             <col className="pcc-col-el" />
             {refs.map((_, i) => (

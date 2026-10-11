@@ -105,6 +105,7 @@
 /* ---------- Gauge (risk / NPS / readiness) ---------- */
 .risk-wrap {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
 }
@@ -138,6 +139,20 @@
   letter-spacing: 0.06em;
   color: var(--text-muted);
   margin-top: 2px;
+}
+/* Beside the dial while there is a readable measure for it, under the dial when the card is too
+   narrow to give one — a column a word wide broke "MODERATE" across two lines. */
+.risk-side {
+  flex: 1 1 min(16ch, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.gauge-band--beside {
+  margin-top: 0;
+  line-height: 1.35;
+  overflow-wrap: break-word;
 }
 .risk-driver {
   margin: 0;
@@ -208,6 +223,9 @@
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
+  /* One width for every status ("Final", "Q4 · 4:12"), so the scores beside it line up from card
+     to card instead of stepping with the length of the clock. */
+  min-inline-size: 7em;
 }
 .g-status.live {
   color: var(--insight);
@@ -225,14 +243,17 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  /* Rows share one set of columns (subgrid), so a "41-9" and a "36-14" end on the same edge and
+     the header sits over its column instead of each row sizing its own. */
+  display: grid;
+  grid-template-columns: minmax(16px, auto) minmax(0, 1fr) auto auto;
+  column-gap: 10px;
+  row-gap: 2px;
 }
 .stand {
   display: grid;
-  grid-template-columns: 16px 1fr auto auto;
-  gap: 10px;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
   padding: 9px 6px;
   font-size: var(--fs-sm);
@@ -256,10 +277,31 @@
   color: var(--text-secondary);
   font-weight: 700;
 }
+.stand-rec {
+  text-align: right;
+}
 .stand-gb {
   color: var(--text-muted);
   font-weight: 600;
   min-width: 28px;
+  text-align: right;
+}
+.stand-head {
+  padding-block: 0 4px;
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.stand-head:hover {
+  background: none;
+}
+.stand-head abbr {
+  text-decoration: none;
+  cursor: help;
+}
+.stand-head > span:nth-child(n + 3) {
   text-align: right;
 }
 

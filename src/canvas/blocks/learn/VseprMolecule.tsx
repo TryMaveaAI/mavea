@@ -12,7 +12,28 @@ const H = 270;
 const CX = W / 2;
 const CY = H / 2 + 6; // nudge down a touch to leave room for the shape label up top
 const BOND_R = 80; // length of a bond from centre to substituent
-const LP_R = 46; // radius at which lone pairs are parked
+const CENTRAL_R = 19;
+// Lone pairs sit just off the central atom's rim, as in a Lewis structure: they belong to that
+// atom, and parked out at half a bond's length they read as a stray mark above it.
+const LP_R_MIN = CENTRAL_R + 8;
+/** Half the spacing of a pair's two dots. */
+const LP_DOT_SPREAD = 3.4;
+// Neighbouring pairs' centres stay this far apart, about three times a pair's own spacing, so
+// two pairs read as two pairs and not as a row of four dots.
+const LP_PAIR_CLEAR = 24;
+
+/** How far out the lone pairs sit: at the rim, or further when their directions are close. */
+function lonePairRadius(angles: readonly number[]): number {
+  let minSep = 360;
+  const sorted = [...angles].sort((a, b) => a - b);
+  sorted.forEach((a, i) => {
+    if (sorted.length < 2) return;
+    const next = i + 1 < sorted.length ? sorted[i + 1] : sorted[0] + 360;
+    minSep = Math.min(minSep, next - a);
+  });
+  if (minSep >= 180) return LP_R_MIN;
+  return Math.max(LP_R_MIN, LP_PAIR_CLEAR / (2 * Math.sin(((minSep / 2) * Math.PI) / 180)));
+}
 
 /** A substituent direction: an in-plane angle (degrees, 0 = right, CCW) plus a depth cue that
  *  selects a plain / wedge (toward viewer) / dash (away) bond — giving the figure 3-D feel without
@@ -46,7 +67,8 @@ const SHAPES: Record<string, { bonds: Slot[]; lone: number[] }> = {
       { angle: 235, depth: 'flat' },
       { angle: 305, depth: 'flat' },
     ],
-    lone: [70, 110],
+    // Up and out, mirroring the two bonds below: the textbook drawing of water.
+    lone: [55, 125],
   },
   tetrahedral: {
     bonds: [
@@ -132,11 +154,12 @@ export function VseprMolecule({
     });
 
     // Lone pairs sit in their parked directions (or evenly when the shape doesn't pin them).
-    const lone: { x: number; y: number; angle: number }[] = [];
-    for (let i = 0; i < lonePairs; i++) {
-      const a = layout.lone[i] ?? 90 + (i * 360) / Math.max(lonePairs, 1);
-      lone.push({ x: px(CX, LP_R, a), y: py(CY, LP_R, a), angle: a });
-    }
+    const angles = Array.from(
+      { length: lonePairs },
+      (_, i) => layout.lone[i] ?? 90 + (i * 360) / Math.max(lonePairs, 1),
+    );
+    const r = lonePairRadius(angles);
+    const lone = angles.map((a) => ({ x: px(CX, r, a), y: py(CY, r, a), angle: a }));
 
     return { key, placed, lone };
   }, [shape, bonds, lonePairs]);
@@ -215,8 +238,8 @@ export function VseprMolecule({
           {/* Lone pairs — two dots, oriented across the parked direction. */}
           {geom.lone.map((lp, i) => {
             const perp = lp.angle + 90;
-            const ox = Math.cos(rad(perp)) * 4;
-            const oy = -Math.sin(rad(perp)) * 4;
+            const ox = Math.cos(rad(perp)) * LP_DOT_SPREAD;
+            const oy = -Math.sin(rad(perp)) * LP_DOT_SPREAD;
             return (
               <g key={`lp${i}`} className="lr-vse-lone">
                 <circle cx={lp.x + ox} cy={lp.y + oy} r={2.4} />
@@ -236,7 +259,7 @@ export function VseprMolecule({
           ))}
 
           {/* Central atom — drawn last, on top, with the accent ring. */}
-          <circle cx={CX} cy={CY} r={19} className="lr-vse-central-bg" />
+          <circle cx={CX} cy={CY} r={CENTRAL_R} className="lr-vse-central-bg" />
           <text x={CX} y={CY + 5} className="lr-vse-central" textAnchor="middle">
             {central}
           </text>

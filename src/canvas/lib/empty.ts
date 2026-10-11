@@ -263,6 +263,82 @@ export function expressesSequence(type: string, props: unknown): boolean {
   return asArray(asRecord(props).events).length >= 2;
 }
 
+/** How a cell's column name is matched to a column: trimmed and case-insensitive. The renderer
+ *  and the guard below both read it here, so they cannot disagree about which cells paint. */
+export const nameKey = (s: string) => s.trim().toLowerCase();
+
+/** Grids whose cells each NAME their column (a plan grid's `cells[].col` against `columns`), so a
+ *  cell paints only when that name matches a column and the cell carries its entry. A miss on
+ *  either is a free slot — and a board of nothing but free slots under a title is the empty
+ *  checklist a reader was once shown. */
+const NAMED_CELL_TYPES: Record<
+  string,
+  { rows: string; cells: string; columns: string; col: string; text: string }
+> = {
+  plangrid: { rows: 'rows', cells: 'cells', columns: 'columns', col: 'col', text: 'label' },
+};
+
+/**
+ * False when a named-cell grid would render every slot free. Same contract as the judgements
+ * above: unknown types and absent structure answer TRUE, so this refuses only on positive
+ * evidence that no cell lands on the grid.
+ */
+export function resolvesNamedCells(type: string, props: unknown): boolean {
+  const shape = NAMED_CELL_TYPES[type];
+  if (!shape) return true;
+  const p = asRecord(props);
+  const columns = new Set(
+    asArray(p[shape.columns])
+      .filter((c): c is string => typeof c === 'string')
+      .map(nameKey),
+  );
+  const rows = asArray(p[shape.rows]).map(asRecord);
+  if (columns.size === 0 || rows.length === 0) return true;
+  return rows.some((row) =>
+    asArray(row[shape.cells]).some((cell) => {
+      const c = asRecord(cell);
+      const col = c[shape.col];
+      const text = c[shape.text];
+      return (
+        typeof col === 'string' &&
+        columns.has(nameKey(col)) &&
+        typeof text === 'string' &&
+        text.trim() !== ''
+      );
+    }),
+  );
+}
+
+/** The level a heat cell paints — a bare number, a numeric string, or the `lvl` of a cell object;
+ *  null when the cell carries no level at all. The renderer reads cells through this too, so the
+ *  judgement below and the paint agree on which cells show. */
+export function heatLevel(cell: unknown): number | null {
+  const raw = cell && typeof cell === 'object' ? asRecord(cell).lvl : cell;
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A heat cell shows something when it has a level to tint by or a mark to print. A note alone is
+ *  a tooltip; prose where a level should be paints nothing. */
+export function heatCellShows(cell: unknown): boolean {
+  if (heatLevel(cell) !== null) return true;
+  const mark = asRecord(cell).mark;
+  return typeof mark === 'string' && mark.trim() !== '';
+}
+
+/** A heatmap is drawn FROM its levels: every cell is painted whether or not it carries one, so a
+ *  grid of notes, prose or nothing at all renders its row labels beside a field of empty tiles — a
+ *  checklist of blank boxes that reads as a card that failed to load. Same contract as the rest:
+ *  no rows is the requires-check's call, and one painted cell anywhere keeps the grid. */
+export function resolvesHeatLevels(type: string, props: unknown): boolean {
+  if (type !== 'heat') return true;
+  const rows = asArray(asRecord(props).rows).map(asRecord);
+  if (rows.length === 0) return true;
+  return rows.some((row) => asArray(row.cells).some(heatCellShows));
+}
+
 /** One question, every judgement: can this block show anything? Restored/saved content never
  *  meets the validator again, so every surface that CASTS blocks (the Study's desk, a session
  *  hydrate, a Library open) asks this instead of finding out by rendering a placeholder. */
@@ -273,6 +349,8 @@ export function usableBlock(type: string, props: unknown): boolean {
     resolvesTextItems(type, props) &&
     resolvesCompareCells(type, props) &&
     resolvesShares(type, props) &&
+    resolvesHeatLevels(type, props) &&
+    resolvesNamedCells(type, props) &&
     expressesSequence(type, props)
   );
 }

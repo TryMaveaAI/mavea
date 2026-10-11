@@ -1074,7 +1074,8 @@ export interface RocCurveProps {
   iconColor?: AccentVar;
   /** the classifiers to compare; first curve also shows the interactive operating point */
   curves: RocModel[];
-  /** initial index into curves[0].points for the operating-point marker (default 0) */
+  /** initial index into curves[0].points for the operating-point marker (default: the point
+   *  with the largest TPR − FPR, the curve's best trade-off) */
   operatingPoint?: number;
   xLabel?: string;
   yLabel?: string;

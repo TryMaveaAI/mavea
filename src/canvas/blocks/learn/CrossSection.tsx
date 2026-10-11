@@ -60,6 +60,36 @@ const RING_LABEL_PAD = 10; // keeps the label ladder inside the viewBox
 /** Ring-label type, in viewBox user units — NOT pixels. `.lr-xs-svg--ring`'s max-width keeps the
  *  rendered size of this floor above the 9px legibility bar at every card width. */
 const RING_FS = 13;
+/** Thinnest ring drawn: a crust 0.5% of a planet's radius is real, and still has to be seen. */
+const MIN_RING = 5;
+
+/**
+ * Each ring's drawn width, proportional to its thickness except that none falls below `min`;
+ * the rings that clear the floor share what is left, so the stack still ends at the centre.
+ */
+function ringWidths(thicknesses: readonly number[], radius: number, min: number): number[] {
+  const floor = Math.min(min, radius / Math.max(1, thicknesses.length));
+  const floored = new Set<number>();
+  // Flooring one ring shrinks the others' share, which can push another under the floor, so
+  // repeat until nothing new drops below it — at most once per ring.
+  for (let pass = 0; pass < thicknesses.length; pass++) {
+    const free = radius - floored.size * floor;
+    const freeTotal = thicknesses.reduce((sum, t, i) => (floored.has(i) ? sum : sum + t), 0);
+    let changed = false;
+    thicknesses.forEach((t, i) => {
+      if (!floored.has(i) && (t / freeTotal) * free < floor) {
+        floored.add(i);
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
+  const free = radius - floored.size * floor;
+  const freeTotal = thicknesses.reduce((sum, t, i) => (floored.has(i) ? sum : sum + t), 0);
+  return thicknesses.map((t, i) =>
+    floored.has(i) || freeTotal <= 0 ? floor : (t / freeTotal) * free,
+  );
+}
 const RING_MIN_FS = 10;
 
 export function CrossSection({
@@ -100,10 +130,15 @@ export function CrossSection({
 
   // ── concentric (planet interior): outer→inner nested rings sized by thickness share ──
   if (orientation === 'concentric') {
+    const widths = ringWidths(
+      model.clean.map((l) => l.thickness),
+      CR,
+      MIN_RING,
+    );
     let r = CR;
     const rings = model.clean.map((l, i) => {
       const outer = r;
-      const inner = Math.max(0, r - (l.thickness / model.total) * CR);
+      const inner = Math.max(0, r - widths[i]);
       r = inner;
       const midR = (outer + inner) / 2;
       return { layer: l, i, outer, inner, midR };
@@ -128,7 +163,7 @@ export function CrossSection({
     const ladder = spreadLabels(
       rings.map((ring) => ({ id: ring.i, y: CCY - ring.midR })),
       {
-        gap: blockH + 4,
+        gap: blockH + 8,
         top: RING_LABEL_PAD + blockH / 2,
         bottom: CVB - RING_LABEL_PAD - blockH / 2,
       },
@@ -171,17 +206,20 @@ export function CrossSection({
               if (clipped) lines[1] = truncate(lines[1], Math.max(2, lines[1].length - 1));
               const ly = ladder.get(ring.i) ?? CCY;
               const angle = Math.atan2(ly - CCY, RING_LABEL_X - 6 - CCX);
+              const fromX = CCX + ring.midR * Math.cos(angle);
+              const fromY = CCY + ring.midR * Math.sin(angle);
               const firstBaseline =
                 ly - ((lines.length - 1) * fit.lineHeightPx) / 2 + fit.fontSize * 0.34;
               return (
                 <g key={`lbl${ring.i}`}>
                   <line
-                    x1={CCX + ring.midR * Math.cos(angle)}
-                    y1={CCY + ring.midR * Math.sin(angle)}
+                    x1={fromX}
+                    y1={fromY}
                     x2={RING_LABEL_X - 6}
                     y2={ly}
                     className="lr-xs-leader"
                   />
+                  <circle cx={fromX} cy={fromY} r={1.8} className="lr-xs-leader-dot" />
                   <text
                     x={RING_LABEL_X}
                     y={firstBaseline}

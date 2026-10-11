@@ -278,7 +278,9 @@
   height: 18px;
   border-radius: 50%;
   background: color-mix(in oklab, var(--presence) 16%, transparent);
-  color: var(--presence-soft);
+  /* The soft accent alone reads under 4.5:1 on its own tinted disc in the light theme; pulling it
+     toward the text ink keeps the hue and darkens it in light, lightens it in dark. */
+  color: color-mix(in oklab, var(--presence-soft) 70%, var(--text-primary));
   font: 700 var(--fs-2xs) / 1 var(--font);
 }
 .cv-node-title {
@@ -331,11 +333,12 @@
   background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
 }
 
+/* In the title bar, never over the card: pinned to the body's corner it sat on the block's last
+   line ("Flat quarter-over-quar…") wherever that line ran the full width. The negative margin
+   keeps the bar its own height. */
 .cv-node-ask {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  z-index: 2;
+  flex: none;
+  margin-block: -4px;
   padding: 4px 11px;
   border-radius: var(--r-full);
   border: 1px solid var(--line);

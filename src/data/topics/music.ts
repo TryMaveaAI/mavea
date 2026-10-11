@@ -283,7 +283,7 @@ export const music: ConversationSpec = {
         instrument: 'Guitar',
         frets: [3, 2, 0, 0, 0, 3],
         fingers: [2, 1, null, null, null, 3],
-        notes: ['G', 'B', 'G', 'D', 'G', 'B'],
+        notes: ['G', 'B', 'D', 'G', 'B', 'G'],
       },
     },
     {

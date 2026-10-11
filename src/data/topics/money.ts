@@ -444,11 +444,11 @@ export const money: ConversationSpec = {
           { age: 70, monthlyBenefit: 2728 },
         ],
         breakeven: {
-          age: 78,
+          age: 80,
           note: 'waiting to 70 pays more in total once you live past this age',
         },
         footer:
-          'Claiming at 62 gets money sooner but at a lower rate — the crossover only pays off past age 78.',
+          'Claiming at 62 gets money sooner but at a lower rate — the crossover only pays off past age 80.',
       },
     },
   ],

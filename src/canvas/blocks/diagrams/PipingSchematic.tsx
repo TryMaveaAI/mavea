@@ -9,6 +9,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PipingSchematicProps, PipingKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { labelSpot, routeRun } from './pipingLayout';
+import type { Side } from './pipingLayout';
 
 type Props = PipingSchematicProps & { delay?: number };
 
@@ -142,6 +144,32 @@ export function PipingSchematic({
     return m;
   }, [safeComponents]);
 
+  const runs = useMemo(
+    () =>
+      safeLines.flatMap((l, i) => {
+        const a = pos[l.from];
+        const b = pos[l.to];
+        if (!a || !b) return [];
+        const r = routeRun(a, b);
+        return r.points.length ? [{ key: i, line: l, ...r }] : [];
+      }),
+    [safeLines, pos],
+  );
+  const usedSides = useMemo(() => {
+    const m = new Map<string, Set<Side>>();
+    const mark = (id: string, side: Side | null) => {
+      if (!side) return;
+      const set = m.get(id) ?? new Set<Side>();
+      set.add(side);
+      m.set(id, set);
+    };
+    for (const r of runs) {
+      mark(r.line.from, r.out);
+      mark(r.line.to, r.in);
+    }
+    return m;
+  }, [runs]);
+
   return (
     <div
       className="card reveal"
@@ -165,23 +193,34 @@ export function PipingSchematic({
             </marker>
           </defs>
           {/* connector lines under components, routed orthogonally with an elbow */}
-          {safeLines.map((l, i) => {
-            const a = pos[l.from];
-            const b = pos[l.to];
-            if (!a || !b) return null;
-            const ex = b.x;
-            const ey = a.y;
+          {runs.map(({ key, line, points }) => {
+            // The size rides the run's longest leg: above a horizontal one, beside a vertical one.
+            const legs = points.slice(1).map((p, j) => [points[j], p] as const);
+            const [p0, p1] = legs.reduce((best, leg) =>
+              Math.hypot(leg[1].x - leg[0].x, leg[1].y - leg[0].y) >
+              Math.hypot(best[1].x - best[0].x, best[1].y - best[0].y)
+                ? leg
+                : best,
+            );
+            const flat = Math.abs(p1.y - p0.y) < 1e-6;
+            const mx = (p0.x + p1.x) / 2;
+            const my = (p0.y + p1.y) / 2;
             return (
-              <g key={i}>
+              <g key={key}>
                 <polyline
-                  points={`${a.x},${a.y} ${ex},${ey} ${b.x},${b.y}`}
+                  points={points.map((p) => `${p.x},${p.y}`).join(' ')}
                   className="dg-pip-line"
                   fill="none"
-                  markerEnd={l.flow ? arrow : undefined}
+                  markerEnd={line.flow ? arrow : undefined}
                 />
-                {l.size && (
-                  <text x={(a.x + ex) / 2} y={ey - 1.8} className="dg-pip-size" textAnchor="middle">
-                    {l.size}
+                {line.size && (
+                  <text
+                    x={flat ? mx : mx + 1.8}
+                    y={flat ? my - 1.8 : my + 1.2}
+                    className="dg-pip-size"
+                    textAnchor={flat ? 'middle' : 'start'}
+                  >
+                    {line.size}
                   </text>
                 )}
               </g>
@@ -191,11 +230,12 @@ export function PipingSchematic({
           {safeComponents.map((c) => {
             const p = pos[c.id];
             if (!p) return null;
+            const spot = labelSpot(usedSides.get(c.id) ?? new Set());
             return (
               <g key={c.id} transform={`translate(${p.x} ${p.y})`}>
                 {glyph(c.kind)}
                 {c.label && (
-                  <text x={0} y={13.5} className="dg-pip-lbl" textAnchor="middle">
+                  <text x={spot.x} y={spot.y} className="dg-pip-lbl" textAnchor={spot.anchor}>
                     {c.label}
                   </text>
                 )}

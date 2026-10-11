@@ -10,6 +10,8 @@ import { useMemo, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { FoodWebProps, FoodWebOrganism, FoodWebLink } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { LABEL_LH, NODE_R, linkCurve, placeOrganismLabels } from './foodWebLayout';
+import type { PlacedOrganism } from './foodWebLayout';
 
 type Props = FoodWebProps & { delay?: number };
 
@@ -19,13 +21,8 @@ const PAD_TOP = 20;
 const PAD_BOT = 20;
 const GUTTER_W = 96; // left column reserved for tier names — organisms never plot inside it
 const TIER_H = 92;
-const NODE_R = 22;
-const LABEL_MAX = 13;
-const PLOT_X0 = PAD_X + GUTTER_W;
 
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
+const PLOT_X0 = PAD_X + GUTTER_W;
 
 /** Greedy word-wrap to `maxLines`, ellipsizing the last line if it still overflows. Pure and
  *  bounded — a pathological single long word is hard-truncated, never looped. */
@@ -57,14 +54,6 @@ function wrap(text: string, perLine: number, maxLines: number): string[] {
     lines[li] = last;
   }
   return lines.length ? lines : [''];
-}
-
-interface PlacedOrganism {
-  id: string;
-  label: string;
-  tier: number;
-  cx: number;
-  cy: number;
 }
 
 export function FoodWeb({
@@ -110,7 +99,7 @@ export function FoodWeb({
       const cy = PAD_TOP + (lastTier - tier) * TIER_H + TIER_H / 2;
       list.forEach((org, i) => {
         const cx = PLOT_X0 + ((i + 0.5) / list.length) * innerW;
-        out.push({ ...org, cx, cy });
+        out.push({ ...org, cx, cy, slot: innerW / list.length });
       });
     }
     return { placed: out, byId: new Map(out.map((p) => [p.id, p])) };
@@ -132,6 +121,21 @@ export function FoodWeb({
   );
 
   const vbH = Math.max(160, safeTiers.length * TIER_H + PAD_TOP + PAD_BOT);
+  const curves = useMemo(
+    () =>
+      safeLinks.map((l) =>
+        linkCurve(
+          { x: l.from.cx, y: l.from.cy },
+          { x: l.to.cx, y: l.to.cy },
+          placed.filter((p) => p !== l.from && p !== l.to).map((p) => ({ x: p.cx, y: p.cy })),
+        ),
+      ),
+    [safeLinks, placed],
+  );
+  const labels = useMemo(
+    () => placeOrganismLabels(placed, curves, { l: PLOT_X0 - 8, r: VB_W, t: 0, b: vbH }),
+    [placed, curves, vbH],
+  );
   const lastTier = Math.max(0, safeTiers.length - 1);
 
   if (placed.length === 0) {
@@ -209,39 +213,32 @@ export function FoodWeb({
           />
 
           {/* prey → predator links, drawn as a gentle arc so overlapping pairs stay legible */}
-          {safeLinks.map((l, i) => {
-            const dx = l.to.cx - l.from.cx;
-            const dy = l.to.cy - l.from.cy;
-            const dist = Math.hypot(dx, dy) || 1;
-            const bow = Math.min(40, dist * 0.22);
-            const mx = (l.from.cx + l.to.cx) / 2 - (dy / dist) * bow;
-            const my = (l.from.cy + l.to.cy) / 2 + (dx / dist) * bow;
-            // trim both ends to the node rim so the arrow lands on the border, not the label
-            const angFrom = Math.atan2(my - l.from.cy, mx - l.from.cx);
-            const angTo = Math.atan2(my - l.to.cy, mx - l.to.cx);
-            const sx = l.from.cx + Math.cos(angFrom) * NODE_R;
-            const sy = l.from.cy + Math.sin(angFrom) * NODE_R;
-            const tx = l.to.cx + Math.cos(angTo) * (NODE_R + 8);
-            const ty = l.to.cy + Math.sin(angTo) * (NODE_R + 8);
+          {curves.map(({ s, c, t }, i) => (
+            <path
+              key={i}
+              d={`M ${s.x.toFixed(1)} ${s.y.toFixed(1)} Q ${c.x.toFixed(1)} ${c.y.toFixed(1)} ${t.x.toFixed(1)} ${t.y.toFixed(1)}`}
+              className="fwb-link"
+              markerEnd="url(#fwb-arrow)"
+            />
+          ))}
+
+          {placed.map((p) => {
+            const spot = labels.get(p.id);
             return (
-              <path
-                key={i}
-                d={`M ${sx.toFixed(1)} ${sy.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`}
-                className="fwb-link"
-                markerEnd="url(#fwb-arrow)"
-              />
+              <g key={p.id}>
+                <circle cx={p.cx} cy={p.cy} r={NODE_R} className="fwb-node" />
+                {spot && (
+                  <text textAnchor={spot.anchor} className="fwb-node-lbl">
+                    {spot.lines.map((ln, j) => (
+                      <tspan key={j} x={spot.x} y={spot.y + j * LABEL_LH}>
+                        {ln}
+                      </tspan>
+                    ))}
+                  </text>
+                )}
+              </g>
             );
           })}
-
-          {placed.map((p) => (
-            <g key={p.id}>
-              <circle cx={p.cx} cy={p.cy} r={NODE_R} className="fwb-node" />
-              <text x={p.cx} y={p.cy + NODE_R + 14} textAnchor="middle" className="fwb-node-lbl">
-                {p.label.length > LABEL_MAX && <title>{p.label}</title>}
-                {truncate(p.label, LABEL_MAX)}
-              </text>
-            </g>
-          ))}
         </svg>
       </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SwimlaneProps } from './types';
+import { milestoneSide } from './milestoneSide';
 
 type Props = SwimlaneProps & { delay?: number };
 
@@ -54,18 +55,22 @@ export function Swimlane({
                       onMouseEnter={() => setHover({ l: li, e: ei })}
                       onMouseLeave={() => setHover(null)}
                     >
-                      <span className="sw-bar-label" style={{ color: c }}>
+                      <span
+                        className="sw-bar-label"
+                        style={{ color: `color-mix(in oklab, ${c} 55%, var(--text-primary))` }}
+                      >
                         {ev.label}
                       </span>
                       {on && ev.detail && <span className="sw-tip">{ev.detail}</span>}
                     </div>
                   );
                 }
+                const side = milestoneSide(lane.events, ei);
                 return (
                   <div
                     key={ei}
-                    className={`sw-evt ${on ? 'hot' : ''}`}
-                    style={{ left }}
+                    className={`sw-evt sw-evt--${side.dir} ${on ? 'hot' : ''}`}
+                    style={{ left, maxWidth: `${side.room * 100}%` }}
                     onMouseEnter={() => setHover({ l: li, e: ei })}
                     onMouseLeave={() => setHover(null)}
                   >

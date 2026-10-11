@@ -278,8 +278,8 @@
   height: auto;
   display: block;
   overflow: visible;
-  /* Square viewBox, so at full width the figure is as TALL as the card is wide — cap
-     the measure (and centre) so it stays a sensible size on a wide canvas. */
+  /* The frame spans the full authored grid's width, so at full card width a tall circuit is as
+     tall as the card is wide — cap the measure (and centre) so it stays a sensible size. */
   max-width: 420px;
   margin-inline: auto;
 }
@@ -366,7 +366,7 @@
 .sa-stage {
   max-width: 720px;
 }
-.sa-edge line {
+.sa-edge {
   stroke: var(--text-muted);
   stroke-width: 2.2;
   fill: none;
@@ -746,6 +746,12 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   letter-spacing: -0.01em;
+  /* A hub with arcs arriving on every side has no clear spot for its name; the halo keeps the
+     word whole where an arc passes behind it. */
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 /* ───────────────────────── primefactortree ───────────────────────── */
@@ -792,9 +798,6 @@
 }
 
 /* ───────────────────────── recursiontree ───────────────────────── */
-.rt-stage {
-  max-width: 600px;
-}
 .rt-edge {
   stroke: var(--line-strong);
   stroke-width: 1.6;
@@ -950,12 +953,10 @@
   stroke: var(--grid-line);
   stroke-width: 1.6;
 }
-.pm-feature {
-  stroke-width: 5;
-  stroke-linecap: butt;
-}
-.pm-arrowhead {
-  fill: var(--text-primary);
+.pm-leader {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 0.4;
 }
 .pm-tick {
   stroke: var(--text-muted);
@@ -1755,7 +1756,11 @@
   align-items: center;
 }
 .dg-lg.has-truth {
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, auto);
+  /* The circuit's track stops where its drawing does, and the pair is centred as one figure: a
+     flexible track left the table pinned to the far edge with a hand's width of air between it
+     and the circuit it describes. */
+  grid-template-columns: minmax(0, 420px) auto;
+  justify-content: center;
 }
 @media (width <= 480px) {
   .dg-lg.has-truth {
@@ -1799,6 +1804,9 @@
   stroke-width: 1.1;
 }
 .dg-lg-arrowhead {
+  fill: var(--text-muted);
+}
+.dg-lg-arrowhead.on {
   fill: var(--insight);
 }
 .dg-lg-pad {
@@ -2751,8 +2759,8 @@
 
 /* ───────────────────────── gridtrace (gt2-*) ──────────────────────────────
    2-D grid visualizer for BFS/DFS, flood-fill, and grid-DP problems.
-   Uses CSS grid with a computed --gt2-cell custom property so the grid
-   auto-scales to fill the card width regardless of dimensions. */
+   Uses CSS grid with a --gt2-cell size the component measures from the card, so the grid
+   scales to the card width regardless of dimensions. */
 .gt2-algo-badge {
   margin-left: 8px;
   font-size: var(--fs-xs);
@@ -2770,8 +2778,9 @@
   grid-template-columns: repeat(var(--gt2-cols), var(--gt2-cell));
   gap: 2px;
   margin: 12px 0 8px;
-  width: fit-content;
-  max-width: 100%;
+  /* Full width so the component can measure the room it has; the tracks stay left-aligned. A
+     20-column grid at the minimum cell can still outgrow a phone card, so it scrolls. */
+  overflow-x: auto;
 }
 .gt2-cell {
   width: var(--gt2-cell);

@@ -33,29 +33,40 @@ function ChannelTrend({ ch, accent }: { ch: VitalChannel; accent: string }) {
   const last = s.length ? s[s.length - 1] : null;
 
   return (
-    <svg
-      className="c2-vs-svg"
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      {band && (
-        <rect
-          x={0}
-          y={band.y}
-          width={W}
-          height={band.h}
-          className="c2-vs-band"
-          style={{ fill: `color-mix(in oklab, ${accent} 14%, transparent)` }}
+    <span className="c2-vs-trace">
+      <svg
+        className="c2-vs-svg"
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        {band && (
+          <rect
+            x={0}
+            y={band.y}
+            width={W}
+            height={band.h}
+            className="c2-vs-band"
+            style={{ fill: `color-mix(in oklab, ${accent} 14%, transparent)` }}
+          />
+        )}
+        {s.length > 0 && (
+          <path d={path} fill="none" className="c2-vs-line" style={{ stroke: accent }} />
+        )}
+      </svg>
+      {/* The strip stretches to its row (preserveAspectRatio="none"), which squashed an SVG
+          circle into a flat ellipse; the latest-reading dot is HTML at the same fractions. */}
+      {last != null && (
+        <span
+          className="c2-vs-dot"
+          style={{
+            left: `${(px(s.length - 1) / W) * 100}%`,
+            top: `${(py(last) / H) * 100}%`,
+            background: accent,
+          }}
         />
       )}
-      {s.length > 0 && (
-        <path d={path} fill="none" className="c2-vs-line" style={{ stroke: accent }} />
-      )}
-      {last != null && (
-        <circle cx={px(s.length - 1)} cy={py(last)} r={2.2} style={{ fill: accent }} />
-      )}
-    </svg>
+    </span>
   );
 }
 

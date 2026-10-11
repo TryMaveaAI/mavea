@@ -5,6 +5,7 @@ import { isRunnableLang, type SandboxResult } from './sandbox';
 import { RunButton } from './RunButton';
 import { CodeOutput } from './CodeOutput';
 import { richInnerHtml } from '../../../lib/richText';
+import { withInlineCode } from '../../lib/inlineCode';
 
 type Props = SyntaxBreakdownProps & { delay?: number };
 
@@ -96,7 +97,7 @@ export function SyntaxBreakdown({
         )}
       </div>
 
-      {summary && <p className="sb-summary">{summary}</p>}
+      {summary && <p className="sb-summary">{withInlineCode(summary)}</p>}
 
       <div className="sb-lines">
         {lineList.map((line, i) => {
@@ -126,7 +127,7 @@ export function SyntaxBreakdown({
                     paddingTop: 4,
                   }}
                 >
-                  {line.explanation}
+                  {withInlineCode(line.explanation)}
                 </div>
               )}
             </div>

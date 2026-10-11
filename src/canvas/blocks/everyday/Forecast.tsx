@@ -11,13 +11,6 @@ type Props = ForecastProps & { delay?: number };
 // would otherwise wrap onto multiple lines and stretch that cell's height past its neighbors
 // in the row instead of staying a single truncated line — same fixed-width-text-in-a-cell bug
 // as settleup's .su-from/.su-to and unitconvert's .uc-unit.
-const truncateConditionStyle: CSSProperties = {
-  width: '100%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
-
 // Weather/multi-day prediction grid. Each day's glyph is resolved from its condition word
 // (the model writes "partly cloudy", "rainy", …, not our icon keys) so days don't all render
 // a sun. asOf is shown whenever present — data freshness matters for weather forecasts.
@@ -64,7 +57,7 @@ export function Forecast({
               <div className="fc-icon">
                 <DayIc className="ic" />
               </div>
-              <div className="fc-condition" style={truncateConditionStyle} title={day.condition}>
+              <div className="fc-condition" title={day.condition}>
                 {day.condition}
               </div>
               {(day.hi !== undefined || day.lo !== undefined) && (

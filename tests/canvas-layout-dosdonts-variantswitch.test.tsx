@@ -24,18 +24,22 @@ describe('dosdonts smoke', () => {
     const { container, getByText } = render(<DosDonts {...props} />);
     expect(container.querySelector('.lay-dd-heads')).toBeTruthy();
     expect(container.querySelectorAll('.lay-dd-cell')).toHaveLength(4);
-    expect(container.querySelectorAll('.lay-dd-cell.solo')).toHaveLength(0);
+    expect(container.querySelectorAll('.lay-dd-cell--do')).toHaveLength(2);
+    expect(container.querySelectorAll('.lay-dd-cell--dont')).toHaveLength(2);
     getByText('Order matters.');
   });
 
-  it('spans the row when a pair has no counterpart (4 dos, 1 dont)', () => {
+  it('keeps an unpaired line in its own column (4 dos, 1 dont)', () => {
     const props: DosDontsProps = {
       title: 'Uneven',
       pairs: [{ do: 'A', dont: 'Z' }, { do: 'B' }, { do: 'C', dont: '   ' }, { do: 'D' }],
     };
     const { container } = render(<DosDonts {...props} />);
     expect(container.querySelectorAll('.lay-dd-cell')).toHaveLength(5);
-    expect(container.querySelectorAll('.lay-dd-cell.solo')).toHaveLength(3);
+    // Every do stays a do-column cell, paired or not, so it reads under the header naming it
+    // instead of stretching across both columns.
+    expect(container.querySelectorAll('.lay-dd-cell--do')).toHaveLength(4);
+    expect(container.querySelectorAll('.lay-dd-cell--dont')).toHaveLength(1);
     expect(container.querySelector('.lay-dd')?.className).not.toContain('lay-dd--single');
     // The headers count what is actually shown, so a blank side never inflates its tally.
     expect([...container.querySelectorAll('.lay-dd-count')].map((n) => n.textContent)).toEqual([
@@ -266,5 +270,18 @@ describe('variantswitch smoke', () => {
     const cut = render(<VariantSwitch {...unbudgeted} />);
     expect(cut.container.querySelector('.lay-vs-para')?.textContent).toHaveLength(240);
     expect(cut.container.querySelector('.lay-vs-subject')?.textContent).toHaveLength(96);
+  });
+});
+
+describe('dosdonts column placement', () => {
+  it('pins each side to its own column and frees it when the card goes single-column', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('src/canvas/blocks/layout/styles.css', 'utf8');
+    expect(css).toMatch(/\.lay-dd-cell--do\s*\{\s*grid-column:\s*1;/);
+    expect(css).toMatch(/\.lay-dd-cell--dont\s*\{\s*grid-column:\s*2;/);
+    // A one-sided set and a narrow card each have a single track; a dont pinned to column 2
+    // there would open an implicit empty column beside every cell.
+    expect(css).toMatch(/\.lay-dd--single \.lay-dd-cell--dont\s*\{\s*grid-column:\s*auto;/);
+    expect(css).not.toMatch(/\.lay-dd-cell\.solo/);
   });
 });

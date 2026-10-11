@@ -67,11 +67,19 @@ export function RiskMatrix({
       {caption && <div className="fs-cap">{caption}</div>}
 
       <div className="rm-plot">
-        <div className="rm-ylabel">Likelihood</div>
+        <div className="rm-ylabel">Likelihood →</div>
         <div className="rm-grid-wrap">
-          <div className="rm-grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
-            {rows.map((l) =>
-              colsAxis.map((i) => {
+          {/* The 1..n scores ride in the grid itself (a leading column, a trailing row) so each
+              number stays level with its row or column however tall a crowded cell grows. */}
+          <div
+            className="rm-grid"
+            style={{ gridTemplateColumns: `max-content repeat(${n}, minmax(0, 1fr))` }}
+          >
+            {rows.map((l) => [
+              <span key={`y-${l}`} className="rm-tick rm-tick--y tab-num">
+                {l}
+              </span>,
+              ...colsAxis.map((i) => {
                 const b = band(l, i, n);
                 const c = BAND_COLOR[b];
                 const here = cellRisks(l, i);
@@ -101,7 +109,13 @@ export function RiskMatrix({
                   </div>
                 );
               }),
-            )}
+            ])}
+            <span aria-hidden="true" />
+            {colsAxis.map((i) => (
+              <span key={`x-${i}`} className="rm-tick rm-tick--x tab-num">
+                {i}
+              </span>
+            ))}
           </div>
           <div className="rm-xlabel">Impact →</div>
         </div>

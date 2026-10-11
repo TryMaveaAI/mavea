@@ -220,38 +220,40 @@ export function AnatomyFigure({
       <div className="an-wrap">
         <div className="an-figbox">
           {view && <span className="an-view">{view}</span>}
-          <svg viewBox="0 0 100 100" className="an-svg" role="img" aria-label={title || organ}>
-            <g className="an-organ">{fig.outline}</g>
-            {fig.detail && <g className="an-organ-detail">{fig.detail}</g>}
+          <div className="canvas-figure">
+            <svg viewBox="0 0 100 100" className="an-svg" role="img" aria-label={title || organ}>
+              <g className="an-organ">{fig.outline}</g>
+              {fig.detail && <g className="an-organ-detail">{fig.detail}</g>}
 
-            {pins.map((p, i) => {
-              const on = i === active;
-              const cx = clampPct(p.x);
-              const cy = clampPct(p.y);
-              return (
-                <g
-                  key={i}
-                  className={'an-pin' + (on ? ' on' : '')}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => setActive(i)}
-                >
-                  {/* halo ring on the active pin */}
-                  {on && <circle cx={cx} cy={cy} r={5.4} className="an-pin-halo" />}
-                  {/* First pin is the authored lead callout; ≤12px dot → point gesture. */}
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={3.4}
-                    className="an-pin-dot"
-                    {...(i === 0 ? { 'data-mark': 'point' } : {})}
-                  />
-                  <text x={cx} y={cy} className="an-pin-num">
-                    {i + 1}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+              {pins.map((p, i) => {
+                const on = i === active;
+                const cx = clampPct(p.x);
+                const cy = clampPct(p.y);
+                return (
+                  <g
+                    key={i}
+                    className={'an-pin' + (on ? ' on' : '')}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => setActive(i)}
+                  >
+                    {/* halo ring on the active pin */}
+                    {on && <circle cx={cx} cy={cy} r={5.4} className="an-pin-halo" />}
+                    {/* First pin is the authored lead callout; ≤12px dot → point gesture. */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={3.4}
+                      className="an-pin-dot"
+                      {...(i === 0 ? { 'data-mark': 'point' } : {})}
+                    />
+                    <text x={cx} y={cy} className="an-pin-num">
+                      {i + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
         </div>
 
         <div className="an-list">

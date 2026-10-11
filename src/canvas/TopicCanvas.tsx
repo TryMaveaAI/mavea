@@ -4,6 +4,7 @@
 // per-family loader (./blocks/loader) — a canvas render only downloads the families its
 // answer actually uses, never the whole library; useBlockFamilies gates the grid so every
 // card still mounts (and staggers) together.
+import { FigureBlockContext } from './figures/figureContext';
 import '../styles/canvas-runtime.css';
 import '../live/print/print.css';
 import { useBlockFamilies, useExtendedRender } from './blocks/useBlockFamilies';
@@ -751,15 +752,17 @@ export function TopicCanvas({
   const stableProve = useCallback(() => onProveRef.current(), []);
 
   const drawBlock = (b: Block, onStage: boolean): ReactNode => (
-    <BlockView
-      block={bend && bendValue !== null ? bendBlock(b, bend, bendValue) : b}
-      nest={0}
-      spotlight={!onStage && !!b.id && spot === b.id}
-      dimmed={!onStage && !!b.id && !!spot && spot !== b.id}
-      spot={b.type === 'composite' ? spot : null}
-      onProve={stableProve}
-      onUnrenderable={markUnrenderable}
-    />
+    <FigureBlockContext.Provider value={b.id ?? null}>
+      <BlockView
+        block={bend && bendValue !== null ? bendBlock(b, bend, bendValue) : b}
+        nest={0}
+        spotlight={!onStage && !!b.id && spot === b.id}
+        dimmed={!onStage && !!b.id && !!spot && spot !== b.id}
+        spot={b.type === 'composite' ? spot : null}
+        onProve={stableProve}
+        onUnrenderable={markUnrenderable}
+      />
+    </FigureBlockContext.Provider>
   );
   const renderBlock = (b: Block): ReactNode => drawBlock(b, false);
   // The Lens shows one card at a time, so the board's spotlight has no meaning there: a card the
@@ -1143,11 +1146,12 @@ export function TopicCanvas({
                   className="canvas-open"
                   onClick={() => onViewMode('canvas')}
                   title="Spread this answer's cards on a canvas you can wander"
+                  aria-label="View as canvas"
                 >
                   <span className="canvas-open-glyph" aria-hidden>
                     ◇
-                  </span>{' '}
-                  View as canvas
+                  </span>
+                  <span className="door-label">View as canvas</span>
                 </button>
               )}
             </>

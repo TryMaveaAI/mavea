@@ -7,6 +7,8 @@ import { hasData } from '../../lib/empty';
 import { BlockEmpty } from '../../lib/BlockEmpty';
 import type { BcgMatrixProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { placeClear, type Box } from '../charts2/chartMath';
 
 type Props = BcgMatrixProps & { delay?: number };
 
@@ -16,6 +18,25 @@ const PAD = { l: 42, r: 16, t: 18, b: 32 };
 const MIN_R = 7;
 const MAX_R = 24;
 const DEFAULT_R = 11;
+const LABEL_FS = 9.5; // matches .c1-bcg-label
+const CORNER_FS = 9; // .c1-bcg-corner's largest size
+/** Height of the band along the plot's top and bottom edges that the quadrant names occupy. */
+const CORNER_BAND = 16;
+
+/** Widen a data extent so a bubble of radius `padPx` at either end clears the frame's edges by
+ *  `padPx` (plus `bandPx` of reserved band) once the extent is mapped onto `px` pixels. */
+function padExtent(
+  lo: number,
+  hi: number,
+  px: number,
+  padPx: number,
+  bandPx = 0,
+): [number, number] {
+  const span = hi - lo || Math.abs(hi) || 1;
+  const usable = Math.max(px - 2 * (padPx + bandPx), px * 0.4);
+  const perPx = span / usable;
+  return [lo - (padPx + bandPx) * perPx, hi + (padPx + bandPx) * perPx];
+}
 
 type Quad = 'star' | 'question' | 'cow' | 'dog';
 
@@ -81,20 +102,83 @@ export function BcgMatrix({
   );
 
   const geom = useMemo(() => {
-    const xe = extent(readings.map((r) => r.share));
-    const ye = extent(readings.map((r) => r.growth));
-    const [xLo, xHi] = niceDomain(xe ? xe[0] : 0, xe ? xe[1] : 1);
-    const [yLo, yHi] = niceDomain(ye ? ye[0] : 0, ye ? ye[1] : 1);
-    const sx = scaleLinear([xLo, xHi], [PAD.l, W - PAD.r]);
-    const sy = scaleLinear([yLo, yHi], [H - PAD.b, PAD.t]);
-    const medGrowth = median(readings.map((r) => r.growth));
-    const medShare = median(readings.map((r) => r.share));
     const maxRevenue = Math.max(0, ...readings.map((r) => r.revenue ?? 0));
     const pr = (revenue: number | null) =>
       revenue == null || maxRevenue === 0
         ? DEFAULT_R
         : MIN_R + (revenue / maxRevenue) * (MAX_R - MIN_R);
+    const maxR = Math.max(0, ...readings.map((r) => pr(r.revenue)));
+
+    // The domain leaves room for the bubbles themselves: a nice domain fitted to the centres put
+    // the top bubble's disc over the QUESTION MARK corner name and the bottom one under DOG.
+    // Top and bottom also clear the band the quadrant names sit in.
+    const xe = extent(readings.map((r) => r.share)) ?? [0, 1];
+    const ye = extent(readings.map((r) => r.growth)) ?? [0, 1];
+    const xPad = padExtent(xe[0], xe[1], W - PAD.l - PAD.r, maxR + 2);
+    const yPad = padExtent(ye[0], ye[1], H - PAD.t - PAD.b, maxR + 2, CORNER_BAND);
+    // Relative share is never negative: padding must not invent a "-0.5×" tick.
+    const [xLo, xHi] = niceDomain(xe[0] >= 0 ? Math.max(0, xPad[0]) : xPad[0], xPad[1]);
+    const [yLo, yHi] = niceDomain(yPad[0], yPad[1]);
+    const sx = scaleLinear([xLo, xHi], [PAD.l, W - PAD.r]);
+    const sy = scaleLinear([yLo, yHi], [H - PAD.b, PAD.t]);
+    const medGrowth = median(readings.map((r) => r.growth));
+    const medShare = median(readings.map((r) => r.share));
+
+    // Names beside their bubbles: the reader (and the footer) refer to products by name, and a
+    // field of unnamed discs made every one a hover hunt. Each takes the first clear spot around
+    // its own disc, avoiding every disc, the quadrant names and the names already placed.
+    const plot: Box = { x: PAD.l, y: PAD.t, w: W - PAD.l - PAD.r, h: H - PAD.t - PAD.b };
+    const cornerW = (t: string) => t.length * CORNER_FS * 0.72;
+    const corners: Box[] = [
+      { x: W - PAD.r - 4 - cornerW('Star'), y: PAD.t + 3, w: cornerW('Star'), h: 11 },
+      { x: PAD.l + 4, y: PAD.t + 3, w: cornerW('Question Mark'), h: 11 },
+      { x: W - PAD.r - 4 - cornerW('Cash Cow'), y: H - PAD.b - 15, w: cornerW('Cash Cow'), h: 11 },
+      { x: PAD.l + 4, y: H - PAD.b - 15, w: cornerW('Dog'), h: 11 },
+    ];
+    const discs: Box[] = readings.map((r) => {
+      const rr = pr(r.revenue);
+      return { x: sx(r.share) - rr, y: sy(r.growth) - rr, w: rr * 2, h: rr * 2 };
+    });
+    const taken: Box[] = [...corners, ...discs];
+    // A name straddling a median split reads as belonging to both quadrants; avoid it if possible.
+    const mx = sx(medShare);
+    const my = sy(medGrowth);
+    const splits = [
+      [
+        { x: mx, y: PAD.t },
+        { x: mx, y: H - PAD.b },
+      ],
+      [
+        { x: PAD.l, y: my },
+        { x: W - PAD.r, y: my },
+      ],
+    ];
+    const labels = readings.map((r, i) => {
+      const text = typeof safeItems[i]?.label === 'string' ? safeItems[i].label.trim() : '';
+      if (!text) return null;
+      const w = estimateTextWidth(text, LABEL_FS, true);
+      const h = LABEL_FS + 3;
+      const cx = sx(r.share);
+      const cy = sy(r.growth);
+      const g = pr(r.revenue) + 4;
+      const d = g * Math.SQRT1_2;
+      const candidates: Box[] = [
+        { x: cx + g, y: cy - h / 2, w, h },
+        { x: cx - g - w, y: cy - h / 2, w, h },
+        { x: cx - w / 2, y: cy - g - h, w, h },
+        { x: cx - w / 2, y: cy + g, w, h },
+        { x: cx + d, y: cy - d - h, w, h },
+        { x: cx - d - w, y: cy - d - h, w, h },
+        { x: cx + d, y: cy + d, w, h },
+        { x: cx - d - w, y: cy + d, w, h },
+      ];
+      const others = taken.filter((_, k) => k !== corners.length + i);
+      const box = placeClear(candidates, plot, splits, others);
+      taken.push(box);
+      return { text, box };
+    });
     return {
+      labels,
       sx,
       sy,
       pr,
@@ -105,9 +189,9 @@ export function BcgMatrix({
       xTicks: sx.ticks(4),
       yTicks: sy.ticks(4),
     };
-  }, [readings]);
+  }, [readings, safeItems]);
 
-  const { sx, sy, pr, medGrowth, medShare, medX, medY, xTicks, yTicks } = geom;
+  const { sx, sy, pr, medGrowth, medShare, medX, medY, xTicks, yTicks, labels } = geom;
 
   // The biggest bet in the portfolio (by revenue, when given) is what Mavéa's drawn gesture
   // circles; with no revenue anywhere it falls back to the first item rather than guessing.
@@ -235,6 +319,20 @@ export function BcgMatrix({
               />
             );
           })}
+
+          {labels.map(
+            (l, i) =>
+              l && (
+                <text
+                  key={`l${i}`}
+                  x={l.box.x}
+                  y={l.box.y + l.box.h - 3}
+                  className={'c1-bcg-label' + (hot === i ? ' on' : '')}
+                >
+                  {l.text}
+                </text>
+              ),
+          )}
         </svg>
         {hotItem && hotReading && (
           <div

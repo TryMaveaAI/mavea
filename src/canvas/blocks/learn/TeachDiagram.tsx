@@ -20,6 +20,7 @@ import {
   fitLabel,
   fitShape,
   layoutLabels,
+  supersessions,
   TD_LINE_H,
   type Fit,
   type PlacedLabel,
@@ -83,12 +84,25 @@ export function TeachDiagram({
     [baseLabels, steps, fit],
   );
 
+  // A label a later step pins to the same spot (same anchor, same side) is an update, not a second
+  // callout: "c = ?" becomes "c = 5 ✓". Chain each label to the one that replaces it, so only the
+  // live one is drawn and the chain shares one slot in the layout.
+  const chains = useMemo(
+    () =>
+      supersessions(
+        [...baseLabels.map(() => -1), ...steps.flatMap((s, si) => (s.labels ?? []).map(() => si))],
+        [...baseLabels, ...steps.flatMap((s) => s.labels ?? [])],
+      ),
+    [baseLabels, steps],
+  );
+
   // Place every callout across the WHOLE figure (base + every step) at once, so a label's position is
   // stable as the build advances, no two overlap, and none bleed off the card. See layoutLabels.
-  const placed = useMemo(
-    () => layoutLabels(fittedLabels, H, calloutOffset(fit?.scale ?? 1)),
-    [fittedLabels, H, fit],
-  );
+  const placed = useMemo(() => {
+    const finals = chains.finals.map((k) => fittedLabels[k]);
+    const at = layoutLabels(finals, H, calloutOffset(fit?.scale ?? 1));
+    return chains.slot.map((j) => at[j]);
+  }, [fittedLabels, chains, H, fit]);
   // Where each step's labels begin in that flat, de-collided list (base labels come first).
   const stepLabelStart = useMemo(() => {
     const starts: number[] = [];
@@ -203,9 +217,11 @@ export function TeachDiagram({
             {fittedBase.map((s, i) => (
               <TdShape key={`b${i}`} s={s} fit={fit} drawing={false} idx={i} arrowId={arrowId} />
             ))}
-            {baseLabels.map((_, i) => (
-              <TdLabel key={`bl${i}`} l={fittedLabels[i]} drawing={false} p={placed[i]} />
-            ))}
+            {baseLabels.map((_, i) =>
+              chains.until[i] <= current ? null : (
+                <TdLabel key={`bl${i}`} l={fittedLabels[i]} drawing={false} p={placed[i]} />
+              ),
+            )}
 
             {/* Each revealed step's shapes, added on top of the prior ones. The newest step draws in;
                 settled steps render statically. Keying on `current` re-runs the draw on replay. */}
@@ -222,14 +238,18 @@ export function TeachDiagram({
                     arrowId={arrowId}
                   />
                 ))}
-                {(step.labels ?? []).map((_, i) => (
-                  <TdLabel
-                    key={`s${si}l${i}`}
-                    l={fittedLabels[stepLabelStart[si] + i]}
-                    drawing={!reduce && si === current}
-                    p={placed[stepLabelStart[si] + i]}
-                  />
-                ))}
+                {(step.labels ?? []).map((_, i) => {
+                  const k = stepLabelStart[si] + i;
+                  if (chains.until[k] <= current) return null;
+                  return (
+                    <TdLabel
+                      key={`s${si}l${i}`}
+                      l={fittedLabels[k]}
+                      drawing={!reduce && si === current}
+                      p={placed[k]}
+                    />
+                  );
+                })}
               </g>
             ))}
           </g>

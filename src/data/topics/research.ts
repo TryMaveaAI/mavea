@@ -961,7 +961,7 @@ export const research: ConversationSpec = {
           { label: 'W3', value: 88 },
           { label: 'W4', value: 84 },
           { label: 'W5', value: 79 },
-          { label: 'W6', value: 75, outOfControl: true },
+          { label: 'W6', value: 70, outOfControl: true },
           { label: 'W7', value: 80 },
           { label: 'W8', value: 83 },
         ],

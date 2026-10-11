@@ -1,6 +1,7 @@
 import { fontSizeFloorPx } from './helpers/fluidType';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { ContractionTimer } from '../src/canvas/blocks/everyday/ContractionTimer';
@@ -68,10 +69,10 @@ describe('RelationshipMap', () => {
   });
 });
 
-// Regression coverage for a real bug: every gap-interval label ("6m", "5m", ...) was pinned to
-// a fixed top:40% band via CSS, so once the log grew past ~5-7 entries the labels sat at the
-// same vertical position and visually collided with their neighbours. Labels must now stagger
-// (alternate above/below) so density doesn't cause overlap.
+// Each interval between two contractions is its own flex item between the two bars, as wide as
+// the interval, with the figure written inside it on the bars' baseline. Hung off a bar's edge at
+// a percentage of that bar's slot, the labels landed at uneven heights and the last ran into the
+// next bar wherever the gap was narrow.
 describe('ContractionTimer', () => {
   function contractions(n: number): Contraction[] {
     return Array.from({ length: n }, (_, i) => ({
@@ -81,26 +82,41 @@ describe('ContractionTimer', () => {
     }));
   }
 
-  it('staggers gap labels above/below instead of stacking them at one fixed band', () => {
-    // 12 logged contractions — well past the ~5-7 threshold where a single fixed top:40%
-    // position made every label collide with the next.
+  it('puts every interval label in the gap between its two bars, never on a bar', () => {
     const { container } = render(
       <ContractionTimer title="Contractions" contractions={contractions(12)} />,
     );
-    const labels = Array.from(container.querySelectorAll<HTMLElement>('.cn-gap-label'));
-    expect(labels.length).toBeGreaterThan(5);
-
-    // Every rendered label must carry an explicit vertical position (not left to a single
-    // shared CSS default), and adjacent labels must alternate rather than share one value.
-    const tops = labels.map((el) => el.style.top);
-    expect(tops.every((t) => t !== '')).toBe(true);
-    for (let i = 1; i < tops.length; i++) {
-      expect(tops[i]).not.toBe(tops[i - 1]);
+    const strip = container.querySelector('.cn-strip') as HTMLElement;
+    const kids = Array.from(strip.children);
+    // slot, gap, slot, gap, …, slot
+    expect(kids).toHaveLength(12 * 2 - 1);
+    kids.forEach((el, i) => {
+      expect(el.classList.contains(i % 2 === 0 ? 'cn-slot' : 'cn-gap')).toBe(true);
+    });
+    for (const slot of container.querySelectorAll('.cn-slot')) {
+      expect(slot.querySelector('.cn-gap-label')).toBeNull();
     }
-    // Exactly two distinct bands are used (above / below the bar midline), not a continuum
-    // that could still coincide — and not the old single 40% value for every label.
-    expect(new Set(tops).size).toBe(2);
-    expect(tops.every((t) => t !== '40%')).toBe(true);
+    // One baseline for all of them: no label carries its own vertical offset.
+    for (const label of container.querySelectorAll<HTMLElement>('.cn-gap-label')) {
+      expect(label.style.top).toBe('');
+    }
+  });
+
+  it('widens a gap with its interval', () => {
+    const list: Contraction[] = [
+      { start: '1:00 PM', durationSec: 50, intervalMin: 9 },
+      { start: '1:09 PM', durationSec: 50, intervalMin: 3 },
+      { start: '1:12 PM', durationSec: 50, intervalMin: 6 },
+      { start: '1:18 PM', durationSec: 50 },
+    ];
+    const { container } = render(<ContractionTimer title="Contractions" contractions={list} />);
+    const grow = Array.from(container.querySelectorAll<HTMLElement>('.cn-gap')).map((g) =>
+      Number(g.style.flexGrow),
+    );
+    expect(grow).toHaveLength(3);
+    expect(grow[0]).toBeGreaterThan(grow[2]);
+    expect(grow[2]).toBeGreaterThan(grow[1]);
+    expect(grow[1]).toBeGreaterThan(0);
   });
 
   it('keeps every bar and label within the strip for a long, dense log', () => {
@@ -112,22 +128,11 @@ describe('ContractionTimer', () => {
     // Gap labels render for every entry except the last (no trailing gap).
     expect(container.querySelectorAll('.cn-gap-label')).toHaveLength(19);
   });
-
-  it('renders a single label at the default band when there is only one gap', () => {
-    const { container } = render(
-      <ContractionTimer title="Contractions" contractions={contractions(2)} />,
-    );
-    const labels = Array.from(container.querySelectorAll<HTMLElement>('.cn-gap-label'));
-    expect(labels).toHaveLength(1);
-    expect(labels[0].style.top).not.toBe('');
-  });
 });
 
-// Regression coverage for a real bug: .fc-condition had no overflow/wrap constraint, so a
-// condition string longer than the short demo fixture ("Sunny", "Rain") — real forecasts say
-// "Scattered thunderstorms" or "Wintry mix, heavy at times" — would wrap onto multiple lines
-// and stretch that day's cell taller than its neighbors in the same grid row instead of
-// staying a single truncated line.
+// A condition is usually two words ("Partly cloudy"), and real forecasts say "Scattered
+// thunderstorms". It wraps to at most two lines and is cut after that, keeping the full text as a
+// tooltip, so one long condition cannot stretch its day past the others.
 describe('Forecast', () => {
   function days(n: number, condition = 'Sunny'): ForecastDay[] {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -139,49 +144,25 @@ describe('Forecast', () => {
     }));
   }
 
-  it('constrains .fc-condition to a single truncated line instead of wrapping/overflowing', () => {
+  it('clamps .fc-condition to two lines and keeps the full text as a tooltip', () => {
     const longCondition = 'Scattered thunderstorms with wintry mix likely after midnight';
     const { container } = render(<Forecast title="Weather" days={days(5, longCondition)} />);
     const conditionEls = Array.from(container.querySelectorAll<HTMLElement>('.fc-condition'));
     expect(conditionEls).toHaveLength(5);
     for (const el of conditionEls) {
-      // The full text is still preserved in the DOM (as text content + a title tooltip) —
-      // only its rendered box is constrained to one line.
       expect(el.textContent).toBe(longCondition);
       expect(el.getAttribute('title')).toBe(longCondition);
-      expect(el.style.whiteSpace).toBe('nowrap');
-      expect(el.style.textOverflow).toBe('ellipsis');
-      expect(el.style.overflow).toBe('hidden');
     }
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/everyday/styles.css'), 'utf8');
+    const rule = /\.fc-condition \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(rule).toMatch(/-webkit-line-clamp: 2;/);
+    expect(rule).toMatch(/overflow: hidden;/);
   });
 
-  it('keeps every day cell the same shape regardless of condition length, so a long string in one cell cannot stretch it past its neighbors', () => {
-    const mixed: ForecastDay[] = [
-      { label: 'Mon', condition: 'Sunny', hi: '72', lo: '58' },
-      {
-        label: 'Tue',
-        condition: 'Scattered thunderstorms with wintry mix likely after midnight',
-        hi: '68',
-        lo: '54',
-      },
-      { label: 'Wed', condition: 'Cloudy', hi: '65', lo: '50' },
-    ];
-    const { container } = render(<Forecast title="Weather" days={mixed} />);
-    const cells = Array.from(container.querySelectorAll<HTMLElement>('.fc-condition'));
-    expect(cells).toHaveLength(3);
-    // Every cell — long or short condition alike — carries the identical single-line
-    // truncation contract, so no cell can render taller than the others in the row.
-    for (const el of cells) {
-      expect(el.style.whiteSpace).toBe('nowrap');
-      expect(el.style.overflow).toBe('hidden');
-    }
-  });
-
-  it('leaves a short condition fully visible and untruncated', () => {
-    const { container } = render(<Forecast title="Weather" days={days(3, 'Rain')} />);
-    const el = container.querySelector<HTMLElement>('.fc-condition');
-    expect(el?.textContent).toBe('Rain');
-    expect(el?.getAttribute('title')).toBe('Rain');
+  it('lets the day tiles share the card instead of leaving empty tracks beside them', () => {
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/everyday/styles.css'), 'utf8');
+    const rule = /\.fc-grid \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(rule).toMatch(/repeat\(auto-fit,/);
   });
 });
 
@@ -276,7 +257,31 @@ describe('PrayerTimes', () => {
   it('keeps the whole arc within its fixed viewBox regardless of slot count', () => {
     const { container } = render(<PrayerTimes slots={slots(16, 10)} />);
     const svg = container.querySelector('svg.pt-arc');
-    expect(svg?.getAttribute('viewBox')).toBe(`0 0 ${VB_W} 150`);
+    // The width is fixed; the height grows by one label row per stagger the slot count needs.
+    expect(svg?.getAttribute('viewBox')).toMatch(new RegExp(`^0 0 ${VB_W} \\d+`));
+    // Labels sharing a row never overlap: each name sits at least its own width from the next.
+    const names = Array.from(container.querySelectorAll<SVGTextElement>('text.pt-name'));
+    const byRow = new Map<string, { x: number; w: number }[]>();
+    for (const n of names) {
+      const row = n.getAttribute('y')!;
+      const fs = Number(n.getAttribute('font-size'));
+      const visible = Array.from(n.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join('');
+      const w = estimateTextWidth(visible, fs, true);
+      byRow.set(row, [...(byRow.get(row) ?? []), { x: Number(n.getAttribute('x')), w }]);
+    }
+    for (const row of byRow.values()) {
+      row.sort((p, q) => p.x - q.x);
+      for (let i = 1; i < row.length; i++) {
+        expect(row[i].x - row[i - 1].x).toBeGreaterThanOrEqual((row[i].w + row[i - 1].w) / 2);
+      }
+      for (const l of row) {
+        expect(l.x - l.w / 2).toBeGreaterThanOrEqual(0);
+        expect(l.x + l.w / 2).toBeLessThanOrEqual(VB_W);
+      }
+    }
     // Dots must land within the arc's horizontal padding, not clipped off either edge.
     const dots = Array.from(container.querySelectorAll<SVGCircleElement>('circle.pt-dot'));
     expect(dots.length).toBeGreaterThan(0);
@@ -326,8 +331,9 @@ describe('SettleUp', () => {
     // Every name span must carry the flex-shrink-to-fit + ellipsis contract — without it, a
     // long name renders at its full intrinsic width and blows out the fixed-width flex row.
     for (const el of [...froms, ...tos]) {
-      // jsdom expands the `flex: 1` shorthand to its longhand components.
-      expect(el.style.flex).toBe('1 1 0%');
+      // Hugs its text but may shrink: the amount pill takes the slack, not the names.
+      expect(el.style.flexGrow).toBe('0');
+      expect(el.style.flexShrink).toBe('1');
       expect(el.style.minWidth).toBe('0px');
       expect(el.style.overflow).toBe('hidden');
       expect(el.style.textOverflow).toBe('ellipsis');

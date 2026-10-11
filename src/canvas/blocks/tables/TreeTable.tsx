@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 import { Icon } from '../../../icons/icons';
+import { tagTone } from './tagTone';
 import type { TreeTableProps, TreeNode } from './types';
 
 type Props = TreeTableProps & { delay?: number };
@@ -91,6 +92,7 @@ export function TreeTable({
       const isOpen = open.has(k);
       const hasKids = !!n.children?.length;
       const col = n.color || accent;
+      const tagCol = n.tag ? tagTone(n.tag, col) : col;
       const roll = rollups.get(n);
       const pct = roll?.pct;
       // Own value if it carries real magnitude; otherwise the rolled-up children sum, formatted
@@ -123,7 +125,10 @@ export function TreeTable({
           {n.tag && (
             <span
               className="tt-tag"
-              style={{ color: col, borderColor: `color-mix(in oklab, ${col} 40%, transparent)` }}
+              style={{
+                color: tagCol,
+                borderColor: `color-mix(in oklab, ${tagCol} 40%, transparent)`,
+              }}
             >
               {n.tag}
             </span>

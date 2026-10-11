@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import { withUnit } from '../../lib/format';
 import { useCountUp } from '../../lib/motion';
@@ -8,18 +8,20 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = YieldCalcProps & { delay?: number };
 
-/** Lower digit runs to subscripts (H2 → H₂), the same technique EquationBalancer's Formula
- *  uses — split on runs of digits vs. non-digits and emit React text nodes, so untrusted text
- *  stays escaped rather than going through HTML. */
+/** Lower a formula's atom counts to subscripts (H2 → H₂), as React text nodes so untrusted text
+ *  stays escaped rather than going through HTML. Only a digit run straight after an element or a
+ *  closing bracket is a count: in a whole equation the coefficient in "3 H2" or "2NH3" stays
+ *  full size, because it counts molecules, not atoms. */
 function Formula({ text }: { text: string }) {
-  const parts = text.split(/(\d+)/).filter((s) => s !== '');
-  return (
-    <span className="lr-yc-formula">
-      {parts.map((p, i) =>
-        /^\d+$/.test(p) ? <sub key={i}>{p}</sub> : <Fragment key={i}>{p}</Fragment>,
-      )}
-    </span>
-  );
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/(?<=[A-Za-z)\]])\d+/g)) {
+    if (m.index > at) parts.push(<Fragment key={at}>{text.slice(at, m.index)}</Fragment>);
+    parts.push(<sub key={m.index}>{m[0]}</sub>);
+    at = m.index + m[0].length;
+  }
+  if (at < text.length) parts.push(<Fragment key={at}>{text.slice(at)}</Fragment>);
+  return <span className="lr-yc-formula">{parts}</span>;
 }
 
 export function YieldCalc({
@@ -101,7 +103,11 @@ export function YieldCalc({
         )}
       </div>
 
-      {displayReaction && <p className="lr-yc-reaction">{displayReaction}</p>}
+      {displayReaction && (
+        <p className="lr-yc-reaction">
+          <Formula text={displayReaction} />
+        </p>
+      )}
 
       {pct !== null ? (
         <div className="lr-yc-head">

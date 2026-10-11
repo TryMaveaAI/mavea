@@ -4,6 +4,8 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
 import type { VectorFieldProps, FieldSample } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { monotonePath } from './smoothPath';
 
 type Props = VectorFieldProps & { delay?: number };
 
@@ -13,6 +15,9 @@ const LEFT = 44; // y-axis tick labels + axis title
 const RIGHT = 16;
 const TOP = 16;
 const BOT = 40; // x-axis tick labels + axis title row
+// .vfl-tick / .vfl-axis-lbl at their fallback sizes, in viewBox units, for measuring.
+const TICK_FS = 10;
+const TITLE_FS = 10;
 
 // Diverging-by-magnitude palette: low magnitude reads calm (insight), high reads hot (danger).
 const LOW = 'var(--insight)';
@@ -75,16 +80,11 @@ export function VectorField({
     const [xMin, xMax] = xRange ?? (ex ? niceDomain(ex[0], ex[1]) : ([-3, 3] as [number, number]));
     const [yMin, yMax] = yRange ?? (ey ? niceDomain(ey[0], ey[1]) : ([-3, 3] as [number, number]));
 
-    const sx = scaleLinear([xMin, xMax], [LEFT, W - RIGHT]);
-    const sy = scaleLinear([yMin, yMax], [H - BOT, TOP]); // inverted: larger y is higher on screen
-
-    // Axis lines, clamped to the plot box so a domain not spanning 0 still draws sane axes.
-    const axisY = Math.max(TOP, Math.min(H - BOT, sy(0))); // horizontal axis (y = 0)
-    const axisX = Math.max(LEFT, Math.min(W - RIGHT, sx(0))); // vertical axis (x = 0)
-
     // Glyph length: the lattice's tightest neighbour spacing in SVG px sets a uniform glyph size
     // so arrows never overrun into each other. Computed from the data, not eyeballed.
-    const pxPts = samples.map((s) => ({ px: sx(s.x), py: sy(s.y) }));
+    const fullX = scaleLinear([xMin, xMax], [LEFT, W - RIGHT]);
+    const fullY = scaleLinear([yMin, yMax], [H - BOT, TOP]);
+    const pxPts = samples.map((s) => ({ px: fullX(s.x), py: fullY(s.y) }));
     let minGap = Infinity;
     for (let i = 0; i < pxPts.length; i++) {
       for (let j = i + 1; j < pxPts.length; j++) {
@@ -93,6 +93,18 @@ export function VectorField({
       }
     }
     const glyphLen = Number.isFinite(minGap) ? Math.min(26, Math.max(12, minGap * 0.42)) : 18;
+    // A lattice usually reaches the very edge of its domain, and a glyph centred there reaches
+    // half its length past it — over the tick labels. The scales stop that far inside the plot
+    // box, so every glyph stays within the field it describes. The shorter spacing this leaves
+    // only shrinks the share of it each glyph takes.
+    const inset = glyphLen / 2 + 2;
+    const sx = scaleLinear([xMin, xMax], [LEFT + inset, W - RIGHT - inset]);
+    // inverted: larger y is higher on screen
+    const sy = scaleLinear([yMin, yMax], [H - BOT - inset, TOP + inset]);
+
+    // Axis lines, clamped to the plot box so a domain not spanning 0 still draws sane axes.
+    const axisY = Math.max(TOP, Math.min(H - BOT, sy(0))); // horizontal axis (y = 0)
+    const axisX = Math.max(LEFT, Math.min(W - RIGHT, sx(0))); // vertical axis (x = 0)
 
     // Magnitude range across the lattice → a 0..1 rank for colour and (vector mode) length.
     const mags = samples.map(magnitudeOf);
@@ -129,21 +141,38 @@ export function VectorField({
     });
 
     // Overlaid solution curves / streamlines as point polylines in data coords.
+    // A solution y(x) — points in increasing x — is drawn as a smooth monotone cubic, so a coarse
+    // sampling still reads as the curve it samples; a streamline that turns back on itself in x
+    // is not a function of x and keeps its straight segments.
     const curvePaths = curves.map((c, ci) => ({
-      d: c.points.map((p) => `${sx(p.x)},${sy(p.y)}`).join(' '),
+      d: (() => {
+        const pts = c.points.map((p) => ({ x: sx(p.x), y: sy(p.y) }));
+        const isFunction = pts.every((p, i) => i === 0 || p.x > pts[i - 1].x);
+        return isFunction
+          ? monotonePath(pts)
+          : pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' ');
+      })(),
       color: c.color || CURVE_PALETTE[ci % CURVE_PALETTE.length],
       label: c.label,
       // Anchor the legend dot at the last point of the curve (its right-most reach is most visible).
       key: `c${ci}`,
     }));
 
+    const yTicks = sy.ticks(5);
+    // The y title sits just outside the widest y tick label rather than at a fixed margin.
+    const tickW = Math.max(
+      0,
+      ...yTicks.filter((t) => t !== 0).map((t) => estimateTextWidth(String(t), TICK_FS)),
+    );
+    const yTitleX = Math.max(TITLE_FS / 2 + 1, LEFT - 6 - tickW - 6);
     return {
       sx,
       sy,
+      yTicks,
+      yTitleX,
       axisX,
       axisY,
       xTicks: sx.ticks(6),
-      yTicks: sy.ticks(5),
       isSlope,
       glyphs,
       curvePaths,
@@ -151,7 +180,9 @@ export function VectorField({
     };
   }, [samples, curves, xRange, yRange, mode, normalize, colorByMagnitude]);
 
-  const { sx, sy, axisX, axisY, xTicks, yTicks, isSlope, glyphs, curvePaths } = model;
+  const { sx, sy, axisX, axisY, xTicks, yTicks, yTitleX, isSlope, glyphs, curvePaths } = model;
+  // A one- or two-letter title ("y", "dy") reads upright; a longer one turns to run up the axis.
+  const yTitleUpright = [...yLabel].length <= 3;
   const hasData = glyphs.length > 0;
   // Unique id so each instance's curve clip-path is its own (several fields can share a page).
   const clipId = useId();
@@ -236,15 +267,27 @@ export function VectorField({
             <text x={(LEFT + W - RIGHT) / 2} y={H - 8} className="vfl-axis-lbl" textAnchor="middle">
               {xLabel}
             </text>
-            <text
-              x={0}
-              y={0}
-              transform={`translate(13, ${(TOP + H - BOT) / 2}) rotate(-90)`}
-              className="vfl-axis-lbl"
-              textAnchor="middle"
-            >
-              {yLabel}
-            </text>
+            {yTitleUpright ? (
+              <text
+                x={yTitleX}
+                y={(TOP + H - BOT) / 2}
+                className="vfl-axis-lbl"
+                textAnchor="end"
+                dominantBaseline="central"
+              >
+                {yLabel}
+              </text>
+            ) : (
+              <text
+                x={0}
+                y={0}
+                transform={`translate(${yTitleX - TITLE_FS / 2}, ${(TOP + H - BOT) / 2}) rotate(-90)`}
+                className="vfl-axis-lbl"
+                textAnchor="middle"
+              >
+                {yLabel}
+              </text>
+            )}
 
             {/* Field glyphs: headless dashes for a slope field, arrows for a vector field */}
             <g className="vfl-glyphs">
@@ -278,13 +321,7 @@ export function VectorField({
                 reaches past an explicit range ends cleanly at the field edge */}
             <g clipPath={`url(#${clipId})`}>
               {curvePaths.map((c) => (
-                <polyline
-                  key={c.key}
-                  points={c.d}
-                  fill="none"
-                  stroke={c.color}
-                  className="vfl-curve"
-                />
+                <path key={c.key} d={c.d} fill="none" stroke={c.color} className="vfl-curve" />
               ))}
             </g>
           </svg>

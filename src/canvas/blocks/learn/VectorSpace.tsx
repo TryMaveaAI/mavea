@@ -4,12 +4,15 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
 import type { VectorSpaceProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { placeVectorLabels } from './vectorLabels';
 
 type Props = VectorSpaceProps & { delay?: number };
 
 const W = 300;
 const H = 248;
 const PAD = 42;
+/** .vs-lbl's size, in viewBox units. */
+const LBL_FS = 11;
 
 const PALETTE = ['var(--presence)', 'var(--insight)', 'var(--warning)', 'var(--danger)'];
 
@@ -32,27 +35,22 @@ function Head({ x, y, angle, color }: { x: number; y: number; angle: number; col
   );
 }
 
-/** A labeled vector arrow from the origin to (endX, endY) in SVG coords. */
+/** A vector arrow from the origin to (endX, endY) in SVG coords. */
 function VecArrow({
   endX,
   endY,
   color,
-  label,
   dashed,
 }: {
   endX: number;
   endY: number;
   color: string;
-  label?: string;
   dashed?: boolean;
 }) {
   const angle = Math.atan2(endY, endX);
   const arrowLen = 10;
   const lx2 = endX - Math.cos(angle) * arrowLen * 0.85;
   const ly2 = endY - Math.sin(angle) * arrowLen * 0.85;
-  const perpA = angle - Math.PI / 2;
-  const midX = endX * 0.55;
-  const midY = endY * 0.55;
 
   return (
     <g>
@@ -66,18 +64,6 @@ function VecArrow({
         strokeDasharray={dashed ? '5,3' : undefined}
       />
       <Head x={endX} y={endY} angle={angle} color={color} />
-      {label && (
-        <text
-          x={midX + Math.cos(perpA) * 11}
-          y={midY + Math.sin(perpA) * 11}
-          fill={color}
-          className="vs-lbl"
-          textAnchor="middle"
-          dominantBaseline="middle"
-        >
-          {label}
-        </text>
-      )}
     </g>
   );
 }
@@ -123,6 +109,30 @@ export function VectorSpace({
     };
   }, [vectors, transformed, xRange, yRange]);
 
+  const arrows = useMemo(
+    () =>
+      [
+        ...vectors.map((v, i) => ({ v, i, dashed: false })),
+        ...transformed.map((v, i) => ({ v, i, dashed: true })),
+      ].map(({ v, i, dashed }) => ({
+        key: `${dashed ? 't' : 'v'}${i}`,
+        endX: sx(v.x) - ox,
+        endY: sy(v.y) - oy,
+        color: v.color || PALETTE[i % PALETTE.length],
+        label: v.label,
+        dashed,
+      })),
+    [vectors, transformed, sx, sy, ox, oy],
+  );
+  const labelAt = useMemo(
+    () =>
+      placeVectorLabels(
+        arrows.map((a) => ({ x0: ox, y0: oy, x1: ox + a.endX, y1: oy + a.endY, label: a.label })),
+        { width: W, height: H, fontSize: LBL_FS },
+      ),
+    [arrows, ox, oy],
+  );
+
   // Span shading: parallelogram from origin through first two vectors
   const spanPath = useMemo(() => {
     if (!showSpan || vectors.length < 2) return '';
@@ -163,14 +173,14 @@ export function VectorSpace({
           {xTicks
             .filter((t) => t !== 0)
             .map((t) => (
-              <text key={`xt${t}`} x={sx(t)} y={oy + 12} className="vs-tick" textAnchor="middle">
+              <text key={`xt${t}`} x={sx(t)} y={oy + 14} className="vs-tick" textAnchor="middle">
                 {t}
               </text>
             ))}
           {yTicks
             .filter((t) => t !== 0)
             .map((t) => (
-              <text key={`yt${t}`} x={ox - 6} y={sy(t) + 3} className="vs-tick" textAnchor="end">
+              <text key={`yt${t}`} x={ox - 6} y={sy(t) + 4} className="vs-tick" textAnchor="end">
                 {t}
               </text>
             ))}
@@ -187,29 +197,28 @@ export function VectorSpace({
 
           {/* Vectors — translated to origin in SVG coords */}
           <g transform={`translate(${ox},${oy})`}>
-            {/* Original vectors */}
-            {vectors.map((v, i) => (
-              <VecArrow
-                key={`v${i}`}
-                endX={sx(v.x) - ox}
-                endY={sy(v.y) - oy}
-                color={v.color || PALETTE[i % PALETTE.length]}
-                label={v.label}
-              />
-            ))}
-
-            {/* Transformed vectors (dashed) */}
-            {transformed.map((v, i) => (
-              <VecArrow
-                key={`t${i}`}
-                endX={sx(v.x) - ox}
-                endY={sy(v.y) - oy}
-                color={v.color || PALETTE[i % PALETTE.length]}
-                label={v.label}
-                dashed
-              />
+            {/* Originals solid, transformed dashed. */}
+            {arrows.map((a) => (
+              <VecArrow key={a.key} endX={a.endX} endY={a.endY} color={a.color} dashed={a.dashed} />
             ))}
           </g>
+
+          {arrows.map((a, i) => {
+            const at = labelAt[i];
+            return a.label && at ? (
+              <text
+                key={`l${a.key}`}
+                x={at.x}
+                y={at.y}
+                fill={a.color}
+                className="vs-lbl"
+                textAnchor="middle"
+                dominantBaseline="central"
+              >
+                {a.label}
+              </text>
+            ) : null;
+          })}
 
           {/* Origin dot */}
           <circle cx={ox} cy={oy} r={3} fill="var(--text-secondary)" />

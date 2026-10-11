@@ -12,7 +12,23 @@
   box-shadow: none;
 }
 
-.canvas-hscroll:focus-visible {
+/* The vertical twin: a capped list fades its last lines out instead of cutting them through the
+   middle, until the reader reaches the end. A mask rather than a shadow, because these regions
+   carry no surface of their own for a shadow to sit on. */
+.canvas-vscroll {
+  overscroll-behavior-block: contain;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.25rem), transparent);
+}
+
+.canvas-vscroll.canvas-vscroll--end,
+.canvas-vscroll:focus-visible {
+  /* A focused region has to show its whole outline; the reader already knows it scrolls. */
+  mask-image: none;
+}
+
+.canvas-hscroll:focus-visible,
+.canvas-vscroll:focus-visible {
   outline: 2px solid var(--presence);
   outline-offset: -2px;
 }
@@ -26,8 +42,22 @@
   overflow-x: auto;
 }
 
+/* A figure's own box. When the guard has to widen an SVG past its card, the pan region is the SVG's
+   parent; a figure that shares that parent with a legend or the card's prose drags them sideways
+   with it. Give a figure that sits beside text this wrapper, and only the drawing pans. */
+.canvas-figure {
+  min-inline-size: 0;
+}
+
+/* Out of its old grid cell an svg is an inline box again: it sits on a text baseline with a gap
+   under it, and a narrow card's `margin: 0 auto` stops centring it. */
+.canvas-figure > svg {
+  display: block;
+}
+
+/* The guard's min-width already outranks any authored max-width, so the cap stays: lifting it let a
+   figure held to 300px fill its whole column instead, and its 12px hub label painted at 23px. */
 svg[data-legibility-guard] {
-  max-width: none;
   flex: none;
 }
 

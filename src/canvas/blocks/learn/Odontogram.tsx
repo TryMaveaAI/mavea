@@ -9,7 +9,10 @@ type Props = OdontogramProps & { delay?: number };
 const VB_W = 320;
 const VB_H = 188;
 const TEETH_PER_ARCH = 16;
-const TOOTH_W = VB_W / (TEETH_PER_ARCH + 1.2);
+// Room on each side for the U / L arch letters, kept symmetric so the midline stays between
+// teeth 8 and 9. Each tooth is TOOTH_W − 4 wide, so the last 4 of the row are the final gap.
+const ARCH_GUTTER = 15;
+const TOOTH_W = (VB_W - 2 * ARCH_GUTTER + 4) / TEETH_PER_ARCH;
 const TOOTH_H = 26;
 const UPPER_Y = 30; // baseline for the upper arch crowns
 const LOWER_Y = 134; // baseline for the lower arch crowns
@@ -88,7 +91,7 @@ export function Odontogram({
 
     return Array.from({ length: TEETH_PER_ARCH }, (_, i) => {
       const num = numFor(i);
-      const x = TOOTH_W * 0.6 + i * TOOTH_W;
+      const x = ARCH_GUTTER + i * TOOTH_W;
       const rec = byNumber.get(num);
       const status = rec?.status ?? 'healthy';
       const meta = STATUS_META[status];
@@ -176,10 +179,20 @@ export function Odontogram({
       <div className="odo-board">
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="odo-svg" role="img" aria-label={title}>
           {/* Arch guide labels */}
-          <text x={6} y={UPPER_Y + TOOTH_H / 2 + 3} className="odo-arch-lbl">
+          <text
+            x={ARCH_GUTTER / 2 - 1}
+            y={UPPER_Y + TOOTH_H / 2 + 3}
+            className="odo-arch-lbl"
+            textAnchor="middle"
+          >
             U
           </text>
-          <text x={6} y={LOWER_Y + TOOTH_H / 2 + 3} className="odo-arch-lbl">
+          <text
+            x={ARCH_GUTTER / 2 - 1}
+            y={LOWER_Y + TOOTH_H / 2 + 3}
+            className="odo-arch-lbl"
+            textAnchor="middle"
+          >
             L
           </text>
           {/* Midline */}

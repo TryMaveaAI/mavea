@@ -237,7 +237,6 @@ function Slot({
         ))}
       </svg>
       <div className="kt-label">{label}</div>
-      {note && <div className="kt-note">{note}</div>}
     </div>
   );
 }
@@ -255,7 +254,7 @@ export function Karyotype({
   const Ic = Icon[icon] ?? Icon.layers;
   const baseId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
-  const { slots, usedKinds } = useMemo(() => {
+  const { slots, keyLines } = useMemo(() => {
     const anomList = (Array.isArray(anomalies) ? anomalies : [])
       .filter((a) => a && a.kind in RING_COLOR)
       .slice(0, 24);
@@ -294,7 +293,15 @@ export function Karyotype({
       const note = anomaly
         ? `${KIND_LABEL[anomaly.kind]} ${anomaly.note ? `· ${anomaly.note}` : ''}`.trim()
         : undefined;
-      return { key, label, copies, ringColor, note };
+      // The legend names the pair the way a reader says it: "Trisomy 21", "Monosomy X".
+      const keyLine = anomaly
+        ? {
+            kind: anomaly.kind,
+            text: `${KIND_LABEL[anomaly.kind]} ${isSex ? normPair(anomaly.pair) || label : key}`,
+            note: anomaly.note,
+          }
+        : null;
+      return { key, label, copies, ringColor, note, keyLine };
     }
 
     // Sex-anomaly lookup: an X/Y anomaly targets the single sex slot.
@@ -305,8 +312,7 @@ export function Karyotype({
     for (let i = 1; i <= 22; i++) out.push(build(String(i), [String(i), String(i)]));
     out.push(build('sexslot', sex === 'XY' ? ['X', 'Y'] : ['X', 'X']));
 
-    const kinds = new Set(anomList.map((a) => a.kind));
-    return { slots: out, usedKinds: [...kinds] };
+    return { slots: out, keyLines: out.flatMap((s) => (s.keyLine ? [s.keyLine] : [])) };
   }, [sex, anomalies, highlightPairs]);
 
   return (
@@ -333,12 +339,17 @@ export function Karyotype({
         ))}
       </div>
 
-      {usedKinds.length > 0 && (
+      {/* Each anomaly's note lives here, not under its pair: a pair's column is a few
+          characters wide, so a note there broke a letter per line. */}
+      {keyLines.length > 0 && (
         <ul className="kt-legend" aria-label="Anomaly key">
-          {usedKinds.map((k) => (
-            <li key={k} className="kt-leg">
-              <span className="kt-leg-dot" style={{ background: RING_COLOR[k] }} />
-              {KIND_LABEL[k]}
+          {keyLines.map((k) => (
+            <li key={k.text} className="kt-leg">
+              <span className="kt-leg-dot" style={{ background: RING_COLOR[k.kind] }} />
+              <span>
+                <b className="kt-leg-name">{k.text}</b>
+                {k.note && <> · {k.note}</>}
+              </span>
             </li>
           ))}
         </ul>

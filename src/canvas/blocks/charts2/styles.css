@@ -133,16 +133,20 @@
   height: 9px;
   border-radius: 50%;
 }
+/* Rows share one set of columns (subgrid), so the name column is as wide as the longest name needs
+   — up to 40% of the card — and every track starts at the same x. A fixed name column cut "Type
+   checker" to "Type…" beside hundreds of pixels of empty track. */
 .c2-db {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
+  display: grid;
+  grid-template-columns: fit-content(40%) minmax(0, 1fr) auto;
+  column-gap: 12px;
+  row-gap: 11px;
 }
 .c2-db-row {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: clamp(64px, 24cqi, 90px) minmax(0, 1fr) 54px;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 12px;
   padding: 2px 4px;
   border-radius: var(--r-sm);
   transition: background var(--m-fast);
@@ -462,7 +466,6 @@
   left: 0;
   border-radius: var(--r-sm);
   transition: width var(--m-expressive) var(--ease-out);
-  box-shadow: 0 0 8px -2px currentColor;
 }
 .c2-bul-target {
   position: absolute;
@@ -688,7 +691,7 @@
   position: absolute;
   right: 0;
   transform: translateY(-50%);
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: var(--fs-2xs, 10px);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -707,18 +710,42 @@
   cursor: pointer;
 }
 .c2-cs-axis {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 1.4em;
   margin-top: 4px;
-  margin-left: clamp(32px, 10cqi, 54px);
+  /* under the plot, past the y-axis gutter (its width + the wrap's gap) */
+  margin-left: calc(clamp(26px, 10cqi, 48px) + 6px);
   font-size: var(--fs-xs, 11px);
+}
+/* Each label sits under its candle; the end ones slide inward by the same share. The stride
+   keeps neighbours apart, but the last label always shows, so one longer than the whole row is
+   capped at it: with the share-of-own-width shift, a box no wider than the row never leaves it. */
+.c2-cs-xt {
+  position: absolute;
+  left: var(--at);
+  transform: translateX(calc(-1 * var(--at)));
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded truncation: max-width + ellipsis above */
+  white-space: nowrap;
+}
+.c2-cs-vt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  transform: none;
+  line-height: 1.1;
 }
 
 /* ───────────────────────── Gantt ───────────────────────── */
+/* One grid for the header and every task row (rows are subgrids), so the name column is as wide
+   as the longest name needs (up to a cap) and the week header lines up with the tracks at any
+   width. A fixed 90px column cut most real task names to "Metering pipel…". */
 .c2-gantt-cols {
+  grid-column: 2;
   display: flex;
-  margin-left: 96px;
-  margin-bottom: 6px;
+  margin-bottom: -2px;
 }
 .c2-gantt-col {
   font-size: var(--fs-2xs);
@@ -726,23 +753,26 @@
   padding-left: 2px;
 }
 .c2-gantt {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: fit-content(min(200px, 36cqi)) minmax(0, 1fr);
   gap: 8px;
 }
 .c2-gantt-line {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: clamp(64px, 24cqi, 90px) minmax(0, 1fr);
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 8px;
 }
 .c2-gantt-name {
   font-size: var(--fs-sm);
+  line-height: 1.2;
   color: var(--text-secondary);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
-  white-space: nowrap;
+  /* wraps to a second line before it is cut */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
   min-width: 0;
 }
 .c2-gantt-track {
@@ -894,6 +924,16 @@
   position: relative;
   height: 24px;
 }
+.c2-fc-ticks {
+  position: relative;
+  block-size: 1.2em;
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+}
+.c2-fc-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+}
 .c2-fc-grid {
   position: absolute;
   top: 0;
@@ -970,6 +1010,16 @@
   display: block;
   overflow: visible;
 }
+.c2-bub-name {
+  fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
+  font-size: 9px;
+  pointer-events: none;
+}
+.c2-bub-name.on {
+  fill: var(--text-primary);
+  font-weight: 600;
+}
 .c2-bub-tip {
   position: absolute;
   transform: translate(-50%, -130%);
@@ -992,15 +1042,21 @@
 }
 
 /* ───────────────────────── Area range ───────────────────────── */
+/* The x axis is a sibling of the wrap, so both carry the gutter it has to clear. */
+.c2-ar-wrap,
+.c2-ar-axis {
+  --ar-yaxis: clamp(22px, 9cqi, 40px);
+  --ar-gap: 6px;
+}
 .c2-ar-wrap {
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  gap: var(--ar-gap);
 }
 .c2-ar-yaxis {
   position: relative;
   flex: none;
-  width: clamp(22px, 9cqi, 40px);
+  width: var(--ar-yaxis);
 }
 .c2-ar-yt {
   position: absolute;
@@ -1015,6 +1071,19 @@
   position: relative;
   flex: 1;
   min-width: 0;
+}
+.c2-ar-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-default);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: scale 0.15s ease;
+}
+.c2-ar-dot.on {
+  scale: 1.35;
 }
 .c2-ar-svg {
   width: 100%;
@@ -1048,11 +1117,21 @@
   font-size: var(--fs-2xs, 10.5px);
 }
 .c2-ar-axis {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 1.4em;
   margin-top: 4px;
-  margin-left: clamp(28px, 9cqi, 46px); /* align under the plot, past the y-axis gutter */
+  /* under the plot, past the y-axis gutter */
+  margin-left: calc(var(--ar-yaxis) + var(--ar-gap));
   font-size: var(--fs-xs, 11px);
+}
+/* Each label sits under its point; the end ones slide inward by the same share, so the first
+   starts at the plot's left edge and the last ends at its right. */
+.c2-ar-xt {
+  position: absolute;
+  left: var(--at);
+  transform: translateX(calc(-1 * var(--at)));
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term: the stride keeps neighbours apart */
+  white-space: nowrap;
 }
 
 /* ───────────────────────── Waffle ───────────────────────── */
@@ -1089,7 +1168,11 @@
   align-items: center;
   gap: 9px;
   padding: 4px 8px;
+  border: 0;
   border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  color: inherit;
   transition: background var(--m-fast);
   width: 100%;
   text-align: left;
@@ -1129,8 +1212,8 @@
 .c2-pic-grid {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 2px;
-  width: min(188px, 100%);
+  gap: 3px;
+  width: min(260px, 100%);
   max-width: 100%;
   flex-shrink: 0;
 }
@@ -1142,13 +1225,9 @@
     opacity var(--m-fast),
     transform var(--m-fast);
 }
-.c2-pic-cell-empty {
-  border-radius: 3px;
-  background: var(--cell-empty);
-}
 .c2-pic-glyph {
-  width: 68%;
-  height: 68%;
+  width: 88%;
+  height: 88%;
   color: inherit;
 }
 .c2-pic-legend {
@@ -1163,7 +1242,11 @@
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
+  border: 0;
   border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  color: inherit;
   transition: background var(--m-fast);
   width: 100%;
   text-align: left;
@@ -1325,36 +1408,36 @@
 }
 
 /* ── calheat: contribution-style activity calendar ── */
+.c2-cal-body {
+  /* cells grow with the card up to ~28px; a short span centres instead of hugging the left */
+  inline-size: min(100%, calc(var(--weeks) * 31px + 3.5em));
+  margin-inline: auto;
+}
 .c2-cal-wrap {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
   overflow-x: auto;
   padding-bottom: 4px;
 }
-.c2-cal-days {
+.c2-cal-grid {
   display: grid;
-  grid-template-rows: repeat(7, 13px);
+  grid-template-columns: repeat(var(--weeks), minmax(10px, 1fr));
+  grid-template-rows: repeat(7, auto);
   gap: 3px;
-  flex-shrink: 0;
+}
+.c2-cal-grid.has-days {
+  grid-template-columns: auto repeat(var(--weeks), minmax(10px, 1fr));
 }
 .c2-cal-day {
+  grid-column: 1;
+  align-self: center;
+  padding-inline-end: 5px;
   font-size: var(--fs-2xs);
-  line-height: 13px;
+  line-height: 1;
   color: var(--text-faint);
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
-.c2-cal-grid {
-  display: grid;
-  grid-template-rows: repeat(7, 13px);
-  grid-auto-flow: column;
-  grid-auto-columns: 13px;
-  gap: 3px;
-}
 .c2-cal-cell {
-  width: 13px;
-  height: 13px;
+  aspect-ratio: 1;
   border-radius: 3px;
   transition: transform var(--m-fast) var(--ease-out);
 }
@@ -1363,7 +1446,7 @@
   align-items: center;
   gap: 4px;
   justify-content: flex-end;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .c2-cal-legend i {
   width: 12px;
@@ -1564,8 +1647,10 @@
   position: relative;
 }
 .c2-pt-svg {
+  /* height follows the viewBox, which grows with the slanted names' margin */
   width: 100%;
-  height: clamp(170px, 62cqi, 370px);
+  height: auto;
+  max-height: 370px;
   display: block;
   overflow: visible;
 }
@@ -1809,15 +1894,15 @@
 
 /* ───────────────────────── ControlChart ───────────────────────── */
 .c2-cc-wrap {
-  /* 50cqi keeps the 480:240 viewBox aspect-ratio across card widths; clamp
-     stays above 200px so rotated x-tick labels always clear the bottom edge. */
-  height: clamp(200px, 58cqi, 420px);
   overflow: hidden;
 }
+/* The viewBox height follows the x labels (flat or rotated), so the box takes its height from
+   the drawing's own aspect; a fixed height letterboxed a flat-labelled chart in empty space. */
 .c2-cc-svg {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 420px;
 }
 
 /* Control zone fill (between LCL and UCL) */
@@ -1878,7 +1963,7 @@
 
 /* Y-axis tick labels */
 .c2-cc-ytick {
-  fill: var(--text-faint);
+  fill: var(--text-muted);
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   text-anchor: end;
@@ -1887,14 +1972,14 @@
 
 /* Y-axis label (rotated) */
 .c2-cc-ylabel {
-  fill: var(--text-faint);
+  fill: var(--text-muted);
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
 
 /* X-axis tick labels */
 .c2-cc-xtick {
-  fill: var(--text-faint);
+  fill: var(--text-muted);
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
@@ -1910,7 +1995,7 @@
   fill: var(--warning);
 }
 .c2-cc-legend-cl {
-  fill: var(--text-faint);
+  fill: var(--text-muted);
 }
 
 /* Tooltip */
@@ -1947,9 +2032,9 @@
   min-width: 0;
 }
 .c2-cc-note {
-  font-size: var(--fs-xs);
-  color: var(--text-faint);
-  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 12px 0 0;
   overflow-wrap: anywhere;
   min-width: 0;
 }
@@ -2044,6 +2129,11 @@
 }
 .c2-ec-threshold-lbl {
   fill: var(--danger);
+  /* it can sit over a bar that tops the line */
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
   /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
@@ -2260,9 +2350,35 @@
   display: inline-block;
   flex: none;
 }
+.apl-foot {
+  max-width: 620px;
+  margin-inline: auto;
+}
+.apl-foot .apl-legend {
+  justify-content: center;
+}
 .apl-note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
   margin-top: 8px;
-  font-size: var(--fs-xs, 12px);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.apl-note-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.apl-note-area i {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex: none;
 }
 .apl-note .tab-num {
   color: var(--text-primary);
@@ -2651,6 +2767,11 @@
   font-size: 9.5px;
   font-weight: 600;
 }
+.c2 .idf-leader {
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.6;
+}
 .c2 .idf-guide {
   stroke: var(--text-muted);
   stroke-width: 1;
@@ -2762,6 +2883,10 @@
   font-size: 8.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
 }
 /* derived read-outs row under the chart */
 .c2 .pay-stats {
@@ -3334,6 +3459,18 @@
   width: 100%;
   height: 38px;
 }
+.c2 .c2-vs-trace {
+  position: relative;
+  display: block;
+}
+.c2 .c2-vs-dot {
+  position: absolute;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
 .c2 .c2-vs-band {
   opacity: 1;
 }
@@ -3551,9 +3688,22 @@
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
-/* the filled REM bouts — the highlighted stage */
-.c2 .c2-sc-rem {
-  fill: color-mix(in oklab, var(--presence) 38%, transparent);
+/* One colour per stage, shared by the span fills and the legend swatches so each swatch names
+   something drawn. */
+.c2 .c2-sc-st--awake {
+  --sc-fill: color-mix(in oklab, var(--text-secondary) 30%, transparent);
+}
+.c2 .c2-sc-st--rem {
+  --sc-fill: color-mix(in oklab, var(--presence) 45%, transparent);
+}
+.c2 .c2-sc-st--light {
+  --sc-fill: color-mix(in oklab, var(--insight) 25%, transparent);
+}
+.c2 .c2-sc-st--deep {
+  --sc-fill: color-mix(in oklab, var(--insight) 50%, transparent);
+}
+.c2 .c2-sc-band {
+  fill: var(--sc-fill);
   stroke: none;
 }
 /* the stepped hypnogram trace */
@@ -3608,18 +3758,7 @@
   height: 10px;
   border-radius: 3px;
   flex: none;
-}
-.c2 .c2-sc-sw--awake {
-  background: color-mix(in oklab, var(--text-secondary) 40%, transparent);
-}
-.c2 .c2-sc-sw--rem {
-  background: var(--presence);
-}
-.c2 .c2-sc-sw--light {
-  background: color-mix(in oklab, var(--insight) 55%, transparent);
-}
-.c2 .c2-sc-sw--deep {
-  background: var(--insight);
+  background: var(--sc-fill);
 }
 .c2 .c2-sc-caption {
   margin-top: 8px;
@@ -3631,7 +3770,9 @@
 
 /* ───────────────── seasonband: a 12-month produce / planting / bloom calendar ─────────────────
    Namespaced `.c2-sb-*`. The whole-year grid is fixed (Jan→Dec) so seasons read against a stable
-   calendar; window bars are positioned in the SVG from their month numbers. */
+   calendar; window bars are positioned in the SVG from their month numbers. The SVG is laid out
+   at the card's measured width, one unit per pixel, so it carries no height cap: a taller
+   calendar is more rows, never smaller type. */
 .c2-sb-wrap {
   width: 100%;
   margin-top: 4px;
@@ -3640,7 +3781,6 @@
   width: 100%;
   height: auto;
   display: block;
-  max-height: 70cqi;
   overflow: hidden;
 }
 .c2-sb-grid line {
@@ -3658,20 +3798,31 @@
   font-size: var(--fs-2xs, 10px);
   font-weight: 600;
 }
+/* Harvest's stripes: the kind still reads where a template gives two kinds the same ink. */
+.c2-sb-hatch {
+  stroke: color-mix(in oklab, var(--surface-default) 55%, transparent);
+  stroke-width: 1.6;
+}
 .c2-sb-band {
   transition:
     fill var(--m-fast),
     stroke-width var(--m-fast);
   cursor: default;
 }
-/* The "now" marker: a dashed vertical guide pinning today's month across every row. */
+/* The "now" marker: a dashed vertical guide pinning today's month across every row. Neutral ink,
+   because every accent is already a window kind — warning is harvest's, and the guide vanished
+   wherever it crossed one. */
+.c2-sb-wrap,
+.c2-sb-legend {
+  --c2-sb-now: color-mix(in oklab, var(--text-primary) 72%, transparent);
+}
 .c2-sb-now line {
-  stroke: var(--warning);
+  stroke: var(--c2-sb-now);
   stroke-width: 1.2;
   stroke-dasharray: 3 3;
 }
 .c2-sb-now circle {
-  fill: var(--warning);
+  fill: var(--c2-sb-now);
 }
 .c2-sb-legend {
   display: flex;
@@ -3688,16 +3839,26 @@
   min-width: 0;
 }
 .c2-sb-leg i {
-  width: 11px;
-  height: 8px;
+  width: 12px;
+  height: 9px;
+  border: 1px solid;
   border-radius: 2px;
+  box-sizing: border-box;
   flex: none;
+}
+.c2-sb-leg i.is-hatched {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 2px,
+    color-mix(in oklab, var(--surface-default) 55%, transparent) 2px 3.2px
+  );
 }
 .c2-sb-leg--now i {
   width: 2px;
   height: 11px;
+  border: 0;
   border-radius: 1px;
-  background: var(--warning);
+  background: var(--c2-sb-now);
 }
 .c2-sb-notes {
   display: flex;
@@ -4358,6 +4519,11 @@ table.c2-chrom-table {
 .c2-gate-label {
   font-size: var(--fs-2xs);
   font-weight: 600;
+  /* a gate's name can still meet a neighbouring gate's outline or a point; the halo keeps it whole */
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .c2-gate-empty {
   font-size: var(--fs-sm);
@@ -4390,6 +4556,8 @@ table.c2-chrom-table {
 .c2-gel-scroll {
   display: flex;
   align-items: flex-start;
+  /* lanes share the plate rather than huddling at its left edge */
+  justify-content: center;
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 2px;
@@ -4400,6 +4568,11 @@ table.c2-chrom-table {
   flex-direction: column;
   align-items: center;
   gap: 5px;
+}
+.c2-gel-lane:not(.c2-gel-ladder) {
+  flex: 1 1 0;
+  min-inline-size: min(64px, 100%);
+  max-inline-size: 120px;
 }
 .c2-gel-lane-svg {
   display: block;
@@ -4416,14 +4589,14 @@ table.c2-chrom-table {
   font-size: var(--fs-2xs);
   color: var(--text-secondary);
   text-align: center;
-  max-width: 64px;
+  max-width: 100%;
   overflow-wrap: anywhere;
   line-height: 1.2;
 }
 .c2-gel-lane-sizes {
   font-size: var(--fs-2xs);
   text-align: center;
-  max-width: 64px;
+  max-width: 100%;
   overflow-wrap: anywhere;
   line-height: 1.25;
 }
@@ -4433,6 +4606,12 @@ table.c2-chrom-table {
 .c2-gel-tick {
   stroke: var(--gel-tick);
   stroke-width: 1;
+}
+.c2-gel-leader {
+  fill: none;
+  stroke: var(--gel-tick);
+  stroke-width: 0.75;
+  opacity: 0.7;
 }
 .c2-gel-tick-lbl {
   fill: var(--gel-tick-lbl);
@@ -4739,10 +4918,12 @@ table.c2-chrom-table {
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   /* Legibility over an arbitrary accent fill: a halo in the card's own surface colour, so it
-     themes automatically instead of guessing which side of the contrast line the band is on. */
+     themes automatically instead of guessing which side of the contrast line the band is on.
+     Kept thin and slightly translucent — at full width and opacity every figure read as a
+     sticker, and the halo outweighed the number it was there to carry. */
   paint-order: stroke fill;
-  stroke: var(--surface-default);
-  stroke-width: 2.2px;
+  stroke: color-mix(in oklab, var(--surface-default) 85%, transparent);
+  stroke-width: 1.5px;
   stroke-linejoin: round;
 }
 .c2-stk-total {
@@ -4763,4 +4944,31 @@ table.c2-chrom-table {
   margin-top: 6px;
   font-size: var(--fs-2xs);
   color: var(--text-faint);
+}
+
+/* BurnRunway: the bars and the line share an axis but mean different things */
+.c2-brw-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.c2-brw-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.c2-brw-sw-line {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--insight);
+}
+.c2-brw-sw-bar {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--danger) 22%, transparent);
 }

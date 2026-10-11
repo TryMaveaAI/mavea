@@ -103,53 +103,55 @@ export function Ecdf({
 
       {model && (
         <>
-          <svg viewBox={`0 0 ${W} ${H}`} className="ecdf-svg" role="img" aria-label={title}>
-            {Y_TICKS.map((t) => (
-              <g key={`g${t}`}>
-                <line
-                  className="ecdf-grid"
-                  x1={M.left}
-                  y1={model.sy(t)}
-                  x2={W - M.right}
-                  y2={model.sy(t)}
-                />
-                <text className="ecdf-tick" x={M.left - 6} y={model.sy(t) + 3.5} textAnchor="end">
-                  {t.toFixed(2)}
+          <div className="canvas-figure">
+            <svg viewBox={`0 0 ${W} ${H}`} className="ecdf-svg" role="img" aria-label={title}>
+              {Y_TICKS.map((t) => (
+                <g key={`g${t}`}>
+                  <line
+                    className="ecdf-grid"
+                    x1={M.left}
+                    y1={model.sy(t)}
+                    x2={W - M.right}
+                    y2={model.sy(t)}
+                  />
+                  <text className="ecdf-tick" x={M.left - 6} y={model.sy(t) + 3.5} textAnchor="end">
+                    {t.toFixed(2)}
+                  </text>
+                </g>
+              ))}
+
+              <line
+                className="ecdf-axis"
+                x1={M.left}
+                y1={H - M.bottom}
+                x2={W - M.right}
+                y2={H - M.bottom}
+              />
+              <line className="ecdf-axis" x1={M.left} y1={M.top} x2={M.left} y2={H - M.bottom} />
+
+              {model.xTicks.map((t) => (
+                <text
+                  key={`xt${t}`}
+                  className="ecdf-tick"
+                  x={model.sx(t)}
+                  y={H - M.bottom + 15}
+                  textAnchor="middle"
+                >
+                  {formatValue(t, { unit: unit || undefined })}
                 </text>
-              </g>
-            ))}
+              ))}
 
-            <line
-              className="ecdf-axis"
-              x1={M.left}
-              y1={H - M.bottom}
-              x2={W - M.right}
-              y2={H - M.bottom}
-            />
-            <line className="ecdf-axis" x1={M.left} y1={M.top} x2={M.left} y2={H - M.bottom} />
+              <line
+                className="ecdf-mark-guide"
+                x1={model.sx(model.med)}
+                y1={H - M.bottom}
+                x2={model.sx(model.med)}
+                y2={M.top}
+              />
 
-            {model.xTicks.map((t) => (
-              <text
-                key={`xt${t}`}
-                className="ecdf-tick"
-                x={model.sx(t)}
-                y={H - M.bottom + 15}
-                textAnchor="middle"
-              >
-                {formatValue(t, { unit: unit || undefined })}
-              </text>
-            ))}
-
-            <line
-              className="ecdf-mark-guide"
-              x1={model.sx(model.med)}
-              y1={H - M.bottom}
-              x2={model.sx(model.med)}
-              y2={M.top}
-            />
-
-            <path ref={lineRef} className="ecdf-line" d={model.d} fill="none" stroke={color} />
-          </svg>
+              <path ref={lineRef} className="ecdf-line" d={model.d} fill="none" stroke={color} />
+            </svg>
+          </div>
 
           <p className="ecdf-caption faint tab-num">
             n = {model.n.toLocaleString()} · median{' '}

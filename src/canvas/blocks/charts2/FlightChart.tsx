@@ -9,6 +9,8 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = FlightChartProps & { delay?: number };
 
+const MAX_PERIOD_LABELS = 12;
+
 // A small, token-only cycle for a channel the caller never assigned a color — keeps every
 // lane visually distinct without inventing a new palette.
 const LANE_PALETTE = [
@@ -122,6 +124,8 @@ export function FlightChart({
   }
 
   const unit = 100 / geom.periods;
+  // About a dozen numbers fit any track width this card reaches; a longer plan labels every k-th.
+  const periodStride = Math.max(1, Math.ceil(geom.periods / MAX_PERIOD_LABELS));
 
   return (
     <div
@@ -177,6 +181,21 @@ export function FlightChart({
             </div>
           </div>
         ))}
+        {/* Period numbers under the lanes. The grid's unit is the caller's (week, month…) and no
+            prop names it, so the axis counts periods rather than inventing "Week" — but without
+            any count a footer like "paused weeks 7-8" pointed at nothing on the chart. */}
+        <div className="c2-fc-line c2-fc-axis" aria-hidden="true">
+          <span />
+          <div className="c2-fc-ticks">
+            {[...Array(geom.periods)].map((_, g) =>
+              g % periodStride === 0 ? (
+                <span key={g} className="tab-num" style={{ left: `${(g + 0.5) * unit}%` }}>
+                  {g + 1}
+                </span>
+              ) : null,
+            )}
+          </div>
+        </div>
       </div>
       <div className="c2-fc-total">
         <span className="c2-fc-total-lbl faint">Total spend</span>

@@ -79,22 +79,27 @@ export function CollectionTracker({
                   className="ctk-card m-stagger-item m-scale-in"
                   style={{ ['--i' as string]: i } as CSSProperties}
                 >
-                  <div className="ctk-card-top">
-                    <span className="ctk-name" title={it.name}>
-                      {it.name}
-                    </span>
-                    {condition && (
-                      <span
-                        className="ctk-condition"
-                        style={
-                          { ['--ctk-c' as string]: CONDITION_COLOR[condition] } as CSSProperties
-                        }
-                      >
-                        {condition}
-                      </span>
-                    )}
-                  </div>
-                  {it.acquiredDate && <div className="ctk-date">{it.acquiredDate}</div>}
+                  {/* The name takes the tile's full width. With the condition badge beside it,
+                      a title of any length lost a third of its line and clipped at two lines
+                      while the space under the badge sat empty. */}
+                  <span className="ctk-name" title={it.name}>
+                    {it.name}
+                  </span>
+                  {(it.acquiredDate || condition) && (
+                    <div className="ctk-meta">
+                      {it.acquiredDate && <span className="ctk-date">{it.acquiredDate}</span>}
+                      {condition && (
+                        <span
+                          className="ctk-condition"
+                          style={
+                            { ['--ctk-c' as string]: CONDITION_COLOR[condition] } as CSSProperties
+                          }
+                        >
+                          {condition}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {value != null && (
                     <div className="ctk-value tab-num">
                       {formatValue(value, { currency: 'USD', decimals: 0 })}

@@ -864,14 +864,16 @@
 
 /* ───────────────────────── palette ───────────────────────── */
 .me-pal {
+  /* Every swatch on one row whenever each can still be 96px wide; past that the row wraps at
+     96px a swatch. A fixed five columns stranded a sixth colour alone on a second row of a card
+     with room to spare. --pal-n is the swatch count, set by the component. */
+  --pal-gap: 8px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-}
-@media (width <= 560px) {
-  .me-pal {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(max(96px, calc((100% - (var(--pal-n, 5) - 1) * var(--pal-gap)) / var(--pal-n, 5))), 1fr)
+  );
+  gap: var(--pal-gap);
 }
 .me-pal-swatch {
   position: relative;
@@ -888,6 +890,9 @@
      width keeps the ratio pointing one way — with only a floored height to go on it would work the
      ratio backwards and widen the swatch out of its own grid column. */
   min-height: 96px;
+  /* On a wide card the ratio alone made each swatch ~280px tall — a wall of flat colour that
+     pushed the names and the type stack off the first screen. */
+  max-height: 168px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1016,7 +1021,7 @@
 }
 
 /* Optional real photo for the gradient-plate media blocks (carousel/lightbox/before-after/
-   image-callouts/moodboard). The plate keeps its gradient as a loading + fallback background;
+   image-callouts/moodboard/mediacard). The plate keeps its gradient as a loading + fallback background;
    the photo fills it at z-index -1 (above that gradient, below the plate's own labels/pins).
    `isolation` scopes that negative layer to the plate so it never slips behind the card. */
 .me-car-img,
@@ -1025,6 +1030,7 @@
 .me-ba-plate,
 .me-ico-img,
 .me-mood-tile,
+.mc-cover,
 .crt-media {
   isolation: isolate;
 }
@@ -1090,14 +1096,15 @@
   width: 100%;
   height: auto;
   display: block;
+  margin-inline: auto;
 }
 .med-diag-lead {
   stroke: var(--line-strong);
-  stroke-width: 0.4;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
+/* The size is set per label by Diagram, solved for the figure's rendered scale. */
 .med-diag-lbl {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 3.4px;
   font-weight: 600;
 }
 
@@ -1327,10 +1334,21 @@
 }
 
 /* ── sportspitch ── sports field/court overlay */
+/* Surfaces and play ink are the colours of the real thing (turf, clay, chalk), so they stay the
+   same in both themes; the white markings and discs are drawn against them, not the card. */
 .sp-wrap {
+  --sp-soccer: #2d7a3a;
+  --sp-basketball: #c45c2a;
+  --sp-football: #3d7a44;
+  --sp-tennis: #6aaa55;
+  --sp-baseball: #5a8a3a;
+  --sp-pass: #fff;
+  --sp-run: #ffdd55;
+  --sp-shot: #ff6644;
+  --sp-ink: #1a1a1a;
   margin-top: 10px;
-  border-radius: var(--r-sm);
-  overflow: hidden;
+  /* No overflow clip here: the SVG rounds its own corners, and when the legibility guard holds the
+     pitch wider than a phone card this box is the pan region, which a clip would turn into a cut. */
   max-width: 480px;
   margin-inline: auto;
 }
@@ -1400,6 +1418,14 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
+}
+.mc-name {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 .mc-meta {
   display: flex;
@@ -1688,7 +1714,9 @@
 }
 .wld-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, …), not 1fr: a bare 1fr track grows to a widened figure's min-width and pushes the
+     cell past the card, where the figure should pan inside its own box. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 @container (min-width: 460px) {
@@ -1887,6 +1915,10 @@
 .cut-yield[data-low] {
   color: var(--warning);
 }
+.cut-figure {
+  min-width: 0;
+  margin: 0;
+}
 .cut-figwrap {
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -1921,7 +1953,7 @@
 .cut-caption {
   font-size: var(--fs-xs, 12px);
   color: var(--text-secondary);
-  margin-top: 10px;
+  margin-top: 8px;
   line-height: 1.45;
 }
 
@@ -2041,7 +2073,7 @@
 }
 @media (width <= 560px) {
   .an-wrap {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .an-figbox {
@@ -2445,6 +2477,8 @@
    row and technique notes. */
 .art-figwrap {
   margin-top: 10px;
+  margin-inline: auto;
+  max-width: min(640px, 100%);
   border-radius: var(--r-md);
   border: 1px solid var(--line);
   overflow: hidden;
@@ -2454,38 +2488,41 @@
   width: 100%;
   height: auto;
 }
+/* Guide strokes are hairlines at any card width, so they hold their weight as the frame scales. */
 .art-guide line {
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 0.5;
+  stroke: color-mix(in oklab, var(--text-muted) 45%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 .art-guide .art-guide-axis {
-  stroke: rgba(255, 255, 255, 0.8);
-  stroke-width: 0.7;
+  stroke: color-mix(in oklab, var(--text-muted) 70%, transparent);
+  stroke-width: 1.4px;
   stroke-dasharray: 2 1.5;
 }
 .art-guide-arc {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.7);
-  stroke-width: 0.6;
+  stroke: color-mix(in oklab, var(--text-muted) 60%, transparent);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
 }
 .art-guide-node {
-  fill: #fff;
-  stroke: rgba(0, 0, 0, 0.3);
-  stroke-width: 0.4;
+  fill: var(--surface-elevated);
+  stroke: var(--text-muted);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 .art-region-box {
   fill: color-mix(in oklab, var(--presence) 14%, transparent);
   stroke: var(--presence);
-  stroke-width: 0.7;
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+}
+.art-region-chip {
+  fill: var(--presence);
 }
 .art-region-lbl {
-  fill: #fff;
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 4.4px;
+  fill: var(--on-presence);
   font-weight: 700;
-  paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 0.8;
 }
 .art-palette {
   display: flex;
@@ -2825,12 +2862,10 @@
   gap: 6px;
 }
 
-/* the region's name, tucked into a corner so it never crowds the sketch */
+/* The region's name, set as a caption line above the sketch. Laid over the corner it sat on
+   whatever the sketch drew there first: the brand dot, the hero headline, a card's thumbnail. */
 .wf-label {
-  position: absolute;
-  top: 5px;
-  left: 7px;
-  max-width: calc(100% - 14px);
+  margin-bottom: 6px;
   font-size: var(--fs-xs, 11px);
   font-weight: 600;
   color: var(--text-muted);
@@ -3369,6 +3404,13 @@
   text-anchor: middle;
   dominant-baseline: middle;
 }
+/* The name sits on the star's bright core, so its ink comes from that fill: theme text-primary is
+   near-white in dark mode and vanished into the glow. */
+@supports (color: color(from red srgb-linear calc(sign(r - 0.5)) g b)) {
+  .orb-center-lbl {
+    fill: color(from var(--orb-star-hi) srgb-linear var(--ink-on-fill));
+  }
+}
 .orb-body {
   stroke: color-mix(in oklab, #000 26%, transparent);
   stroke-width: 0.4;
@@ -3378,6 +3420,15 @@
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.2px;
   font-weight: 600;
+}
+/* A label pushed outward from its body lands across the next ring out wherever the rings sit
+   close; a halo in the card's surface cuts the ring under the glyphs instead of striking them. */
+.orb-body-lbl,
+.orb-body-annot {
+  stroke: var(--surface-elevated);
+  stroke-width: 1.4px;
+  stroke-linejoin: round;
+  paint-order: stroke;
 }
 .orb-body-annot {
   fill: var(--text-muted);
@@ -3414,14 +3465,14 @@
 .gb-frame {
   fill: color-mix(in oklab, var(--warning) 14%, var(--surface-elevated));
   stroke: var(--text-secondary);
-  stroke-width: 0.5;
+  stroke-width: 2;
 }
 .gb-dark {
   fill: color-mix(in oklab, var(--text-primary) 22%, transparent);
 }
 .gb-grid {
   stroke: color-mix(in oklab, var(--text-secondary) 60%, transparent);
-  stroke-width: 0.25;
+  stroke-width: 1;
 }
 .gb-hexdot {
   fill: color-mix(in oklab, var(--text-secondary) 50%, transparent);
@@ -3432,12 +3483,12 @@
 .gb-hl {
   fill: color-mix(in oklab, var(--insight) 30%, transparent);
   stroke: var(--insight);
-  stroke-width: 0.4;
+  stroke-width: 1.6;
 }
 .gb-hl-dot {
   fill: none;
   stroke: var(--insight);
-  stroke-width: 0.8;
+  stroke-width: 3.2;
 }
 .gb-disc {
   fill: var(--surface-elevated);
@@ -3514,6 +3565,7 @@
 }
 .pat-fabriclabel {
   fill: var(--text-faint);
+  /* PatternPiece's LABEL_FS mirrors this size to reserve room for the label in its viewBox. */
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 2.8px;
   font-weight: 600;
@@ -3624,23 +3676,37 @@
   stroke: var(--text-primary);
   stroke-width: 1.6;
 }
+.ew-wedge-label {
+  fill: var(--text-primary);
+  font-weight: 600;
+  text-transform: capitalize;
+  /* A halo in the card colour keeps the name readable over any wedge fill, light or dark. */
+  stroke: var(--surface-elevated);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
 .ew-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* Two compact columns beside the wheel hold the core eight without scrolling, so the
+     highlighted feeling is never the one cut off below the fold of a scroll box. */
+  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
+  align-content: start;
   gap: 6px;
   min-width: 0;
   /* A model can name far more than the core 8 feelings (a full Plutchik dyad set, or a granular
      "feelings wheel" with dozens of tertiary shades) — cap and scroll rather than let the legend
      stretch the card past its neighbours or, worse, get silently clipped by .card's overflow guard. */
-  max-height: 260px;
+  max-height: 280px;
   overflow-y: auto;
   padding-right: 2px;
 }
 .ew-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 9px;
+  gap: 8px;
+  padding: 5px 8px;
   border-radius: var(--r-sm);
   background: var(--surface-glass);
   border: 1px solid var(--line);
@@ -3651,8 +3717,8 @@
 }
 .ew-chip-sw {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 14px;
+  height: 14px;
   border-radius: var(--r-sm);
   border: 1px solid color-mix(in oklab, var(--text-primary) 16%, transparent);
 }
@@ -3921,24 +3987,30 @@
   font-size: var(--fs-sm);
   min-width: 0;
 }
-.splan-legend-dot {
+/* The legend's key repeats the figure's badge code, so a reader can match S2 to its row
+   without comparing two shades of the same colour. */
+.splan-legend-key {
   flex-shrink: 0;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.2em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #fff;
 }
-.splan-legend-dot.hatched {
-  border-radius: 2px;
+.splan-legend-key.hatched {
+  border-radius: var(--r-sm);
   background-image: repeating-linear-gradient(
     45deg,
-    rgba(255, 255, 255, 0.55) 0,
-    rgba(255, 255, 255, 0.55) 1px,
+    rgba(255, 255, 255, 0.35) 0,
+    rgba(255, 255, 255, 0.35) 1px,
     transparent 1px,
     transparent 3px
   );
 }
 .splan-legend-label {
-  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text-secondary);
@@ -4151,6 +4223,9 @@
    SVG card faces grouped into hands. Cards size off their group's width (percent-based, capped
    for readability); the fan/stack overlap is transform-only. */
 .pcd-wrap {
+  /* One card size for every group, whatever its layout, so a hand, a board and a pile read as
+     the same deck. Each layout may only shrink below it, when its own box is too narrow. */
+  --pcd-w: 86px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -4233,7 +4308,7 @@
   gap: 6px;
 }
 .pcd-rowcard {
-  width: clamp(44px, calc((100% - (var(--pcd-n) - 1) * 6px) / var(--pcd-n)), 86px);
+  width: clamp(44px, calc((100% - (var(--pcd-n) - 1) * 6px) / var(--pcd-n)), var(--pcd-w));
   min-width: 0;
 }
 .pcd-fan {
@@ -4250,18 +4325,18 @@
 .pcd-stackrow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 .pcd-stack {
-  /* the extra width + the 5:7 aspect hold the cascade offsets, so nothing escapes the box */
+  /* Sized by stackBox to one card plus its cascade (the scale and aspect ride inline), so the
+     pile fills its box and the ×N count sits right against it. */
   position: relative;
-  width: min(30%, 110px);
-  aspect-ratio: 5 / 7;
+  flex: none;
+  width: min(30%, calc(var(--pcd-w) * var(--pcd-stack-scale, 1)));
 }
 .pcd-stackcard {
   position: absolute;
   inset: 0 auto auto 0;
-  width: 80%;
 }
 .pcd-count {
   font-size: var(--fs-sm, 13px);

@@ -9,6 +9,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { RecursionTreeProps, RecursionNode } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { BADGE_INSET, BADGE_MAX_CHARS, CALL_MAX_CHARS, treeMetrics } from './recursionTreeLayout';
 
 type Props = RecursionTreeProps & { delay?: number };
 
@@ -16,12 +17,9 @@ const PAD_X = 30;
 // 35, not 30: the root node's result badge sits ~5px above its center, which clipped at 30
 const TOP = 35;
 const ROW = 92; // vertical distance between call depths
-const LEAF_GAP = 108; // horizontal distance between adjacent leaf slots
 const MIN_W = 220;
-const BOX_W = 96;
 const BOX_H = 40;
 
-const CALL_MAX_CHARS = 13;
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
@@ -62,7 +60,10 @@ function isLeaf(n: RecursionNode): boolean {
 
 /** Tidy top-down layout: a single shared leaf cursor guarantees no two leaves collide, and
  *  depth maps straight to the row — see ParseTree's identical technique for the full rationale. */
-function layout(root: RecursionNode): { placed: Placed; width: number; height: number } {
+function layout(
+  root: RecursionNode,
+  pitch: number,
+): { placed: Placed; width: number; height: number } {
   let cursor = 0;
   let maxDepth = 0;
 
@@ -70,7 +71,7 @@ function layout(root: RecursionNode): { placed: Placed; width: number; height: n
     maxDepth = Math.max(maxDepth, depth);
     const y = TOP + depth * ROW;
     if (isLeaf(node)) {
-      const x = PAD_X + cursor * LEAF_GAP + LEAF_GAP / 2;
+      const x = PAD_X + cursor * pitch + pitch / 2;
       cursor += 1;
       return { node, x, y, children: [] };
     }
@@ -80,7 +81,7 @@ function layout(root: RecursionNode): { placed: Placed; width: number; height: n
   };
 
   const placed = place(root, 0);
-  const width = Math.max(MIN_W, cursor * LEAF_GAP + PAD_X * 2);
+  const width = Math.max(MIN_W, cursor * pitch + PAD_X * 2);
   const height = TOP + maxDepth * ROW + BOX_H + 30;
   return { placed, width, height };
 }
@@ -101,11 +102,22 @@ export function RecursionTree({
 }: Props) {
   const Ic = Icon[icon] || Icon.share;
 
-  const { nodes, width, height } = useMemo(() => {
+  const { nodes, width, height, metrics } = useMemo(() => {
     const safeRoot = normalizeNode(root, 0);
-    const { placed, width, height } = layout(safeRoot);
-    return { nodes: flatten(placed), width, height };
+    const all: RecursionNode[] = [];
+    const walk = (n: RecursionNode) => {
+      all.push(n);
+      n.children?.forEach(walk);
+    };
+    walk(safeRoot);
+    const metrics = treeMetrics(
+      all.map((n) => n.call),
+      all.flatMap((n) => (n.result === undefined ? [] : [`→${n.result}`])),
+    );
+    const { placed, width, height } = layout(safeRoot, metrics.pitch);
+    return { nodes: flatten(placed), width, height, metrics };
   }, [root]);
+  const { boxW, badgeW } = metrics;
 
   return (
     <div
@@ -116,7 +128,9 @@ export function RecursionTree({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <div className="dg-stage rt-stage">
+      {/* Drawn at its natural size and only ever scaled down: a fixed 600 cap shrank a wide tree's
+          result badges below legibility while a two-call tree had room to spare. */}
+      <div className="dg-stage rt-stage" style={{ maxWidth: `${width}px` }}>
         <svg viewBox={`0 0 ${width} ${height}`} className="dg-svg" role="img" aria-label={title}>
           {/* edges first, so node boxes sit on top of the connections */}
           {nodes.map((p, i) =>
@@ -137,9 +151,9 @@ export function RecursionTree({
             return (
               <g key={`n${i}`} transform={`translate(${p.x} ${p.y})`}>
                 <rect
-                  x={-BOX_W / 2}
+                  x={-boxW / 2}
                   y={-BOX_H / 2}
-                  width={BOX_W}
+                  width={boxW}
                   height={BOX_H}
                   rx={9}
                   className="rt-box"
@@ -149,10 +163,17 @@ export function RecursionTree({
                   {truncate(call, CALL_MAX_CHARS)}
                 </text>
                 {p.node.result !== undefined && (
-                  <g transform={`translate(${BOX_W / 2 - 6} ${-BOX_H / 2 - 4})`}>
-                    <rect x={-20} y={-11} width={40} height={22} rx={11} className="rt-badge" />
+                  <g transform={`translate(${boxW / 2 - BADGE_INSET} ${-BOX_H / 2 - 4})`}>
+                    <rect
+                      x={-badgeW / 2}
+                      y={-11}
+                      width={badgeW}
+                      height={22}
+                      rx={11}
+                      className="rt-badge"
+                    />
                     <text className="rt-badge-text" textAnchor="middle" dominantBaseline="middle">
-                      {truncate(`→${p.node.result}`, 8)}
+                      {truncate(`→${p.node.result}`, BADGE_MAX_CHARS)}
                     </text>
                   </g>
                 )}

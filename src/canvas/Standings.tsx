@@ -20,6 +20,14 @@ export function Standings({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
       <ul className="stand-list">
+        <li className="stand stand-head">
+          <span aria-hidden="true">#</span>
+          <span>Team</span>
+          <span>Record</span>
+          <span>
+            <abbr title="Games back">GB</abbr>
+          </span>
+        </li>
         {rows.map((s, i) => (
           // rank-1 is the authored lead — Mavéa's gesture underlines the top team
           <li key={i} className="stand" style={{ '--ti': i } as CSSProperties}>

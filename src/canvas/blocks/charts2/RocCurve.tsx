@@ -9,6 +9,7 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
 import type { RocCurveProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { youdenIndex } from './chartMath';
 
 type Props = RocCurveProps & { delay?: number };
 
@@ -33,8 +34,12 @@ export function RocCurve({
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
 
-  // Operating-point state for the first curve (click-along interaction)
-  const [opIdx, setOpIdx] = useState<number>(operatingPoint ?? 0);
+  // Operating-point state for the first curve (click-along interaction). Unauthored, it opens on
+  // the curve's best trade-off rather than its first point — which is almost always (0, 0), the
+  // threshold that flags nothing, and parked the marker on the axis corner over both zero ticks.
+  const [opIdx, setOpIdx] = useState<number>(
+    () => operatingPoint ?? youdenIndex(curves[0]?.points ?? []),
+  );
 
   const innerW = W - M.left - M.right;
   const innerH = H - M.top - M.bottom;

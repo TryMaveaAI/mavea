@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { KpidashboardProps, KpiTile } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { deltaMove } from './deltaMove';
 
 type Props = KpidashboardProps & { delay?: number };
 
@@ -109,6 +110,8 @@ export function KpiDashboard({
           const dir = t.deltaDir || 'up';
           const dc = deltaColor(dir);
           const spark = t.spark?.filter((n) => Number.isFinite(n)) ?? [];
+          // Colour is the judgement (deltaDir); the arrow is the move itself.
+          const move = deltaMove(t.delta, dir === 'down' ? 'down' : 'up', spark);
           return (
             <div key={i} className="kd-tile">
               <div className="kd-tile-label">{t.label}</div>
@@ -123,7 +126,7 @@ export function KpiDashboard({
                     style={{
                       width: 12,
                       height: 12,
-                      transform: dir === 'down' ? 'rotate(180deg)' : 'none',
+                      transform: move === 'down' ? 'rotate(180deg)' : 'none',
                     }}
                   />
                   <span className="kd-tile-delta-t">{t.delta}</span>

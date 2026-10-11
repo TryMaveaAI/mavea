@@ -111,161 +111,165 @@ export function LatencyDist({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {/* count gridlines + axis */}
-        {countTicks.map((t, i) => {
-          const yy = PAD.t + (1 - t / (model.maxCount || 1)) * model.plotH;
-          return (
-            <g key={i}>
-              <line x1={PAD.l} x2={W - PAD.r} y1={yy} y2={yy} stroke="var(--grid-line)" />
-              <text
-                x={PAD.l - 6}
-                y={yy + 4}
-                textAnchor="end"
-                fontSize="10"
-                fill="var(--text-muted)"
-                className="tab-num"
-              >
-                {t}
-              </text>
-            </g>
-          );
-        })}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          {/* count gridlines + axis */}
+          {countTicks.map((t, i) => {
+            const yy = PAD.t + (1 - t / (model.maxCount || 1)) * model.plotH;
+            return (
+              <g key={i}>
+                <line x1={PAD.l} x2={W - PAD.r} y1={yy} y2={yy} stroke="var(--grid-line)" />
+                <text
+                  x={PAD.l - 6}
+                  y={yy + 4}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="var(--text-muted)"
+                  className="tab-num"
+                >
+                  {t}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* bins — grow in on mount staggered by --i, reusing the treemap's .c1-tm-cell /
+          {/* bins — grow in on mount staggered by --i, reusing the treemap's .c1-tm-cell /
             c1CellGrow entrance (scale 0.85→1 + fade, gated behind prefers-reduced-motion — see
             styles.css) rather than a bespoke keyframe, and lift slightly on hover so the active
             bin reads as raised, not just recoloured. */}
-        {bins.map((b, i) => {
-          const x = model.sx(b.from) + 1;
-          const w = Math.max(1, model.sx(b.to) - model.sx(b.from) - 2);
-          const h = (b.count / (model.maxCount || 1)) * model.plotH;
-          const y = PAD.t + model.plotH - h;
-          const active = hover === i;
-          // Bins past the SLO are tinted toward the breach colour so the slow tail reads at a glance.
-          const overSlo = slo != null && b.from >= slo;
-          const fill = overSlo ? sloColor : 'var(--presence)';
-          const cx = x + w / 2,
-            cy = y + Math.max(0, h) / 2;
-          return (
-            // The entrance animation lives on this wrapper (like treemap's cell <g>) so it
-            // doesn't fight the inner rect's own hover-lift transform below.
-            <g
-              key={i}
-              className="c1-tm-cell"
-              style={{ ['--i' as string]: i, transformOrigin: `${cx}px ${cy}px` } as CSSProperties}
-            >
-              <rect
-                x={x}
-                y={y}
-                width={w}
-                height={Math.max(0, h)}
-                rx={2.5}
-                fill={`color-mix(in oklab, ${fill} ${active ? 82 : overSlo ? 40 : 46}%, transparent)`}
-                stroke={fill}
-                strokeWidth={active ? 1.4 : 0.8}
+          {bins.map((b, i) => {
+            const x = model.sx(b.from) + 1;
+            const w = Math.max(1, model.sx(b.to) - model.sx(b.from) - 2);
+            const h = (b.count / (model.maxCount || 1)) * model.plotH;
+            const y = PAD.t + model.plotH - h;
+            const active = hover === i;
+            // Bins past the SLO are tinted toward the breach colour so the slow tail reads at a glance.
+            const overSlo = slo != null && b.from >= slo;
+            const fill = overSlo ? sloColor : 'var(--presence)';
+            const cx = x + w / 2,
+              cy = y + Math.max(0, h) / 2;
+            return (
+              // The entrance animation lives on this wrapper (like treemap's cell <g>) so it
+              // doesn't fight the inner rect's own hover-lift transform below.
+              <g
+                key={i}
+                className="c1-tm-cell"
                 style={
-                  {
-                    cursor: 'pointer',
-                    transition:
-                      'fill var(--m-fast), stroke-width var(--m-fast), transform var(--m-fast)',
-                    transform: active ? 'scale(1.03)' : undefined,
-                    transformOrigin: `${cx}px ${cy}px`,
-                  } as CSSProperties
+                  { ['--i' as string]: i, transformOrigin: `${cx}px ${cy}px` } as CSSProperties
                 }
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-              />
-            </g>
-          );
-        })}
+              >
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={Math.max(0, h)}
+                  rx={2.5}
+                  fill={`color-mix(in oklab, ${fill} ${active ? 82 : overSlo ? 40 : 46}%, transparent)`}
+                  stroke={fill}
+                  strokeWidth={active ? 1.4 : 0.8}
+                  style={
+                    {
+                      cursor: 'pointer',
+                      transition:
+                        'fill var(--m-fast), stroke-width var(--m-fast), transform var(--m-fast)',
+                      transform: active ? 'scale(1.03)' : undefined,
+                      transformOrigin: `${cx}px ${cy}px`,
+                    } as CSSProperties
+                  }
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
+                />
+              </g>
+            );
+          })}
 
-        {/* percentile markers — thin verticals with a label tab above the plot. --i is threaded
+          {/* percentile markers — thin verticals with a label tab above the plot. --i is threaded
             through for a future staggered fade-in (none is wired yet; see styles.css c1-ld-pct). */}
-        {markers.map((m, i) => {
-          const mx = model.sx(m.x);
-          return (
-            <g
-              key={m.label}
-              className="c1-ld-pct"
-              style={{ ['--i' as string]: i } as CSSProperties}
-            >
+          {markers.map((m, i) => {
+            const mx = model.sx(m.x);
+            return (
+              <g
+                key={m.label}
+                className="c1-ld-pct"
+                style={{ ['--i' as string]: i } as CSSProperties}
+              >
+                <line
+                  x1={mx}
+                  x2={mx}
+                  y1={PAD.t}
+                  y2={PAD.t + model.plotH}
+                  stroke="var(--text-secondary)"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  opacity={0.7}
+                />
+                <text
+                  x={mx}
+                  y={PAD.t - 16 - m.row * 11}
+                  textAnchor="middle"
+                  fontSize="9.5"
+                  fontWeight={600}
+                  fill="var(--text-secondary)"
+                >
+                  {m.label}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* SLO threshold — a bolder, coloured line */}
+          {slo != null && (
+            <g>
               <line
-                x1={mx}
-                x2={mx}
-                y1={PAD.t}
+                x1={model.sx(slo)}
+                x2={model.sx(slo)}
+                y1={PAD.t - 4}
                 y2={PAD.t + model.plotH}
-                stroke="var(--text-secondary)"
-                strokeWidth={1}
-                strokeDasharray="3 3"
-                opacity={0.7}
+                stroke={sloColor}
+                strokeWidth={2}
               />
               <text
-                x={mx}
-                y={PAD.t - 16 - m.row * 11}
+                x={model.sx(slo)}
+                y={PAD.t + model.plotH + 14}
                 textAnchor="middle"
                 fontSize="9.5"
-                fontWeight={600}
-                fill="var(--text-secondary)"
+                fontWeight={700}
+                fill={sloColor}
               >
-                {m.label}
+                {sloLabel || `SLO ${fmt(slo)}`}
               </text>
             </g>
-          );
-        })}
+          )}
 
-        {/* SLO threshold — a bolder, coloured line */}
-        {slo != null && (
-          <g>
-            <line
-              x1={model.sx(slo)}
-              x2={model.sx(slo)}
-              y1={PAD.t - 4}
-              y2={PAD.t + model.plotH}
-              stroke={sloColor}
-              strokeWidth={2}
-            />
+          {/* x baseline */}
+          <line
+            x1={PAD.l}
+            x2={W - PAD.r}
+            y1={PAD.t + model.plotH}
+            y2={PAD.t + model.plotH}
+            stroke="var(--grid-strong)"
+          />
+          {[model.x0, (model.x0 + model.x1) / 2, model.x1].map((v, i) => (
             <text
-              x={model.sx(slo)}
-              y={PAD.t + model.plotH + 14}
-              textAnchor="middle"
-              fontSize="9.5"
-              fontWeight={700}
-              fill={sloColor}
+              key={i}
+              x={model.sx(v)}
+              y={H - PAD.b + 24}
+              textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}
+              fontSize="10.5"
+              fill="var(--text-muted)"
+              className="tab-num"
             >
-              {sloLabel || `SLO ${fmt(slo)}`}
+              {fmt(Math.round(v))}
             </text>
-          </g>
-        )}
-
-        {/* x baseline */}
-        <line
-          x1={PAD.l}
-          x2={W - PAD.r}
-          y1={PAD.t + model.plotH}
-          y2={PAD.t + model.plotH}
-          stroke="var(--grid-strong)"
-        />
-        {[model.x0, (model.x0 + model.x1) / 2, model.x1].map((v, i) => (
-          <text
-            key={i}
-            x={model.sx(v)}
-            y={H - PAD.b + 24}
-            textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}
-            fontSize="10.5"
-            fill="var(--text-muted)"
-            className="tab-num"
-          >
-            {fmt(Math.round(v))}
-          </text>
-        ))}
-      </svg>
+          ))}
+        </svg>
+      </div>
 
       {/* headline stat — the tail value and its SLO verdict */}
       {p99 != null && (

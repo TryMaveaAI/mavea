@@ -8,232 +8,128 @@
 import { useMemo, type CSSProperties } from 'react';
 import type { EtymTreeProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import type { FitTextResult } from '../../lib/fitText';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { etymLayout, HDR_FS, LINE_GAP, PAD_Y } from './etymLayout';
 
 type Props = EtymTreeProps & { delay?: number };
 
-const VB_W = 480;
-const PAD = 16;
-// Column x-centres (roots | word | descendants).
-const COL_ROOTS = 90;
-const COL_WORD = 240;
-const COL_DESC = 390;
-const BOX_W = 120;
-const BOX_H = 38;
-const ROW_GAP = 14;
+// Laid out at the card's measured width, one user unit per pixel, so type stays the size it is
+// set at instead of scaling with a stretched viewBox (see etymLayout for the geometry).
+const FALLBACK_W = 480;
+// The stacked layout wraps its boxes to any width; a floor wider than a 320px phone's card (233px)
+// only pushed the tree past the card's edge.
+const MIN_W = 160;
+const MAX_W = 960;
 
-// Language family colour hints — readable in light and dark via token mixing.
-function langColor(lang: unknown): string {
-  const l = typeof lang === 'string' ? lang.toLowerCase() : '';
-  if (l.includes('proto') || l.includes('pie') || l.includes('indo')) return 'var(--text-muted)';
-  if (l.includes('latin') || l.includes('greek') || l.includes('ancient')) return 'var(--presence)';
-  if (
-    l.includes('french') ||
-    l.includes('romance') ||
-    l.includes('spanish') ||
-    l.includes('italian')
-  )
-    return 'var(--insight)';
-  if (l.includes('german') || l.includes('dutch') || l.includes('nordic') || l.includes('norse'))
-    return 'var(--warning)';
-  if (l.includes('arabic') || l.includes('persian') || l.includes('sanskrit'))
-    return 'var(--danger)';
-  return 'var(--text-secondary)';
-}
-
-// The SVG box is a fixed BOX_W (120) regardless of content — a real gloss ("Astrophysics ·
-// Bending of light by gravity") is easily 4x that at these font sizes, and SVG text doesn't
-// wrap or clip itself, so it bleeds into whatever sits next to it. Truncate to a conservative
-// per-role character budget (derived from BOX_W minus padding, at each class's font-size) and
-// keep the untruncated string as a native <title> tooltip so nothing is silently lost.
-const FORM_MAX_CHARS = 18; // .et-form: 10px, weight 600
-const LANG_MAX_CHARS = 22; // .et-lang: 9px, weight 400
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
-
-function text(value: unknown): string {
-  return typeof value === 'string' ? value : '';
+/** Lines of one fitted block, first baseline at `top` plus roughly the cap height. */
+function Lines({
+  fit,
+  cx,
+  top,
+  className,
+  fill,
+}: {
+  fit: FitTextResult;
+  cx: number;
+  top: number;
+  className: string;
+  fill?: string;
+}) {
+  return (
+    <text
+      textAnchor="middle"
+      className={className}
+      fontSize={fit.fontSize}
+      style={fill ? { fill } : undefined}
+    >
+      {fit.lines.map((line, i) => (
+        <tspan key={i} x={cx} y={top + fit.fontSize * 0.82 + i * fit.lineHeightPx}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
 }
 
 export function EtymTree({ word, roots, descendants, note, footer, delay }: Props) {
-  const safeWord = text(word) || 'Word';
-  const layout = useMemo(() => {
-    const safeRoots = roots ?? [];
-    const safeDesc = descendants ?? [];
-    const nRoots = safeRoots.length;
-    const nDesc = safeDesc.length;
-    const nRows = Math.max(nRoots, nDesc, 1);
-    const rowH = BOX_H + ROW_GAP;
-    const totalH = nRows * rowH - ROW_GAP + PAD * 2 + 12; // +12 for word label below box
-    const vbH = Math.max(totalH, 120);
+  const safeWord = typeof word === 'string' && word ? word : 'Word';
+  const [hostRef, measured] = useHostWidth<HTMLDivElement>();
+  const W = measured ? Math.max(MIN_W, Math.min(measured, MAX_W)) : FALLBACK_W;
 
-    // Vertical centre of the word box.
-    const wordCY = vbH / 2;
-    const wordY = wordCY - BOX_H / 2;
-
-    // Roots: vertically centred as a group around wordCY.
-    const rootsH = nRoots * rowH - (nRoots > 0 ? ROW_GAP : 0);
-    const rootsStartY = wordCY - rootsH / 2;
-    const rootBoxes = safeRoots.map((r, i) => ({
-      r,
-      x: COL_ROOTS - BOX_W / 2,
-      y: rootsStartY + i * rowH,
-      cy: rootsStartY + i * rowH + BOX_H / 2,
-      color: langColor(r.lang),
-    }));
-
-    // Descendants: same vertical centring.
-    const descH = nDesc * rowH - (nDesc > 0 ? ROW_GAP : 0);
-    const descStartY = wordCY - descH / 2;
-    const descBoxes = safeDesc.map((d, i) => ({
-      d,
-      x: COL_DESC - BOX_W / 2,
-      y: descStartY + i * rowH,
-      cy: descStartY + i * rowH + BOX_H / 2,
-      color: langColor(d.lang ?? ''),
-    }));
-
-    return { vbH, wordY, wordCY, rootBoxes, descBoxes };
-  }, [roots, descendants]);
-
-  const { vbH, wordY, wordCY, rootBoxes, descBoxes } = layout;
-
-  // Bezier path from (x1,y1) to (x2,y2) with horizontal control handles.
-  const bezier = (x1: number, y1: number, x2: number, y2: number) => {
-    const mx = (x1 + x2) / 2;
-    return `M ${x1.toFixed(1)},${y1.toFixed(1)} C ${mx.toFixed(1)},${y1.toFixed(1)} ${mx.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
-  };
+  const layout = useMemo(
+    () => etymLayout(W, roots ?? [], descendants ?? [], safeWord),
+    [W, roots, descendants, safeWord],
+  );
 
   return (
     <div
       className="card reveal"
       style={{ ['--delay' as string]: (delay ?? 0) + 'ms' } as CSSProperties}
     >
-      <div className="et-wrap">
+      <div className="et-wrap" ref={hostRef}>
         <svg
           className="et-svg"
-          viewBox={`0 0 ${VB_W} ${vbH}`}
+          width={W}
+          height={layout.height}
+          viewBox={`0 0 ${W} ${layout.height}`}
           role="img"
           aria-label={`Etymology of "${safeWord}"`}
-          preserveAspectRatio="xMidYMid meet"
         >
-          {/* Root → word connectors */}
-          {rootBoxes.map((rb, i) => (
-            <path
-              key={`rc${i}`}
-              d={bezier(COL_ROOTS + BOX_W / 2, rb.cy, COL_WORD - BOX_W / 2, wordCY)}
-              fill="none"
-              stroke={rb.color}
-              strokeWidth="1.5"
-              opacity="0.75"
-            />
+          {layout.wires.map((w, i) => (
+            <path key={i} d={w.d} fill="none" stroke={w.color} strokeWidth="1.5" opacity="0.75" />
           ))}
-
-          {/* Word → descendant connectors */}
-          {descBoxes.map((db, i) => (
-            <path
-              key={`dc${i}`}
-              d={bezier(COL_WORD + BOX_W / 2, wordCY, COL_DESC - BOX_W / 2, db.cy)}
-              fill="none"
-              stroke={db.color}
-              strokeWidth="1.5"
-              opacity="0.75"
-            />
-          ))}
-
-          {/* Root boxes */}
-          {rootBoxes.map(({ r, x, y, cy, color }, i) => {
-            const form = text(r.form);
-            const lang = text(r.lang);
-            const gloss = text(r.gloss);
-            const langText = lang + (gloss ? ` · ${gloss}` : '');
+          {layout.boxes.map((b, i) => {
+            const cx = b.x + b.w / 2;
+            const formTop = b.y + PAD_Y;
+            const langTop = formTop + b.form.lines.length * b.form.lineHeightPx + LINE_GAP;
             return (
-              <g key={`r${i}`}>
+              <g key={i}>
                 <rect
-                  x={x}
-                  y={y}
-                  width={BOX_W}
-                  height={BOX_H}
+                  x={b.x}
+                  y={b.y}
+                  width={b.w}
+                  height={b.h}
                   rx={6}
                   className="et-box"
-                  style={{ stroke: color }}
+                  style={{ stroke: b.color }}
                 />
-                <text x={COL_ROOTS} y={cy - 7} textAnchor="middle" className="et-form">
-                  {form.length > FORM_MAX_CHARS && <title>{form}</title>}
-                  {truncate(form, FORM_MAX_CHARS)}
-                </text>
-                <text
-                  x={COL_ROOTS}
-                  y={cy + 9}
-                  textAnchor="middle"
-                  className="et-lang"
-                  style={{ fill: color }}
-                >
-                  {langText.length > LANG_MAX_CHARS && <title>{langText}</title>}
-                  {truncate(langText, LANG_MAX_CHARS)}
-                </text>
+                <Lines fit={b.form} cx={cx} top={formTop} className="et-form" />
+                {b.lang && (
+                  <Lines fit={b.lang} cx={cx} top={langTop} className="et-lang" fill={b.color} />
+                )}
               </g>
             );
           })}
-
-          {/* Central word box */}
           <rect
-            x={COL_WORD - BOX_W / 2}
-            y={wordY}
-            width={BOX_W}
-            height={BOX_H}
+            x={layout.word.x}
+            y={layout.word.y}
+            width={layout.word.w}
+            height={layout.word.h}
             rx={8}
             className="et-word-box"
           />
-          <text x={COL_WORD} y={wordCY + 5} textAnchor="middle" className="et-word">
-            {safeWord}
-          </text>
-
-          {/* Descendant boxes */}
-          {descBoxes.map(({ d, x, y, cy, color }, i) => {
-            const form = text(d.form);
-            const lang = text(d.lang);
-            const gloss = text(d.gloss);
-            const langText = lang ? `${lang}${gloss ? ` · ${gloss}` : ''}` : gloss;
-            return (
-              <g key={`d${i}`}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={BOX_W}
-                  height={BOX_H}
-                  rx={6}
-                  className="et-box"
-                  style={{ stroke: color }}
-                />
-                <text x={COL_DESC} y={cy - 7} textAnchor="middle" className="et-form">
-                  {form.length > FORM_MAX_CHARS && <title>{form}</title>}
-                  {truncate(form, FORM_MAX_CHARS)}
-                </text>
-                <text
-                  x={COL_DESC}
-                  y={cy + 9}
-                  textAnchor="middle"
-                  className="et-lang"
-                  style={{ fill: color }}
-                >
-                  {langText.length > LANG_MAX_CHARS && <title>{langText}</title>}
-                  {truncate(langText, LANG_MAX_CHARS)}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Column headers */}
-          <text x={COL_ROOTS} y={PAD - 4} textAnchor="middle" className="et-col-hdr">
-            Roots
-          </text>
-          {descBoxes.length > 0 && (
-            <text x={COL_DESC} y={PAD - 4} textAnchor="middle" className="et-col-hdr">
-              Descendants
+          <Lines
+            fit={layout.word.fit}
+            cx={layout.word.x + layout.word.w / 2}
+            top={
+              layout.word.y +
+              (layout.word.h - layout.word.fit.lines.length * layout.word.fit.lineHeightPx) / 2
+            }
+            className="et-word"
+          />
+          {layout.headers.map((h) => (
+            <text
+              key={h.label}
+              x={h.x}
+              y={h.y}
+              textAnchor={h.anchor}
+              className="et-col-hdr"
+              fontSize={HDR_FS}
+            >
+              {h.label}
             </text>
-          )}
+          ))}
         </svg>
       </div>
 

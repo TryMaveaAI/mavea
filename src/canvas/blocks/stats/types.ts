@@ -136,7 +136,7 @@ export interface StatpairProps {
   right: StatpairSide;
   /** connector glyph, default "→" */
   connector?: string;
-  /** label for the computed ratio, e.g. "conversion" */
+  /** gloss shown after the ratio's own "left / right" name, e.g. "conversion" */
   ratioLabel?: string;
   footer?: HtmlString;
 }

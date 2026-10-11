@@ -42,12 +42,10 @@ export function FundraisingRounds({
       cols: rounds.map((r) => {
         const pre = Math.max(0, r.preMoney);
         const raised = Math.max(0, r.raised);
-        // One ellipsized line rather than a stacked line per fact — a column is only ~60-130px
-        // wide, nowhere near enough for date/lead/step-up on separate rows without ballooning
-        // every column's reserved caption height past the chart's fixed track.
-        const capParts = [
+        // Two short lines under the name: when and at what step-up, then who led. Run together on
+        // one line, "Jul 2022 · Basecamp Ventures" overran every column and lost the investor.
+        const when = [
           r.date ? formatDate(r.date, { style: 'month' }) : null,
-          r.leadInvestor,
           r.stepUp != null ? `${r.stepUp.toFixed(1)}x step-up` : null,
         ].filter((p): p is string => !!p);
         return {
@@ -57,7 +55,8 @@ export function FundraisingRounds({
           preLabel: fmt(pre),
           raisedLabel: fmt(raised),
           postLabel: fmt(r.postMoney),
-          capLine: capParts.join(' · '),
+          when: when.join(' · '),
+          lead: r.leadInvestor?.trim() || '',
         };
       }),
     };
@@ -73,7 +72,11 @@ export function FundraisingRounds({
       </div>
 
       <div className="fin-fr-scroll">
-        <div className="fin-fr-chart" onMouseLeave={() => setHot(null)}>
+        <div
+          className="fin-fr-chart"
+          style={{ ['--n' as string]: Math.max(1, model.cols.length) } as CSSProperties}
+          onMouseLeave={() => setHot(null)}
+        >
           <div className="fin-fr-grid" aria-hidden="true">
             {model.gridTicks.map((t, i) => (
               <span
@@ -111,9 +114,14 @@ export function FundraisingRounds({
                   <div className="fin-fr-name" title={c.name}>
                     {c.name}
                   </div>
-                  {c.capLine && (
-                    <div className="fin-fr-cap faint" title={c.capLine}>
-                      {c.capLine}
+                  {c.when && (
+                    <div className="fin-fr-cap faint" title={c.when}>
+                      {c.when}
+                    </div>
+                  )}
+                  {c.lead && (
+                    <div className="fin-fr-cap faint" title={c.lead}>
+                      {c.lead}
                     </div>
                   )}
                 </div>

@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PyramidTiersProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
 
 type Props = PyramidTiersProps & { delay?: number };
 
@@ -22,23 +23,43 @@ const PAD_X = 12;
 
 const MAX_TIERS = 8;
 
-// Bottom tier full inner width; top tier min inner width
+// The base's preferred width, and the most it may grow to make room for the labels.
 const BASE_W = 220;
-const TOP_W = 40;
-
-// Label sits at 10px/600 (see .py-tier-label) — an average glyph runs ~0.62em wide at that
-// weight, and each tier band leaves this many px of breathing room inside its own (narrowest)
-// edge before the label may touch the trapezoid's slanted sides.
+const MAX_BASE_W = W - PAD_X * 2;
+// The narrowest the flat top may be, and the widest relative to the base before the shape stops
+// reading as a pyramid and starts reading as a stack of boxes.
+const MIN_TOP_W = 24;
+const MAX_TOP_SHARE = 0.45;
+// .py-tier-label's size, in viewBox units.
 const LABEL_FONT_SIZE = 10;
 // The step-down size still has to be READABLE — these are viewBox user units in a 340-wide box
 // that renders ~320px in a narrow card, so 8.5 painted at 8.0px. A label that drops a size to fit
 // must not drop out of legibility to do it; past this it squeezes glyphs instead.
 const LABEL_FONT_SIZE_SMALL = 9.6;
-const AVG_GLYPH_WIDTH = 0.62;
+// Clear space the label keeps inside its band's slanted sides, both together.
 const LABEL_INSET = 10;
 // Below this, a hard textLength squeeze reads as illegible smudged glyphs rather than tight
 // text — better to trust the browser's own clip than compress a label past this floor.
 const MIN_SQUEEZE_WIDTH = 18;
+
+/**
+ * The pyramid's top and base widths. Its sides are one straight slope from the top tier to the
+ * bottom, and each label is measured against its band's narrowest (top) edge, so the top is made
+ * just wide enough for the top label — the tightest spot — and the base widens only when a lower
+ * label needs more than the default slope gives it.
+ */
+function pyramidWidths(needs: readonly number[], height: number, rowTop: (row: number) => number) {
+  const topFor = (base: number) =>
+    needs.reduce((top, need, row) => {
+      const f = rowTop(row) / height;
+      // need ≤ top + (base − top)·f, solved for top; f < 1 for every band's top edge.
+      return Math.max(top, (need - base * f) / (1 - f));
+    }, MIN_TOP_W);
+  let base = BASE_W;
+  while (base < MAX_BASE_W && topFor(base) > base * MAX_TOP_SHARE) base += 8;
+  base = Math.min(base, MAX_BASE_W);
+  return { base, top: Math.min(topFor(base), base * MAX_TOP_SHARE) };
+}
 
 export function PyramidTiers({
   title,
@@ -57,26 +78,28 @@ export function PyramidTiers({
 
   const geometry = useMemo(() => {
     if (n === 0) return [];
-    // Each tier i (0 = bottom, n-1 = top) has a different half-width.
-    // Bottom: BASE_W/2, top: TOP_W/2, linearly interpolated.
+    const labelOf = (tier: (typeof clamped)[number]) =>
+      tier.value ? `${tier.label} · ${tier.value}` : tier.label;
+    // Row 0 is the top of the drawing, which is the LAST tier: tiers run bottom → top.
+    const rowTop = (row: number) => row * (TIER_H + TIER_GAP);
+    const height = n * TIER_H + (n - 1) * TIER_GAP;
+    const needs = Array.from(
+      { length: n },
+      (_, row) =>
+        estimateTextWidth(labelOf(clamped[n - 1 - row]), LABEL_FONT_SIZE, true) + LABEL_INSET,
+    );
+    const { base, top } = pyramidWidths(needs, height, rowTop);
+    const widthAt = (dy: number) => top + ((base - top) * dy) / height;
     return clamped.map((tier, i) => {
-      // i=0 is bottom → widest; i=n-1 is top → narrowest
-      const t = n === 1 ? 0 : i / (n - 1);
-      const halfW = ((1 - t) * BASE_W + t * TOP_W) / 2;
-      // y increases downward; we draw from top of SVG downward, but tier 0 (bottom) is last row
-      // Actually render top→bottom visually means tier[n-1] (top) is at the top of the SVG.
-      // Invert: row 0 in SVG = tier[n-1], row n-1 in SVG = tier[0].
-      const row = n - 1 - i; // SVG row index
-      const y = PAD_X + row * (TIER_H + TIER_GAP);
-      const cx = W / 2;
-      // Next tier (one above in SVG = tier i+1) half-width — used to build the trapezoid top
-      // edge. Clamped to 1: the apex tier (i = n-1) has no real "next" tier to interpolate
-      // toward, and leaving tNext to run past 1 extrapolated the apex's own top edge past
-      // TOP_W — at n=5 that came out negative, crossing the trapezoid's two top corners over
-      // each other into a degenerate sliver instead of a band.
-      const tNext = n === 1 ? 1 : Math.min(1, (i + 1) / (n - 1));
-      const halfWNext = ((1 - tNext) * BASE_W + tNext * TOP_W) / 2;
-      return { tier, halfW, halfWNext, cx, y, row };
+      const row = n - 1 - i;
+      return {
+        tier,
+        label: labelOf(tier),
+        halfW: widthAt(rowTop(row) + TIER_H) / 2,
+        halfWNext: widthAt(rowTop(row)) / 2,
+        cx: W / 2,
+        y: PAD_X + rowTop(row),
+      };
     });
   }, [clamped, n]);
 
@@ -99,7 +122,7 @@ export function PyramidTiers({
           aria-label={title}
           preserveAspectRatio="xMidYMid meet"
         >
-          {geometry.map(({ tier, halfW, halfWNext, cx, y }, idx) => {
+          {geometry.map(({ tier, label, halfW, halfWNext, cx, y }, idx) => {
             const fill = tier.color
               ? `color-mix(in oklab, ${tier.color} 22%, var(--surface-default))`
               : (TIER_FILLS[idx % TIER_FILLS.length] ?? TIER_FILLS[0]);
@@ -113,7 +136,6 @@ export function PyramidTiers({
             const pts = `${bL},${bY} ${bR},${bY} ${tR},${tY} ${tL},${tY}`;
 
             const midY = y + TIER_H / 2;
-            const label = tier.value ? `${tier.label} · ${tier.value}` : tier.label;
             // Constrain to the trapezoid's own narrowest edge (its top, halfWNext) — the
             // label sits vertically centred, but a band's slanted sides mean the true
             // available width at mid-height is never less generous than this bound, so it's
@@ -122,10 +144,10 @@ export function PyramidTiers({
             // Drop a size step before squeezing glyphs — a smaller-but-undistorted label
             // reads better than a full-size one forced narrow via lengthAdjust.
             const fontSize =
-              label.length * (LABEL_FONT_SIZE * AVG_GLYPH_WIDTH) <= maxTextWidth
+              estimateTextWidth(label, LABEL_FONT_SIZE, true) <= maxTextWidth
                 ? LABEL_FONT_SIZE
                 : LABEL_FONT_SIZE_SMALL;
-            const estWidth = label.length * fontSize * AVG_GLYPH_WIDTH;
+            const estWidth = estimateTextWidth(label, fontSize, true);
             const fitsLoosely = estWidth <= maxTextWidth;
             const squeeze = !fitsLoosely && maxTextWidth >= MIN_SQUEEZE_WIDTH;
 

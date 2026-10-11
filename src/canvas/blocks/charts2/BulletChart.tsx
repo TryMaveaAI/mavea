@@ -63,10 +63,13 @@ export function BulletChart({
                 </span>
               </div>
               <div className="c2-bul-track">
-                {[...bands, r.max].map((b, bi) => {
+                {[...bands, r.max].map((b, bi, all) => {
                   const start = bi === 0 ? 0 : pct(bands[bi - 1]);
                   const w = pct(b) - start;
-                  const op = 0.12 + bi * 0.1;
+                  // The ramp spans a fixed range however many bands there are: a fixed step per
+                  // band started so faint that the lowest band vanished into the card, and a
+                  // long band list would have run past full ink.
+                  const op = 0.16 + (bi / Math.max(1, all.length - 1)) * 0.3;
                   return (
                     <div
                       key={bi}

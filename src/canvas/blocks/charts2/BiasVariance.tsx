@@ -99,146 +99,148 @@ export function BiasVariance({
 
       {geom ? (
         <div className="bv-wrap" onMouseLeave={() => setHot(null)}>
-          <svg
-            role="img"
-            aria-label={title || 'bias-variance tradeoff'}
-            viewBox={`0 0 ${W} ${H}`}
-            className="bv-svg"
-          >
-            {geom.yTicks.map((t, i) => (
-              <line
-                key={`gy${i}`}
-                x1={geom.plotL}
-                y1={geom.sy(t)}
-                x2={geom.plotR}
-                y2={geom.sy(t)}
-                className="bv-grid"
-              />
-            ))}
-
-            {geom.sweetX !== null && (
-              <g>
-                <rect
-                  x={geom.sweetX - geom.bandHalf}
-                  y={geom.plotT}
-                  width={geom.bandHalf * 2}
-                  height={geom.plotB - geom.plotT}
-                  className="bv-sweet-band"
-                />
+          <div className="canvas-figure">
+            <svg
+              role="img"
+              aria-label={title || 'bias-variance tradeoff'}
+              viewBox={`0 0 ${W} ${H}`}
+              className="bv-svg"
+            >
+              {geom.yTicks.map((t, i) => (
                 <line
-                  x1={geom.sweetX}
-                  y1={geom.plotT}
-                  x2={geom.sweetX}
-                  y2={geom.plotB}
-                  className="bv-sweet-line"
+                  key={`gy${i}`}
+                  x1={geom.plotL}
+                  y1={geom.sy(t)}
+                  x2={geom.plotR}
+                  y2={geom.sy(t)}
+                  className="bv-grid"
                 />
+              ))}
+
+              {geom.sweetX !== null && (
+                <g>
+                  <rect
+                    x={geom.sweetX - geom.bandHalf}
+                    y={geom.plotT}
+                    width={geom.bandHalf * 2}
+                    height={geom.plotB - geom.plotT}
+                    className="bv-sweet-band"
+                  />
+                  <line
+                    x1={geom.sweetX}
+                    y1={geom.plotT}
+                    x2={geom.sweetX}
+                    y2={geom.plotB}
+                    className="bv-sweet-line"
+                  />
+                  <text
+                    x={geom.sweetX}
+                    y={geom.plotT - 4}
+                    textAnchor="middle"
+                    className="bv-sweet-lbl"
+                  >
+                    sweet spot
+                  </text>
+                </g>
+              )}
+
+              <line
+                x1={geom.plotL}
+                y1={geom.plotB}
+                x2={geom.plotR}
+                y2={geom.plotB}
+                className="bv-axis"
+              />
+              {geom.xTicks.map((t, i) => (
                 <text
-                  x={geom.sweetX}
-                  y={geom.plotT - 4}
+                  key={`xt${i}`}
+                  x={geom.sx(t)}
+                  y={geom.plotB + 13}
                   textAnchor="middle"
-                  className="bv-sweet-lbl"
+                  className="bv-tick"
                 >
-                  sweet spot
+                  {t}
                 </text>
-              </g>
-            )}
+              ))}
 
-            <line
-              x1={geom.plotL}
-              y1={geom.plotB}
-              x2={geom.plotR}
-              y2={geom.plotB}
-              className="bv-axis"
-            />
-            {geom.xTicks.map((t, i) => (
-              <text
-                key={`xt${i}`}
-                x={geom.sx(t)}
-                y={geom.plotB + 13}
-                textAnchor="middle"
-                className="bv-tick"
-              >
-                {t}
+              <path
+                ref={trainRef}
+                d={geom.trainD}
+                fill="none"
+                className="bv-curve"
+                style={{
+                  stroke: TRAIN_COLOR,
+                  opacity: hot && hot !== 'train' ? 0.25 : 1,
+                  strokeWidth: hot === 'train' ? 3 : 2,
+                }}
+                onMouseEnter={() => setHot('train')}
+              />
+              <path
+                ref={testRef}
+                d={geom.testD}
+                fill="none"
+                className="bv-curve"
+                style={{
+                  stroke: TEST_COLOR,
+                  opacity: hot && hot !== 'test' ? 0.25 : 1,
+                  strokeWidth: hot === 'test' ? 3 : 2,
+                }}
+                onMouseEnter={() => setHot('test')}
+              />
+              {geom.showDots &&
+                geom.trainPts.map((p, i) => (
+                  <circle
+                    key={`dt${i}`}
+                    cx={p.x}
+                    cy={p.y}
+                    r={2.2}
+                    fill={TRAIN_COLOR}
+                    className="m-scale-in"
+                    style={
+                      { ['--delay' as string]: `${(delay ?? 0) + 260 + i * 18}ms` } as CSSProperties
+                    }
+                  />
+                ))}
+              {geom.showDots &&
+                geom.testPts.map((p, i) => (
+                  <circle
+                    key={`de${i}`}
+                    cx={p.x}
+                    cy={p.y}
+                    r={2.2}
+                    fill={TEST_COLOR}
+                    className="m-scale-in"
+                    style={
+                      { ['--delay' as string]: `${(delay ?? 0) + 350 + i * 18}ms` } as CSSProperties
+                    }
+                  />
+                ))}
+
+              <text x={geom.plotL} y={H - 6} textAnchor="start" className="bv-zone-lbl">
+                underfitting
               </text>
-            ))}
-
-            <path
-              ref={trainRef}
-              d={geom.trainD}
-              fill="none"
-              className="bv-curve"
-              style={{
-                stroke: TRAIN_COLOR,
-                opacity: hot && hot !== 'train' ? 0.25 : 1,
-                strokeWidth: hot === 'train' ? 3 : 2,
-              }}
-              onMouseEnter={() => setHot('train')}
-            />
-            <path
-              ref={testRef}
-              d={geom.testD}
-              fill="none"
-              className="bv-curve"
-              style={{
-                stroke: TEST_COLOR,
-                opacity: hot && hot !== 'test' ? 0.25 : 1,
-                strokeWidth: hot === 'test' ? 3 : 2,
-              }}
-              onMouseEnter={() => setHot('test')}
-            />
-            {geom.showDots &&
-              geom.trainPts.map((p, i) => (
-                <circle
-                  key={`dt${i}`}
-                  cx={p.x}
-                  cy={p.y}
-                  r={2.2}
-                  fill={TRAIN_COLOR}
-                  className="m-scale-in"
-                  style={
-                    { ['--delay' as string]: `${(delay ?? 0) + 260 + i * 18}ms` } as CSSProperties
-                  }
-                />
-              ))}
-            {geom.showDots &&
-              geom.testPts.map((p, i) => (
-                <circle
-                  key={`de${i}`}
-                  cx={p.x}
-                  cy={p.y}
-                  r={2.2}
-                  fill={TEST_COLOR}
-                  className="m-scale-in"
-                  style={
-                    { ['--delay' as string]: `${(delay ?? 0) + 350 + i * 18}ms` } as CSSProperties
-                  }
-                />
-              ))}
-
-            <text x={geom.plotL} y={H - 6} textAnchor="start" className="bv-zone-lbl">
-              underfitting
-            </text>
-            <text x={geom.plotR} y={H - 6} textAnchor="end" className="bv-zone-lbl">
-              overfitting
-            </text>
-            <text
-              x={0}
-              y={0}
-              textAnchor="middle"
-              className="bv-axlbl"
-              transform={`translate(12, ${(geom.plotT + geom.plotB) / 2}) rotate(-90)`}
-            >
-              Error
-            </text>
-            <text
-              x={(geom.plotL + geom.plotR) / 2}
-              y={geom.plotB + 26}
-              textAnchor="middle"
-              className="bv-axlbl"
-            >
-              Model complexity →
-            </text>
-          </svg>
+              <text x={geom.plotR} y={H - 6} textAnchor="end" className="bv-zone-lbl">
+                overfitting
+              </text>
+              <text
+                x={0}
+                y={0}
+                textAnchor="middle"
+                className="bv-axlbl"
+                transform={`translate(12, ${(geom.plotT + geom.plotB) / 2}) rotate(-90)`}
+              >
+                Error
+              </text>
+              <text
+                x={(geom.plotL + geom.plotR) / 2}
+                y={geom.plotB + 26}
+                textAnchor="middle"
+                className="bv-axlbl"
+              >
+                Model complexity →
+              </text>
+            </svg>
+          </div>
 
           <div className="bv-legend">
             <button

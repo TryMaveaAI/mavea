@@ -5,16 +5,16 @@
 // shades of it — the same computed-geometry idea ColorWheel uses for its hue ring, except each
 // wedge carries its own color instead of one derived base hue + harmony. Falls back to the 8 core
 // Plutchik emotions when the model supplies none, so the wheel is never blank.
-import type { CSSProperties } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { AccentVar } from '../../../data/conversation';
 import type { EmotionWheelProps, EmotionSegment, EmotionIntensity } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { CX, CY, polar, wedgeLabel, wedgePath, type WedgeLabel } from './wheelGeometry';
 
 type Props = EmotionWheelProps & { delay?: number };
 
-const CX = 50;
-const CY = 50;
 const R_OUT = 44;
 
 // Ring band [inner radius, outer radius] per tier — primary is the wide outer band (matching
@@ -75,29 +75,18 @@ const ACCENT_CYCLE: AccentVar[] = [
   'var(--presence-soft)',
 ];
 
-const norm = (deg: number) => ((deg % 360) + 360) % 360;
-
-// A point on the wheel for angle `deg` (0° at the top, clockwise).
-function polar(deg: number, r: number): [number, number] {
-  const a = (norm(deg) - 90) * (Math.PI / 180);
-  return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
-}
-
-// A donut wedge spanning [a0, a1] degrees between the inner and outer radius.
-function wedgePath(a0: number, a1: number, rIn: number, rOut: number): string {
-  const [ox0, oy0] = polar(a0, rOut);
-  const [ox1, oy1] = polar(a1, rOut);
-  const [ix1, iy1] = polar(a1, rIn);
-  const [ix0, iy0] = polar(a0, rIn);
-  const large = a1 - a0 > 180 ? 1 : 0;
-  return `M${ox0} ${oy0} A${rOut} ${rOut} 0 ${large} 1 ${ox1} ${oy1} L${ix1} ${iy1} A${rIn} ${rIn} 0 ${large} 0 ${ix0} ${iy0} Z`;
-}
-
 function colorFor(seg: EmotionSegment, index: number): AccentVar {
   if (seg.color) return seg.color;
   const known = KNOWN_COLOR[seg.label.trim().toLowerCase()];
   return known ?? ACCENT_CYCLE[index % ACCENT_CYCLE.length];
 }
+
+// Wedge names are set along the ring's centre line. The largest size reads as a label at the
+// wheel's usual ~240px; the floor is the 9px legibility floor converted into viewBox units at the
+// figure's MEASURED width, so a wheel squeezed into a narrow card drops labels rather than
+// painting them unreadably small (the legend beside it still names every wedge).
+const LABEL_FLOOR_PX = 9;
+const RENDERED_FALLBACK = 240;
 
 interface Wedge {
   seg: EmotionSegment;
@@ -107,6 +96,7 @@ interface Wedge {
   mid: number;
   d: string;
   markerR: number;
+  label: WedgeLabel | null;
 }
 
 export function EmotionWheel({
@@ -120,6 +110,10 @@ export function EmotionWheel({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark;
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const [figRef, figWidth] = useHostWidth<HTMLDivElement>();
+  const rendered = Math.min(figWidth || RENDERED_FALLBACK, RENDERED_FALLBACK);
+  const minUnits = (LABEL_FLOOR_PX * 100) / rendered;
   const items = segments && segments.length > 0 ? segments : DEFAULT_SEGMENTS;
   const highlightKey = highlight?.trim().toLowerCase();
 
@@ -153,6 +147,7 @@ export function EmotionWheel({
         mid: center,
         d: wedgePath(center - span / 2, center + span / 2, rIn, rOut),
         markerR: rOut + 4,
+        label: wedgeLabel(seg.label, center, span, rIn, rOut, minUnits),
       };
     });
   });
@@ -174,7 +169,7 @@ export function EmotionWheel({
       )}
 
       <div className="ew-wrap">
-        <div className="ew-figbox">
+        <div className="ew-figbox" ref={figRef}>
           <svg
             viewBox="0 0 100 100"
             className="ew-svg"
@@ -190,6 +185,18 @@ export function EmotionWheel({
                 style={{ ['--i' as string]: k } as CSSProperties}
               />
             ))}
+            {wedges.map((w, k) =>
+              w.label ? (
+                <g key={'l' + k} aria-hidden="true">
+                  <path id={`${uid}-arc-${k}`} d={w.label.d} fill="none" />
+                  <text className="ew-wedge-label" fontSize={w.label.fontSize} dy="0.35em">
+                    <textPath href={`#${uid}-arc-${k}`} startOffset="50%" textAnchor="middle">
+                      {w.seg.label}
+                    </textPath>
+                  </text>
+                </g>
+              ) : null,
+            )}
             <circle cx={CX} cy={CY} r={hubR} className="ew-hub" />
             {hotMarker && (
               <circle

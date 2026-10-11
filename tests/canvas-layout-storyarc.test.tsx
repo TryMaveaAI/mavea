@@ -60,3 +60,56 @@ describe('StoryArc', () => {
     expect(container.querySelector('text.sa-beat-lbl title')).toBeNull();
   });
 });
+
+describe('StoryArc axis labels', () => {
+  const stageRows = (container: HTMLElement) => {
+    // Freytag draws the axis as a baseline; three-act marks it only where its act dividers end.
+    const axis =
+      container.querySelector('.sa-baseline')?.getAttribute('y1') ??
+      container.querySelector('.sa-transition')?.getAttribute('y2');
+    const base = Number(axis);
+    return {
+      base,
+      labels: [...container.querySelectorAll('text.sa-stage-lbl')].map((n) => ({
+        y: Number(n.getAttribute('y')),
+        anchor: n.getAttribute('text-anchor'),
+      })),
+    };
+  };
+
+  it.each(['freytag', 'threeact'] as const)(
+    'sets %s stage names just under the baseline, all centred on their points',
+    (framework) => {
+      const { container } = render(<StoryArc title="Arc" framework={framework} beats={[]} />);
+      const { base, labels } = stageRows(container);
+      expect(labels.length).toBeGreaterThan(0);
+      for (const l of labels) {
+        // Within two label rows of the axis, never pinned down at the foot of the frame.
+        expect(l.y).toBeGreaterThan(base);
+        expect(l.y - base).toBeLessThanOrEqual(14 + 11);
+        expect(l.anchor).toBe('middle');
+      }
+    },
+  );
+
+  it('sets Freytag beat names on the open side of the slope they sit on', () => {
+    const { container } = render(
+      <StoryArc
+        title="Arc"
+        framework="freytag"
+        beats={[
+          { stage: 'Rising Action', label: 'Rise' },
+          { stage: 'Climax', label: 'Peak' },
+          { stage: 'Falling Action', label: 'Fall' },
+        ]}
+      />,
+    );
+    const anchor = (text: string) =>
+      [...container.querySelectorAll('text.sa-beat-lbl')]
+        .find((n) => n.textContent === text)
+        ?.getAttribute('text-anchor');
+    expect(anchor('Rise')).toBe('end');
+    expect(anchor('Peak')).toBe('middle');
+    expect(anchor('Fall')).toBe('start');
+  });
+});

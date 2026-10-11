@@ -1,21 +1,27 @@
 // SVG line+area chart with a hover crosshair and tooltip.
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import type { ChartProps } from '../data/conversation';
+import { niceDomain, niceStep, ticks } from './lib/scale';
+import { withUnit } from './lib/format';
 
 type Props = ChartProps & { delay?: number };
 
 export function TrendChart({ title, series, labels, unit = '$', delay, footer, conf }: Props) {
   const [hover, setHover] = useState<number | null>(null);
+  // Two charts on one board must not share gradient ids, or the second fills with the first's.
+  const gid = 'tc' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const W = 560,
     H = 220,
     PAD = { l: 50, r: 50, t: 14, b: 26 };
-  const all = series.flatMap((s) => s.data);
-  const max = (all.length ? Math.max(...all) : 1) * 1.12;
-  const min = Math.min(0, ...all);
-  const span = max - min || 1; // guard a flat (all-equal) series
+  const all = series.flatMap((s) => s.data).filter(Number.isFinite);
+  // A round-numbered axis from zero (or the lowest value, if it dips below), labelled, so the
+  // reader can read a level off the chart rather than only its shape.
+  const [min, max] = niceDomain(Math.min(0, ...all), all.length ? Math.max(...all) : 1, 4);
+  const span = max - min || 1;
+  const yTicks = ticks(min, max, niceStep(max - min, 4));
   const n = labels.length;
   const x = (i: number) => PAD.l + (n > 1 ? i / (n - 1) : 0) * (W - PAD.l - PAD.r);
   const y = (v: number) => PAD.t + (1 - (v - min) / span) * (H - PAD.t - PAD.b);
@@ -53,27 +59,32 @@ export function TrendChart({ title, series, labels, unit = '$', delay, footer, c
         >
           <defs>
             {series.map((s, si) => (
-              <linearGradient key={si} id={`g${si}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient key={si} id={`${gid}-${si}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={s.color} stopOpacity="0.28" />
                 <stop offset="100%" stopColor={s.color} stopOpacity="0" />
               </linearGradient>
             ))}
           </defs>
-          {/* gridlines */}
-          {[0.25, 0.5, 0.75].map((g, i) => (
-            <line
-              key={i}
-              x1={PAD.l}
-              x2={W - PAD.r}
-              y1={PAD.t + g * (H - PAD.t - PAD.b)}
-              y2={PAD.t + g * (H - PAD.t - PAD.b)}
-              stroke="var(--grid-line)"
-            />
+          {yTicks.map((t) => (
+            <g key={t}>
+              <line x1={PAD.l} x2={W - PAD.r} y1={y(t)} y2={y(t)} stroke="var(--grid-line)" />
+              <text
+                x={PAD.l - 8}
+                y={y(t)}
+                dy="0.35em"
+                fontSize="11"
+                textAnchor="end"
+                fill="var(--text-faint)"
+                className="tab-num"
+              >
+                {withUnit(t, unit, { compact: true })}
+              </text>
+            </g>
           ))}
           {series.map((s, si) => (
             <g key={si}>
               {s.area !== false && (
-                <path className="tc-area" d={areaPath(s.data)} fill={`url(#g${si})`} />
+                <path className="tc-area" d={areaPath(s.data)} fill={`url(#${gid}-${si})`} />
               )}
               {/* pathLength normalises the stroke dash to 0–1 so the bloom layer can draw the
                   line on with a CSS keyframe, without measuring its length in JS. */}
@@ -149,8 +160,7 @@ export function TrendChart({ title, series, labels, unit = '$', delay, footer, c
             <strong>{labels[hover]}</strong>
             {series.map((s, si) => (
               <div key={si} style={{ color: s.color, fontVariantNumeric: 'tabular-nums' }}>
-                {s.name}: {unit}
-                {series[si].data[hover].toLocaleString()}
+                {s.name}: {withUnit(series[si].data[hover], unit)}
               </div>
             ))}
           </div>

@@ -185,6 +185,9 @@ export interface SmallPanel {
   stat?: string;
   delta?: string;
   deltaDir?: 'up' | 'down' | 'flat';
+  /** Whether this move is an improvement (a falling resting heart rate is). Colours the delta;
+   *  without it a rise reads as good. */
+  good?: boolean;
   color?: AccentVar;
 }
 export interface SmallMultiplesProps {

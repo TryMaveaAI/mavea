@@ -758,14 +758,6 @@
   border-radius: var(--r-full);
   background: linear-gradient(180deg, var(--pq), color-mix(in oklab, var(--pq) 35%, transparent));
 }
-.lay-pq-mark {
-  position: absolute;
-  left: 14px;
-  top: -2px;
-  width: 26px;
-  height: 26px;
-  opacity: 0.18;
-}
 .lay-pq-quote {
   margin: 0;
   font-size: var(--fs-xl);
@@ -977,7 +969,10 @@
      indent can never drift out of sync with each other again. */
   --cs-rail-w: 26px;
   --cs-rail-gap: 10px;
-  --cs-row-pad: 6px;
+  /* Collapsed stages are only as tall as their 26px node plus this padding twice, and the
+     connector lives in what is left over — at 6px that was a 4px stub between nodes that all
+     but touched, so the timeline read as a stack of loose icons. */
+  --cs-row-pad: 10px;
 }
 .lay-cs-stage {
   position: relative;
@@ -1041,11 +1036,11 @@
 .lay-cs-line {
   flex: 1;
   width: 2px;
-  background: var(--line);
+  background: var(--line-strong);
   margin-top: 2px;
 }
 .lay-cs-stage.open .lay-cs-line {
-  background: color-mix(in oklab, var(--st) 40%, var(--line));
+  background: color-mix(in oklab, var(--st) 40%, var(--line-strong));
 }
 .lay-cs-label {
   font-size: var(--fs-md);
@@ -2260,14 +2255,6 @@
   border-radius: var(--r-full);
   background: linear-gradient(180deg, var(--sd), color-mix(in oklab, var(--sd) 35%, transparent));
 }
-.sbd-msg-mark {
-  position: absolute;
-  left: 13px;
-  top: -3px;
-  color: var(--sd);
-  opacity: 0.16;
-  flex: none;
-}
 .sbd-msg-text {
   margin: 0;
   font-size: var(--fs-md, 16px);
@@ -2512,9 +2499,21 @@
   flex: none;
   margin-top: 1px;
 }
+.rh-exit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
 .rh-exit-tag {
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--insight);
+}
+.rh-exit-line {
+  overflow-wrap: anywhere;
 }
 .rh-note {
   margin: 12px 0 0;
@@ -3327,6 +3326,15 @@
   stroke: var(--presence);
   stroke-width: 2;
 }
+.lay-beat-axis,
+.lay-beat-tick line {
+  stroke: var(--grid-line, var(--line-soft));
+  stroke-width: 1;
+}
+.lay-beat-tick text {
+  fill: var(--text-secondary);
+  font-weight: 600;
+}
 .lay-beat-caption {
   margin-top: 12px;
   font-size: var(--fs-xs, 12px);
@@ -4113,9 +4121,16 @@
   border: 1px solid color-mix(in oklab, var(--dd) 26%, var(--line-soft));
   background: color-mix(in oklab, var(--dd) 7%, transparent);
 }
-/* This pair has no counterpart — let the surviving line take the whole row. */
-.lay-dd-cell.solo {
-  grid-column: 1 / -1;
+/* Each side keeps its own column even when its counterpart is missing, so an unpaired line
+   still sits under the header that names it rather than stretching across both. */
+.lay-dd-cell--do {
+  grid-column: 1;
+}
+.lay-dd-cell--dont {
+  grid-column: 2;
+}
+.lay-dd--single .lay-dd-cell--dont {
+  grid-column: auto;
 }
 .lay-dd-mark {
   width: 14px;
@@ -4130,8 +4145,8 @@
   gap: 3px;
   min-width: 0;
 }
-/* The column headers name the side; a cell only labels itself when they can't — an unpaired
-   line spanning the row, a one-sided set with no headers, or a card too narrow for two columns. */
+/* The column headers name the side; a cell only labels itself when they can't — a one-sided
+   set with no headers, or a card too narrow for two columns. */
 .lay-dd-tag {
   display: none;
   font-size: var(--fs-2xs);
@@ -4141,8 +4156,7 @@
   color: var(--dd);
   overflow-wrap: anywhere;
 }
-.lay-dd--single .lay-dd-tag,
-.lay-dd-cell.solo .lay-dd-tag {
+.lay-dd--single .lay-dd-tag {
   display: block;
 }
 .lay-dd-text {
@@ -4180,6 +4194,9 @@
   }
   .lay-dd-cells {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .lay-dd-cell--dont {
+    grid-column: auto;
   }
   .lay-dd-tag {
     display: block;
@@ -4335,4 +4352,63 @@
   .lay-ta-item.done .lay-ta-num {
     color: color(from var(--tc) srgb-linear var(--ink-on-fill));
   }
+}
+
+/* ════════════════════════════════════════════════════════════
+   devicemark — a passage with its literary devices tinted in place, decoded by a legend
+   ════════════════════════════════════════════════════════════ */
+.dm-passage {
+  margin: 4px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.75;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dm-mark,
+.dm-legend-swatch {
+  background: var(--dm-bg);
+  box-shadow: inset 0 -2px 0 var(--dm-border);
+}
+.dm-mark {
+  padding: 1px 3px;
+  border-radius: 3px;
+  /* A phrase that wraps keeps its tint and underline on every line it lands on. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.dm-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.dm-legend-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.dm-legend-swatch {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  transform: translateY(1px);
+}
+.dm-legend-label {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dm-legend-note {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.dm-caption {
+  margin-top: 10px;
 }

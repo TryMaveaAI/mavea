@@ -90,8 +90,13 @@ export function GridMatrix({
         <div
           className="lr-gm-grid"
           style={{
-            // Each column is equal width; row-header col uses the same width.
-            gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+            // Each column is equal width; row-header col uses the same width. A ten-frame is a
+            // fixed-size frame of square boxes rather than columns stretched across the card,
+            // which spread seven counters edge to edge with nothing to count them against.
+            gridTemplateColumns:
+              variant === 'tenframe'
+                ? `repeat(${gridCols}, var(--tf-cell))`
+                : `repeat(${gridCols}, minmax(0, 1fr))`,
           }}
           role="grid"
           aria-label={title}
@@ -127,8 +132,7 @@ export function GridMatrix({
                   'lr-gm-data',
                   accented ? 'lr-gm-accent' : '',
                   variant === 'truth' ? truthClass(val) : '',
-                  variant === 'tenframe' ? 'lr-gm-circle' : '',
-                  variant === 'tenframe' && isFilled ? 'lr-gm-filled' : '',
+                  variant === 'tenframe' ? 'lr-gm-box' : '',
                 ]
                   .filter(Boolean)
                   .join(' ');
@@ -143,7 +147,13 @@ export function GridMatrix({
                       variant === 'tenframe' ? (isFilled ? 'filled' : 'empty') : undefined
                     }
                   >
-                    {variant === 'tenframe' ? null : val}
+                    {variant === 'tenframe' ? (
+                      isFilled ? (
+                        <span className="lr-gm-counter" />
+                      ) : null
+                    ) : (
+                      val
+                    )}
                   </div>
                 );
               })}

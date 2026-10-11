@@ -8,6 +8,11 @@ import type { GaugeProps } from '../data/conversation';
 
 type Props = GaugeProps & { delay?: number };
 
+/** How much band the dial's inner disc holds under the number: one short word ("Elevated",
+ *  "Low risk"). A model writes phrases there too ("Moderate-high with 700+ score"), which wrapped
+ *  across the ring, so a longer band stands beside the dial, where it has room to wrap. */
+export const BAND_INSIDE_MAX = 10;
+
 export function Gauge({
   title,
   icon = 'spark',
@@ -26,6 +31,8 @@ export function Gauge({
   const r = size / 2 - 10;
   const frac = Math.max(0, Math.min(1, value / max));
   const col = color || (value >= 40 ? 'var(--warning)' : 'var(--insight)');
+  const bandInside = band && band.length <= BAND_INSIDE_MAX ? band : undefined;
+  const bandBeside = band && !bandInside ? band : undefined;
   return (
     <div className="card reveal" style={{ '--delay': (delay || 0) + 'ms' } as CSSProperties}>
       <div className="card-eyebrow">
@@ -64,10 +71,17 @@ export function Gauge({
             <div className="gauge-num tab-num" data-mark="underline" style={{ color: col }}>
               {value}
             </div>
-            {band && <div className="gauge-band">{band}</div>}
+            {bandInside && <div className="gauge-band">{bandInside}</div>}
           </div>
         </div>
-        {driver && <p className="risk-driver" dangerouslySetInnerHTML={richInnerHtml(driver)} />}
+        {(bandBeside || driver) && (
+          <div className="risk-side">
+            {bandBeside && <div className="gauge-band gauge-band--beside">{bandBeside}</div>}
+            {driver && (
+              <p className="risk-driver" dangerouslySetInnerHTML={richInnerHtml(driver)} />
+            )}
+          </div>
+        )}
       </div>
       {footer && (
         <div className="insight-summary" style={{ marginTop: 12 }}>

@@ -11,6 +11,14 @@ const VB = 240;
 const CX = VB / 2;
 const CY = VB / 2;
 const R = 100; // dial radius in SVG units
+/** Centre of the numeral ring. */
+const NUMERAL_R = R - 25;
+/** .lr-cf-numeral's size, in viewBox units. */
+const NUMERAL_FS = 15;
+// The minute hand stops short of the numerals' inner edge — a two-digit numeral is about one
+// em wide — so whichever number it points at stays readable rather than struck through.
+const MINUTE_LEN = NUMERAL_R - NUMERAL_FS * 0.6 - 3;
+const HOUR_LEN = R * 0.48;
 
 /** Parse 'HH:MM' / 'H:MM' into hour (0–23) and minute (0–59). Falls back to 12:00 on garbage so the
  *  face always renders something sane. */
@@ -97,8 +105,8 @@ export function ClockFace({
       h,
       m,
       sec,
-      hour: handTip(hourAngle, R * 0.52),
-      minute: handTip(minuteAngle, R * 0.78),
+      hour: handTip(hourAngle, HOUR_LEN),
+      minute: handTip(minuteAngle, MINUTE_LEN),
       secondTip: handTip(secondAngle, R * 0.84),
       arc,
     };
@@ -148,12 +156,12 @@ export function ClockFace({
           {/* Numerals 1–12. */}
           {Array.from({ length: 12 }, (_, i) => {
             const n = i + 1;
-            const pos = handTip(n * 30, R - 26);
+            const pos = handTip(n * 30, NUMERAL_R);
             return (
               <text
                 key={`n${n}`}
                 x={pos.x}
-                y={pos.y + 6}
+                y={pos.y + NUMERAL_FS * 0.36}
                 className="lr-cf-numeral"
                 textAnchor="middle"
               >

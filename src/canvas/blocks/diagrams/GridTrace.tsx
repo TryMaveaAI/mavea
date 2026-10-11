@@ -8,12 +8,20 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { GridTraceProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useHostWidth } from '../../lib/useBoxSize';
 
 type Props = GridTraceProps & { delay?: number };
 
-// Cell size bounds — actual size is clamped to fit card width
+// Cell size bounds — the actual size divides the measured card width between the columns and is
+// clamped to these. It is measured, not a CSS `%`: a percentage inside the track size resolved
+// against a fit-content grid (a cycle) and inside the cell's height against nothing at all, so the
+// grid collapsed to a few slivers in the corner with the stats row painted over them.
 const CELL_MIN = 22;
 const CELL_MAX = 52;
+/** Before the first measurement (and under jsdom): a mid-sized cell. */
+const CELL_FALLBACK = 36;
+/** Must match `.gt2-grid`'s gap. */
+const CELL_GAP = 2;
 const MAX_GRID = 20; // max rows or cols rendered
 
 const PLAY_MS = [700, 280, 80] as const;
@@ -31,6 +39,7 @@ export function GridTrace({
   const Ic = Icon[icon] ?? Icon.share;
   const total = Math.max(1, steps.length);
 
+  const [gridRef, hostW] = useHostWidth<HTMLDivElement>();
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedTier, setSpeedTier] = useState(1);
@@ -94,6 +103,14 @@ export function GridTrace({
       0,
     );
 
+  const cell =
+    hostW > 0 && numCols > 0
+      ? Math.min(
+          CELL_MAX,
+          Math.max(CELL_MIN, Math.floor((hostW - (numCols - 1) * CELL_GAP) / numCols)),
+        )
+      : CELL_FALLBACK;
+
   // Decide whether value labels fit (only when cells are wide enough)
   const showValues = grid.some((row) => row.some((c) => c.value !== undefined));
 
@@ -114,13 +131,9 @@ export function GridTrace({
 
       {/* Grid */}
       <div
+        ref={gridRef}
         className="gt2-grid"
-        style={
-          {
-            '--gt2-cols': numCols,
-            '--gt2-cell': `clamp(${CELL_MIN}px, calc((100% - 8px) / ${numCols}), ${CELL_MAX}px)`,
-          } as CSSProperties
-        }
+        style={{ '--gt2-cols': numCols, '--gt2-cell': `${cell}px` } as CSSProperties}
         role="img"
         aria-label={title ?? 'grid'}
       >

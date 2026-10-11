@@ -164,20 +164,21 @@ export function SleepCycle({
             />
           ))}
 
-          {/* REM bands: a filled block over each REM span so the highlighted stage pops */}
-          {spans
-            .filter((s) => s.stage === 'rem')
-            .map((s, i) => (
-              <rect
-                key={`rem${i}`}
-                x={sx(s.fromMin)}
-                y={PAD_T + LANE_INDEX.rem * laneH + 2}
-                width={Math.max(sx(s.toMin) - sx(s.fromMin), 0.5)}
-                height={laneH - 4}
-                className="c2-sc-rem"
-                rx="2"
-              />
-            ))}
+          {/* A filled block under every span, in its stage's colour, so the legend's swatches
+              point at something on the chart (only REM was ever filled, so three of the four
+              legend colours appeared nowhere). REM keeps the strongest fill: it is the stage
+              people come to see. */}
+          {spans.map((s, i) => (
+            <rect
+              key={`b${i}`}
+              x={sx(s.fromMin)}
+              y={PAD_T + LANE_INDEX[s.stage] * laneH + 2}
+              width={Math.max(sx(s.toMin) - sx(s.fromMin), 0.5)}
+              height={laneH - 4}
+              className={'c2-sc-band c2-sc-st--' + s.stage}
+              rx="2"
+            />
+          ))}
 
           {/* the stepped hypnogram trace */}
           <polyline
@@ -213,7 +214,7 @@ export function SleepCycle({
             key={lane.stage}
             className={'c2-sc-leg' + (lane.stage === 'rem' ? ' c2-sc-leg--rem' : '')}
           >
-            <i className={'c2-sc-sw c2-sc-sw--' + lane.stage} />
+            <i className={'c2-sc-sw c2-sc-st--' + lane.stage} />
             {lane.label}
             <b className="tab-num">{durLabel(totals[lane.stage])}</b>
           </span>

@@ -2,9 +2,10 @@ import { useMemo, useId } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
-import { spreadLabels } from '../../lib/spreadLabels';
+import { estimateTextWidth } from '../../lib/fitText';
 import type { WaveDiagramProps, WaveSpec } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { boxesOverlap, cheapest, curveHitCount, labelBox, type Box } from './labelPlace';
 
 type Props = WaveDiagramProps & { delay?: number };
 
@@ -25,13 +26,9 @@ const SAMPLES = 160;
 
 const PALETTE = ['var(--presence)', 'var(--insight)'] as const;
 
-// Per-wave legend labels are right-anchored at a fixed x (see the render below) — an
-// unbounded label would run past the left padding and clip against the plot / card edge.
-const CURVE_LABEL_MAX_CHARS = 20;
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
+const MEASURE_FS = 9.5; // .wv-measure-lbl, for width estimates
+// Heights up the amplitude marker to try its label at, best first.
+const ALONG = [0.5, 0.3, 0.7, 0.15, 0.85];
 
 /** A built sine wave: its SVG path plus the data-coord landmarks used for annotation. */
 interface BuiltWave {
@@ -153,17 +150,47 @@ export function WaveDiagram({
   const ampX = crest ? sx(crest.x) : PAD_L + 18;
   const crestY = crest ? sy(crest.amp) : yZero;
 
-  // Each wave's label rides at that wave's own height where the curve leaves the plot. Waves that
-  // happen to end at the same displacement — harmonics crossing equilibrium together is the
-  // ordinary case, not an exotic one — would stack their labels illegibly, so spread them.
+  // Wave names go in a legend under the plot. Every curve runs edge to edge, so a name riding
+  // the right end of its curve always sat on top of the other curves arriving there.
   const labelled = model.waves.filter((w) => w.label);
-  const labelY = spreadLabels(
-    labelled.map((w, i) => {
-      const k = (2 * Math.PI) / w.wavelength;
-      return { id: i, y: sy(w.amplitude * Math.sin(k * model.xMax + w.phase)) - 5 };
-    }),
-    { gap: 12, top: PAD_T + 6, bottom: H - PAD_B - 4 },
-  );
+
+  // The amplitude label takes the first spot beside its marker that no curve passes through.
+  // At a fixed mid-height it sat wherever a second, shorter wave happened to cross.
+  const ampLabel = (() => {
+    if (!crest) return null;
+    const text = `A = ${trim(crest.amp)}`;
+    const w = estimateTextWidth(text, MEASURE_FS, true);
+    const curves = model.waves.map((wave) => {
+      const k = (2 * Math.PI) / wave.wavelength;
+      return (px: number) => {
+        if (px < PAD_L || px > W - PAD_R) return null;
+        const x = ((px - PAD_L) / (W - PAD_R - PAD_L)) * model.xMax;
+        return sy(wave.amplitude * Math.sin(k * x + wave.phase));
+      };
+    });
+    const lambdaBand: Box | null = showWavelength
+      ? { x1: sx(crest.x), y1: crestY - 24, x2: sx(crest.next), y2: crestY }
+      : null;
+    // Bounds and the λ bracket are hard limits; curves are a cost. Two waves can leave no spot
+    // beside the marker that nothing crosses, and then the label takes the one crossed least
+    // and its halo cuts the curve behind it.
+    const cost = ({ box: b }: { box: Box }) =>
+      b.x1 < PAD_L + 2 ||
+      b.x2 > W - PAD_R ||
+      b.y1 < PAD_T - 4 ||
+      b.y2 > H - PAD_B ||
+      (lambdaBand != null && boxesOverlap(lambdaBand, b))
+        ? Infinity
+        : curves.reduce((n, f) => n + curveHitCount(f, b, 1.5), 0);
+    const cands = ALONG.flatMap((f) =>
+      (['start', 'end'] as const).map((anchor) => {
+        const x = anchor === 'start' ? ampX + 5 : ampX - 5;
+        const y = yZero + (crestY - yZero) * f;
+        return { x, y, anchor, box: labelBox(x, y, w, 11, anchor) };
+      }),
+    );
+    return { text, ...cheapest(cands, cost) };
+  })();
 
   return (
     <div
@@ -244,16 +271,17 @@ export function WaveDiagram({
           </g>
 
           {/* Amplitude marker (A): centre line → first crest of the reference wave */}
-          {showAmplitude && crest && (
+          {showAmplitude && crest && ampLabel && (
             <g className="wv-measure">
               <line x1={ampX} y1={yZero} x2={ampX} y2={crestY} className="wv-amp-line" />
               <text
-                x={ampX + 5}
-                y={(yZero + crestY) / 2 + 3}
+                x={ampLabel.x}
+                y={ampLabel.y}
                 className="wv-measure-lbl"
-                textAnchor="start"
+                textAnchor={ampLabel.anchor}
+                dominantBaseline="middle"
               >
-                A = {trim(crest.amp)}
+                {ampLabel.text}
               </text>
             </g>
           )}
@@ -310,22 +338,18 @@ export function WaveDiagram({
               })()}
             </g>
           )}
-
-          {/* Per-wave legend labels, riding the right end of each curve on the de-collided ladder */}
-          {labelled.map((w, i) => (
-            <text
-              key={`lab${i}`}
-              x={W - PAD_R - 4}
-              y={labelY.get(i)}
-              className="wv-curve-lbl"
-              fill={w.color}
-              textAnchor="end"
-            >
-              {truncate(w.label as string, CURVE_LABEL_MAX_CHARS)}
-            </text>
-          ))}
         </svg>
       </div>
+      {labelled.length > 0 && (
+        <ul className="wv-legend">
+          {labelled.map((w, i) => (
+            <li key={i} className="wv-legend-item">
+              <span className="wv-legend-sw" style={{ background: w.color }} aria-hidden="true" />
+              {w.label}
+            </li>
+          ))}
+        </ul>
+      )}
       {footer && (
         <div
           className="insight-summary"

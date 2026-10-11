@@ -8,8 +8,11 @@ type Props = SettleUpProps & { delay?: number };
 // Settlement rows are a flex row (.su-settle); a from/to name long enough to outrun its share of
 // that row (well past the short demo names) would otherwise push the amount pill off the card
 // instead of truncating — same fixed-width-name-in-a-flex-row bug as livescore's .lvs-name.
+// Names hug their text (the amount pill takes the slack with margin-left: auto), so the arrow
+// sits right after the payer instead of halfway across a wide card; a long name still shrinks
+// and ellipsizes rather than pushing the amount out.
 const truncateNameStyle: CSSProperties = {
-  flex: 1,
+  flex: '0 1 auto',
   minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',

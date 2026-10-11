@@ -8,6 +8,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
 import { usePathDraw } from '../../lib/motion';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
+import { placeClear, type Box } from './chartMath';
 import type { ChromatogramProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -17,7 +19,8 @@ const W = 480;
 const H = 220;
 const M = { top: 26, right: 18, bottom: 30, left: 40 };
 const PALETTE = ['var(--presence)', 'var(--insight)', 'var(--warning)', 'var(--danger)'];
-const MK_LABEL_MAX_CHARS = 30;
+const MK_FS = 9; // .c2-chrom-mk
+const MK_MAX_W = 130;
 
 interface SafePeak {
   rt: number | null;
@@ -47,12 +50,6 @@ function fmtPct(pct: number | null): string {
 }
 function fmtHeight(h: number | null): string {
   return h === null ? '—' : h.toLocaleString(undefined, { maximumFractionDigits: 1 });
-}
-
-function truncateLabel(text: string): string {
-  return text.length > MK_LABEL_MAX_CHARS
-    ? `${text.slice(0, MK_LABEL_MAX_CHARS - 1).trimEnd()}…`
-    : text;
 }
 
 export function Chromatogram({
@@ -157,6 +154,45 @@ export function Chromatogram({
       })
       .filter((x): x is { d: string; apexIdx: number } => x !== null);
 
+    // Each apex is named by its compound alone — retention time and area share are the table's
+    // columns right below, and carrying all three in one line is what cut "Acetylsalicylic acid"
+    // to "Acetylsalicylic ac…". The name wraps to two lines before it is cut, and takes the
+    // nearest spot around its apex that the trace and the other names leave clear.
+    const taken: Box[] = [];
+    const labels = plottable.map((p) => {
+      const pt = tracePts[p.apexIdx];
+      const fit = fitText(p.label, {
+        maxWidth: MK_MAX_W,
+        fontSize: MK_FS,
+        minFontSize: MK_FS,
+        maxLines: 2,
+        bold: true,
+      });
+      const w = Math.max(...fit.lines.map((l) => estimateTextWidth(l, fit.fontSize, true)));
+      const h = fit.lines.length * fit.lineHeightPx;
+      const cands: Box[] = [];
+      for (const lift of [0, 1, 2]) {
+        const y = pt.y - 7 - h - lift * (h + 3);
+        cands.push(
+          { x: pt.x - w / 2, y, w, h },
+          { x: pt.x + 6, y, w, h },
+          { x: pt.x - 6 - w, y, w, h },
+        );
+      }
+      cands.push(
+        { x: pt.x + 7, y: pt.y - h / 2, w, h },
+        { x: pt.x - 7 - w, y: pt.y - h / 2, w, h },
+      );
+      const box = placeClear(
+        cands,
+        { x: plotL, y: 2, w: plotR - plotL, h: plotB - 2 },
+        [tracePts],
+        [...taken, { x: pt.x - 4, y: pt.y - 4, w: 8, h: 8 }],
+      );
+      taken.push(box);
+      return { box, lines: fit.lines, lh: fit.lineHeightPx };
+    });
+
     return {
       sx,
       sy,
@@ -167,6 +203,7 @@ export function Chromatogram({
       traceD,
       tracePts,
       plottable,
+      labels,
       shaded,
       xTicks: sx.ticks(5),
       yTicks: sy.ticks(4),
@@ -254,16 +291,7 @@ export function Chromatogram({
 
             {geom.plottable.map((p, i) => {
               const pt = geom.tracePts[p.apexIdx];
-              const label = truncateLabel(
-                [fmtRt(p.rt), p.label, p.areaPct !== null ? `${p.areaPct.toFixed(1)}%` : null]
-                  .filter(Boolean)
-                  .join(' · '),
-              );
-              const roomRight = W - M.right - pt.x;
-              const roomLeft = pt.x - M.left;
-              const anchor: 'start' | 'end' = roomRight >= roomLeft ? 'start' : 'end';
-              const labelX =
-                anchor === 'start' ? Math.min(pt.x + 5, W - M.right) : Math.max(pt.x - 5, M.left);
+              const lbl = geom.labels[i];
               const color = PALETTE[i % PALETTE.length];
               const hot = hotPeak === p.srcIdx;
               return (
@@ -288,13 +316,16 @@ export function Chromatogram({
                     onMouseEnter={() => setHotPeak(p.srcIdx)}
                   />
                   <text
-                    x={labelX}
-                    y={Math.max(M.top - 6, pt.y - 8)}
-                    textAnchor={anchor}
+                    x={lbl.box.x}
+                    y={lbl.box.y + lbl.lh * 0.8}
                     className="c2-chrom-mk"
                     style={{ fill: hot ? color : undefined }}
                   >
-                    {label}
+                    {lbl.lines.map((line, li) => (
+                      <tspan key={li} x={lbl.box.x} dy={li ? lbl.lh : 0}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                 </g>
               );

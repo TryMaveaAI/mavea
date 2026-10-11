@@ -12,10 +12,40 @@ const HALF_SPACE = LINE_SPACING / 2;
 const TOP_Y = 28; // y of the top (5th) staff line
 const BOTTOM_Y = TOP_Y + 4 * LINE_SPACING; // y of the bottom (1st) line = 72
 const CLEF_X = 8;
-const CLEF_FONT = TOP_Y + 4 * LINE_SPACING + 6; // baseline for the clef glyph
-const TIME_SIG_X = 40;
-const FIRST_NOTE_X = 60;
+const CLEF_W = 24; // room the drawn clef takes after CLEF_X
+const TIME_SIG_DIGIT_W = 9; // a 14-unit bold serif digit, a little generous
+const ACC_W = 10; // an accidental plus its gap before the notehead
 const NOTE_SPACING = 34; // px per note
+// The staff draws at 1.5× its user units. At 1:1 an 11-unit line spacing put the whole staff
+// in a corner of a full-width card at engraving size you would expect from a phone.
+const RENDER_SCALE = 1.5;
+
+/** Where the time signature and the first note go, from what actually precedes the note: a
+ *  wide signature ("12/8") or an accidental on the opening note needs more lead-in than a
+ *  bare 4/4, and a fixed first-note x let them collide. */
+function staffLeadIn(
+  timeSignature: string | undefined,
+  firstHasAccidental: boolean,
+): { timeSigX: number; firstNoteX: number } {
+  const after = CLEF_X + CLEF_W;
+  if (!timeSignature) {
+    return { timeSigX: after, firstNoteX: after + 10 + (firstHasAccidental ? ACC_W : 0) + 6 };
+  }
+  const [num = '', den = ''] = timeSignature.split('/');
+  const w = Math.max(num.length, den.length, 1) * TIME_SIG_DIGIT_W;
+  const timeSigX = after + 4 + w / 2;
+  return { timeSigX, firstNoteX: timeSigX + w / 2 + 10 + (firstHasAccidental ? ACC_W : 0) + 6 };
+}
+
+// The clefs are drawn, not typed. The Unicode clef glyphs come from whichever symbol font the
+// system falls back to, each with its own size and baseline (Apple Symbols draws the G clef at
+// half the staff's height) and none at all on a machine without one. Both paths are authored
+// for a 10-unit line spacing with the clef's own line at y = 0, then scaled to the staff.
+const TREBLE_PATH =
+  'M 1,0 C 5,0 5,5 1,5 C -4,5 -5,-2 -1,-5 C 4,-8 9,-4 9,2 C 9,9 2,12 -2,11 ' +
+  'C -8,10 -10,2 -8,-5 C -6,-12 3,-18 4,-26 C 5,-34 3,-44 -1,-44 C -5,-44 -5,-36 -2,-30 ' +
+  'C 0,-24 2,-14 2,0 L 3,20 C 3,26 -4,27 -5,22';
+const BASS_PATH = 'M -7,-1 C -6,-10 8,-12 9,-2 C 10,8 0,19 -9,25';
 
 // SVG dimensions; height is fixed, width scales with note count
 const SVG_H = BOTTOM_Y + 24; // extra 24 below for notes + ledger lines below staff
@@ -161,7 +191,11 @@ export function MusicStaff({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.sparkle;
-  const svgW = Math.max(180, FIRST_NOTE_X + notes.length * NOTE_SPACING + 24);
+  const firstAcc = notes[0] ? parsePitch(notes[0].pitch, clef).acc !== '' : false;
+  const { timeSigX, firstNoteX } = staffLeadIn(timeSignature, firstAcc);
+  const svgW = Math.max(180, firstNoteX + notes.length * NOTE_SPACING + 24);
+  const clefScale = LINE_SPACING / 10;
+  const clefX = CLEF_X + CLEF_W / 2;
 
   return (
     <div
@@ -178,7 +212,7 @@ export function MusicStaff({
         <svg
           viewBox={`0 0 ${svgW} ${SVG_H}`}
           className="ms-svg"
-          style={{ maxWidth: svgW }}
+          style={{ maxWidth: svgW * RENDER_SCALE }}
           role="img"
           aria-label={title}
         >
@@ -194,10 +228,27 @@ export function MusicStaff({
             />
           ))}
 
-          {/* Clef glyph — Unicode Musical Symbols, serif for best coverage */}
-          <text x={CLEF_X + 3} y={CLEF_FONT} className="ms-clef">
-            {clef === 'bass' ? '𝄢' : '𝄞'}
-          </text>
+          {/* Clef: the G clef curls round the G line (step 2), the F clef's head sits on F
+              (step 6) between its two dots */}
+          {clef === 'bass' ? (
+            <g
+              transform={`translate(${clefX - 2} ${stepY(6)}) scale(${clefScale})`}
+              className="ms-clef"
+            >
+              <circle cx={-6} cy={0} r={3} className="ms-clef-dot" />
+              <path d={BASS_PATH} className="ms-clef-line" />
+              <circle cx={13} cy={-5} r={1.6} className="ms-clef-dot" />
+              <circle cx={13} cy={5} r={1.6} className="ms-clef-dot" />
+            </g>
+          ) : (
+            <g
+              transform={`translate(${clefX} ${stepY(2)}) scale(${clefScale})`}
+              className="ms-clef"
+            >
+              <path d={TREBLE_PATH} className="ms-clef-line" />
+              <circle cx={-3.5} cy={21.5} r={2.6} className="ms-clef-dot" />
+            </g>
+          )}
 
           {/* Time signature */}
           {timeSignature &&
@@ -206,11 +257,11 @@ export function MusicStaff({
               const midY = TOP_Y + 2 * LINE_SPACING;
               return (
                 <>
-                  <text x={TIME_SIG_X} y={midY - 1} className="ms-timesig" textAnchor="middle">
+                  <text x={timeSigX} y={midY - 1} className="ms-timesig" textAnchor="middle">
                     {num}
                   </text>
                   <text
-                    x={TIME_SIG_X}
+                    x={timeSigX}
                     y={midY + LINE_SPACING + 1}
                     className="ms-timesig"
                     textAnchor="middle"
@@ -223,7 +274,7 @@ export function MusicStaff({
 
           {/* Notes */}
           {notes.map((n, i) => (
-            <Note key={i} note={n} x={FIRST_NOTE_X + i * NOTE_SPACING} clef={clef} />
+            <Note key={i} note={n} x={firstNoteX + i * NOTE_SPACING} clef={clef} />
           ))}
         </svg>
       </div>

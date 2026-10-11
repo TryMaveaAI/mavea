@@ -3,10 +3,19 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { extent, niceDomain } from '../../lib/scale';
 import { formatValue } from '../../lib/format';
+import { useHostWidth } from '../../lib/useBoxSize';
 import type { AreaRangeProps } from './types';
+import { labelStride } from './chartMath';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = AreaRangeProps & { delay?: number };
+
+// The plot stretches to its box (preserveAspectRatio="none"), so anything that has to keep its
+// shape — the dots, the stroke widths, the labels — is drawn in CSS pixels on top of it rather
+// than in viewBox units, which stretch unevenly and turned every dot into a flat ellipse.
+const TOP = 6; // viewBox headroom above the domain, %
+const PLOT_H = 84; // the domain's share of the plot height, %
+const X_LABEL_PX = 11; // .c2-ar-xt at --fs-xs
 
 export function AreaRange({
   title,
@@ -21,6 +30,7 @@ export function AreaRange({
   const Ic = Icon[icon] || Icon.chart;
   const [hot, setHot] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
+  const [axisRef, axisW] = useHostWidth<HTMLDivElement>();
   const tipRef = useRef<HTMLDivElement>(null);
   // Where the read-out actually sits, in px from the plot's left edge. Centring it on the point
   // pushes half of it past the plot at either end, where the card clips it, so it is measured and
@@ -42,9 +52,17 @@ export function AreaRange({
   }, [points]);
   const span = hi - lo || 1;
   const W = 100;
-  const H = 100;
   const px = (i: number) => (points.length === 1 ? 50 : (i / (points.length - 1)) * (W - 8) + 4);
-  const py = (v: number) => 6 + (1 - (v - lo) / span) * (H - 16);
+  const py = (v: number) => TOP + (1 - (v - lo) / span) * PLOT_H;
+  // Labels sit 4%..96% across the axis, so their pitch is 92% of its width over the gaps.
+  const stride = labelStride(
+    points.map((p) => p.label),
+    axisW * 0.92,
+    X_LABEL_PX,
+  );
+  const last = points.length - 1;
+  // The last label always shows (it is "now"); one that would crowd it gives way instead.
+  const showX = (i: number) => i === last || (i % stride === 0 && last - i >= stride);
 
   // The point on the central line with the highest value is the most salient datum.
   const salient = points.reduce((best, p, i) => (p.value > points[best].value ? i : best), 0);
@@ -82,7 +100,11 @@ export function AreaRange({
             .slice()
             .reverse()
             .map((t) => (
-              <span key={t.v} className="c2-ar-yt" style={{ bottom: `${t.f * 100}%` }}>
+              <span
+                key={t.v}
+                className="c2-ar-yt"
+                style={{ bottom: `${100 - TOP - (1 - t.f) * PLOT_H}%` }}
+              >
                 {formatValue(t.v)}
               </span>
             ))}
@@ -99,11 +121,12 @@ export function AreaRange({
               <line
                 key={t.v}
                 x1="0"
-                y1={6 + (1 - t.f) * (H - 16)}
+                y1={TOP + (1 - t.f) * PLOT_H}
                 x2="100"
-                y2={6 + (1 - t.f) * (H - 16)}
+                y2={TOP + (1 - t.f) * PLOT_H}
                 stroke="var(--grid-line)"
-                strokeWidth="0.3"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
               />
             ))}
             <polygon points={bandPath} fill={`color-mix(in oklab, ${color} 16%, transparent)`} />
@@ -111,16 +134,25 @@ export function AreaRange({
               points={top}
               fill="none"
               stroke={`color-mix(in oklab, ${color} 40%, transparent)`}
-              strokeWidth="0.4"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
             />
             <polyline
               points={bot}
               fill="none"
               stroke={`color-mix(in oklab, ${color} 40%, transparent)`}
-              strokeWidth="0.4"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
             />
-            <polyline points={line} fill="none" stroke={color} strokeWidth="0.9" />
-            {points.map((p, i) => {
+            <polyline
+              points={line}
+              fill="none"
+              stroke={color}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            {points.map((_, i) => {
               // Hover hit-column for this point, clamped to the viewBox so the end columns
               // (which would otherwise reach past x=0 / x=100) don't spill outside the plot.
               const half = 50 / (points.length || 1);
@@ -136,20 +168,22 @@ export function AreaRange({
                       x2={px(i)}
                       y2="100"
                       stroke="var(--hover-line)"
-                      strokeWidth="0.4"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
                     />
                   )}
-                  <circle
-                    cx={px(i)}
-                    cy={py(p.value)}
-                    r={hot === i ? 2 : 1.2}
-                    fill={color}
-                    data-mark={i === salient ? 'point' : undefined}
-                  />
                 </g>
               );
             })}
           </svg>
+          {points.map((p, i) => (
+            <span
+              key={i}
+              className={`c2-ar-dot${hot === i ? ' on' : ''}`}
+              style={{ left: `${px(i)}%`, top: `${py(p.value)}%`, background: color }}
+              data-mark={i === salient ? 'point' : undefined}
+            />
+          ))}
           {hot != null && (
             <div
               ref={tipRef}
@@ -171,9 +205,18 @@ export function AreaRange({
           )}
         </div>
       </div>
-      <div className="c2-ar-axis">
-        <span className="faint">{points[0]?.label}</span>
-        <span className="faint">{points[points.length - 1]?.label}</span>
+      <div className="c2-ar-axis" ref={axisRef}>
+        {points.map((p, i) =>
+          showX(i) ? (
+            <span
+              key={i}
+              className="c2-ar-xt faint"
+              style={{ ['--at' as string]: `${px(i)}%` } as CSSProperties}
+            >
+              {p.label}
+            </span>
+          ) : null,
+        )}
       </div>
       {footer && (
         <div

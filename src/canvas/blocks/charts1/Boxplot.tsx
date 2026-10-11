@@ -77,128 +77,130 @@ export function Boxplot({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {ticks.map((t, i) => {
-          const yy = model.y(t);
-          return (
-            <g key={i}>
-              <line x1={PAD.l} x2={W - PAD.r} y1={yy} y2={yy} stroke="var(--grid-line)" />
-              <text
-                x={PAD.l - 6}
-                y={yy + 4}
-                textAnchor="end"
-                fontSize="9.5"
-                fill="var(--text-muted)"
-                className="tab-num"
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          {ticks.map((t, i) => {
+            const yy = model.y(t);
+            return (
+              <g key={i}>
+                <line x1={PAD.l} x2={W - PAD.r} y1={yy} y2={yy} stroke="var(--grid-line)" />
+                <text
+                  x={PAD.l - 6}
+                  y={yy + 4}
+                  textAnchor="end"
+                  fontSize="9.5"
+                  fill="var(--text-muted)"
+                  className="tab-num"
+                >
+                  {formatValue(t)}
+                </text>
+              </g>
+            );
+          })}
+          {groups.map((g, i) => {
+            const cx = PAD.l + slot * i + slot / 2;
+            const col = g.color || PALETTE[i % PALETTE.length];
+            const active = hover === i;
+            return (
+              <g
+                key={i}
+                className="c1-bp-group"
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                style={{ ['--i' as string]: i, cursor: 'pointer' } as CSSProperties}
               >
-                {formatValue(t)}
-              </text>
-            </g>
-          );
-        })}
-        {groups.map((g, i) => {
-          const cx = PAD.l + slot * i + slot / 2;
-          const col = g.color || PALETTE[i % PALETTE.length];
-          const active = hover === i;
-          return (
-            <g
-              key={i}
-              className="c1-bp-group"
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover(null)}
-              style={{ ['--i' as string]: i, cursor: 'pointer' } as CSSProperties}
-            >
-              {/* whiskers */}
-              <line
-                x1={cx}
-                x2={cx}
-                y1={model.y(g.max)}
-                y2={model.y(g.q3)}
-                stroke={col}
-                strokeWidth={1.4}
-                opacity={active ? 1 : 0.7}
-              />
-              <line
-                x1={cx}
-                x2={cx}
-                y1={model.y(g.q1)}
-                y2={model.y(g.min)}
-                stroke={col}
-                strokeWidth={1.4}
-                opacity={active ? 1 : 0.7}
-              />
-              <line
-                x1={cx - bw / 3}
-                x2={cx + bw / 3}
-                y1={model.y(g.max)}
-                y2={model.y(g.max)}
-                stroke={col}
-                strokeWidth={1.4}
-              />
-              <line
-                x1={cx - bw / 3}
-                x2={cx + bw / 3}
-                y1={model.y(g.min)}
-                y2={model.y(g.min)}
-                stroke={col}
-                strokeWidth={1.4}
-              />
-              {/* box */}
-              <rect
-                x={cx - bw / 2}
-                y={model.y(g.q3)}
-                width={bw}
-                height={Math.max(1, model.y(g.q1) - model.y(g.q3))}
-                rx={4}
-                fill={`color-mix(in oklab, ${col} ${active ? 42 : 24}%, transparent)`}
-                stroke={col}
-                strokeWidth={active ? 1.8 : 1.2}
-                style={{ transition: 'all var(--m-fast)' }}
-              />
-              {/* median */}
-              <line
-                x1={cx - bw / 2}
-                x2={cx + bw / 2}
-                y1={model.y(g.median)}
-                y2={model.y(g.median)}
-                stroke={col}
-                strokeWidth={2.4}
-                data-mark={i === widestIqr ? 'circle' : undefined}
-              />
-              {/* outliers */}
-              {(g.outliers || []).map((o, oi) => (
-                <circle
-                  key={oi}
-                  cx={cx}
-                  cy={model.y(o)}
-                  r={2.6}
-                  fill="none"
+                {/* whiskers */}
+                <line
+                  x1={cx}
+                  x2={cx}
+                  y1={model.y(g.max)}
+                  y2={model.y(g.q3)}
                   stroke={col}
-                  strokeWidth={1.2}
-                  opacity={0.8}
+                  strokeWidth={1.4}
+                  opacity={active ? 1 : 0.7}
                 />
-              ))}
-              <text
-                x={cx}
-                y={H - PAD.b + 18}
-                textAnchor={crowded ? 'end' : 'middle'}
-                fontSize={labelSize}
-                fill="var(--text-muted)"
-                transform={crowded ? `rotate(-45 ${cx} ${H - PAD.b + 18})` : undefined}
-              >
-                <title>{g.label}</title>
-                {labelFor(g.label)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                <line
+                  x1={cx}
+                  x2={cx}
+                  y1={model.y(g.q1)}
+                  y2={model.y(g.min)}
+                  stroke={col}
+                  strokeWidth={1.4}
+                  opacity={active ? 1 : 0.7}
+                />
+                <line
+                  x1={cx - bw / 3}
+                  x2={cx + bw / 3}
+                  y1={model.y(g.max)}
+                  y2={model.y(g.max)}
+                  stroke={col}
+                  strokeWidth={1.4}
+                />
+                <line
+                  x1={cx - bw / 3}
+                  x2={cx + bw / 3}
+                  y1={model.y(g.min)}
+                  y2={model.y(g.min)}
+                  stroke={col}
+                  strokeWidth={1.4}
+                />
+                {/* box */}
+                <rect
+                  x={cx - bw / 2}
+                  y={model.y(g.q3)}
+                  width={bw}
+                  height={Math.max(1, model.y(g.q1) - model.y(g.q3))}
+                  rx={4}
+                  fill={`color-mix(in oklab, ${col} ${active ? 42 : 24}%, transparent)`}
+                  stroke={col}
+                  strokeWidth={active ? 1.8 : 1.2}
+                  style={{ transition: 'all var(--m-fast)' }}
+                />
+                {/* median */}
+                <line
+                  x1={cx - bw / 2}
+                  x2={cx + bw / 2}
+                  y1={model.y(g.median)}
+                  y2={model.y(g.median)}
+                  stroke={col}
+                  strokeWidth={2.4}
+                  data-mark={i === widestIqr ? 'circle' : undefined}
+                />
+                {/* outliers */}
+                {(g.outliers || []).map((o, oi) => (
+                  <circle
+                    key={oi}
+                    cx={cx}
+                    cy={model.y(o)}
+                    r={2.6}
+                    fill="none"
+                    stroke={col}
+                    strokeWidth={1.2}
+                    opacity={0.8}
+                  />
+                ))}
+                <text
+                  x={cx}
+                  y={H - PAD.b + 18}
+                  textAnchor={crowded ? 'end' : 'middle'}
+                  fontSize={labelSize}
+                  fill="var(--text-muted)"
+                  transform={crowded ? `rotate(-45 ${cx} ${H - PAD.b + 18})` : undefined}
+                >
+                  <title>{g.label}</title>
+                  {labelFor(g.label)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 8 }}>
         {hover != null ? (

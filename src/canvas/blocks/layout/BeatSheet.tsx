@@ -2,14 +2,20 @@ import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { placeAxisLabels } from './beatAxis';
 import type { BeatSheetProps, StoryBeat } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = BeatSheetProps & { delay?: number };
 
-const W = 320;
-const H = 96;
-const PAD = { l: 8, r: 8, t: 12, b: 10 };
+// The curve is laid out at the figure's measured width (one user unit per pixel), so the beat
+// names under it stay at their stylesheet size instead of scaling with a stretched viewBox.
+const FALLBACK_W = 320;
+const PLOT_H = 104;
+const PAD = { l: 10, r: 10, t: 12, b: 8 };
+const LABEL_FS = 10;
+const ROW_H = 14;
 
 /**
  * Read a beat's position as a 0..1 fraction of the story. Accepts a percent ("50%"), a bare
@@ -40,6 +46,8 @@ export function BeatSheet({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.edit;
+  const [figRef, hostW] = useHostWidth<HTMLElement>();
+  const W = hostW || FALLBACK_W;
 
   // Compute each beat's x-fraction once: parsed from its `at` where possible, else spread evenly.
   // The tension curve is plotted from those same fractions so the dots and the line agree.
@@ -57,7 +65,7 @@ export function BeatSheet({
     if (tension && tension.length >= 2) {
       const lo = Math.min(...tension);
       const hi = Math.max(...tension);
-      const sy = scaleLinear([lo, hi === lo ? lo + 1 : hi], [H - PAD.b, PAD.t]);
+      const sy = scaleLinear([lo, hi === lo ? lo + 1 : hi], [PLOT_H - PAD.b, PAD.t]);
       // Pair each tension reading with a beat fraction (or spread the readings evenly if the
       // counts differ), then draw a smooth curve through the points.
       dots = tension.map((t, i) => {
@@ -73,8 +81,23 @@ export function BeatSheet({
         })
         .join(' ');
     }
-    return { fracs, sx, curve, dots, baseY: H - PAD.b };
-  }, [beats, tension]);
+    // Only a reading that pairs with a beat has a name to print; extra readings stay unlabelled.
+    const labels = placeAxisLabels(
+      dots.slice(0, beats.length).map((p, i) => ({ x: p.x, text: beats[i].name })),
+      W,
+      LABEL_FS,
+    );
+    const rows = labels.reduce((m, l) => Math.max(m, l.row + 1), 0);
+    return {
+      fracs,
+      sx,
+      curve,
+      dots,
+      labels,
+      baseY: PLOT_H - PAD.b,
+      height: PLOT_H + rows * ROW_H + 4,
+    };
+  }, [beats, tension, W]);
 
   return (
     <div
@@ -112,10 +135,11 @@ export function BeatSheet({
       </ol>
 
       {geom.curve && (
-        <figure className="lay-beat-curve">
+        <figure className="lay-beat-curve" ref={figRef}>
           <figcaption className="lay-beat-curve-cap faint">Dramatic tension</figcaption>
           <svg
-            viewBox={`0 0 ${W} ${H}`}
+            viewBox={`0 0 ${W} ${geom.height}`}
+            height={geom.height}
             className="lay-beat-svg"
             role="img"
             aria-label="tension curve"
@@ -130,6 +154,23 @@ export function BeatSheet({
               d={`${geom.curve} L ${geom.dots[geom.dots.length - 1].x} ${geom.baseY} L ${geom.dots[0].x} ${geom.baseY} Z`}
               fill="url(#lay-beat-fill)"
             />
+            <line x1={0} x2={W} y1={geom.baseY} y2={geom.baseY} className="lay-beat-axis" />
+            {geom.labels.map((l, i) => (
+              <g key={i} className="lay-beat-tick">
+                {/* A short tick at the beat's true x: a name pushed sideways by the plot edge
+                    or down a row still points back at its moment. Kept above the first row of
+                    names so it can never strike through one. */}
+                <line x1={geom.dots[i].x} x2={geom.dots[i].x} y1={geom.baseY} y2={geom.baseY + 4} />
+                <text
+                  x={l.x}
+                  y={geom.baseY + 4 + (l.row + 1) * ROW_H - 3}
+                  textAnchor="middle"
+                  fontSize={LABEL_FS}
+                >
+                  {l.text}
+                </text>
+              </g>
+            ))}
             <path d={geom.curve} className="lay-beat-stroke" fill="none" />
             {geom.dots.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r={2.6} className="lay-beat-pt" />

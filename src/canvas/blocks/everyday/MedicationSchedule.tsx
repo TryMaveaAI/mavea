@@ -1,25 +1,10 @@
 import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
+import { timeIcon } from './timeOfDay';
 import type { MedicationScheduleProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = MedicationScheduleProps & { delay?: number };
-
-// Map time string to 'sun' (daytime) or 'moon' (overnight)
-function timeIcon(t: string): 'sun' | 'moon' | 'clock' {
-  const h = parseInt(t.split(':')[0] ?? '0', 10);
-  if (!isNaN(h)) return h >= 6 && h < 20 ? 'sun' : 'moon';
-  const lo = t.toLowerCase();
-  if (
-    lo.includes('morning') ||
-    lo.includes('noon') ||
-    lo.includes('afternoon') ||
-    lo.includes('pm')
-  )
-    return 'sun';
-  if (lo.includes('night') || lo.includes('evening')) return 'moon';
-  return 'clock';
-}
 
 export function MedicationSchedule({
   title,

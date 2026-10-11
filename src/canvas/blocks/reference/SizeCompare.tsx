@@ -2,6 +2,8 @@ import { type CSSProperties, type SVGProps } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SizeCompareProps, SizeSubject } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { sizeCompareScale, type ShapeBox } from './sizeCompareScale';
 
 type Props = SizeCompareProps & { delay?: number };
 
@@ -13,10 +15,11 @@ type Shape = 'whale' | 'bus' | 'human' | 'building' | 'generic';
  *  subject's real-world "length": horizontal creatures/vehicles grow by width, upright
  *  things grow by height, so a whale and a building measured in the same unit land on one
  *  honest, shared scale instead of each shape inventing its own. */
-const SHAPE_DEF: Record<Shape, { w: number; h: number; orient: 'horizontal' | 'vertical' }> = {
+const SHAPE_DEF: Record<Shape, ShapeBox> = {
   whale: { w: 240, h: 70, orient: 'horizontal' },
   bus: { w: 200, h: 90, orient: 'horizontal' },
-  generic: { w: 90, h: 70, orient: 'horizontal' },
+  // Only a length is known, so the stand-in is a bar of that length, not an invented height.
+  generic: { w: 100, h: 18, orient: 'horizontal', thickness: 18 },
   human: { w: 40, h: 100, orient: 'vertical' },
   building: { w: 70, h: 160, orient: 'vertical' },
 };
@@ -24,6 +27,8 @@ const SHAPE_DEF: Record<Shape, { w: number; h: number; orient: 'horizontal' | 'v
 function isShape(v: unknown): v is Shape {
   return typeof v === 'string' && v in SHAPE_DEF;
 }
+
+const shapeOf = (s: SizeSubject): Shape => (isShape(s.shape) ? s.shape : 'generic');
 
 // Flat, single-tone body silhouettes — decorative icon art (like GhsPictograms or the
 // IPA vowel trapezoid elsewhere in this family), not a plotted data curve. Only the
@@ -88,15 +93,12 @@ function ShapeGlyph({ shape, ...svgProps }: { shape: Shape } & SVGProps<SVGSVGEl
           )}
         </>
       )}
-      {shape === 'generic' && (
-        <path d="M8 55 Q2 30 28 18 Q46 4 66 14 Q86 22 82 42 Q90 52 78 58 Q55 68 30 64 Q12 62 8 55 Z" />
-      )}
     </svg>
   );
 }
 
-const MAX_PRINCIPAL_PX = 190;
-const MIN_PRINCIPAL_PX = 16;
+/** Width assumed before the card is measured — about a half-width card. */
+const FALLBACK_W = 520;
 
 function displayLength(length: unknown, unit?: string): string {
   if (typeof length !== 'number' || !Number.isFinite(length)) return '—';
@@ -121,26 +123,18 @@ export function SizeCompare({
   const Ic = Icon[icon] ?? Icon.layers;
   const safeSubjects: SizeSubject[] = subjects ?? [];
 
-  const maxLength = safeSubjects.reduce((m, s) => {
-    const n = typeof s.length === 'number' && Number.isFinite(s.length) ? s.length : -Infinity;
-    return n > m ? n : m;
-  }, 0);
-  const pxPerUnit = maxLength > 0 ? MAX_PRINCIPAL_PX / maxLength : 0;
+  const [hostRef, measured] = useHostWidth<HTMLDivElement>();
+  const sizes = sizeCompareScale(
+    safeSubjects.map((s) => ({
+      length: s.length,
+      box: SHAPE_DEF[shapeOf(s)],
+      label: typeof s.label === 'string' ? s.label : undefined,
+    })),
+    measured || FALLBACK_W,
+  );
+  const rendered = safeSubjects.map((s, i) => ({ subject: s, shape: shapeOf(s), ...sizes[i] }));
 
-  const rendered = safeSubjects.map((s) => {
-    const shape = isShape(s.shape) ? s.shape : 'generic';
-    const def = SHAPE_DEF[shape];
-    const validLength = typeof s.length === 'number' && Number.isFinite(s.length) && s.length > 0;
-    const principal =
-      validLength && pxPerUnit > 0
-        ? Math.max(s.length * pxPerUnit, MIN_PRINCIPAL_PX)
-        : MIN_PRINCIPAL_PX;
-    const width = def.orient === 'horizontal' ? principal : principal * (def.w / def.h);
-    const height = def.orient === 'vertical' ? principal : principal * (def.h / def.w);
-    return { subject: s, shape, width, height };
-  });
-
-  const trackHeight = Math.max(...rendered.map((r) => r.height), MIN_PRINCIPAL_PX);
+  const trackHeight = Math.max(...rendered.map((r) => r.height), 16);
 
   return (
     <div
@@ -154,7 +148,7 @@ export function SizeCompare({
       {rendered.length === 0 ? (
         <div className="szc-empty">No subjects yet.</div>
       ) : (
-        <div className="szc-scroll">
+        <div className="szc-scroll" ref={hostRef}>
           <div
             className="szc-row"
             style={{ ['--szc-track-h' as string]: trackHeight + 'px' } as CSSProperties}
@@ -166,7 +160,11 @@ export function SizeCompare({
                 style={{ ['--i' as string]: i, color: iconColor } as CSSProperties}
               >
                 <div className="szc-shape-box">
-                  <ShapeGlyph shape={shape} style={{ width, height }} />
+                  {shape === 'generic' ? (
+                    <span className="szc-bar" style={{ width, height }} />
+                  ) : (
+                    <ShapeGlyph shape={shape} style={{ width, height }} />
+                  )}
                 </div>
                 <div className="szc-item-label" {...(i === 0 ? { 'data-mark': 'underline' } : {})}>
                   {subject.label}

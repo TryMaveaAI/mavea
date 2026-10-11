@@ -29,6 +29,24 @@
   margin-right: 5px;
   vertical-align: middle;
 }
+.c1-stream-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.c1-stream-legend li {
+  cursor: default;
+  transition: color var(--m-fast);
+}
+.c1-stream-legend li.active {
+  color: var(--text-primary);
+}
 .c1-legend-row {
   display: flex;
   flex-wrap: wrap;
@@ -132,6 +150,10 @@
   flex-wrap: wrap;
   gap: 2px;
   margin-bottom: 10px;
+  /* The figure below is a card-level SVG, which the shared card sheet caps at 720px and centres;
+     the trail keeps to the same column so it starts over the map's left edge, not the card's. */
+  max-inline-size: 720px;
+  margin-inline: auto;
 }
 .c1-crumb-wrap {
   display: inline-flex;
@@ -386,10 +408,14 @@
   letter-spacing: 0.02em;
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
-  transform: rotate(-90deg);
-  transform-origin: center center;
-  /* Use a max-width matching the grid height so long labels don't overflow */
-  max-width: clamp(80px, 36cqi, 180px);
+  /* Vertical writing, not a rotated horizontal box: a rotate() keeps the box's layout width, so
+     the 18px column squeezed the title to a bare "…" before turning it. Written vertically, its
+     line length runs down the grid's height and only the thickness has to fit the column. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a short axis title set up the side of the grid, never prose */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-block-size: 100%;
+  max-inline-size: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -843,6 +869,14 @@
   }
 }
 
+/* A halo in the card's own colour, so an edge passing behind a node name breaks around it. */
+.c1-network-label {
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 /* ───────────────────────── network ─────────────────────────
    Nodes bloom in with a light scale-up; edges follow the same beat but faster
    and slightly offset, so links seem to snap taut between settled nodes.
@@ -1028,6 +1062,32 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   opacity: 0.6;
+}
+.c1-sankey-label {
+  fill: var(--text-secondary);
+  pointer-events: none;
+  transition: opacity var(--m-fast);
+}
+.c1-sankey-label.over {
+  fill: var(--text-primary);
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.c1-bcg-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text-secondary);
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.c1-bcg-label.on {
+  fill: var(--text-primary);
 }
 .c1-bcg-tip {
   position: absolute;

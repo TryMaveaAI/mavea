@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ScriptStrokeProps, ScriptStrokeStep } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { BADGE_R, strokeBadges } from './scriptStrokeBadges';
 
 type Props = ScriptStrokeProps & { delay?: number };
 
@@ -15,17 +16,6 @@ type Props = ScriptStrokeProps & { delay?: number };
 // to the glyph shown large with an ordered list of stroke hints — still useful, never blank.
 //
 // Romanization and meaning ride alongside so the card answers "how do I write AND say this".
-
-/** Pull the first "M x y" / "x y" coordinate out of an SVG path so we can pin a stroke badge. */
-function pathStart(d: string): { x: number; y: number } | null {
-  // match the first two numbers in the path data (the initial moveto target)
-  const m = d.match(/-?\d*\.?\d+/g);
-  if (!m || m.length < 2) return null;
-  const x = Number(m[0]);
-  const y = Number(m[1]);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return { x, y };
-}
 
 export function ScriptStroke({
   title,
@@ -44,6 +34,7 @@ export function ScriptStroke({
   // strokes always rendered in writing order, regardless of authored array order
   const ordered: ScriptStrokeStep[] = [...(strokes ?? [])].sort((a, b) => a.order - b.order);
   const hasPaths = ordered.some((s) => s.path && s.path.trim().length > 0);
+  const badges = strokeBadges(ordered);
 
   return (
     <div
@@ -114,12 +105,12 @@ export function ScriptStroke({
                     />
                   ) : null,
                 )}
-                {ordered.map((s, i) => {
-                  const pt = s.path ? pathStart(s.path) : null;
+                {badges.map((pt, i) => {
+                  const s = ordered[i];
                   if (!pt) return null;
                   return (
                     <g key={`b${i}`} transform={`translate(${pt.x}, ${pt.y})`}>
-                      <circle r={4.6} className="ss-badge-bg" />
+                      <circle r={BADGE_R} className="ss-badge-bg" />
                       <text className="ss-badge-num" textAnchor="middle" dominantBaseline="central">
                         {s.order}
                       </text>

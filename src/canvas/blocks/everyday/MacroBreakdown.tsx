@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import { type CSSProperties, Fragment } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { MacroBreakdownProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -44,9 +44,6 @@ export function MacroBreakdown({
       color: 'var(--warning)',
       pct: (fatCal / total) * 100,
     },
-    ...(fiber !== undefined
-      ? [{ label: 'Fiber', value: fiber, color: 'var(--text-muted)', pct: 0 }]
-      : []),
   ];
 
   return (
@@ -64,7 +61,7 @@ export function MacroBreakdown({
       </div>
 
       <div className="mb-stack">
-        {macros.slice(0, 3).map((m, i) => (
+        {macros.map((m, i) => (
           <div
             key={m.label}
             className="mb-stack-seg m-stagger-item m-scale-in"
@@ -78,12 +75,25 @@ export function MacroBreakdown({
 
       <div className="mb-macros">
         {macros.map((m) => (
-          <div key={m.label} className="mb-macro">
-            <span className="mb-macro-dot" style={{ background: m.color }} />
-            <span className="mb-macro-label">{m.label}</span>
-            <span className="mb-macro-value">{m.value}g</span>
-            {m.pct > 0 && <span className="mb-macro-pct">{Math.round(m.pct)}%</span>}
-          </div>
+          <Fragment key={m.label}>
+            <div className="mb-macro">
+              <span className="mb-macro-dot" style={{ background: m.color }} />
+              <span className="mb-macro-label">{m.label}</span>
+              <span className="mb-macro-value">{m.value}g</span>
+              <span className="mb-macro-pct">{Math.round(m.pct)}%</span>
+            </div>
+            {/* Fiber is part of the carbohydrate grams, not a fourth energy source, so it has
+                no segment in the bar: it reads as a breakdown of the carbs row, without a
+                swatch that would promise one. */}
+            {m.label === 'Carbs' && fiber !== undefined && Number.isFinite(fiber) && (
+              <div className="mb-macro mb-macro--sub">
+                <span className="mb-macro-dot" aria-hidden="true" />
+                <span className="mb-macro-label">of which fiber</span>
+                <span className="mb-macro-value">{fiber}g</span>
+                <span className="mb-macro-pct" />
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
 

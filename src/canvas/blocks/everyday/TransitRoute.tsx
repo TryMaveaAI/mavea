@@ -67,7 +67,10 @@ export function TransitRoute({
               // but add left-spine + dot structure via a wrapper offset trick.
               style={{ position: 'relative', paddingLeft: 28 } as CSSProperties}
             >
-              {/* Spine line — runs full height except on the last step */}
+              {/* Spine line — from this step's dot down into the next step, stopping where
+                  that step's dot begins (its top offset), so consecutive legs read as one
+                  connected route. Drawn in the rule colour: the grid-line tint is too faint to
+                  register as a connector at all. */}
               {!isLast && (
                 <span
                   aria-hidden="true"
@@ -75,10 +78,10 @@ export function TransitRoute({
                     {
                       position: 'absolute',
                       left: 9,
-                      top: 22,
-                      bottom: 0,
+                      top: 26,
+                      bottom: -10,
                       width: 2,
-                      background: 'var(--grid-line)',
+                      background: 'var(--line)',
                       borderRadius: 1,
                     } as CSSProperties
                   }

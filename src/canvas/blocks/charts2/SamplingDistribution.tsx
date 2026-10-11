@@ -4,6 +4,8 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceStep, ticks as makeTicks } from '../../lib/scale';
 import type { SamplingDistributionProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { placeClear, type Box } from './chartMath';
 
 type Props = SamplingDistributionProps & { delay?: number };
 
@@ -54,6 +56,8 @@ const DIST_X1 = 0,
   DIST_X2 = 360,
   DIST_Y1 = 140,
   DIST_Y2 = 280;
+
+const MU_FS = 9.5; // .cx-tick at its widest
 
 // Inner chart areas (leave room for labels / axis ticks)
 const POP_CX1 = POP_X1 + 28,
@@ -218,6 +222,26 @@ export function SamplingDistribution({
 
   const meanX = samSx(Math.max(popDomainMin, Math.min(popDomainMax, displayMean)));
 
+  // The μ label hangs beside its marker in whichever clear pocket the histogram leaves — a
+  // right-skewed population leaves one right of the mean, a left-skewed one left of it. Centred
+  // over the marker it sat on the tallest bar whenever the mean fell near the mode.
+  const muText = 'μ=' + fmt(popMu);
+  const muX = popSx(popMu);
+  const muW = estimateTextWidth(muText, MU_FS);
+  const popBars: Box[] = popHist.map((bin) => {
+    const bh = (bin.count / popMaxCount) * popCH;
+    return { x: popSx(bin.lo), y: POP_CY2 - bh, w: popSx(bin.hi) - popSx(bin.lo), h: bh };
+  });
+  const muBox = placeClear(
+    [POP_CY1 + 2, POP_CY1 + 14, POP_CY1 - 11].flatMap((y) => [
+      { x: muX + 3, y, w: muW, h: MU_FS },
+      { x: muX - 3 - muW, y, w: muW, h: MU_FS },
+    ]),
+    { x: POP_X1, y: POP_Y1 + 13, w: POP_X2 - POP_X1, h: POP_CY2 - POP_Y1 - 13 },
+    [],
+    popBars,
+  );
+
   return (
     <div
       className="card reveal c2"
@@ -227,181 +251,192 @@ export function SamplingDistribution({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-        role="img"
-        aria-label={title}
-      >
-        {/* Panel dividers */}
-        <line
-          x1={180}
-          y1={POP_Y1}
-          x2={180}
-          y2={POP_Y2}
-          stroke="var(--grid-line)"
-          strokeWidth={0.5}
-        />
-        <line
-          x1={DIST_X1}
-          y1={133}
-          x2={DIST_X2}
-          y2={133}
-          stroke="var(--grid-line)"
-          strokeWidth={0.5}
-        />
-
-        {/* ─── Panel 1: Population histogram ─── */}
-        <text x={(POP_CX1 + POP_CX2) / 2} y={POP_Y1 + 11} textAnchor="middle" className="cx-axlbl">
-          Population
-        </text>
-        {popHist.map((bin, i) => {
-          const bh = (bin.count / popMaxCount) * popCH;
-          return (
-            <rect
-              key={i}
-              x={popSx(bin.lo) + 0.5}
-              y={POP_CY2 - bh}
-              width={Math.max(0, popSx(bin.hi) - popSx(bin.lo) - 1)}
-              height={bh}
-              fill="var(--insight)"
-              opacity={0.72}
-            />
-          );
-        })}
-        <line x1={POP_CX1} y1={POP_CY2} x2={POP_CX2} y2={POP_CY2} className="cx-axis-l" />
-        {/* μ marker */}
-        <line
-          x1={popSx(popMu)}
-          y1={POP_CY1}
-          x2={popSx(popMu)}
-          y2={POP_CY2}
-          stroke="var(--warning)"
-          strokeWidth={1}
-          strokeDasharray="3 2"
-          opacity={0.9}
-        />
-        <text
-          x={popSx(popMu)}
-          y={POP_CY1 - 2}
-          textAnchor="middle"
-          className="cx-tick"
-          style={{ fill: 'var(--warning)' } as CSSProperties}
+      <div className="canvas-figure">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+          role="img"
+          aria-label={title}
         >
-          {'μ=' + fmt(popMu)}
-        </text>
-
-        {/* ─── Panel 2: Sample dot strip ─── */}
-        <text x={(SAM_CX1 + SAM_CX2) / 2} y={SAM_Y1 + 11} textAnchor="middle" className="cx-axlbl">
-          {'Sample (n=' + sampleSize + ')'}
-        </text>
-        <line x1={SAM_CX1} y1={SAM_CY2} x2={SAM_CX2} y2={SAM_CY2} className="cx-axis-l" />
-        {/* individual observations as dots with vertical jitter */}
-        {displaySample.map((v, i) => (
-          <circle
-            key={i}
-            cx={samSx(Math.max(popDomainMin, Math.min(popDomainMax, v)))}
-            cy={samMidY + jitter[i] * samJitter}
-            r={1.5}
-            fill="var(--insight)"
-            opacity={0.6}
+          {/* Panel dividers */}
+          <line
+            x1={180}
+            y1={POP_Y1}
+            x2={180}
+            y2={POP_Y2}
+            stroke="var(--grid-line)"
+            strokeWidth={0.5}
           />
-        ))}
-        {/* mean marker: vertical line + downward triangle at the axis */}
-        <line
-          x1={meanX}
-          y1={SAM_CY1 + 4}
-          x2={meanX}
-          y2={SAM_CY2}
-          stroke="var(--warning)"
-          strokeWidth={1.2}
-          opacity={0.9}
-        />
-        <polygon
-          points={`${meanX - 4.5},${SAM_CY2 - 7} ${meanX + 4.5},${SAM_CY2 - 7} ${meanX},${SAM_CY2 + 3}`}
-          fill="var(--warning)"
-        />
-        <text
-          x={meanX}
-          y={SAM_CY2 + 14}
-          textAnchor="middle"
-          className="cx-tick"
-          style={{ fill: 'var(--warning)' } as CSSProperties}
-        >
-          {'x̄=' + fmt(displayMean)}
-        </text>
+          <line
+            x1={DIST_X1}
+            y1={133}
+            x2={DIST_X2}
+            y2={133}
+            stroke="var(--grid-line)"
+            strokeWidth={0.5}
+          />
 
-        {/* ─── Panel 3: Sampling distribution of x̄ ─── */}
-        <text
-          x={(DIST_CX1 + DIST_CX2) / 2}
-          y={DIST_Y1 + 11}
-          textAnchor="middle"
-          className="cx-axlbl"
-        >
-          Sampling Distribution of x̄
-        </text>
-        {sdHist.map((bin, i) => {
-          const bh = (bin.count / sdMaxCount) * distCH;
-          return (
-            <rect
+          {/* ─── Panel 1: Population histogram ─── */}
+          <text
+            x={(POP_CX1 + POP_CX2) / 2}
+            y={POP_Y1 + 11}
+            textAnchor="middle"
+            className="cx-axlbl"
+          >
+            Population
+          </text>
+          {popHist.map((bin, i) => {
+            const bh = (bin.count / popMaxCount) * popCH;
+            return (
+              <rect
+                key={i}
+                x={popSx(bin.lo) + 0.5}
+                y={POP_CY2 - bh}
+                width={Math.max(0, popSx(bin.hi) - popSx(bin.lo) - 1)}
+                height={bh}
+                fill="var(--insight)"
+                opacity={0.72}
+              />
+            );
+          })}
+          <line x1={POP_CX1} y1={POP_CY2} x2={POP_CX2} y2={POP_CY2} className="cx-axis-l" />
+          {/* μ marker */}
+          <line
+            x1={popSx(popMu)}
+            y1={POP_CY1}
+            x2={popSx(popMu)}
+            y2={POP_CY2}
+            stroke="var(--warning)"
+            strokeWidth={1}
+            strokeDasharray="3 2"
+            opacity={0.9}
+          />
+          <text
+            x={muBox.x}
+            y={muBox.y + MU_FS - 1.5}
+            className="cx-tick"
+            style={{ fill: 'var(--warning)' } as CSSProperties}
+          >
+            {muText}
+          </text>
+
+          {/* ─── Panel 2: Sample dot strip ─── */}
+          <text
+            x={(SAM_CX1 + SAM_CX2) / 2}
+            y={SAM_Y1 + 11}
+            textAnchor="middle"
+            className="cx-axlbl"
+          >
+            {'Sample (n=' + sampleSize + ')'}
+          </text>
+          <line x1={SAM_CX1} y1={SAM_CY2} x2={SAM_CX2} y2={SAM_CY2} className="cx-axis-l" />
+          {/* individual observations as dots with vertical jitter */}
+          {displaySample.map((v, i) => (
+            <circle
               key={i}
-              x={distSx(bin.lo) + 0.5}
-              y={DIST_CY2 - bh}
-              width={Math.max(0, distSx(bin.hi) - distSx(bin.lo) - 1)}
-              height={bh}
-              fill="var(--presence)"
-              opacity={0.72}
+              cx={samSx(Math.max(popDomainMin, Math.min(popDomainMax, v)))}
+              cy={samMidY + jitter[i] * samJitter}
+              r={1.5}
+              fill="var(--insight)"
+              opacity={0.6}
             />
-          );
-        })}
-        <line x1={DIST_CX1} y1={DIST_CY2} x2={DIST_CX2} y2={DIST_CY2} className="cx-axis-l" />
-        {/* x-axis ticks */}
-        {distTicks.map((t) => (
-          <g key={t}>
-            <line
-              x1={distSx(t)}
-              y1={DIST_CY2}
-              x2={distSx(t)}
-              y2={DIST_CY2 + 4}
-              stroke="var(--line-strong)"
-              strokeWidth={0.75}
-            />
-            <text x={distSx(t)} y={DIST_CY2 + 12} textAnchor="middle" className="cx-tick">
-              {fmt(t)}
-            </text>
-          </g>
-        ))}
-        {/* theoretical normal curve */}
-        <polyline
-          points={curvePts.join(' ')}
-          fill="none"
-          stroke="var(--danger)"
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-        />
-        {/* mean of sampling distribution — converges to μ by CLT */}
-        <line
-          x1={distSx(sdMean)}
-          y1={DIST_CY1}
-          x2={distSx(sdMean)}
-          y2={DIST_CY2}
-          stroke="var(--warning)"
-          strokeWidth={1}
-          strokeDasharray="3 2"
-          opacity={0.65}
-        />
-        {/* SE legend */}
-        <text
-          x={DIST_CX2}
-          y={DIST_CY1 + 9}
-          textAnchor="end"
-          className="cx-tick"
-          style={{ fill: 'var(--danger)' } as CSSProperties}
-        >
-          {'N(μ, σ/√n)  SE=' + fmt(theoreticalSE)}
-        </text>
-      </svg>
+          ))}
+          {/* mean marker: vertical line + downward triangle at the axis */}
+          <line
+            x1={meanX}
+            y1={SAM_CY1 + 4}
+            x2={meanX}
+            y2={SAM_CY2}
+            stroke="var(--warning)"
+            strokeWidth={1.2}
+            opacity={0.9}
+          />
+          <polygon
+            points={`${meanX - 4.5},${SAM_CY2 - 7} ${meanX + 4.5},${SAM_CY2 - 7} ${meanX},${SAM_CY2 + 3}`}
+            fill="var(--warning)"
+          />
+          <text
+            x={meanX}
+            y={SAM_CY2 + 14}
+            textAnchor="middle"
+            className="cx-tick"
+            style={{ fill: 'var(--warning)' } as CSSProperties}
+          >
+            {'x̄=' + fmt(displayMean)}
+          </text>
+
+          {/* ─── Panel 3: Sampling distribution of x̄ ─── */}
+          <text
+            x={(DIST_CX1 + DIST_CX2) / 2}
+            y={DIST_Y1 + 11}
+            textAnchor="middle"
+            className="cx-axlbl"
+          >
+            Sampling Distribution of x̄
+          </text>
+          {sdHist.map((bin, i) => {
+            const bh = (bin.count / sdMaxCount) * distCH;
+            return (
+              <rect
+                key={i}
+                x={distSx(bin.lo) + 0.5}
+                y={DIST_CY2 - bh}
+                width={Math.max(0, distSx(bin.hi) - distSx(bin.lo) - 1)}
+                height={bh}
+                fill="var(--presence)"
+                opacity={0.72}
+              />
+            );
+          })}
+          <line x1={DIST_CX1} y1={DIST_CY2} x2={DIST_CX2} y2={DIST_CY2} className="cx-axis-l" />
+          {/* x-axis ticks */}
+          {distTicks.map((t) => (
+            <g key={t}>
+              <line
+                x1={distSx(t)}
+                y1={DIST_CY2}
+                x2={distSx(t)}
+                y2={DIST_CY2 + 4}
+                stroke="var(--line-strong)"
+                strokeWidth={0.75}
+              />
+              <text x={distSx(t)} y={DIST_CY2 + 12} textAnchor="middle" className="cx-tick">
+                {fmt(t)}
+              </text>
+            </g>
+          ))}
+          {/* theoretical normal curve */}
+          <polyline
+            points={curvePts.join(' ')}
+            fill="none"
+            stroke="var(--danger)"
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+          />
+          {/* mean of sampling distribution — converges to μ by CLT */}
+          <line
+            x1={distSx(sdMean)}
+            y1={DIST_CY1}
+            x2={distSx(sdMean)}
+            y2={DIST_CY2}
+            stroke="var(--warning)"
+            strokeWidth={1}
+            strokeDasharray="3 2"
+            opacity={0.65}
+          />
+          {/* SE legend */}
+          <text
+            x={DIST_CX2}
+            y={DIST_CY1 + 9}
+            textAnchor="end"
+            className="cx-tick"
+            style={{ fill: 'var(--danger)' } as CSSProperties}
+          >
+            {'N(μ, σ/√n)  SE=' + fmt(theoreticalSE)}
+          </text>
+        </svg>
+      </div>
 
       {footer && (
         <div

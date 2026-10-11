@@ -13,23 +13,6 @@ const MID = 70; // midline (top of x-height)
 const BASE = 130; // baseline
 const DESC = 165; // descender line
 
-// The stroke-order indices fan out across a fixed-width band (see `x` below). Their radius must
-// shrink as more strokes are added, or neighboring circles start to overlap — a fixed r=9 only
-// stays clear of its neighbor up to about 7-8 strokes on that band. `indexRadius` solves for the
-// largest radius that still leaves a small gap between adjacent circle centers: that overlap-free
-// ceiling always wins, even below the legibility floor, so circles never collide however many
-// strokes the model sends — at extreme counts they just get small, never overlapping.
-const INDEX_BAND = VB_W - 60; // the span the indices fan across (x runs 30..VB_W-30)
-const INDEX_R_MAX = 9;
-const INDEX_R_MIN = 3; // legibility floor; only reached when the overlap-free ceiling allows it
-function indexRadius(count: number): number {
-  if (count <= 1) return INDEX_R_MAX;
-  const gap = INDEX_BAND / (count - 1);
-  const noOverlapCeiling = Math.max(1, gap / 2 - 0.5); // small breathing room between circles
-  const target = Math.min(INDEX_R_MAX, Math.max(INDEX_R_MIN, noOverlapCeiling));
-  return Math.min(target, noOverlapCeiling);
-}
-
 export function LetterForm({
   title,
   icon = 'edit',
@@ -99,32 +82,6 @@ export function LetterForm({
           <text x={VB_W / 2} y={BASE} className="lr-lf-glyph" textAnchor="middle">
             {glyph}
           </text>
-
-          {/* Numbered stroke-order indices, fanned along the cap line above the letter. Radius
-              (and the digit size riding inside it) scale down as the stroke count grows so
-              circles never overlap, however many strokes the model sends. */}
-          {(() => {
-            const r = indexRadius(ordered.length);
-            const fontSize = 11 * (r / INDEX_R_MAX);
-            return ordered.map((s, i) => {
-              const x = 30 + (i * INDEX_BAND) / Math.max(1, ordered.length - 1 || 1);
-              return (
-                <g key={s.order}>
-                  <circle cx={x} cy={18} r={r} className="lr-lf-index" />
-                  <text
-                    x={x}
-                    y={18}
-                    dy="0.35em"
-                    className="lr-lf-index-n"
-                    textAnchor="middle"
-                    style={{ fontSize }}
-                  >
-                    {s.order}
-                  </text>
-                </g>
-              );
-            });
-          })()}
         </svg>
       </div>
 

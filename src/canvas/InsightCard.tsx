@@ -5,6 +5,7 @@ import { Icon } from '../icons/icons';
 import { SourceChip, ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import type { InsightProps } from '../data/conversation';
 import { longestRun } from './lib/fitText';
+import { insightFigure } from './lib/insightFigure';
 
 type Props = InsightProps & {
   num: string;
@@ -19,8 +20,8 @@ export function InsightCard({
   num,
   title,
   summary,
-  stat,
-  delta,
+  stat: authoredStat,
+  delta: authoredDelta,
   deltaDir,
   conf,
   sources,
@@ -30,6 +31,7 @@ export function InsightCard({
   delay,
   children,
 }: Props) {
+  const { stat, delta } = insightFigure(authoredStat, authoredDelta);
   return (
     <div
       className={'card reveal' + (spotlight ? ' spotlight' : '') + (dimmed ? ' dimmed' : '')}

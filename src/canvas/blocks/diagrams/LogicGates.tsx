@@ -9,6 +9,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { LogicGatesProps, LogicGate, LogicGateKind, LogicInput } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { evaluateCircuit, outputPins } from './logicGatesLayout';
+import type { Level } from './logicGatesLayout';
 
 type Props = LogicGatesProps & { delay?: number };
 
@@ -28,42 +30,6 @@ interface Placed {
   /** Current logic level on the source's output; null when a source it needs is not on the
    *  board, so no level can be computed. A gate is only ever as certain as its inputs. */
   value: Level;
-}
-
-/** A logic level, or null for "not knowable from what was drawn". */
-type Level = 0 | 1 | null;
-
-/** Evaluate one gate from its already-resolved input values. NOT/buffers read the first input.
- *  A gate naming a source that is not on the board has no level: the unresolved reference is
- *  reported as unknown rather than read as a 0, which would be a bit the diagram invented. A
- *  fabricated 0 propagates — it colours this gate's wire, prints on the output pin, and feeds
- *  every gate downstream — so one dangling name could put a confident Y=0 on a card whose own
- *  truth table highlights the row saying 1. */
-function evalGate(kind: LogicGateKind, vals: Level[]): Level {
-  if (!vals.length || vals.some((v) => v === null)) return null;
-  const bits = vals as (0 | 1)[];
-  const all1 = bits.every((v) => v === 1);
-  const any1 = bits.some((v) => v === 1);
-  const ones = bits.reduce<number>((a, v) => a + v, 0);
-  const odd = ones % 2 === 1;
-  switch (kind) {
-    case 'AND':
-      return all1 ? 1 : 0;
-    case 'NAND':
-      return all1 ? 0 : 1;
-    case 'OR':
-      return any1 ? 1 : 0;
-    case 'NOR':
-      return any1 ? 0 : 1;
-    case 'XOR':
-      return odd ? 1 : 0;
-    case 'XNOR':
-      return odd ? 0 : 1;
-    case 'NOT':
-      return vals[0] === 1 ? 0 : 1;
-    default:
-      return 0;
-  }
 }
 
 /** Gate body outline + the bubble for inverting gates, centred on the gate origin. */
@@ -138,7 +104,7 @@ export function LogicGates({
 
   // Resolve every source's value + position. Inputs sit on the left rail; gates are ranked by
   // dependency depth so each lands a column to the right of its deepest input.
-  const { placed, viewW, viewH, outValue, outY, outLabel, outX } = useMemo(() => {
+  const { placed, viewW, viewH, pins, outX } = useMemo(() => {
     const byId = new Map<string, Placed>();
     const gateById = new Map<string, LogicGate>(gates.map((g) => [g.id, g]));
 
@@ -174,17 +140,13 @@ export function LogicGates({
       byRank.get(d)!.push(g);
     }
 
-    // Resolve gate values in rank order so every source is known when a gate is evaluated.
+    // A source a gate names that nothing on the board provides becomes an unknown level, never
+    // a 0. The wire for it is already skipped below.
+    const levels = evaluateCircuit(gates, new Map(inputs.map((inp) => [inp.id, inp.value ?? 0])));
     for (let rank = 1; rank <= maxDepth; rank++) {
       const col = byRank.get(rank) ?? [];
       col.forEach((g, i) => {
-        // `undefined` here is a source the gate names that nothing on the board provides; it
-        // becomes an unknown level, never a 0. The wire for it is already skipped below.
-        const srcVals: Level[] = g.inputs.map((s) => {
-          const src = byId.get(s);
-          return src ? src.value : null;
-        });
-        const value = evalGate(g.kind, srcVals);
+        const value = levels.get(g.id) ?? null;
         byId.set(g.id, {
           id: g.id,
           x: PAD_X + rank * COL_W,
@@ -199,24 +161,36 @@ export function LogicGates({
     // of label length — only the viewBox itself grows to fit the label. The pin label is centred
     // on that fixed terminal x, so half its rendered width extends further right than the wire —
     // reserve that on top of the base slack so it can never bleed past the right edge.
-    const outLabel = fitPinLabel(output?.label ?? 'Y');
-    const labelHalfW = (outLabel.length * PIN_CHAR_W) / 2;
+    const pins = outputPins(gates, output).flatMap((pin) => {
+      const src = byId.get(pin.from);
+      return src
+        ? [{ ...pin, label: fitPinLabel(pin.label), y: src.y, x: src.x, value: src.value }]
+        : [];
+    });
+    const longest = Math.max(1, ...pins.map((p) => p.label.length));
+    const labelHalfW = (longest * PIN_CHAR_W) / 2;
     const baseViewW = PAD_X + (maxDepth + 1) * COL_W + 14;
     const viewW = baseViewW + Math.max(0, labelHalfW - 6);
     const viewH = PAD_Y * 2 + sourceRows * ROW_H;
     const outX = baseViewW - 8;
 
-    const outFrom = output ? byId.get(output.from) : undefined;
-    return {
-      placed: byId,
-      viewW,
-      viewH,
-      outValue: outFrom ? outFrom.value : null,
-      outY: outFrom?.y ?? PAD_Y,
-      outLabel,
-      outX,
-    };
+    return { placed: byId, viewW, viewH, pins, outX };
   }, [inputs, gates, output]);
+
+  // Columns past the declared output: each extra pin's result, computed per row from the row's
+  // own inputs, so the table states what the drawing states.
+  const extraCols = useMemo(() => pins.filter((p) => p.from !== output?.from), [pins, output]);
+  const truthExtras = useMemo(
+    () =>
+      (truth ?? []).map((r) => {
+        const levels = evaluateCircuit(
+          gates,
+          new Map(inputs.map((inp, k) => [inp.id, r.row[k] ?? null])),
+        );
+        return extraCols.map((p) => levels.get(p.from) ?? null);
+      }),
+    [truth, gates, inputs, extraCols],
+  );
 
   // The truth-table row that matches the live inputs (inputs[] order → row[] order).
   const liveKey = inputs.map((inp) => inp.value ?? 0).join('');
@@ -241,16 +215,20 @@ export function LogicGates({
             aria-label={title || 'logic circuit'}
           >
             <defs>
-              <marker
-                id={arrowId}
-                markerWidth="5"
-                markerHeight="5"
-                refX="4"
-                refY="2.5"
-                orient="auto"
-              >
-                <path d="M0,0 L5,2.5 L0,5 Z" className="dg-lg-arrowhead" />
-              </marker>
+              {/* one head per level, so a wire carrying 0 doesn't end in a lit arrow */}
+              {(['on', 'off'] as const).map((lvl) => (
+                <marker
+                  key={lvl}
+                  id={`${arrowId}-${lvl}`}
+                  markerWidth="5"
+                  markerHeight="5"
+                  refX="4"
+                  refY="2.5"
+                  orient="auto"
+                >
+                  <path d="M0,0 L5,2.5 L0,5 Z" className={`dg-lg-arrowhead ${lvl}`} />
+                </marker>
+              ))}
             </defs>
 
             {/* gate input wires */}
@@ -275,36 +253,30 @@ export function LogicGates({
               });
             })}
 
-            {/* output wire to the output pin */}
-            {output &&
-              placed.get(output.from) &&
-              (() => {
-                const sp = placed.get(output.from)!;
-                const ox = outX;
-                return (
-                  <g>
-                    <polyline
-                      points={`${sp.x + GATE_W / 2 + 2},${sp.y} ${ox},${sp.y} ${ox},${outY}`}
-                      className={wireClass(outValue)}
-                      fill="none"
-                      markerEnd={`url(#${arrowId})`}
-                    />
-                    <text x={ox} y={outY - 4} className="dg-lg-pin" textAnchor="middle">
-                      {outLabel}
-                    </text>
-                    {outValue !== null && (
-                      <text
-                        x={ox}
-                        y={outY + 9}
-                        className={'dg-lg-bit' + (outValue ? ' on' : '')}
-                        textAnchor="middle"
-                      >
-                        {outValue}
-                      </text>
-                    )}
-                  </g>
-                );
-              })()}
+            {/* a wire from each result to its pin on the right edge */}
+            {pins.map((pin) => (
+              <g key={`pin-${pin.from}`}>
+                <polyline
+                  points={`${pin.x + GATE_W / 2 + 2},${pin.y} ${outX},${pin.y}`}
+                  className={wireClass(pin.value)}
+                  fill="none"
+                  markerEnd={`url(#${arrowId}-${pin.value === 1 ? 'on' : 'off'})`}
+                />
+                <text x={outX} y={pin.y - 4} className="dg-lg-pin" textAnchor="middle">
+                  {pin.label}
+                </text>
+                {pin.value !== null && (
+                  <text
+                    x={outX}
+                    y={pin.y + 9}
+                    className={'dg-lg-bit' + (pin.value ? ' on' : '')}
+                    textAnchor="middle"
+                  >
+                    {pin.value}
+                  </text>
+                )}
+              </g>
+            ))}
 
             {/* input rail */}
             {inputs.map((inp) => {
@@ -354,6 +326,9 @@ export function LogicGates({
                     <th key={inp.id}>{inp.label}</th>
                   ))}
                   <th className="dg-lg-out-col">{output?.label ?? 'Y'}</th>
+                  {extraCols.map((p) => (
+                    <th key={p.from}>{p.label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -365,6 +340,11 @@ export function LogicGates({
                       </td>
                     ))}
                     <td className={'bit dg-lg-out-col' + (r.out ? ' on' : '')}>{r.out}</td>
+                    {truthExtras[i]?.map((b, k) => (
+                      <td key={`x${k}`} className={b ? 'bit on' : 'bit'}>
+                        {b ?? '–'}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

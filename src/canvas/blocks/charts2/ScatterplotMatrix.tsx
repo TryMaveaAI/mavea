@@ -9,7 +9,10 @@ import { richInnerHtml } from '../../../lib/richText';
 type Props = ScatterplotMatrixProps & { delay?: number };
 
 const CELL = 64;
-const INSET = 5;
+// Every variable's min and max land on a cell edge by construction (each axis is its own
+// extent), so the inset is what keeps those extreme runs off the frame. At 5 a dot sat on the
+// border's stroke and read as cut off; 8 leaves a clear gap at any cell size the grid gives.
+const INSET = 8;
 
 function readVar(row: unknown, key: string): number | null {
   if (!row || typeof row !== 'object') return null;

@@ -134,16 +134,17 @@ function Row({
           <div
             key={ci}
             className={`mg-cell ${on ? 'hot' : ''} ${cross && !on ? 'cross' : ''} ${isDiag ? 'diag' : ''}`}
-            style={{
-              background: `color-mix(in oklab, ${accent} ${(t * 0.9 + 0.04) * 100}%, transparent)`,
-            }}
+            style={
+              {
+                // Opaque (mixed into the card surface) so the stylesheet can derive the figure's
+                // ink from the fill the reader actually sees.
+                ['--mg-fill' as string]: `color-mix(in oklab, ${accent} ${(t * 0.9 + 0.04) * 100}%, var(--surface-elevated))`,
+              } as CSSProperties
+            }
             onMouseEnter={() => setHover({ r: ri, c: ci })}
             onMouseLeave={() => setHover(null)}
           >
-            <span
-              className="mg-v tab-num"
-              style={{ color: t > 0.55 ? 'var(--surface-deep)' : 'var(--text-secondary)' }}
-            >
+            <span className="mg-v tab-num">
               {v}
               {unit}
             </span>

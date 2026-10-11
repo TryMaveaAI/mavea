@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { StreamgraphProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { withUnit } from '../../lib/format';
 
 type Props = StreamgraphProps & { delay?: number };
 
@@ -13,8 +14,10 @@ const PALETTE = [
   'var(--presence)',
   'var(--insight)',
   'var(--warning)',
-  'var(--presence-soft)',
+  // Hues before tints: the soft variants sit right next to their parent in a stack, so they only
+  // come in once the four distinct hues are spent.
   'var(--danger)',
+  'var(--presence-soft)',
   'var(--insight-soft)',
 ];
 
@@ -111,116 +114,135 @@ export function Streamgraph({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-        onMouseLeave={() => setHover(null)}
-      >
-        {model.areas.map((a, si) => {
-          // with no ticks there are no points to close the band, and a.bottom[-1] would throw.
-          if (!a.bottom.length) return null;
-          const top = smooth(a.top);
-          const bottomRev = smooth([...a.bottom].reverse());
-          const d = `${top} L${a.bottom[a.bottom.length - 1][0]} ${a.bottom[a.bottom.length - 1][1]} ${bottomRev.replace(/^M[^C]*/, '')} Z`;
-          // Dim non-hovered bands on either a tick hover (crosshair) or a direct band hover, so
-          // pointing at a river or its timeline both read the same "spotlight" language.
-          const dim = hover != null || (hotBand != null && hotBand !== si);
-          const lifted = hotBand === si;
-          // Origin for the entrance bloom + hover-lift scale: each band's own vertical mid-line
-          // (from its middle tick), not the SVG corner, so it grows/lifts in place like the
-          // ring and treemap-cell entrances elsewhere in this family.
-          const mid = a.top[Math.floor(a.top.length / 2)];
-          const originY = mid ? (mid[1] + a.bottom[Math.floor(a.bottom.length / 2)][1]) / 2 : H / 2;
-          return (
-            <path
-              key={si}
-              className="c1-ts-ring"
-              d={d}
-              fill={`color-mix(in oklab, ${a.color} ${dim && !lifted ? 46 : 62}%, transparent)`}
-              stroke={a.color}
-              strokeWidth={lifted ? 1.4 : 0.8}
-              strokeOpacity={lifted ? 0.8 : 0.5}
-              data-mark={si === salientBand ? 'circle' : undefined}
-              style={
-                {
-                  ['--i' as string]: si,
-                  transformOrigin: `${W / 2}px ${originY}px`,
-                  transform: lifted ? 'scale(1.015)' : undefined,
-                  transition:
-                    'fill var(--m-fast), stroke-width var(--m-fast), stroke-opacity var(--m-fast), transform var(--m-fast) var(--ease-out)',
-                  cursor: 'pointer',
-                } as CSSProperties
-              }
-            />
-          );
-        })}
-        {/* hover hit-zones + crosshair. These sit on top of the bands (so the crosshair always
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+          onMouseLeave={() => setHover(null)}
+        >
+          {model.areas.map((a, si) => {
+            // with no ticks there are no points to close the band, and a.bottom[-1] would throw.
+            if (!a.bottom.length) return null;
+            const top = smooth(a.top);
+            const bottomRev = smooth([...a.bottom].reverse());
+            const d = `${top} L${a.bottom[a.bottom.length - 1][0]} ${a.bottom[a.bottom.length - 1][1]} ${bottomRev.replace(/^M[^C]*/, '')} Z`;
+            // Dim non-hovered bands on either a tick hover (crosshair) or a direct band hover, so
+            // pointing at a river or its timeline both read the same "spotlight" language.
+            const dim = hover != null || (hotBand != null && hotBand !== si);
+            const lifted = hotBand === si;
+            // Origin for the entrance bloom + hover-lift scale: each band's own vertical mid-line
+            // (from its middle tick), not the SVG corner, so it grows/lifts in place like the
+            // ring and treemap-cell entrances elsewhere in this family.
+            const mid = a.top[Math.floor(a.top.length / 2)];
+            const originY = mid
+              ? (mid[1] + a.bottom[Math.floor(a.bottom.length / 2)][1]) / 2
+              : H / 2;
+            return (
+              <path
+                key={si}
+                className="c1-ts-ring"
+                d={d}
+                fill={`color-mix(in oklab, ${a.color} ${dim && !lifted ? 46 : 62}%, transparent)`}
+                stroke={a.color}
+                strokeWidth={lifted ? 1.4 : 0.8}
+                strokeOpacity={lifted ? 0.8 : 0.5}
+                data-mark={si === salientBand ? 'circle' : undefined}
+                style={
+                  {
+                    ['--i' as string]: si,
+                    transformOrigin: `${W / 2}px ${originY}px`,
+                    transform: lifted ? 'scale(1.015)' : undefined,
+                    transition:
+                      'fill var(--m-fast), stroke-width var(--m-fast), stroke-opacity var(--m-fast), transform var(--m-fast) var(--ease-out)',
+                    cursor: 'pointer',
+                  } as CSSProperties
+                }
+              />
+            );
+          })}
+          {/* hover hit-zones + crosshair. These sit on top of the bands (so the crosshair always
             wins the hit-test at that x), but each zone also hit-tests its own y against every
             band's top/bottom edge at that tick to tell which band is under the cursor — that's
             what drives the per-band highlight/lift, since the bands themselves are covered. */}
-        {ticks.map((_, t) => (
-          <rect
-            key={t}
-            x={model.colX(t) - W / ticks.length / 2}
-            y={0}
-            width={W / ticks.length}
-            height={H - PAD.b}
-            fill="transparent"
-            onMouseEnter={() => setHover(t)}
-            onMouseMove={(e) => {
-              // Hit-test the pointer's y against each band's top/bottom edge at this tick,
-              // in viewBox units, via the zone's own rendered box — no SVG CTM math needed,
-              // and it degrades gracefully (band stays unset) in environments without layout.
-              const box = e.currentTarget.getBoundingClientRect();
-              if (!box.height) return;
-              const localY = ((e.clientY - box.top) / box.height) * (H - PAD.b);
-              const band = model.areas.findIndex(
-                (a) => localY >= a.top[t][1] && localY <= a.bottom[t][1],
-              );
-              setHotBand(band >= 0 ? band : null);
-            }}
-            onMouseLeave={() => setHotBand(null)}
-            style={{ cursor: 'crosshair' }}
-          />
-        ))}
-        {hover != null && (
-          <line
-            x1={model.colX(hover)}
-            x2={model.colX(hover)}
-            y1={PAD.t}
-            y2={H - PAD.b}
-            stroke="var(--hover-line)"
-            strokeWidth={1.4}
-            strokeDasharray="3 3"
-            pointerEvents="none"
-          />
-        )}
-        {ticks.map((tk, t) => {
-          // Dense timelines (24+ points) thin to every Nth label so neighbours can't overlap —
-          // the first, last, and whichever tick is under the crosshair always draw regardless of
-          // step, so the extent and the hovered value never silently disappear.
-          const onStep = t % model.tickStep === 0 || t === ticks.length - 1;
-          if (!onStep && hover !== t) return null;
-          return (
-            <text
+          {ticks.map((_, t) => (
+            <rect
               key={t}
-              x={model.colX(t)}
-              y={H - 8}
-              textAnchor="middle"
-              // Scales with the card's own width (cqi resolves against the .card container) so
-              // labels shrink gracefully on a narrow card instead of the fixed 10px overlapping.
-              style={{ fontSize: 'clamp(8px, 1.2cqi, 10px)' }}
-              fill={hover === t ? 'var(--text-primary)' : 'var(--text-muted)'}
+              x={model.colX(t) - W / ticks.length / 2}
+              y={0}
+              width={W / ticks.length}
+              height={H - PAD.b}
+              fill="transparent"
+              onMouseEnter={() => setHover(t)}
+              onMouseMove={(e) => {
+                // Hit-test the pointer's y against each band's top/bottom edge at this tick,
+                // in viewBox units, via the zone's own rendered box — no SVG CTM math needed,
+                // and it degrades gracefully (band stays unset) in environments without layout.
+                const box = e.currentTarget.getBoundingClientRect();
+                if (!box.height) return;
+                const localY = ((e.clientY - box.top) / box.height) * (H - PAD.b);
+                const band = model.areas.findIndex(
+                  (a) => localY >= a.top[t][1] && localY <= a.bottom[t][1],
+                );
+                setHotBand(band >= 0 ? band : null);
+              }}
+              onMouseLeave={() => setHotBand(null)}
+              style={{ cursor: 'crosshair' }}
+            />
+          ))}
+          {hover != null && (
+            <line
+              x1={model.colX(hover)}
+              x2={model.colX(hover)}
+              y1={PAD.t}
+              y2={H - PAD.b}
+              stroke="var(--hover-line)"
+              strokeWidth={1.4}
+              strokeDasharray="3 3"
               pointerEvents="none"
-            >
-              {tk}
-            </text>
-          );
-        })}
-      </svg>
+            />
+          )}
+          {ticks.map((tk, t) => {
+            // Dense timelines (24+ points) thin to every Nth label so neighbours can't overlap —
+            // the first, last, and whichever tick is under the crosshair always draw regardless of
+            // step, so the extent and the hovered value never silently disappear.
+            const onStep = t % model.tickStep === 0 || t === ticks.length - 1;
+            if (!onStep && hover !== t) return null;
+            return (
+              <text
+                key={t}
+                x={model.colX(t)}
+                y={H - 8}
+                textAnchor="middle"
+                // Scales with the card's own width (cqi resolves against the .card container) so
+                // labels shrink gracefully on a narrow card instead of the fixed 10px overlapping.
+                style={{ fontSize: 'clamp(8px, 1.2cqi, 10px)' }}
+                fill={hover === t ? 'var(--text-primary)' : 'var(--text-muted)'}
+                pointerEvents="none"
+              >
+                {tk}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* A river with no names is just colour; the key also lights its band on hover. */}
+      <ul className="c1-stream-legend" aria-label="Series">
+        {model.areas.map((a, si) => (
+          <li
+            key={si}
+            className={hotBand === si ? 'active' : undefined}
+            onMouseEnter={() => setHotBand(si)}
+            onMouseLeave={() => setHotBand(null)}
+          >
+            <span className="c1-swatch-inline" style={{ background: a.color }} />
+            {series[si].label}
+          </li>
+        ))}
+      </ul>
 
       <div className="insight-summary" style={{ marginTop: 8 }}>
         {hover != null ? (
@@ -232,8 +254,7 @@ export function Streamgraph({
                   className="c1-swatch-inline"
                   style={{ background: s.color || PALETTE[si % PALETTE.length] }}
                 />
-                {s.label} {unit}
-                {(s.values[hover] || 0).toLocaleString()}
+                {s.label} {withUnit(s.values[hover] || 0, unit)}
               </span>
             ))}
           </span>

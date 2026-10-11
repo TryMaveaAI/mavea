@@ -41,38 +41,56 @@ function asNumber(v: unknown): number | null {
 }
 
 // A compact concentric-ring view of electron shells — deliberately simpler than `bohrmodel`'s
-// full per-electron dot diagram: one ring per shell, labeled with its real electron count, sized
-// to fit inside a fact card rather than stand alone as its own teaching figure.
+// full figure: one ring per shell carrying its electrons as dots, sized to fit inside a fact card
+// rather than stand alone as its own teaching figure. The counts go in a line under the rings:
+// rings 8.5 units apart leave no room for a number between them, so one set on a ring sat on
+// the next ring out.
+const SHELL_R0 = 13;
+const SHELL_STEP = 8.5;
+const ELECTRON_R = 1.7;
+
+/** Electron positions on a ring, evenly spaced from twelve o'clock. */
+function electronDots(count: number, r: number, c: number): { x: number; y: number }[] {
+  const n = Math.max(0, Math.floor(count));
+  return Array.from({ length: n }, (_, k) => {
+    const a = -Math.PI / 2 + (k / n) * 2 * Math.PI;
+    return { x: c + r * Math.cos(a), y: c + r * Math.sin(a) };
+  });
+}
+
 function ShellRings({ shells }: { shells: number[] }) {
-  const R0 = 13;
-  const R_STEP = 8.5;
-  const maxR = R0 + (shells.length - 1) * R_STEP;
-  const size = (maxR + 8) * 2;
+  const maxR = SHELL_R0 + (shells.length - 1) * SHELL_STEP;
+  const size = (maxR + 4) * 2;
   const c = size / 2;
   return (
-    <svg
-      viewBox={`0 0 ${size} ${size}`}
-      className="lr-ec-shells-svg"
-      role="img"
-      aria-label={`Electron shells: ${shells.join(', ')}`}
-    >
-      <circle cx={c} cy={c} r={3} className="lr-ec-nucleus" />
-      {shells.map((count, i) => {
-        const r = R0 + i * R_STEP;
-        return (
-          <g
-            key={i}
-            className="m-fade-rise m-stagger-item"
-            style={{ ['--i' as string]: i } as CSSProperties}
-          >
-            <circle cx={c} cy={c} r={r} className="lr-ec-shell-ring" fill="none" />
-            <text x={c} y={c - r - 2} className="lr-ec-shell-count" textAnchor="middle">
-              {count}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <>
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="lr-ec-shells-svg"
+        role="img"
+        aria-label={`Electron shells: ${shells.join(', ')}`}
+      >
+        <circle cx={c} cy={c} r={3} className="lr-ec-nucleus" />
+        {shells.map((count, i) => {
+          const r = SHELL_R0 + i * SHELL_STEP;
+          return (
+            <g
+              key={i}
+              className="m-fade-rise m-stagger-item"
+              style={{ ['--i' as string]: i } as CSSProperties}
+            >
+              <circle cx={c} cy={c} r={r} className="lr-ec-shell-ring" fill="none" />
+              {electronDots(count, r, c).map((d, k) => (
+                <circle key={k} cx={d.x} cy={d.y} r={ELECTRON_R} className="lr-ec-electron" />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      <p className="lr-ec-shells-cap" aria-hidden="true">
+        {shells.join(' · ')}
+      </p>
+    </>
   );
 }
 

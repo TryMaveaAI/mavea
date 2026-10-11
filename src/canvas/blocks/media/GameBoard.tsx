@@ -2,6 +2,7 @@ import { useId, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { BoardKind, GameBoardProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { arrowSegment } from './boardArrow';
 
 type Props = GameBoardProps & { delay?: number };
 
@@ -16,8 +17,11 @@ const DEFAULT_SIZE: Record<BoardKind, number> = {
 
 // The board is drawn in its own square coordinate space; this is the side of that space in user
 // units. Cells, pieces, and arrows are all sized off it, so the figure stays to scale at any size.
-const SPAN = 100;
-const PAD = 6; // room for the rank/file gutter on chess/checkers
+// It is close to the board's real rendered size on purpose: a piece's glyph grows with its square,
+// and in a 100-unit space that glyph was authored at ~5 units and painted at 23px, which reads as a
+// label stretched into display type and gets the whole board held to a third of its frame.
+const SPAN = 400;
+const PAD = 24; // room for the rank/file gutter on chess/checkers
 
 // A configurable abstract game board. Square boards (chess/checkers) draw alternating cells with
 // pieces ON the squares; Go draws stones on the line INTERSECTIONS of a (size−1)² grid; hex draws a
@@ -56,7 +60,8 @@ export function GameBoard({
   const cy = (row: number) => PAD + (intersection ? row * step : (row + 0.5) * step);
 
   const radius = step * (intersection ? 0.4 : 0.38);
-  const stroke = Math.max(0.18, step * 0.03);
+  const stroke = Math.max(0.72, step * 0.03);
+  const occupied = new Set(pieces.map((p) => `${p.row}:${p.col}`));
 
   return (
     <div
@@ -200,18 +205,24 @@ export function GameBoard({
               <path d="M0,0 L0,5 L5,2.5 Z" className="gb-arrhead" />
             </marker>
           </defs>
-          {moves?.map((m, i) => (
-            <line
-              key={`mv-${i}`}
-              x1={cx(m.from[1])}
-              y1={cy(m.from[0])}
-              x2={cx(m.to[1])}
-              y2={cy(m.to[0])}
-              className="gb-move"
-              strokeWidth={Math.max(0.6, step * 0.08)}
-              markerEnd={`url(#gb-arr-${uid})`}
-            />
-          ))}
+          {moves?.map((m, i) => {
+            const seg = arrowSegment(
+              { x: cx(m.from[1]), y: cy(m.from[0]) },
+              { x: cx(m.to[1]), y: cy(m.to[0]) },
+              radius,
+              occupied.has(`${m.to[0]}:${m.to[1]}`),
+            );
+            if (!seg) return null;
+            return (
+              <line
+                key={`mv-${i}`}
+                {...seg}
+                className="gb-move"
+                strokeWidth={Math.max(2.4, step * 0.08)}
+                markerEnd={`url(#gb-arr-${uid})`}
+              />
+            );
+          })}
         </svg>
       </div>
 

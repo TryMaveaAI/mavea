@@ -3,6 +3,13 @@ import { Icon } from '../../../icons/icons';
 import type { WorkoutPlanProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
+// "reps" names a count, so it only follows one: "8-10" reads as "8-10 reps", but a duration or
+// distance the author wrote out ("10 min easy", "2 km") is already the whole instruction.
+const REP_COUNT = /^\s*\d+(\s*[-–]\s*\d+)?\s*$/;
+function repsLabel(reps: string): string {
+  return REP_COUNT.test(reps) ? `${reps.trim()} reps` : reps;
+}
+
 type Props = WorkoutPlanProps & { delay?: number };
 
 export function WorkoutPlan({
@@ -56,8 +63,12 @@ export function WorkoutPlan({
               <div key={i} className="wp-exercise">
                 <div className="wp-ex-name">{ex.name}</div>
                 <div className="wp-ex-badges">
-                  {ex.sets !== undefined && <span className="wp-badge">{ex.sets} sets</span>}
-                  {ex.reps && <span className="wp-badge">{ex.reps} reps</span>}
+                  {ex.sets !== undefined && (
+                    <span className="wp-badge">
+                      {ex.sets} {ex.sets === 1 ? 'set' : 'sets'}
+                    </span>
+                  )}
+                  {ex.reps && <span className="wp-badge">{repsLabel(ex.reps)}</span>}
                   {ex.duration && <span className="wp-badge">{ex.duration}</span>}
                   {ex.rest && (
                     <span className="wp-badge wp-badge--rest">

@@ -42,10 +42,20 @@
   display: block;
   overflow: visible;
 }
-.ss-svg circle {
+.ss-plot {
+  position: relative;
+}
+.ss-dot {
+  position: absolute;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface-elevated);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
   transition:
-    cx var(--m-fast) var(--ease-out),
-    cy var(--m-fast) var(--ease-out);
+    left var(--m-fast) var(--ease-out),
+    top var(--m-fast) var(--ease-out);
 }
 .ss-svg line {
   transition:
@@ -218,6 +228,13 @@
   letter-spacing: -0.03em;
   line-height: 1;
   overflow-wrap: anywhere;
+}
+/* Trendtile and Scorecard deltas say which way a figure moved, not whether that is good (a
+   falling churn and a falling ARR carry the same 'down'), so they stay neutral rather than borrow
+   the shared .delta tint, which painted every rising figure in the warning amber. */
+.tt-delta,
+.sc-tile-delta {
+  color: var(--text-secondary);
 }
 .tt-delta {
   margin-top: 8px;
@@ -1196,16 +1213,20 @@
   transform: translate(-50%, -50%);
 }
 .abt-ci-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  position: relative;
+  height: 1.5em;
   font-size: var(--fs-xs);
   margin-top: 6px;
   color: var(--text-muted);
 }
+/* Positioned at a band end (left: N%) and centred on it; the track's 14% padding either side of
+   the data keeps a centred label inside the card. */
 .abt-ci-labels span {
-  min-width: 0;
-  overflow-wrap: anywhere;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
+  white-space: nowrap;
 }
 
 /* ── powersample ── sample-size / power headline + optional power-vs-n curve ── */
@@ -1225,7 +1246,9 @@
 .ps-n {
   font-size: var(--fs-hero, 56px);
   font-weight: 780;
-  letter-spacing: -0.04em;
+  /* Tight, but not display-tight: a sample size is usually four digits, and at -0.04em the
+     thousands comma (narrow beside tabular digits) closed up into the "1" before it. */
+  letter-spacing: -0.02em;
   line-height: 1;
   color: var(--presence);
 }
@@ -1555,7 +1578,8 @@
   stroke-width: 1;
 }
 .rp-area {
-  opacity: 0.55;
+  /* Translucent enough that a ridge behind still shows through the one in front of it. */
+  opacity: 0.4;
 }
 .rp-stroke {
   stroke-width: 1.75;

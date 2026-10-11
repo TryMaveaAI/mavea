@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
 import type { PhasePortraitProps } from './types';
 import { makeEval2 } from './mathExpr';
+import { distinctEquilibria } from './phaseEquilibria';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = PhasePortraitProps & { delay?: number };
@@ -18,8 +19,6 @@ const ARROW_GRID = 14;
 const NULL_GRID = 60;
 // Threshold for calling a point "near zero" in equilibrium search
 const EQ_THRESHOLD = 0.3;
-// Cluster radius: two candidate equilibria within this many grid cells are merged
-const EQ_CLUSTER_PX = 8;
 
 interface Arrow {
   x1: number;
@@ -58,9 +57,8 @@ interface TrajPath {
 }
 
 // Each equilibrium label defaults to the same fixed offset from its marker (px+6, py-5). That's
-// fine in isolation, but two equilibria that cluster close together (closer than EQ_CLUSTER_PX
-// merges them, but plenty of real systems — e.g. a saddle flanked by two nearby nodes — land just
-// outside that radius) get labels that land on top of each other and read as garbled overlapping
+// fine in isolation, but two distinct equilibria that sit close together (a saddle flanked by
+// two nearby nodes is ordinary) get labels that land on top of each other and read as garbled overlapping
 // text. Greedily push each label away from any earlier label it collides with, trying a small ring
 // of alternate offsets before falling back to the shared default.
 const LABEL_DEFAULT = { dx: 6, dy: -5 };
@@ -94,21 +92,6 @@ function resolveLabelCollisions<T extends { px: number; py: number }>(
     placed.push({ lx, ly });
     return { ...eq, lx, ly };
   });
-}
-
-// The nullcline legend sits in a fixed-width strip near the top-right card edge — long enough
-// for the "ẋ=0" / "ẏ=0" dot-notation labels, but nothing stops a wider label (a different unicode
-// glyph, a locale variant) from bleeding past the card edge since SVG text never wraps or clips
-// itself. Truncate defensively so the legend can never render past the plot's right boundary.
-const LEGEND_MAX_CHARS = 6;
-// The 320-unit viewBox renders near 1:1 in a narrow card, so this is effectively screen px —
-// the nullcline legend was set at 7 and painted at 7px, well under the 9px legibility floor.
-const LEGEND_FS = 9.5;
-const LEGEND_X_LABEL = 'ẋ=0';
-const LEGEND_Y_LABEL = 'ẏ=0';
-
-function truncateLegend(text: string, max: number = LEGEND_MAX_CHARS): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
 export function PhasePortrait({
@@ -271,30 +254,18 @@ export function PhasePortrait({
       }
     }
 
-    // Cluster candidates whose SVG coords are within EQ_CLUSTER_PX of each other
-    const clusters: Array<{ x: number; y: number; n: number }> = [];
-    for (const c of eqCandidates) {
-      const cpx = sx(c.x),
-        cpy = sy(c.y);
-      let merged = false;
-      for (const cl of clusters) {
-        const clpx = sx(cl.x / cl.n),
-          clpy = sy(cl.y / cl.n);
-        if (Math.hypot(cpx - clpx, cpy - clpy) < EQ_CLUSTER_PX) {
-          cl.x += c.x;
-          cl.y += c.y;
-          cl.n++;
-          merged = true;
-          break;
-        }
-      }
-      if (!merged) clusters.push({ x: c.x, y: c.y, n: 1 });
-    }
+    // A patch of near-zero cells surrounds every equilibrium, and it is many cells wide where
+    // the field is gentle. Polish each cell to its root rather than grouping cells by distance.
+    const clusters = distinctEquilibria(
+      fxFn,
+      gyFn,
+      eqCandidates,
+      { xMin, xMax, yMin, yMax },
+      Math.min((xMax - xMin) / NULL_GRID, (yMax - yMin) / NULL_GRID) / 2,
+    );
 
     const equilibriaRaw: Array<{ px: number; py: number; type: EqType }> = clusters.map(
-      ({ x, y, n }) => {
-        const xe = x / n,
-          ye = y / n;
+      ({ x: xe, y: ye }) => {
         const h = 0.001;
         const dfx_dx = (fxFn(xe + h, ye) - fxFn(xe - h, ye)) / (2 * h);
         const dfx_dy = (fxFn(xe, ye + h) - fxFn(xe, ye - h)) / (2 * h);
@@ -697,42 +668,20 @@ export function PhasePortrait({
               </g>
             );
           })}
-
-          {/* Nullcline legend — text is constrained to the strip between its start x and the
-              card's right edge (W - PAD.r), truncating with a tooltip rather than bleeding past
-              the boundary. See truncateLegend / LEGEND_MAX_CHARS above. */}
-          {showNullclines && (
-            <g>
-              <line
-                x1={W - PAD.r - 62}
-                y1={PAD.t + 7}
-                x2={W - PAD.r - 50}
-                y2={PAD.t + 7}
-                stroke="var(--danger)"
-                strokeWidth="1.5"
-                strokeDasharray="3 2"
-              />
-              <text x={W - PAD.r - 47} y={PAD.t + 11} fontSize={LEGEND_FS} fill="var(--text-muted)">
-                {LEGEND_X_LABEL.length > LEGEND_MAX_CHARS && <title>{LEGEND_X_LABEL}</title>}
-                {truncateLegend(LEGEND_X_LABEL)}
-              </text>
-              <line
-                x1={W - PAD.r - 62}
-                y1={PAD.t + 18}
-                x2={W - PAD.r - 50}
-                y2={PAD.t + 18}
-                stroke="var(--insight)"
-                strokeWidth="1.5"
-                strokeDasharray="3 2"
-              />
-              <text x={W - PAD.r - 47} y={PAD.t + 22} fontSize={LEGEND_FS} fill="var(--text-muted)">
-                {LEGEND_Y_LABEL.length > LEGEND_MAX_CHARS && <title>{LEGEND_Y_LABEL}</title>}
-                {truncateLegend(LEGEND_Y_LABEL)}
-              </text>
-            </g>
-          )}
         </svg>
       </div>
+
+      {/* The nullcline key sits under the plot: inside it, the field's arrows run through it. */}
+      {showNullclines && (
+        <ul className="pp-legend">
+          <li>
+            <span className="pp-legend-sw pp-legend-sw-x" aria-hidden="true" />ẋ = 0
+          </li>
+          <li>
+            <span className="pp-legend-sw pp-legend-sw-y" aria-hidden="true" />ẏ = 0
+          </li>
+        </ul>
+      )}
 
       {footer && (
         <div

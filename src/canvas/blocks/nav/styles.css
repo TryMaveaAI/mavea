@@ -189,8 +189,8 @@
   gap: 7px;
   padding: 6px 9px;
   min-width: 0;
-  max-width: 168px;
-  flex-shrink: 1;
+  /* Roomy enough for a real placeholder beside the shortcut chip; it gives way first when the bar tightens. */
+  flex: 0 1 15rem;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--surface-default);
@@ -218,6 +218,7 @@
   color: var(--text-primary);
   width: 100%;
   min-width: 0;
+  text-overflow: ellipsis;
 }
 .nv-search-input::placeholder {
   color: var(--text-muted);
@@ -268,6 +269,7 @@
   position: relative;
   appearance: none;
   cursor: pointer;
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   display: grid;
@@ -302,6 +304,7 @@
 .nv-avatar {
   appearance: none;
   cursor: pointer;
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 50%;

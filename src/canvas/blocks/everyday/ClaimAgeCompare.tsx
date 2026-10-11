@@ -1,18 +1,24 @@
 import { type CSSProperties, useMemo, useRef } from 'react';
 import { Icon } from '../../../icons/icons';
 import { niceDomain, ticks, usePathDraw } from '../../lib';
+import { useHostWidth } from '../../lib/useBoxSize';
+import { ageTicks, claimBreakeven } from './claimMath';
 import type { ClaimAge, ClaimAgeCompareProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = ClaimAgeCompareProps & { delay?: number };
 
-const W = 340;
-const H = 190;
+// Laid out at the card's measured width (user units = CSS px) so the plot fills a wide card
+// without blowing its type up; the bounds keep a phone legible and an ultrawide from turning
+// three lines into a flat smear.
+const FALLBACK_W = 340;
+const MIN_W = 280;
+const MAX_W = 900;
+const H = 210;
 const PAD_L = 44;
 const PAD_R = 14;
 const PAD_T = 14;
-const PAD_B = 24;
-const PLOT_W = W - PAD_L - PAD_R;
+const PAD_B = 28;
 const PLOT_H = H - PAD_T - PAD_B;
 const END_AGE = 90; // a common horizon for a claim-age tradeoff chart
 const SERIES_COLORS = ['var(--warning)', 'var(--presence)', 'var(--insight)'];
@@ -30,8 +36,11 @@ function fmtMoney(n: number): string {
 // The Social Security claim-age tradeoff: three KPI chips (one per claiming age given) and a
 // cumulative-payout line — years-since-claiming × 12 × the GIVEN monthly benefit, honest
 // running-total arithmetic over caller-supplied numbers, the same category of computed curve
-// as taxbracket's real bracket arithmetic, never an invented shape. An optional breakeven
-// point is drawn only when the caller supplies one — it is never derived here.
+// as taxbracket's real bracket arithmetic, never an invented shape. The breakeven marker is
+// drawn only when the caller asks for one, but its age is solved from the benefits being
+// plotted: a model-supplied age that disagrees with its own numbers would put the marker
+// beside the crossing it claims to mark. The caller's age is used only when the numbers
+// have no crossing to solve.
 export function ClaimAgeCompare({
   title,
   icon = 'chart',
@@ -42,6 +51,8 @@ export function ClaimAgeCompare({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
+  const [wrapRef, measured] = useHostWidth<HTMLDivElement>();
+  const W = measured ? Math.min(MAX_W, Math.max(MIN_W, Math.round(measured))) : FALLBACK_W;
   const safeAges = Array.isArray(ages) ? ages : [];
   const ref0 = useRef<SVGPathElement>(null);
   const ref1 = useRef<SVGPathElement>(null);
@@ -51,14 +62,15 @@ export function ClaimAgeCompare({
   usePathDraw(ref1, { delay: (delay || 0) + 100 });
   usePathDraw(ref2, { delay: (delay || 0) + 200 });
 
-  const breakevenAge =
-    breakeven && Number.isFinite(breakeven.age) ? (breakeven.age as number) : null;
-
   const model = useMemo(() => {
     const valid = (Array.isArray(ages) ? ages : []).filter(
       (a): a is ClaimAge => !!a && (a.age === 62 || a.age === 67 || a.age === 70),
     );
     if (valid.length === 0) return null;
+
+    const solved = claimBreakeven(valid.map((a) => ({ age: a.age, monthly: safeMonthly(a) })));
+    const given = breakeven && Number.isFinite(breakeven.age) ? (breakeven.age as number) : null;
+    const breakevenAge = breakeven ? (solved ?? given) : null;
 
     // Capped well past any plausible lifespan — a wild/fuzzed breakeven.age (e.g. 1e9) must
     // never turn the per-year sampling loop below into an unbounded one.
@@ -78,7 +90,8 @@ export function ClaimAgeCompare({
     const allTotals = series.flatMap((s) => s.points.map((p) => p.total));
     const [yMin, yMax] = niceDomain(0, Math.max(...allTotals, 1));
     const ySpan = yMax - yMin || 1;
-    const x = (age: number) => PAD_L + ((age - 62) / (horizon - 62 || 1)) * PLOT_W;
+    const plotW = W - PAD_L - PAD_R;
+    const x = (age: number) => PAD_L + ((age - 62) / (horizon - 62 || 1)) * plotW;
     const y = (v: number) => PAD_T + (1 - (v - yMin) / ySpan) * PLOT_H;
     const yTicks = ticks(yMin, yMax, (yMax - yMin) / 4 || 1);
 
@@ -87,13 +100,19 @@ export function ClaimAgeCompare({
       d: s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.age)} ${y(p.total)}`).join(' '),
     }));
 
-    const breakevenX =
-      breakevenAge !== null && breakevenAge >= 62 && breakevenAge <= horizon
-        ? x(breakevenAge)
-        : null;
+    const xTicks = ageTicks(62, horizon, plotW).map((a) => ({ age: a, x: x(a) }));
 
-    return { series, paths, yTicks, y, breakevenX };
-  }, [ages, breakevenAge]);
+    const inRange = breakevenAge !== null && breakevenAge >= 62 && breakevenAge <= horizon;
+    const breakevenX = inRange ? x(breakevenAge) : null;
+    // The dot sits ON the crossing when there is one; a caller-only age has no point to sit on.
+    const latest = valid.reduce((m, a) => (a.age > m.age ? a : m), valid[0]);
+    const breakevenY =
+      inRange && solved !== null
+        ? y(safeMonthly(latest) * 12 * (breakevenAge - latest.age))
+        : PAD_T + PLOT_H;
+
+    return { series, paths, yTicks, xTicks, y, plotW, breakevenX, breakevenY, breakevenAge };
+  }, [ages, breakeven, W]);
 
   return (
     <div
@@ -122,60 +141,73 @@ export function ClaimAgeCompare({
       )}
 
       {model && (
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          className="cac-chart"
-          role="img"
-          aria-label={`${title} cumulative payout by claiming age`}
-        >
-          {model.yTicks.map((t, i) => (
-            <g key={i}>
+        <div ref={wrapRef} className="cac-chart-wrap">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            className="cac-chart"
+            role="img"
+            aria-label={`${title} cumulative payout by claiming age`}
+          >
+            {model.yTicks.map((t, i) => (
+              <g key={i}>
+                <line
+                  x1={PAD_L}
+                  y1={model.y(t)}
+                  x2={PAD_L + model.plotW}
+                  y2={model.y(t)}
+                  className="cac-grid"
+                />
+                <text x={PAD_L - 6} y={model.y(t) + 3} textAnchor="end" className="cac-tick">
+                  {t >= 1000 ? `${Math.round(t / 1000)}k` : Math.round(t)}
+                </text>
+              </g>
+            ))}
+
+            {model.breakevenX !== null && (
               <line
-                x1={PAD_L}
-                y1={model.y(t)}
-                x2={PAD_L + PLOT_W}
-                y2={model.y(t)}
-                className="cac-grid"
+                x1={model.breakevenX}
+                y1={PAD_T}
+                x2={model.breakevenX}
+                y2={PAD_T + PLOT_H}
+                className="cac-breakeven"
               />
-              <text x={PAD_L - 6} y={model.y(t) + 3} textAnchor="end" className="cac-tick">
-                {t >= 1000 ? `${Math.round(t / 1000)}k` : Math.round(t)}
+            )}
+
+            {model.paths.map((s, i) => (
+              <path
+                key={s.age}
+                ref={pathRefs[i % pathRefs.length]}
+                d={s.d}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
+
+            {model.xTicks.map((t) => (
+              <text key={t.age} x={t.x} y={H - 8} textAnchor="middle" className="cac-tick">
+                {t.age}
               </text>
-            </g>
-          ))}
+            ))}
 
-          {model.breakevenX !== null && (
-            <line
-              x1={model.breakevenX}
-              y1={PAD_T}
-              x2={model.breakevenX}
-              y2={PAD_T + PLOT_H}
-              className="cac-breakeven"
-            />
-          )}
-
-          {model.paths.map((s, i) => (
-            <path
-              key={s.age}
-              ref={pathRefs[i % pathRefs.length]}
-              d={s.d}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          ))}
-
-          {model.breakevenX !== null && (
-            <circle cx={model.breakevenX} cy={PAD_T + PLOT_H} r={3.5} fill="var(--text-primary)" />
-          )}
-        </svg>
+            {model.breakevenX !== null && (
+              <circle
+                cx={model.breakevenX}
+                cy={model.breakevenY}
+                r={3.5}
+                fill="var(--text-primary)"
+              />
+            )}
+          </svg>
+        </div>
       )}
 
-      {model?.breakevenX != null && breakeven && (
+      {model?.breakevenX != null && model.breakevenAge !== null && breakeven && (
         <div className="cac-breakeven-note">
           <Icon.alert className="ic" style={{ width: 12, height: 12 }} /> Breakeven at age{' '}
-          {breakeven.age}
+          {Math.round(model.breakevenAge)}
           {breakeven.note ? ` — ${breakeven.note}` : ''}
         </div>
       )}

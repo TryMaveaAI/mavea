@@ -27,12 +27,14 @@
   --study-inner-border: #463a24;
   --study-ink: #ede4d0;
   --study-ink-soft: #bfb299;
-  --study-ink-muted: #8c8069;
-  --study-ink-faint: #6e6350;
+  /* Both quiet inks carry words (kickers, signatures, beat numbers), so both clear 4.5:1 on the
+     card, the note and the desk; faint stays a step under muted to keep the hierarchy. */
+  --study-ink-muted: #9c917b;
+  --study-ink-faint: #95876d;
   --study-green: #93a671;
   --study-green-deep: #7c9459;
   --study-amber: #d98f45;
-  --study-amber-deep: #c08a50;
+  --study-amber-deep: #cca172;
   --study-amber-press: #b06018;
   --study-highlight: #4a3b1e;
   --study-red: #d26b50;
@@ -54,7 +56,7 @@
   --study-grain-blend: soft-light;
   --study-chip-active: #ede4d0;
   --study-chip-active-ink: #171209;
-  --study-beat-num: #8c6a3f;
+  --study-beat-num: #aa814c;
   --study-crib-rule: rgba(216, 201, 168, 0.14);
 
   /* ── Type. The families ship in public/fonts (OFL, provenance documented). ───────────── */
@@ -134,8 +136,8 @@
   --study-inner-border: #e0d5b8;
   --study-ink: #26231c;
   --study-ink-soft: #4a4438;
-  --study-ink-muted: #8a8272;
-  --study-ink-faint: #9a8e76;
+  --study-ink-muted: #645e53;
+  --study-ink-faint: #6f6652;
   --study-green: #56673f;
   --study-green-deep: #3e5230;
   --study-amber: #b06018;
@@ -161,7 +163,7 @@
   --study-grain-blend: multiply;
   --study-chip-active: #26231c;
   --study-chip-active-ink: #fcf8ed;
-  --study-beat-num: #a79878;
+  --study-beat-num: #72654a;
   --study-crib-rule: rgba(138, 90, 43, 0.18);
 }
 
@@ -841,6 +843,11 @@
      scrolls only once the stage itself cannot hold every name. The scale is a transform, so
      the layout width divides it out or the full-screen bar would spill past both edges. */
   max-width: calc(92% / var(--study-hud, 1));
+  /* Sized to its content outright: left as auto, a box pinned at left: 50% is shrink-to-fit
+     against what remains to the RIGHT of that edge, and Chrome settled the bar 16px under its
+     own beats with half the stage free — the last chip sat clipped under the fade at every
+     width. The max-width above still decides when the strip has to scroll. */
+  width: max-content;
   padding: 7px 10px;
   border: 1px solid var(--study-glass-line);
   border-radius: var(--r-full);

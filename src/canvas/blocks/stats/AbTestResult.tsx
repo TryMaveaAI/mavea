@@ -38,6 +38,9 @@ function fmtP(p: number): string {
   return `p = ${p.toFixed(3).replace(/^0\./, '.')}`;
 }
 
+/** Track share (%) below which the two bound labels would collide, so they merge into one. */
+const CI_LABEL_MIN_GAP = 24;
+
 /** Lays [low, high, 0, point] onto a padded 0–100% track so the whisker, the zero-effect
  *  reference tick, and the point estimate all land at their true relative position — the same
  *  "domain from the real values, never a hand-placed guess" approach as charts2/ErrorBars. */
@@ -187,9 +190,24 @@ export function AbTestResult({
               <span className="abt-ci-point" style={{ left: `${ci.pointPct}%` }} />
             )}
           </div>
+          {/* Each bound sits under its own end of the band — at the track's ends they read as
+              the axis limits. Ends too close to carry two labels share one, centred. */}
           <div className="abt-ci-labels">
-            <span className="tab-num">{fmtSigned(confidenceInterval[0])}</span>
-            <span className="tab-num">{fmtSigned(confidenceInterval[1])}</span>
+            {ci.hiPct - ci.loPct < CI_LABEL_MIN_GAP ? (
+              <span className="tab-num" style={{ left: `${(ci.loPct + ci.hiPct) / 2}%` }}>
+                {fmtSigned(Math.min(...confidenceInterval))} to{' '}
+                {fmtSigned(Math.max(...confidenceInterval))}
+              </span>
+            ) : (
+              <>
+                <span className="tab-num" style={{ left: `${ci.loPct}%` }}>
+                  {fmtSigned(Math.min(...confidenceInterval))}
+                </span>
+                <span className="tab-num" style={{ left: `${ci.hiPct}%` }}>
+                  {fmtSigned(Math.max(...confidenceInterval))}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}

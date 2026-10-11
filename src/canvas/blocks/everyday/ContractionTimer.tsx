@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { ContractionTimerProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -26,6 +26,10 @@ export function ContractionTimer({
   const maxDur = list.reduce((m, c) => Math.max(m, c.durationSec || 0), 0) || 1;
   const intervals = list.map((c) => c.intervalMin).filter((v): v is number => v !== undefined);
   const maxGap = intervals.reduce((m, v) => Math.max(m, v), 0) || 1;
+  // A gap's width follows its interval against the longest one, with a floor so the shortest
+  // still has room for its label; an unknown interval takes the floor.
+  const gapGrow = (min: number | undefined) =>
+    min !== undefined && min > 0 ? 0.35 + min / maxGap : 0.35;
 
   // The recent read-outs: average duration (seconds) and average frequency (minutes) across the
   // entries that carry the field. These are the numbers a "5-1-1" check is read against.
@@ -74,29 +78,34 @@ export function ContractionTimer({
         <div className="cn-strip" role="img" aria-label={`${list.length} contractions`}>
           {list.map((c, i) => {
             const h = 28 + (c.durationSec / maxDur) * 40; // bar height by duration
-            // Spacing to the NEXT bar scales with the interval; the last bar needs no trailing gap.
-            const gapPct = c.intervalMin !== undefined ? (c.intervalMin / maxGap) * 100 : 0;
+            const last = i === list.length - 1;
             return (
-              <div
-                key={i}
-                className="cn-slot"
-                style={{ flexGrow: i < list.length - 1 ? Math.max(0.4, gapPct / 100 + 0.4) : 0.4 }}
-              >
-                <div
-                  className="cn-bar"
-                  style={{ height: h }}
-                  title={`${c.start} · ${mmss(c.durationSec)}`}
-                />
-                <span className="cn-bar-time">{c.start}</span>
-                {c.intervalMin !== undefined && i < list.length - 1 && (
-                  // Alternate the gap label above/below the bar's midline by index — with many
-                  // contractions logged, every label pinned to the same fixed top:40% band would
-                  // collide with its neighbours as the strip gets denser.
-                  <span className="cn-gap-label" style={{ top: i % 2 === 0 ? '18%' : '62%' }}>
-                    {c.intervalMin}m
-                  </span>
+              <Fragment key={i}>
+                <div className="cn-slot">
+                  <div
+                    className="cn-bar"
+                    style={{ height: h }}
+                    title={`${c.start} · ${mmss(c.durationSec)}`}
+                  />
+                  <span className="cn-bar-time">{c.start}</span>
+                </div>
+                {!last && (
+                  // The space between two bars is its own flex item, as wide as the interval it
+                  // stands for, and the interval is written inside it on the bars' baseline. Hung
+                  // off a bar's edge, the label landed at whatever height that bar's slot gave it
+                  // and ran into the next bar wherever the gap was narrow.
+                  <div
+                    className="cn-gap"
+                    style={{ flexGrow: gapGrow(c.intervalMin) }}
+                    aria-hidden="true"
+                  >
+                    {c.intervalMin !== undefined && (
+                      <span className="cn-gap-label">{c.intervalMin}m</span>
+                    )}
+                    <span className="cn-bar-time cn-gap-pad">&nbsp;</span>
+                  </div>
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </div>

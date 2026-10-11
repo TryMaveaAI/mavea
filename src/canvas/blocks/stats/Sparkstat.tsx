@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SparkstatProps } from './types';
@@ -23,6 +23,10 @@ export function Sparkstat({
   // default hover index = last point (looks intentional in the revealed state);
   // clamp at 0 so an empty series doesn't seed a -1 index
   const [hover, setHover] = useState<number>(Math.max(0, points.length - 1));
+  // The crosshair is a pointer affordance: at rest it sat on the last point, flush with the
+  // card's right edge, where it read as a stray grey bar rather than a marker.
+  const [pointing, setPointing] = useState(false);
+  const fillId = 'ss' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
   const W = 220;
   const H = 56;
@@ -71,60 +75,72 @@ export function Sparkstat({
       {unit && <div className="ss-unit faint">{unit}</div>}
 
       <div className="ss-spark" style={{ marginTop: 12 }}>
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${W} ${H}`}
-          className="ss-svg"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="ssfill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <polygon points={areaPts} fill="url(#ssfill)" />
-          <polyline
-            points={linePts}
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          {/* invisible hover columns */}
-          {points.map((_, i) => (
-            <rect
-              key={i}
-              x={x(i) - W / points.length / 2}
-              y={0}
-              width={W / points.length}
-              height={H}
-              fill="transparent"
-              onMouseEnter={() => setHover(i)}
-              style={{ cursor: 'pointer' }}
+        <div className="ss-plot" onMouseLeave={() => setPointing(false)}>
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${W} ${H}`}
+            className="ss-svg"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+                <stop offset="100%" stopColor={color} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={areaPts} fill={`url(#${fillId})`} />
+            <polyline
+              points={linePts}
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
-          ))}
-          {/* marker */}
-          <line
-            x1={x(hover)}
-            y1={0}
-            x2={x(hover)}
-            y2={H}
-            stroke="var(--hover-line)"
-            strokeWidth="1"
-          />
+            {/* invisible hover columns */}
+            {points.map((_, i) => (
+              <rect
+                key={i}
+                x={x(i) - W / points.length / 2}
+                y={0}
+                width={W / points.length}
+                height={H}
+                fill="transparent"
+                onMouseEnter={() => {
+                  setHover(i);
+                  setPointing(true);
+                }}
+                style={{ cursor: 'pointer' }}
+              />
+            ))}
+            {pointing && (
+              <line
+                x1={x(hover)}
+                y1={0}
+                x2={x(hover)}
+                y2={H}
+                stroke="var(--hover-line)"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </svg>
+          {/* The plot stretches to the card (preserveAspectRatio="none"), which would squash an SVG
+            circle into an ellipse; the marker is HTML positioned in the same fractions instead. */}
           {hp && (
-            <circle
-              cx={x(hover)}
-              cy={y(hp.v)}
-              r="3.4"
-              fill={color}
-              stroke="var(--surface-elevated)"
-              strokeWidth="1.5"
+            <span
+              className="ss-dot"
+              style={
+                {
+                  left: `${(x(hover) / W) * 100}%`,
+                  top: `${(y(hp.v) / H) * 100}%`,
+                  background: color,
+                } as CSSProperties
+              }
             />
           )}
-        </svg>
+        </div>
         <div className="ss-tip">
           <span className="ss-tip-v tab-num" style={{ color }}>
             {hp ? hp.v.toLocaleString() : '—'}

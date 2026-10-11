@@ -259,8 +259,9 @@ export function LineSpectrum({
             );
           })}
 
-          {/* X-axis label */}
-          <text x={W / 2} y={vbH - 2} textAnchor="middle" className="ls-axis-label">
+          {/* X-axis label: its baseline sits clear of the viewBox's edge by a 10px face's
+              descent, or the parentheses in "(nm)" or "(Balmer series)" are cut at the bottom. */}
+          <text x={W / 2} y={vbH - 4} textAnchor="middle" className="ls-axis-label">
             {elementLabel ?? 'Wavelength (nm)'}
           </text>
         </svg>

@@ -2,14 +2,20 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { VaxDose, VaxScheduleProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
+import { spreadLabels } from '../../lib/spreadLabels';
+import { useHostWidth } from '../../lib/useBoxSize';
 
 type Props = VaxScheduleProps & { delay?: number };
 
-const VB_W = 320;
-// 108 clipped a below-axis label's descender by a few px at the viewBox's bottom edge
-const VB_H = 116;
+// Laid out at the card's measured width (user units = CSS px), so the names keep their size
+// on a wide card instead of scaling up with a stretched viewBox.
+const FALLBACK_W = 320;
+const MIN_W = 260;
+const MAX_W = 1600;
 const PAD_X = 24;
-const AXIS_Y = 66;
+const TOP = 6;
+const LABEL_GAP = 10;
 
 // "8 weeks" / "6 months" / "2 years" → a relative day count from an arbitrary zero (birth/
 // start), OR a real calendar date → an absolute epoch-day count. The two scales are never
@@ -30,13 +36,15 @@ function parseDueAt(raw: string): number | null {
   return n * perDay;
 }
 
-// Text sized for a handful of doses collides once a longer schedule crowds the same fixed-
-// width axis — same shrink-as-N-grows approach as prayertimes' labelFit.
-function labelFit(n: number): { fontSize: number; maxChars: number } {
-  if (n <= 5) return { fontSize: 9, maxChars: 14 };
-  if (n <= 9) return { fontSize: 8, maxChars: 10 };
-  return { fontSize: 7, maxChars: 7 };
+// A longer schedule shares the same fixed-width axis, so the name budget tightens as the
+// number of due dates grows; type stays at or above the 9px floor.
+function labelFit(n: number, width: number): { fontSize: number; maxChars: number } {
+  const perVisit = width / Math.max(1, n);
+  const fontSize = perVisit >= 90 ? 11 : 10;
+  return { fontSize, maxChars: Math.max(6, Math.floor((perVisit - 12) / (fontSize * 0.62))) };
 }
+
+const URGENCY: Record<string, number> = { overdue: 2, due: 1, done: 0 };
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
@@ -67,6 +75,8 @@ export function VaxSchedule({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.shield;
+  const [wrapRef, measured] = useHostWidth<HTMLDivElement>();
+  const VB_W = measured ? Math.min(MAX_W, Math.max(MIN_W, Math.round(measured))) : FALLBACK_W;
   const safeDoses = Array.isArray(doses) ? doses : [];
 
   const parsed = safeDoses
@@ -78,7 +88,37 @@ export function VaxSchedule({
   const hiRaw = ts.length ? Math.max(...ts) : 1;
   const hi = hiRaw > lo ? hiRaw : lo + 1;
   const span = hi - lo;
-  const axisX = (t: number) => PAD_X + ((t - lo) / span) * (VB_W - PAD_X * 2);
+
+  // One tick per due date. Doses given at the same visit (a combo appointment is the usual
+  // case) share it: their names stack above the tick and the date is written once below, so
+  // two shots on one day never alternate into a stem drawn through the other's label.
+  const visits: { t: number; doses: { dose: VaxDose; i: number }[] }[] = [];
+  for (const d of [...parsed].sort((a, b) => a.t - b.t)) {
+    const last = visits[visits.length - 1];
+    if (last && Math.abs(last.t - d.t) < 0.5) last.doses.push(d);
+    else visits.push({ t: d.t, doses: [d] });
+  }
+  const fit = labelFit(visits.length, VB_W - PAD_X * 2);
+  const lineH = fit.fontSize + 3;
+  const nameOf = (d: VaxDose) => truncate(d.vaccine ?? '', fit.maxChars);
+  const widths = visits.map((v) =>
+    Math.max(
+      estimateTextWidth(v.doses[0].dose.dueAt ?? '', fit.fontSize - 1),
+      ...v.doses.map((d) => estimateTextWidth(nameOf(d.dose), fit.fontSize, true)),
+    ),
+  );
+  const widest = Math.max(0, ...widths);
+  // Inset the axis by half the widest label so the first and last visits' names sit right over
+  // their ticks instead of being pushed inward off them.
+  const padX = Math.max(PAD_X, widest / 2 + 4);
+  const axisX = (t: number) => padX + ((t - lo) / span) * (VB_W - padX * 2);
+  const labelX = spreadLabels(
+    visits.map((v, k) => ({ id: k, y: axisX(v.t) })),
+    { gap: widest + LABEL_GAP, top: widest / 2, bottom: VB_W - widest / 2 },
+  );
+  const stack = Math.max(1, ...visits.map((v) => v.doses.length));
+  const axisY = TOP + stack * lineH + 12;
+  const vbH = axisY + fit.fontSize + 14;
 
   return (
     <div
@@ -90,57 +130,65 @@ export function VaxSchedule({
       </div>
 
       {parsed.length > 0 && (
-        <svg
-          className="vx-axis"
-          viewBox={`0 0 ${VB_W} ${VB_H}`}
-          role="img"
-          aria-label="Vaccination doses plotted by due date"
-        >
-          <line className="vx-line" x1={PAD_X} y1={AXIS_Y} x2={VB_W - PAD_X} y2={AXIS_Y} />
-          {(() => {
-            const fit = labelFit(parsed.length);
-            return parsed.map(({ dose, i }, idx) => {
-              const cx = axisX(parsed[idx].t);
-              const below = idx % 2 === 1;
-              const color = statusColor(dose.status);
-              const name = truncate(dose.vaccine ?? '', fit.maxChars);
-              const clipped = name !== (dose.vaccine ?? '');
+        <div ref={wrapRef} className="vx-axis-wrap">
+          <svg
+            className="vx-axis"
+            viewBox={`0 0 ${VB_W} ${vbH}`}
+            role="img"
+            aria-label="Vaccination doses plotted by due date"
+          >
+            <line className="vx-line" x1={padX} y1={axisY} x2={VB_W - padX} y2={axisY} />
+            {visits.map((v, k) => {
+              const cx = axisX(v.t);
+              const lx = labelX.get(k) ?? cx;
+              const lead = v.doses.reduce((m, d) =>
+                (URGENCY[d.dose.status] ?? 1) > (URGENCY[m.dose.status] ?? 1) ? d : m,
+              );
+              const color = statusColor(lead.dose.status);
               return (
-                <g key={i}>
+                <g key={k}>
+                  {/* Up from the tick to the bottom of its name stack, which the row may have
+                    nudged aside — never through the text itself. */}
                   <line
                     x1={cx}
-                    y1={AXIS_Y}
-                    x2={cx}
-                    y2={below ? AXIS_Y + 16 : AXIS_Y - 16}
+                    y1={axisY}
+                    x2={lx}
+                    y2={axisY - 9}
                     stroke={color}
                     strokeWidth={1.5}
                   />
-                  <circle cx={cx} cy={AXIS_Y} r={4} fill={color} />
+                  <circle cx={cx} cy={axisY} r={4} fill={color} />
+                  {v.doses.map(({ dose, i }, row) => {
+                    const name = nameOf(dose);
+                    return (
+                      <text
+                        key={i}
+                        x={lx}
+                        y={axisY - 12 - (v.doses.length - 1 - row) * lineH}
+                        textAnchor="middle"
+                        className="vx-label"
+                        fontSize={fit.fontSize}
+                        fill={statusColor(dose.status)}
+                      >
+                        {name}
+                        {name !== (dose.vaccine ?? '') && <title>{dose.vaccine}</title>}
+                      </text>
+                    );
+                  })}
                   <text
-                    x={cx}
-                    y={below ? AXIS_Y + 30 : AXIS_Y - 22}
-                    textAnchor="middle"
-                    className="vx-label"
-                    fontSize={fit.fontSize}
-                    fill={color}
-                  >
-                    {name}
-                    {clipped && <title>{dose.vaccine}</title>}
-                  </text>
-                  <text
-                    x={cx}
-                    y={below ? AXIS_Y + 42 : AXIS_Y - 10}
+                    x={lx}
+                    y={axisY + fit.fontSize + 8}
                     textAnchor="middle"
                     className="vx-due"
                     fontSize={fit.fontSize - 1}
                   >
-                    {dose.dueAt}
+                    {v.doses[0].dose.dueAt}
                   </text>
                 </g>
               );
-            });
-          })()}
-        </svg>
+            })}
+          </svg>
+        </div>
       )}
 
       <ul className="vx-list">

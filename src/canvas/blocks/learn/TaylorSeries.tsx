@@ -278,18 +278,6 @@ export function TaylorSeries({
     const xTicks = sx.ticks(5);
     const yZero = sy(0);
 
-    // Rightmost finite Taylor point for the "n=N" annotation
-    let annotX = W - PAD.r - 20;
-    let annotY = PAD.t + 14;
-    for (let i = SAMPLES - 1; i >= 0; i--) {
-      if (!Number.isFinite(avs[i])) continue;
-      const py = sy(avs[i]);
-      if (!Number.isFinite(py)) continue;
-      annotX = Math.min(sx(xs[i]) - 3, W - PAD.r - 20);
-      annotY = Math.max(PAD.t + 10, Math.min(H - PAD.b - 4, py - 8));
-      break;
-    }
-
     return {
       truePath: makePath(tvs),
       approxPath: makePath(avs),
@@ -301,25 +289,11 @@ export function TaylorSeries({
       yZero,
       yDomMin,
       yDomMax,
-      annotX,
-      annotY,
     };
   }, [fn, effectiveCenter, n, xMin, xMax, showError]);
 
-  const {
-    truePath,
-    approxPath,
-    errorPoly,
-    yTicks,
-    xTicks,
-    sx,
-    sy,
-    yZero,
-    yDomMin,
-    yDomMax,
-    annotX,
-    annotY,
-  } = model;
+  const { truePath, approxPath, errorPoly, yTicks, xTicks, sx, sy, yZero, yDomMin, yDomMax } =
+    model;
 
   const formula = buildFormula(fn, effectiveCenter, n);
 
@@ -374,16 +348,15 @@ export function TaylorSeries({
             strokeWidth={1}
           />
 
-          {/* y=0 baseline */}
+          {/* y=0 baseline — solid, since the dash is how the exact function is drawn. */}
           {yZero > PAD.t && yZero < H - PAD.b && (
             <line
               x1={PAD.l}
               y1={yZero}
               x2={W - PAD.r}
               y2={yZero}
-              stroke="var(--text-muted)"
-              strokeWidth={1}
-              strokeDasharray="3 2"
+              stroke="var(--line-strong)"
+              strokeWidth={0.8}
             />
           )}
 
@@ -451,19 +424,20 @@ export function TaylorSeries({
                 {Math.round(t * 100) / 100}
               </text>
             ))}
-
-          {/* Term count annotation near the right end of the Taylor curve */}
-          <text
-            x={annotX}
-            y={annotY}
-            fill="var(--presence)"
-            fontSize={10}
-            fontWeight={600}
-            textAnchor="end"
-          >
-            n={n}
-          </text>
         </svg>
+      </div>
+
+      {/* Which line is which: two curves that agree near the centre are otherwise told apart by
+          dash and colour alone, with nothing to say which is the approximation. */}
+      <div className="vfl-legend lr-ts-legend">
+        <span className="vfl-leg">
+          <i className="lr-ts-key--exact" aria-hidden="true" />
+          Exact function
+        </span>
+        <span className="vfl-leg">
+          <i style={{ background: 'var(--presence)' }} aria-hidden="true" />
+          Taylor polynomial, {n} term{n === 1 ? '' : 's'}
+        </span>
       </div>
 
       {/* Formula row — overflowWrap/wordBreak let a long expansion (large n, or a

@@ -15,6 +15,7 @@ import { useFocusTrap } from '../../live/useFocusTrap';
 import { prefersReducedMotion } from './motion';
 import { useSpatialCanvas } from '../spatial/useSpatialCanvas';
 import { focusPoint, screenToWorld, type Bbox } from '../spatial/camera';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import './canvas.css';
 
 const FALLBACK_H = 260; // provisional height used before a node is measured
@@ -23,6 +24,12 @@ const GAP = 56;
 // monitor "fully zoomed in" still meant squinting at 360-640px cards. 3× reads comfortably from
 // across a desk while min keeps the whole board reachable in one view.
 const CLAMP = { min: 0.2, max: 3 };
+// A phone gets ONE column of cards as wide as the screen, opened at 1:1 from the top: fitted
+// whole, a six-card board on a 360px screen opened at a third of its size, a picture of cards
+// nobody could read. The floor binds the FIT only; the reader's own pinch-out keeps CLAMP.
+const PHONE_QUERY = '(width <= 560px)';
+const PHONE_MARGIN = 16;
+const PHONE_FIT = { min: 1, max: CLAMP.max };
 
 /** Node width follows the block's own grid intent (`col`, its 1-12 span in the answer grid).
  *  One fixed width squeezed every wide block — tables broke their headers mid-word and swatch
@@ -53,11 +60,14 @@ function layoutBoard(
   nodes: Block[],
   heights: number[],
   cols: number,
+  widthOf: (b: Block) => number,
 ): { placed: Placed[]; w: number; h: number } {
   const rows = Math.max(1, Math.ceil(nodes.length / cols));
   const rowH: number[] = [];
   for (let r = 0; r < rows; r++) {
-    let mh = FALLBACK_H;
+    // The fallback stands in for a card not yet measured, never as a floor: a short measured
+    // card in a 260px row is centred in it, so every short card grew ~100px of empty gap.
+    let mh = 0;
     for (let c = 0; c < cols; c++) {
       const i = r * cols + c;
       if (i < nodes.length) mh = Math.max(mh, heights[i] || FALLBACK_H);
@@ -84,15 +94,14 @@ function layoutBoard(
     rowSeq[r] = idx;
   }
   const rowW = rowSeq.map(
-    (idx) =>
-      idx.reduce((acc, i) => acc + nodeWidth(nodes[i]), 0) + Math.max(0, idx.length - 1) * GAP,
+    (idx) => idx.reduce((acc, i) => acc + widthOf(nodes[i]), 0) + Math.max(0, idx.length - 1) * GAP,
   );
   const boardW = Math.max(...rowW, 1);
   const pos = new Array<{ x: number; w: number }>(nodes.length);
   rowSeq.forEach((idx, r) => {
     let x = (boardW - rowW[r]) / 2;
     for (const i of idx) {
-      const w = nodeWidth(nodes[i]);
+      const w = widthOf(nodes[i]);
       pos[i] = { x, w };
       x += w + GAP;
     }
@@ -222,7 +231,17 @@ export function CanvasTakeover(props: Props) {
 export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBlockIds }: Props) {
   // Only id-bearing blocks are nodes (the spotlightable set, same rule as the Lens).
   const nodes = useMemo(() => blocks.filter((b) => !!b.id), [blocks]);
-  const cols = useMemo(() => pickCols(nodes.length), [nodes.length]);
+  const phone = useMediaQuery(PHONE_QUERY);
+  const spatial = useSpatialCanvas(
+    phone ? { clamp: PHONE_FIT, margin: PHONE_MARGIN, tall: 'top' } : { clamp: CLAMP, margin: 40 },
+  );
+  const { camera, transform, viewportRef, fitTo, zoomAtClient, pan, setCamera } = spatial;
+  const phoneW = phone && spatial.viewport ? spatial.viewport.w - PHONE_MARGIN * 2 : null;
+  const cols = useMemo(() => (phone ? 1 : pickCols(nodes.length)), [phone, nodes.length]);
+  const widthOf = useCallback(
+    (b: Block) => (phoneW !== null ? Math.max(phoneW, 1) : nodeWidth(b)),
+    [phoneW],
+  );
 
   // Measure each node's natural height (a map card ≠ a one-liner). Two-pass: render at a fallback
   // height, measure, re-lay-out. useLayoutEffect (before paint, no flash) + a ResizeObserver so late
@@ -249,15 +268,16 @@ export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBloc
     placed,
     w: worldW,
     h: worldH,
-  } = useMemo(() => layoutBoard(nodes, heights, cols), [nodes, heights, cols]);
+  } = useMemo(() => layoutBoard(nodes, heights, cols, widthOf), [nodes, heights, cols, widthOf]);
+  // The phone column is sized to the screen already; a gap's worth of air around it would only
+  // shrink the 1:1 fit back under the card width it was laid out for.
+  const pad = phone ? 0 : GAP / 2;
   const world = useMemo<Bbox>(
-    () => ({ x: -GAP / 2, y: -GAP / 2, w: worldW + GAP, h: worldH + GAP }),
-    [worldW, worldH],
+    () => ({ x: -pad, y: -pad, w: worldW + pad * 2, h: worldH + pad * 2 }),
+    [pad, worldW, worldH],
   );
   const thread = useMemo(() => threadPath(placed.map((p) => ({ x: p.cx, y: p.cy }))), [placed]);
 
-  const spatial = useSpatialCanvas({ clamp: CLAMP, margin: 40 });
-  const { camera, transform, viewportRef, fitTo, zoomAtClient, pan, setCamera } = spatial;
   const reduced = prefersReducedMotion();
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
@@ -395,7 +415,7 @@ export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBloc
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault();
       navigated.current = true;
-      zoomAtClient(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+      zoomAtClient(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY, CLAMP);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -407,7 +427,7 @@ export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBloc
       if (!el) return;
       const r = el.getBoundingClientRect();
       navigated.current = true;
-      zoomAtClient(factor, r.left + r.width / 2, r.top + r.height / 2);
+      zoomAtClient(factor, r.left + r.width / 2, r.top + r.height / 2, CLAMP);
     },
     [viewportRef, zoomAtClient],
   );
@@ -502,27 +522,29 @@ export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBloc
               style={{ left: p.x, top: p.y, width: p.w }}
               data-kind={p.block.type}
             >
-              <div className="cv-node-label" title={nodeTitle(p.block)}>
+              <div className="cv-node-label">
                 <span className="cv-node-step">{i + 1}</span>
-                <span className="cv-node-title">{nodeTitle(p.block)}</span>
+                <span className="cv-node-title" title={nodeTitle(p.block)}>
+                  {nodeTitle(p.block)}
+                </span>
+                {onAskBlock && detail && (
+                  <button
+                    type="button"
+                    className="cv-node-ask"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAskBlock(p.block);
+                    }}
+                  >
+                    {selected ? 'Selected' : 'Ask'}
+                  </button>
+                )}
               </div>
               <div className="cv-node-inner">
                 <BlockBoundary fallback={<FallbackCard block={p.block} />}>
                   {renderBlock(p.block)}
                 </BlockBoundary>
               </div>
-              {onAskBlock && detail && (
-                <button
-                  type="button"
-                  className="cv-node-ask"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAskBlock(p.block);
-                  }}
-                >
-                  {selected ? 'Selected' : 'Ask'}
-                </button>
-              )}
             </div>
           );
         })}

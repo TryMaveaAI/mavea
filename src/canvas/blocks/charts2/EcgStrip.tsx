@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { EcgStripProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { estimateTextWidth } from '../../lib/fitText';
 
 type Props = EcgStripProps & { delay?: number };
 
@@ -18,6 +19,8 @@ const H = 220;
 const PAD_X = 8;
 const PAD_T = 26; // headroom for abnormality pins
 const PAD_B = 30; // footroom for interval brackets
+const IV_PITCH = 14; // one bracket row: a 9-unit label above its bar, clear of the bar above
+const IV_FS = 9; // .c2-ecg-iv-lbl
 
 // One synthetic sinus beat over [0,1] of the beat period: a smooth P bump, a sharp QRS complex,
 // and a rounded T wave, summed as scaled Gaussians. Amplitudes sit in the same -1..2 band the
@@ -97,6 +100,27 @@ export function EcgStrip({
   const gridRight = PAD_X + cols * small;
   const gridBottom = PAD_T + rows * small;
 
+  // Interval brackets are packed into rows by what each one actually covers — its bar AND its
+  // label — so PR and QRS share a row when they sit side by side and QT drops below them. A fixed
+  // i-mod-3 stagger 11 units apart stacked every label onto the bar of the row above it, and the
+  // third row ran past the footroom.
+  const ivLayout = intervals.map((iv) => {
+    const x0 = tx(Math.max(0, iv.fromMs));
+    const x1 = tx(Math.min(totalMs, iv.toMs));
+    const text = `${iv.label} ${Math.round(iv.toMs - iv.fromMs)} ms`;
+    const half = estimateTextWidth(text, IV_FS) / 2;
+    const midX = (x0 + x1) / 2;
+    return { x0, x1, midX, text, lo: Math.min(x0, midX - half), hi: Math.max(x1, midX + half) };
+  });
+  const rowEnds: number[] = [];
+  const ivRow = ivLayout.map((b) => {
+    let r = rowEnds.findIndex((end) => b.lo > end + 4);
+    if (r < 0) r = rowEnds.push(-Infinity) - 1;
+    rowEnds[r] = b.hi;
+    return r;
+  });
+  const svgH = Math.max(H, gridBottom + 4 + rowEnds.length * IV_PITCH);
+
   return (
     <div
       className="card reveal c2"
@@ -120,7 +144,7 @@ export function EcgStrip({
 
       <div className="c2-ecg-wrap">
         <svg
-          viewBox={`0 0 ${W} ${H}`}
+          viewBox={`0 0 ${W} ${svgH}`}
           className="c2-ecg-svg"
           role="img"
           aria-label={title || 'ECG strip'}
@@ -157,21 +181,15 @@ export function EcgStrip({
           <path d={path} className="c2-ecg-trace" />
 
           {/* interval brackets beneath the trace (PR / QRS / QT) */}
-          {intervals.map((iv, i) => {
-            const x0 = tx(Math.max(0, iv.fromMs));
-            const x1 = tx(Math.min(totalMs, iv.toMs));
-            // Stagger across at least 3 rows — 2 rows only separates alternating intervals,
-            // so a 3rd (or more) interval lands back on row 0 and collides with the 1st.
-            const ivRows = Math.max(3, Math.ceil(intervals.length / 2));
-            const y = gridBottom + 6 + (i % ivRows) * 11;
-            const midX = (x0 + x1) / 2;
+          {ivLayout.map((b, i) => {
+            const y = gridBottom + IV_PITCH + ivRow[i] * IV_PITCH;
             return (
               <g key={`iv${i}`} className="c2-ecg-iv">
-                <line x1={x0} y1={y} x2={x1} y2={y} className="c2-ecg-iv-bar" />
-                <line x1={x0} y1={y - 3} x2={x0} y2={y + 3} className="c2-ecg-iv-cap" />
-                <line x1={x1} y1={y - 3} x2={x1} y2={y + 3} className="c2-ecg-iv-cap" />
-                <text x={midX} y={y - 3} className="c2-ecg-iv-lbl" textAnchor="middle">
-                  {iv.label} {Math.round(iv.toMs - iv.fromMs)} ms
+                <line x1={b.x0} y1={y} x2={b.x1} y2={y} className="c2-ecg-iv-bar" />
+                <line x1={b.x0} y1={y - 3} x2={b.x0} y2={y + 3} className="c2-ecg-iv-cap" />
+                <line x1={b.x1} y1={y - 3} x2={b.x1} y2={y + 3} className="c2-ecg-iv-cap" />
+                <text x={b.midX} y={y - 4} className="c2-ecg-iv-lbl" textAnchor="middle">
+                  {b.text}
                 </text>
               </g>
             );

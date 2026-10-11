@@ -3,23 +3,13 @@ import { Icon } from '../../../icons/icons';
 import { niceStep, formatValue } from '../../lib';
 import type { SpaceFitProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { fitItemLabel } from './itemLabel';
 
 type Props = SpaceFitProps & { delay?: number };
 
 // A walkway narrower than this (in the room's own unit) reads as tight — the recognised comfortable
 // minimum for a clear path through furniture. A gap at or below it is flagged.
 const COMFORT_FLOOR = 0.9; // metres-ish; the same number works for ft as a sane default
-
-// The item label's font-size already shrinks with the item's own width (see `fs` below), but that
-// heuristic is a character-count average, not real SVG text metrics — a wide-glyph label (or one
-// that hits the shrink's own floor) can still run past the item's footprint. Truncate with an
-// ellipsis as a hard backstop, sized the same way FloorPlan trims its room names, and keep the
-// untruncated label as a native <title> tooltip so nothing is silently lost.
-const SPF_CHAR_ADVANCE = 0.56;
-function truncateItemLabel(text: string, boxW: number, fontSize: number): string {
-  const max = Math.max(2, Math.floor(boxW / (fontSize * SPF_CHAR_ADVANCE)));
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
-}
 
 const ITEM_FILLS = [
   'color-mix(in oklab, var(--presence) 16%, transparent)',
@@ -63,6 +53,12 @@ export function SpaceFit({
 
   // A scale ruler: one nice step of the room's longer side, drawn along the bottom edge.
   const rulerLen = niceStep(Math.max(W, D), 4);
+  // The wall is drawn OUTSIDE the room's footprint: centred on the edge it took half its thickness
+  // out of the floor, so a piece placed honestly against the wall was drawn running into it.
+  const wall = Math.max(W, D) * 0.012;
+  const baseFs = vbW * 0.027;
+  const minFs = vbW * 0.019;
+  const rulerY = PAD + D + wall + PAD * 0.45;
 
   return (
     <div
@@ -79,12 +75,12 @@ export function SpaceFit({
         <svg viewBox={`0 0 ${vbW} ${vbH}`} className="spf-svg" role="img" aria-label={title}>
           {/* the room — a walled rectangle */}
           <rect
-            x={PAD}
-            y={PAD}
-            width={W}
-            height={D}
+            x={PAD - wall / 2}
+            y={PAD - wall / 2}
+            width={W + wall}
+            height={D + wall}
             className="spf-room"
-            strokeWidth={Math.max(W, D) * 0.012}
+            strokeWidth={wall}
           />
 
           {items.map((it, i) => {
@@ -94,13 +90,9 @@ export function SpaceFit({
             const cy = PAD + it.y + it.d / 2;
             const rot = it.rot ?? 0;
             // Label size is a fixed fraction of the figure (so it reads ~the same on screen at any
-            // room scale), then shrunk to fit within the item's own width so it never spills out.
-            const baseFs = vbW * 0.027;
-            const fs = Math.min(baseFs, (it.w * 0.84) / Math.max(it.label.length * 0.52, 1));
-            // Hide the label when the footprint is too small to hold it.
-            const showLabel = Math.min(it.w, it.d) > Math.max(W, D) * 0.12;
-            const label = truncateItemLabel(it.label, it.w * 0.84, fs);
-            const isTruncated = label !== it.label;
+            // room scale), shrunk or wrapped to sit inside the piece's own footprint.
+            const fit = fitItemLabel(it.label, { w: it.w * 0.84, h: it.d * 0.8 }, baseFs, minFs);
+            const isTruncated = !!fit && fit.lines.join(' ') !== it.label;
             return (
               <g key={i} transform={`rotate(${rot} ${cx} ${cy})`}>
                 <rect
@@ -114,50 +106,52 @@ export function SpaceFit({
                   strokeWidth={Math.max(W, D) * 0.005}
                   {...(i === 0 ? { 'data-mark': 'circle' } : {})}
                 />
-                {showLabel && (
+                {fit ? (
                   <text
                     x={cx}
-                    y={cy}
+                    y={cy - ((fit.lines.length - 1) * fit.fs * 1.2) / 2}
                     textAnchor="middle"
                     dominantBaseline="middle"
                     className="spf-item-lbl"
-                    style={{ fontSize: fs }}
+                    style={{ fontSize: fit.fs }}
                   >
                     {isTruncated && <title>{it.label}</title>}
-                    {label}
+                    {fit.lines.map((line, k) => (
+                      <tspan key={k} x={cx} dy={k === 0 ? 0 : fit.fs * 1.2}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
+                ) : (
+                  <title>{it.label}</title>
                 )}
               </g>
             );
           })}
 
-          {/* scale ruler along the bottom */}
+          {/* scale ruler along the bottom, below the wall, its length named at its right end */}
           <g className="spf-ruler">
             <line
               x1={PAD}
-              y1={vbH - PAD * 0.4}
+              y1={rulerY}
               x2={PAD + rulerLen}
-              y2={vbH - PAD * 0.4}
+              y2={rulerY}
               strokeWidth={Math.max(W, D) * 0.006}
             />
-            <line
-              x1={PAD}
-              y1={vbH - PAD * 0.4 - PAD * 0.25}
-              x2={PAD}
-              y2={vbH - PAD * 0.4 + PAD * 0.25}
-              strokeWidth={Math.max(W, D) * 0.006}
-            />
-            <line
-              x1={PAD + rulerLen}
-              y1={vbH - PAD * 0.4 - PAD * 0.25}
-              x2={PAD + rulerLen}
-              y2={vbH - PAD * 0.4 + PAD * 0.25}
-              strokeWidth={Math.max(W, D) * 0.006}
-            />
+            {[PAD, PAD + rulerLen].map((x) => (
+              <line
+                key={x}
+                x1={x}
+                y1={rulerY - PAD * 0.22}
+                x2={x}
+                y2={rulerY + PAD * 0.22}
+                strokeWidth={Math.max(W, D) * 0.006}
+              />
+            ))}
             <text
-              x={PAD + rulerLen / 2}
-              y={vbH - PAD * 0.4 - PAD * 0.35}
-              textAnchor="middle"
+              x={PAD + rulerLen + PAD * 0.3}
+              y={rulerY}
+              dominantBaseline="middle"
               className="spf-ruler-lbl"
               style={{ fontSize: vbW * 0.026 }}
             >

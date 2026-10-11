@@ -129,30 +129,32 @@ export function MapRoute({
           coordinates: stops.map((stop) => [stop.lng, stop.lat]),
         },
       };
+      // Same rule as GeoMap's zones: `isStyleLoaded()` waits on every tile source, so it stays
+      // false through a cold load's styledata events and the route line was never drawn. Try on
+      // each styledata and on idle; addSource/addLayer throw until the style is parsed.
       const addRoute = () => {
-        if (
-          !map ||
-          !ref.current ||
-          stops.length < 2 ||
-          !map.isStyleLoaded() ||
-          map.getSource('mavea-route')
-        ) {
-          return;
+        if (!map || !ref.current || stops.length < 2 || map.getLayer('mavea-route-line')) return;
+        try {
+          if (!map.getSource('mavea-route')) {
+            map.addSource('mavea-route', { type: 'geojson', data: routeData });
+          }
+          map.addLayer({
+            id: 'mavea-route-line',
+            type: 'line',
+            source: 'mavea-route',
+            paint: {
+              'line-color': tokenColor(ref.current, '--presence'),
+              'line-width': 4,
+              'line-opacity': 0.85,
+            },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+          });
+        } catch {
+          // Style not parsed yet; the next styledata or idle tries again.
         }
-        map.addSource('mavea-route', { type: 'geojson', data: routeData });
-        map.addLayer({
-          id: 'mavea-route-line',
-          type: 'line',
-          source: 'mavea-route',
-          paint: {
-            'line-color': tokenColor(ref.current, '--presence'),
-            'line-width': 4,
-            'line-opacity': 0.85,
-          },
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-        });
       };
       map.on('styledata', addRoute);
+      map.on('idle', addRoute);
       map.on('idle', unveil);
 
       mapMarkers = stops.map((stop, index) => {
@@ -182,7 +184,8 @@ export function MapRoute({
       if (stops.length > 1) {
         const bounds = new ml.LngLatBounds();
         for (const stop of stops) bounds.extend([stop.lng, stop.lat]);
-        map.fitBounds(bounds, { padding: 36, duration: 0 });
+        // Room for a whole pin badge plus a margin, so an end stop never sits on the frame.
+        map.fitBounds(bounds, { padding: 56, duration: 0 });
       }
 
       let currentStyle = styleUrl(isLight(ref.current));

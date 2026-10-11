@@ -619,6 +619,15 @@ describe('LifeWheel', () => {
     expect(overrides.every(([, body]) => /max-width:/.test(body))).toBe(true);
     expect(/@media[^{]*width <= 560px[^{]*\{[^@]*\.c1-radar\.c1-lw/.test(css)).toBe(true);
   });
+
+  it('keeps the wrapped figure a block so the narrow-card cap still centres it', () => {
+    // The radar, wheel and sunburst sit in a `.canvas-figure` wrapper now, not straight in their
+    // grid; an inline svg there ignores `margin: 0 auto` and hugs the left of a phone's card.
+    const { container } = render(<LifeWheel title="Balance" domains={domains(8)} />);
+    expect(container.querySelector('.canvas-figure > svg.c1-radar')).not.toBeNull();
+    const css = readFileSync(join(__dirname, '../src/canvas/layout/hscroll.css'), 'utf8');
+    expect(css).toMatch(/\.canvas-figure > svg\s*\{\s*display:\s*block;/);
+  });
 });
 
 // Regression coverage for Network's entrance animation: `.c1-network-node` / `.c1-network-edge`
@@ -643,7 +652,7 @@ describe('Network', () => {
       <Network title="Graph" nodes={nodes(n)} edges={hubEdges(n)} layout="circle" />,
     );
     const nodeGroups = Array.from(container.querySelectorAll<SVGGElement>('.c1-network-node'));
-    const edgeLines = Array.from(container.querySelectorAll<SVGLineElement>('.c1-network-edge'));
+    const edgeLines = Array.from(container.querySelectorAll<SVGPathElement>('.c1-network-edge'));
     expect(nodeGroups).toHaveLength(n);
     expect(edgeLines).toHaveLength(n - 1);
 
@@ -674,6 +683,26 @@ describe('Network', () => {
     // The hub (n0) is the only node touching every edge, so it must be the one marked.
     const markedGroup = marked[0].closest('.c1-network-node');
     expect(markedGroup?.querySelector('text')?.textContent).toBe('Node 0');
+  });
+
+  it('bends a grid edge round a node it does not join, and leaves clear edges straight', () => {
+    // Three in a row: n0–n2 would run straight through n1; n0–n1 has nothing in its way.
+    const { container } = render(
+      <Network
+        title="Graph"
+        nodes={nodes(9)}
+        edges={[
+          { source: 'n0', target: 'n2' },
+          { source: 'n0', target: 'n1' },
+        ]}
+        layout="grid"
+      />,
+    );
+    const [skip, near] = Array.from(container.querySelectorAll('.c1-network-edge'), (p) =>
+      p.getAttribute('d'),
+    );
+    expect(skip).toMatch(/ Q /);
+    expect(near).toMatch(/ L /);
   });
 
   it('lays out a large grid without collapsing any two nodes onto the same point', () => {
@@ -1228,8 +1257,10 @@ describe('Sunburst', () => {
     const { container, getByText } = render(
       <Sunburst title="Where the mass sits" root={root} unit=" kLOC" />,
     );
-    // Center total: 70 + 56 + 28 = 154, matching effectiveValue(root) not root.value (0).
-    expect(getByText('kLOC154')).toBeInTheDocument();
+    // Center total: 70 + 56 + 28 = 154, matching effectiveValue(root) not root.value (0). A word
+    // unit reads after the number ("154 kLOC"), never glued in front of it, and is held to it by a
+    // no-break space (the matcher's default normalizer folds that to a plain one).
+    expect(getByText('154 kLOC').textContent).toBe('154\u00a0kLOC');
 
     const coreRow = container.querySelector('.c1-legend-row');
     expect(coreRow).toBeTruthy();

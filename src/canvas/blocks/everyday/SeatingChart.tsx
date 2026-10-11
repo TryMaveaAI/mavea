@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SeatingTable, SeatingChartProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { initials, rectSideCounts, tableLabel } from './seatingGeometry';
 
 type Props = SeatingChartProps & { delay?: number };
 
@@ -16,16 +17,6 @@ const SEAT_GAP = 15; // how far a seat dot sits outside its table's edge
 // radius math into a rendered total or an SVG viewBox.
 function safeSeats(t: SeatingTable): number {
   return Number.isFinite(t.seats) ? Math.max(0, t.seats) : 0;
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || parts[0]?.[1] || '')).toUpperCase();
-}
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
 // A round table's radius grows with its seat count but caps out, and the per-seat dot shrinks
@@ -50,27 +41,26 @@ function footprint(t: SeatingTable): number {
   return roundRadius(safeSeats(t)) + SEAT_GAP + seatRadius(safeSeats(t));
 }
 
-/** Walk clockwise around a rectangle's perimeter starting at the top-left corner, `along`
- *  units in, wrapping at the total perimeter. Distributes seats evenly by arc length so a
- *  longer side naturally gets proportionally more seats than a short one. */
-function pointOnRectPerimeter(
+/** Seat `index`'s centre around a rect table: each side's seats sit at the middles of equal
+ *  slices of that side, so no seat lands on a corner and every side is evenly spaced. */
+function rectSeat(
   cx: number,
   cy: number,
   w: number,
   h: number,
-  along: number,
+  counts: number[],
+  index: number,
 ): { x: number; y: number } {
+  let side = 0;
+  let k = index;
+  while (side < 3 && k >= counts[side]) k -= counts[side++];
+  const t = (k + 0.5) / Math.max(1, counts[side]);
   const halfW = w / 2,
     halfH = h / 2;
-  const perim = 2 * (w + h);
-  let d = ((along % perim) + perim) % perim;
-  if (d <= w) return { x: cx - halfW + d, y: cy - halfH - SEAT_GAP };
-  d -= w;
-  if (d <= h) return { x: cx + halfW + SEAT_GAP, y: cy - halfH + d };
-  d -= h;
-  if (d <= w) return { x: cx + halfW - d, y: cy + halfH + SEAT_GAP };
-  d -= w;
-  return { x: cx - halfW - SEAT_GAP, y: cy + halfH - d };
+  if (side === 0) return { x: cx - halfW + t * w, y: cy - halfH - SEAT_GAP };
+  if (side === 1) return { x: cx + halfW + SEAT_GAP, y: cy - halfH + t * h };
+  if (side === 2) return { x: cx + halfW - t * w, y: cy + halfH + SEAT_GAP };
+  return { x: cx - halfW - SEAT_GAP, y: cy + halfH - t * h };
 }
 
 function seatPosition(
@@ -82,8 +72,8 @@ function seatPosition(
   const n = Math.max(1, safeSeats(t));
   if (t.shape === 'rect') {
     const { w, h } = rectSize(safeSeats(t));
-    const perim = 2 * (w + h);
-    return pointOnRectPerimeter(cx, cy, w, h, (seatIndex / n) * perim);
+    const counts = rectSideCounts(n, w, h, seatRadius(safeSeats(t)));
+    return rectSeat(cx, cy, w, h, counts, seatIndex);
   }
   const r = roundRadius(safeSeats(t)) + SEAT_GAP;
   const a = (seatIndex / n) * Math.PI * 2 - Math.PI / 2;
@@ -203,7 +193,8 @@ export function SeatingChart({
             const rr = roundRadius(safeSeats(t));
             const { w, h } = rectSize(safeSeats(t));
             const sr = seatRadius(safeSeats(t));
-            const label = truncate(t.label, isRect ? 14 : 9);
+            const label = tableLabel(t.label ?? '', isRect ? { w, h } : { r: rr });
+            const firstY = p.y + 3 - ((label.lines.length - 1) * label.lineHeight) / 2;
             return (
               <g
                 key={t.id}
@@ -223,8 +214,16 @@ export function SeatingChart({
                 ) : (
                   <circle cx={p.x} cy={p.y} r={rr} className="sc-table-shape" />
                 )}
-                <text x={p.x} y={p.y + 3} textAnchor="middle" className="sc-table-label">
-                  {label}
+                <text
+                  textAnchor="middle"
+                  className="sc-table-label"
+                  style={{ fontSize: label.fontSize } as CSSProperties}
+                >
+                  {label.lines.map((line, li) => (
+                    <tspan key={li} x={p.x} y={firstY + li * label.lineHeight}>
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
 
                 {Array.from({ length: Math.max(0, safeSeats(t)) }, (_, seatIndex) => {

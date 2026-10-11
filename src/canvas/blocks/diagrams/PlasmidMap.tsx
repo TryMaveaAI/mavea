@@ -6,24 +6,24 @@
 // restriction sites are radial tick + enzyme-name marks; the origin of replication gets its own
 // marker. Every label shares OrbitDiagram's label-spacing problem — here on one ring instead of
 // separate radii — so angularly-close labels spread across two radial tiers instead of colliding.
-import { useId, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PlasmidMapProps, PlasmidFeature, PlasmidSite, PlasmidFeatureKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { CX, CY, R_BACKBONE, R_TICK_OUT, placeLabels, polar } from './plasmidLayout';
+import type { LabelSpec } from './plasmidLayout';
 
 type Props = PlasmidMapProps & { delay?: number };
 
-const CX = 100;
-const CY = 100;
-const R_BACKBONE = 72;
 const R_TICK_IN = R_BACKBONE - 7;
-const R_TICK_OUT = R_BACKBONE + 7;
-const R_LABEL_TIERS = [R_BACKBONE + 16, R_BACKBONE + 30];
-// A label whose angular neighbor on the same tier sits within this many degrees has to move out
-// to the next one — a plasmid with dense features/sites still reads (near-empty gaps stay on the
-// inner tier; crowded runs spread outward) rather than every name colliding at one radius.
-const COLLISION_DEG = 11;
+
+/** A feature is drawn as a band this thick with an arrowhead this much wider and longer, in the
+ *  ring's own units — sized here rather than by a stroke-scaled marker, which blew a 4.4-unit
+ *  marker up by the 5-unit stroke into a 22-unit black triangle hanging off the arc. */
+const BAND_HALF = 2.5;
+const HEAD_HALF = 4.6;
+const HEAD_LEN = 6.5;
 
 const KIND_COLOR: Record<PlasmidFeatureKind, string> = {
   gene: 'var(--presence)',
@@ -52,35 +52,34 @@ function bpToDeg(bp: number, sizeBp: number): number {
   return (wrapBp(bp, sizeBp) / sizeBp) * 360;
 }
 
-function polar(deg: number, r: number): { x: number; y: number } {
-  const ang = ((deg - 90) * Math.PI) / 180;
-  return { x: CX + r * Math.cos(ang), y: CY + r * Math.sin(ang) };
-}
-
-interface LabelSpec {
-  key: string;
-  deg: number;
-  text: string;
-  color: string;
-  bold?: boolean;
-}
-
-/** Walks the labels in angular order and gives each one the innermost tier whose own last label
- *  is at least `COLLISION_DEG` behind it. Tracking the tiers separately matters: a run of three
- *  or four sites inside a few degrees (a multiple cloning site is exactly that) pushed everything
- *  past the first to the same outer radius under a single alternating flag, stacking them on top
- *  of one another. When every tier is crowded the label takes the one idle longest, which still
- *  buys a full tier of separation from its nearest neighbour. Bounded, single pass — O(n log n)
- *  for the sort plus one linear walk. */
-function placeLabels(labels: LabelSpec[]): (LabelSpec & { r: number })[] {
-  const sorted = [...labels].sort((a, b) => a.deg - b.deg);
-  const lastDeg = R_LABEL_TIERS.map(() => -Infinity);
-  return sorted.map((l) => {
-    let tier = lastDeg.findIndex((deg) => l.deg - deg >= COLLISION_DEG);
-    if (tier === -1) tier = lastDeg.indexOf(Math.min(...lastDeg));
-    lastDeg[tier] = l.deg;
-    return { ...l, r: R_LABEL_TIERS[tier] };
-  });
+/** A feature as a filled band along the ring, with an arrowhead at its leading end when it has a
+ *  strand. Degrees increase clockwise; a minus-strand feature points back toward its start. */
+function featurePath(startDeg: number, span: number, strand: PlasmidFeature['strand']): string {
+  const rOut = R_BACKBONE + BAND_HALF;
+  const rIn = R_BACKBONE - BAND_HALF;
+  const headDeg =
+    strand === 'plus' || strand === 'minus'
+      ? Math.min(span * 0.6, (HEAD_LEN / R_BACKBONE) * (180 / Math.PI))
+      : 0;
+  const plus = strand === 'plus';
+  // The body runs from `a` to `b` (clockwise); the head, when there is one, sits beyond it.
+  const a = plus || headDeg === 0 ? startDeg : startDeg + headDeg;
+  const b = plus ? startDeg + span - headDeg : startDeg + span;
+  const large = b - a > 180 ? 1 : 0;
+  const pt = (deg: number, r: number) => {
+    const p = polar(deg, r);
+    return `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  };
+  const outer = `A ${rOut} ${rOut} 0 ${large} 1 ${pt(b, rOut)}`;
+  const inner = `A ${rIn} ${rIn} 0 ${large} 0 ${pt(a, rIn)}`;
+  if (headDeg === 0) return `M ${pt(a, rOut)} ${outer} L ${pt(b, rIn)} ${inner} Z`;
+  const wOut = R_BACKBONE + HEAD_HALF;
+  const wIn = R_BACKBONE - HEAD_HALF;
+  if (plus) {
+    const tip = startDeg + span;
+    return `M ${pt(a, rOut)} ${outer} L ${pt(b, wOut)} L ${pt(tip, R_BACKBONE)} L ${pt(b, wIn)} L ${pt(b, rIn)} ${inner} Z`;
+  }
+  return `M ${pt(a, rOut)} ${outer} L ${pt(b, rIn)} ${inner} L ${pt(a, wIn)} L ${pt(startDeg, R_BACKBONE)} L ${pt(a, wOut)} Z`;
 }
 
 function safeNum(v: unknown, fallback = 0): number {
@@ -99,7 +98,6 @@ export function PlasmidMap({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.share;
-  const arrowId = `pm-arrow-${useId().replace(/:/g, '')}`;
 
   const safeSize = Number.isFinite(sizeBp) && sizeBp > 0 ? sizeBp : 1;
   const safeFeatures = useMemo(() => (Array.isArray(features) ? features : []), [features]);
@@ -111,22 +109,16 @@ export function PlasmidMap({
         const startDeg = bpToDeg(safeNum(f.startBp), safeSize);
         const endDeg = bpToDeg(safeNum(f.endBp), safeSize);
         const span = (((endDeg - startDeg) % 360) + 360) % 360;
-        const large = span > 180 ? 1 : 0;
-        const s = polar(startDeg, R_BACKBONE);
-        const t = polar(endDeg, R_BACKBONE);
         const kind: PlasmidFeatureKind =
           f.kind === 'promoter' || f.kind === 'terminator' || f.kind === 'marker' ? f.kind : 'gene';
         const name = typeof f.name === 'string' && f.name ? f.name : `Feature ${i + 1}`;
         const midDeg = (startDeg + span / 2) % 360;
         return {
           key: `f${i}`,
-          s,
-          t,
-          large,
+          d: span > 0 ? featurePath(startDeg, span, f.strand) : null,
           color: KIND_COLOR[kind],
           name,
           midDeg,
-          strand: f.strand,
         };
       }),
     [safeFeatures, safeSize],
@@ -193,33 +185,11 @@ export function PlasmidMap({
             circular. The box is 290 wide against .pm-wrap's 580px cap, so one user unit renders as
             two CSS pixels — which is what puts the 5px label type above the legibility floor. */}
         <svg viewBox="-45 -8 290 216" className="pm-svg" role="img" aria-label={title}>
-          <defs>
-            <marker
-              id={arrowId}
-              viewBox="0 0 10 10"
-              refX="7"
-              refY="5"
-              markerWidth="4.4"
-              markerHeight="4.4"
-              orient="auto-start-reverse"
-            >
-              <path d="M0 0 L10 5 L0 10 z" className="pm-arrowhead" />
-            </marker>
-          </defs>
-
           <circle cx={CX} cy={CY} r={R_BACKBONE} className="pm-backbone" />
 
-          {featureArcs.map((f) => (
-            <path
-              key={f.key}
-              d={`M ${f.s.x} ${f.s.y} A ${R_BACKBONE} ${R_BACKBONE} 0 ${f.large} 1 ${f.t.x} ${f.t.y}`}
-              fill="none"
-              stroke={f.color}
-              className="pm-feature"
-              markerEnd={f.strand === 'plus' ? `url(#${arrowId})` : undefined}
-              markerStart={f.strand === 'minus' ? `url(#${arrowId})` : undefined}
-            />
-          ))}
+          {featureArcs.map((f) =>
+            f.d ? <path key={f.key} d={f.d} fill={f.color} className="pm-feature" /> : null,
+          )}
 
           {siteMarks.map((s) => {
             const inner = polar(s.deg, R_TICK_IN);
@@ -245,19 +215,22 @@ export function PlasmidMap({
             })()}
 
           {labels.map((l) => {
-            const p = polar(l.deg, l.r);
-            const ux = (p.x - CX) / (l.r || 1);
-            const anchor = ux > 0.2 ? 'start' : ux < -0.2 ? 'end' : 'middle';
             const short = truncate(l.text, NAME_MAX);
             return (
               // The tooltip for a truncated name hangs off the wrapping group, not the <text>:
               // nested inside it, it would inherit the label's own few-user-unit font-size.
               <g key={l.key}>
                 {short !== l.text && <title>{l.text}</title>}
+                {l.moved && (
+                  <polyline
+                    points={`${l.from.x},${l.from.y} ${l.x + (l.anchor === 'start' ? -1.5 : 1.5)},${l.y}`}
+                    className="pm-leader"
+                  />
+                )}
                 <text
-                  x={p.x}
-                  y={p.y}
-                  textAnchor={anchor}
+                  x={l.x}
+                  y={l.y}
+                  textAnchor={l.anchor}
                   dominantBaseline="middle"
                   className={l.bold ? 'pm-label pm-label-bold' : 'pm-label'}
                   fill={l.color}

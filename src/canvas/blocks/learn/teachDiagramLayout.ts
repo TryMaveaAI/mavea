@@ -337,3 +337,42 @@ export function fitLabel(l: DiagLabel, fit: Fit | null): DiagLabel {
   const { x, y } = fitPoint(l.x, l.y, fit);
   return { ...l, x, y };
 }
+
+/** How a build's labels replace one another. `stepOf[k]` is the step label k arrives in (-1 for
+ *  the figure at rest). A label at the same anchor and side as an earlier one replaces it from
+ *  its own step on. `until[k]` is the step label k stops being drawn at (Infinity if never),
+ *  `finals` the labels nothing replaces, and `slot[k]` the index in `finals` of the label that
+ *  ends k's chain, so a replaced label is laid out where its replacement will sit. */
+export function supersessions(
+  stepOf: readonly number[],
+  labels: readonly Pick<DiagLabel, 'x' | 'y' | 'side'>[],
+): { until: number[]; finals: number[]; slot: number[] } {
+  const keyOf = (l: Pick<DiagLabel, 'x' | 'y' | 'side'>) => `${l.x},${l.y},${l.side ?? ''}`;
+  const until = labels.map(() => Infinity);
+  const next = labels.map(() => -1);
+  const latest = new Map<string, number>();
+  labels.forEach((l, k) => {
+    const key = keyOf(l);
+    const prev = latest.get(key);
+    // Two labels at one spot in the SAME step are two callouts, not an update.
+    if (prev !== undefined && stepOf[prev] < stepOf[k]) {
+      until[prev] = stepOf[k];
+      next[prev] = k;
+    }
+    latest.set(key, k);
+  });
+  const finals: number[] = [];
+  const finalPos = new Map<number, number>();
+  labels.forEach((_, k) => {
+    if (next[k] === -1) {
+      finalPos.set(k, finals.length);
+      finals.push(k);
+    }
+  });
+  const slot = labels.map((_, k) => {
+    let end = k;
+    while (next[end] !== -1) end = next[end];
+    return finalPos.get(end)!;
+  });
+  return { until, finals, slot };
+}

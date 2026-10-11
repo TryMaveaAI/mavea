@@ -353,14 +353,18 @@
 }
 
 /* Stakeholder matrix */
-.brf-stakeholders {
-  padding-left: 34px;
+/* The influence axis takes its own grid column. Absolutely placed and rotated about its centre,
+   a label as long as "Influence →" swung its middle into the first quadrant's text. */
+.brf-matrix {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 10px;
 }
 .brf-quadrants {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  margin-top: 10px;
 }
 .brf-quadrants section {
   min-height: 96px;
@@ -403,13 +407,14 @@
 }
 .brf-axis--x {
   margin-top: 6px;
+  padding-inline-start: 24px;
   text-align: center;
 }
 .brf-axis--y {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  rotate: -90deg;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- y-axis title: a rotated axis label reads up the matrix's edge, the case the geometry suite exempts too */
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  align-self: center;
 }
 
 /* Blueprint */
@@ -506,8 +511,17 @@
   color: var(--text-secondary);
   font-size: var(--fs-xs);
 }
-.brf-approval-step small {
+.brf-step-role {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+/* Its own line: inline after the role the time ran straight into the last word. */
+.brf-step-when {
+  display: block;
+  margin-top: 2px;
   color: var(--text-faint);
+  font-size: var(--fs-2xs);
 }
 
 /* Plans and directories */
@@ -868,14 +882,12 @@
   .brf-clause-pair {
     grid-template-columns: 1fr;
   }
-  .brf-stakeholders {
-    padding-left: 24px;
-  }
   .brf-quadrants {
     grid-template-columns: 1fr;
   }
-  .brf-axis--y {
-    left: 3px;
+  /* Stacked, the quadrants no longer sit on two axes; their own headings carry the meaning. */
+  .brf-stakeholders .brf-axis {
+    display: none;
   }
   .brf-approval-head {
     align-items: flex-start;

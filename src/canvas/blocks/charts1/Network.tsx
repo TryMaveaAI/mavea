@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { NetworkProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { radialLabel } from './chartMath';
+import { routeEdge } from '../../lib/edgeDetour';
 
 type Props = NetworkProps & { delay?: number };
 
@@ -10,6 +12,8 @@ const W = 520,
   H = 320,
   CX = 260,
   CY = 160;
+/** How far an edge keeps from a node it does not join: the largest disc (r = 14) plus air. */
+const EDGE_CLEARANCE = 18;
 const PALETTE = [
   'var(--presence)',
   'var(--insight)',
@@ -56,7 +60,17 @@ export function Network({
       adj.get(e.source)?.add(e.target);
       adj.get(e.target)?.add(e.source);
     });
-    return { pos, adj };
+    // On a grid, a tie between the first and third node of a row runs straight through the
+    // second; bend exactly those edges round every node they do not join.
+    const points = [...pos.entries()];
+    const routes = edges.map((e) => {
+      const a = pos.get(e.source);
+      const b = pos.get(e.target);
+      if (!a || !b) return null;
+      const others = points.filter(([id]) => id !== e.source && id !== e.target).map(([, p]) => p);
+      return routeEdge(a, b, others, EDGE_CLEARANCE);
+    });
+    return { pos, adj, routes };
   }, [nodes, edges, layout]);
 
   const neighbors = hover ? model.adj.get(hover) : null;
@@ -83,85 +97,92 @@ export function Network({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {edges.map((e, i) => {
-          const a = model.pos.get(e.source),
-            b = model.pos.get(e.target);
-          if (!a || !b) return null;
-          const lit = edgeLit(e);
-          return (
-            <line
-              key={i}
-              className="c1-network-edge"
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke={lit ? 'var(--hover-line)' : 'var(--grid-line)'}
-              strokeWidth={lit && hover ? 1.8 : 1}
-              opacity={lit ? 0.9 : 0.25}
-              style={
-                {
-                  transition: 'all var(--m-fast)',
-                  ['--i' as string]: i,
-                  transformOrigin: `${(a.x + b.x) / 2}px ${(a.y + b.y) / 2}px`,
-                } as CSSProperties
-              }
-            />
-          );
-        })}
-        {nodes.map((n, i) => {
-          const p = model.pos.get(n.id)!;
-          const lit = nodeLit(n.id);
-          const r = 7 + Math.min(7, (n.weight || 1) * 1.5);
-          const col = colorOf(n.group, n.color);
-          const isHover = hover === n.id;
-          return (
-            <g
-              key={n.id}
-              className="c1-network-node"
-              style={
-                {
-                  cursor: 'pointer',
-                  ['--i' as string]: i,
-                  transformOrigin: `${p.x}px ${p.y}px`,
-                } as CSSProperties
-              }
-              onMouseEnter={() => setHover(n.id)}
-              onMouseLeave={() => setHover(null)}
-            >
-              {isHover && <circle cx={p.x} cy={p.y} r={r + 6} fill={col} opacity={0.18} />}
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={r}
-                fill={col}
-                opacity={lit ? 1 : 0.3}
-                stroke="var(--surface-default)"
-                strokeWidth={2}
-                data-mark={n.id === salientId ? 'circle' : undefined}
-                style={{ transition: 'opacity var(--m-fast)' }}
+      <div className="canvas-figure">
+        <svg
+          role="img"
+          aria-label={title}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          {edges.map((e, i) => {
+            const route = model.routes[i];
+            if (!route) return null;
+            const lit = edgeLit(e);
+            return (
+              <path
+                key={i}
+                className="c1-network-edge"
+                d={route.d}
+                fill="none"
+                stroke={lit ? 'var(--hover-line)' : 'var(--grid-line)'}
+                strokeWidth={lit && hover ? 1.8 : 1}
+                opacity={lit ? 0.9 : 0.25}
+                style={
+                  {
+                    transition: 'all var(--m-fast)',
+                    ['--i' as string]: i,
+                    transformOrigin: `${route.mid.x}px ${route.mid.y}px`,
+                  } as CSSProperties
+                }
               />
-              <text
-                x={p.x}
-                y={p.y - r - 5}
-                textAnchor="middle"
-                fontSize="10.5"
-                fill="var(--text-secondary)"
-                opacity={lit ? 1 : 0.3}
+            );
+          })}
+          {nodes.map((n, i) => {
+            const p = model.pos.get(n.id)!;
+            const lit = nodeLit(n.id);
+            const r = 7 + Math.min(7, (n.weight || 1) * 1.5);
+            const col = colorOf(n.group, n.color);
+            const isHover = hover === n.id;
+            // A grid has no centre every edge stays inside, so its labels keep to the top and lean on
+            // the halo to stay legible where an edge passes behind them.
+            const label =
+              layout === 'grid'
+                ? { x: p.x, y: p.y - r - 5, anchor: 'middle' as const, baseline: 'auto' as const }
+                : radialLabel(p, { x: CX, y: CY }, r);
+            return (
+              <g
+                key={n.id}
+                className="c1-network-node"
+                style={
+                  {
+                    cursor: 'pointer',
+                    ['--i' as string]: i,
+                    transformOrigin: `${p.x}px ${p.y}px`,
+                  } as CSSProperties
+                }
+                onMouseEnter={() => setHover(n.id)}
+                onMouseLeave={() => setHover(null)}
               >
-                {n.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                {isHover && <circle cx={p.x} cy={p.y} r={r + 6} fill={col} opacity={0.18} />}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={r}
+                  fill={col}
+                  opacity={lit ? 1 : 0.3}
+                  stroke="var(--surface-default)"
+                  strokeWidth={2}
+                  data-mark={n.id === salientId ? 'circle' : undefined}
+                  style={{ transition: 'opacity var(--m-fast)' }}
+                />
+                <text
+                  className="c1-network-label"
+                  x={label.x}
+                  y={label.y}
+                  textAnchor={label.anchor}
+                  dominantBaseline={label.baseline}
+                  fontSize="10.5"
+                  fill="var(--text-secondary)"
+                  opacity={lit ? 1 : 0.3}
+                >
+                  {n.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       <div className="insight-summary" style={{ marginTop: 10 }}>
         {hover ? (

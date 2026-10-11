@@ -3,6 +3,7 @@ import { Icon } from '../../../icons/icons';
 import type { CodeWalkProps, CodeWalkStep } from './types';
 import './styles.css';
 import { richInnerHtml } from '../../../lib/richText';
+import { withInlineCode } from '../../lib/inlineCode';
 
 type Props = CodeWalkProps & { delay?: number };
 
@@ -51,7 +52,7 @@ export function CodeWalk({
             <div className="cw-body">
               <div className="cw-step-title">{s.title}</div>
               <StepCodePanel step={s} />
-              <div className="cw-exp">{s.explanation}</div>
+              <div className="cw-exp">{withInlineCode(s.explanation)}</div>
             </div>
           </div>
         ))}

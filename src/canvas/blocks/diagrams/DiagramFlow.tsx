@@ -13,6 +13,7 @@ import type {
   DiagramNodeKind,
   DiagramEdgeKind,
 } from './types';
+import { edgeLabelCentre } from './diagramFlowLayout';
 
 type Props = DiagramFlowProps & { delay?: number };
 
@@ -43,6 +44,7 @@ const EDGE_LABEL_MIN_FS = 13;
 const EDGE_LABEL_LINES = 2;
 /** Clear air between a label and each rim it sits between. */
 const EDGE_LABEL_MARGIN = 12;
+
 /** The widest gap one label may buy. Past this it wraps and shrinks instead of pushing the figure
  *  wider than the card can show — a cap on growth, not on the text, which always renders in full. */
 const EDGE_LABEL_MAX_W = 168;
@@ -342,7 +344,20 @@ function edgeArc(a: Placed, b: Placed) {
   const dy = t.y - s.y;
   const rim = Math.hypot(dx, dy) || 1;
   const bow = Math.min(60, rim * 0.12);
-  return { s, t, rim, cx: mx - (dy / rim) * bow, cy: my + (dx / rim) * bow };
+  // The unit normal the arc bows along; the curve's own midpoint sits half the bow out.
+  const nx = -dy / rim;
+  const ny = dx / rim;
+  return {
+    s,
+    t,
+    rim,
+    cx: mx + nx * bow,
+    cy: my + ny * bow,
+    nx,
+    ny,
+    midX: mx + nx * bow * 0.5,
+    midY: my + ny * bow * 0.5,
+  };
 }
 
 function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; uid: string }) {
@@ -367,7 +382,8 @@ function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; ui
 }
 
 function EdgeLabel({ label, a, b }: { label: string; a: Placed; b: Placed }) {
-  const { cx, cy, rim } = edgeArc(a, b);
+  const arc = edgeArc(a, b);
+  const { rim } = arc;
   // Fitted to the room this edge actually has, never to a constant: the same label between two
   // ellipses 28 units apart and across a long diagonal are different fits. Shrink-to-fit rather
   // than "…"-truncating, because an edge label the reader can only half-see is a bug.
@@ -379,6 +395,8 @@ function EdgeLabel({ label, a, b }: { label: string; a: Placed; b: Placed }) {
     lineHeight: 1.15,
     bold: true,
   });
+  const w = Math.max(...fit.lines.map((ln) => estimateTextWidth(ln, fit.fontSize, true)));
+  const { x: cx, y: cy } = edgeLabelCentre(arc, w, fit.lines.length * fit.lineHeightPx);
   const y0 = cy - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
   return (
     <text className="dg-edge-label" x={cx} textAnchor="middle" fontSize={fit.fontSize}>

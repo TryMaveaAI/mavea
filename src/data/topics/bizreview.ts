@@ -389,7 +389,7 @@ export const bizreview: ConversationSpec = {
         iconColor: 'var(--insight)',
         series: [
           { name: 'Atlas (us)', color: 'var(--insight)' },
-          { name: 'Northgate', color: 'var(--presence-soft)' },
+          { name: 'Northgate', color: 'var(--presence)' },
           { name: 'Beacon', color: 'var(--text-muted)' },
         ],
         rows: [
@@ -958,7 +958,7 @@ export const bizreview: ConversationSpec = {
         title: 'Annual plan progress',
         icon: 'chart',
         iconColor: 'var(--presence)',
-        caption: '58% of the $1.45M net-new ARR plan',
+        caption: '45% of the $3.29M net-new ARR plan',
         segments: [
           {
             label: 'Q1',
@@ -987,7 +987,8 @@ export const bizreview: ConversationSpec = {
             detail: 'EU residency unlocks EMEA Enterprise.',
           },
         ],
-        footer: 'Halfway through the year, you are <b>tracking ahead</b> of the full-year plan.',
+        footer:
+          'Halfway through the year with $1.47M delivered — the plan is <b>back-loaded</b>, so Q3 and Q4 carry the rest.',
       },
     },
     {
@@ -1019,6 +1020,12 @@ export const bizreview: ConversationSpec = {
           },
           { time: 'May 27', label: 'Crossed $5M ARR', status: 'done' },
           {
+            time: 'Jun 8',
+            label: 'Region outage (APAC)',
+            status: 'failed',
+            detail: '38-minute partial outage; postmortem filed.',
+          },
+          {
             time: 'Jun 12',
             label: 'Usage-based billing beta',
             status: 'progress',
@@ -1035,12 +1042,6 @@ export const bizreview: ConversationSpec = {
             label: 'Series B model review',
             status: 'pending',
             detail: 'Scenarios still in draft.',
-          },
-          {
-            time: 'Jun 8',
-            label: 'Region outage (APAC)',
-            status: 'failed',
-            detail: '38-minute partial outage; postmortem filed.',
           },
         ],
         footer: 'Four shipped, two in flight, one at risk, the Copilot gate needs a call.',

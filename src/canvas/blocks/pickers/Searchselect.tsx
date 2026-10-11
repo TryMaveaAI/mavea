@@ -87,7 +87,7 @@ export function Searchselect({
         {label && <label className="pk-label">{label}</label>}
 
         <div className={`ss-field ${open ? 'open' : ''}`}>
-          <Icon.send className="ss-search-ic" />
+          <Icon.search className="ss-search-ic" />
           <input
             className="ss-input"
             value={open ? query : current ? current.label : ''}

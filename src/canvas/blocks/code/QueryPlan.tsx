@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { QueryPlanProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { withInlineCode } from '../../lib/inlineCode';
 
 type Props = QueryPlanProps & { delay?: number };
 
@@ -47,7 +48,7 @@ export function QueryPlan({
           >
             <div className="qp-node-main">
               <span className="qp-op">{n.op}</span>
-              {n.detail && <span className="qp-detail">{n.detail}</span>}
+              {n.detail && <span className="qp-detail">{withInlineCode(n.detail)}</span>}
             </div>
             <div className="qp-metrics">
               {n.rows != null && (

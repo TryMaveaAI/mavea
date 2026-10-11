@@ -40,11 +40,27 @@ function fewestTokens(amount: number, denoms: number[]): { denom: number; count:
   return out;
 }
 
+// The longest face a token can print: a 38px coin holds ~4 characters of its 10px bold face,
+// a 56px bill ~5 at 12px. A longer label ("Quarter", "Five dollars") broke mid-word on the coin.
+const COIN_FACE_CHARS = 4;
+const BILL_FACE_CHARS = 5;
+
+/** What a token prints on its face: its value. The model's own label is used when it states
+ *  one and fits (that keeps "20p" or "5c" for currencies that are not cents); a name such as
+ *  "Dime" or "Quarter" gives way to the denomination, so every face in the tray reads the same
+ *  way. The label still reads in full in the count line underneath. */
+function tokenFace(denom: number, label: string | undefined, currency: string): string {
+  const max = denom >= BILL_THRESHOLD ? BILL_FACE_CHARS : COIN_FACE_CHARS;
+  if (label && /\d/.test(label) && [...label].length <= max) return label;
+  return denomLabel(denom, currency);
+}
+
 /** One stack of like tokens — coins as overlapping circles, bills as stacked rectangles. */
 function TokenStack({ token, currency }: { token: MoneyToken; currency: string }) {
   const isBill = token.denom >= BILL_THRESHOLD;
   const shown = Math.min(MAX_GLYPHS, Math.max(1, token.count));
   const label = token.label ?? denomLabel(token.denom, currency);
+  const face = tokenFace(token.denom, token.label, currency);
 
   return (
     <div className="lr-mt-stack">
@@ -52,11 +68,13 @@ function TokenStack({ token, currency }: { token: MoneyToken; currency: string }
         {Array.from({ length: shown }, (_, i) =>
           isBill ? (
             <span key={i} className="lr-mt-bill" style={{ ['--i' as string]: i } as CSSProperties}>
-              {label}
+              {/* Only the top token of a stack is face-up; the rest show their edge, and a
+                  half-covered face reads as a broken word. */}
+              {i === 0 ? face : null}
             </span>
           ) : (
             <span key={i} className="lr-mt-coin" style={{ ['--i' as string]: i } as CSSProperties}>
-              {label}
+              {i === 0 ? face : null}
             </span>
           ),
         )}

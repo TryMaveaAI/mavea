@@ -13,7 +13,7 @@ export function Statpair({
   left,
   right,
   connector = '→',
-  ratioLabel = 'ratio',
+  ratioLabel,
   footer,
   delay,
 }: Props) {
@@ -75,7 +75,12 @@ export function Statpair({
         <span className="sp-ratio-v tab-num" data-mark="underline">
           {ratio}
         </span>
-        <span className="sp-ratio-l faint">{ratioLabel}</span>
+        {/* A bare 0.86 says nothing until it says what was divided by what: the authored label is
+            usually a gloss on the result ("daily deficit ≈ 370 kcal"), not a name for it. */}
+        <span className="sp-ratio-l faint">
+          {left.label} / {right.label}
+          {ratioLabel ? ` · ${ratioLabel}` : ''}
+        </span>
       </div>
 
       {footer && (

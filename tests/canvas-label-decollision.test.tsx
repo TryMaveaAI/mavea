@@ -185,15 +185,33 @@ describe('GelLane ladder labels', () => {
   // other, so a label on every tick collides however the ticks are spaced.
   const marks = [1500, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100];
 
-  it('draws every tick line but only the labels that fit', () => {
+  it('fans every label onto its own row when the lane can hold them', () => {
     const { container } = render(
       <GelLane title="Gel" ladder={{ marks, unit: 'bp' }} lanes={[{ label: 'A', bands: [] }]} />,
     );
     expect(container.querySelectorAll('.c2-gel-tick')).toHaveLength(marks.length);
+    const labels = [...container.querySelectorAll('.c2-gel-tick-lbl')];
+    expect(labels).toHaveLength(marks.length);
+    // Each label clears the one above it by a full line, and a moved label keeps a leader.
+    const ys = labels.map((el) => Number(el.getAttribute('y')));
+    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(12.5);
+    expect(container.querySelectorAll('.c2-gel-leader').length).toBeGreaterThan(0);
+  });
+
+  it('thins the labels, not the ticks, when there are more markers than rows', () => {
+    const dense = Array.from({ length: 24 }, (_, i) => 2400 - i * 100);
+    const { container } = render(
+      <GelLane
+        title="Gel"
+        ladder={{ marks: dense, unit: 'bp' }}
+        lanes={[{ label: 'A', bands: [] }]}
+      />,
+    );
+    expect(container.querySelectorAll('.c2-gel-tick')).toHaveLength(dense.length);
     const labels = container.querySelectorAll('.c2-gel-tick-lbl');
     // Some labels are dropped — but never so many that the ladder stops being a scale.
     expect(labels.length).toBeGreaterThan(2);
-    expect(labels.length).toBeLessThan(marks.length);
+    expect(labels.length).toBeLessThan(dense.length);
   });
 
   it('keeps the extremes, which are what bound the range', () => {
@@ -221,9 +239,9 @@ describe('GelLane ladder labels', () => {
 });
 
 describe('WaveDiagram labels', () => {
-  it('separates the labels of waves that end at the same displacement', () => {
-    // A fundamental and its 2nd harmonic both return to equilibrium at the span's end, so both
-    // labels want the identical y.
+  it('names each wave in a legend outside the plot, so no curve can cross a name', () => {
+    // A fundamental and its 2nd harmonic both return to equilibrium at the span's end, which
+    // is where end-of-curve labels used to pile up.
     const { container } = render(
       <WaveDiagram
         title="Standing wave"
@@ -233,25 +251,8 @@ describe('WaveDiagram labels', () => {
         ]}
       />,
     );
-    const labels = ys(container, '.wv-curve-lbl');
-    expect(labels).toHaveLength(2);
-    expect(tightestGap(labels)).toBeGreaterThanOrEqual(11);
-  });
-
-  it('keeps the x-axis unit clear of the curve labels', () => {
-    const { container } = render(
-      <WaveDiagram
-        title="Standing wave"
-        xUnit="distance (m)"
-        waves={[{ label: 'A4 (440 Hz)', amplitude: 1, wavelength: 1, phase: 0 }]}
-      />,
-    );
-    const axis = container.querySelector('.wv-axis-lbl');
-    const curve = container.querySelector('.wv-curve-lbl');
-    expect(axis?.textContent).toBe('distance (m)');
-    // The unit now sits under the tick row; a curve label can never reach that far down.
-    const axisY = Number.parseFloat(axis?.getAttribute('y') ?? 'NaN');
-    const curveY = Number.parseFloat(curve?.getAttribute('y') ?? 'NaN');
-    expect(axisY).toBeGreaterThan(curveY + 11);
+    const items = [...container.querySelectorAll('.wv-legend-item')].map((n) => n.textContent);
+    expect(items).toEqual(['A4 (440 Hz)', '2nd harmonic']);
+    expect(container.querySelector('svg .wv-legend-item')).toBeNull();
   });
 });

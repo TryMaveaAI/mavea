@@ -18,6 +18,7 @@ export function MediaCard({
   icon = 'play',
   iconColor = 'var(--presence)',
   cover,
+  name,
   year,
   runtime,
   rating,
@@ -89,6 +90,7 @@ export function MediaCard({
         </div>
 
         <div className="mc-main">
+          {name && <h3 className="mc-name">{name}</h3>}
           {meta.length > 0 && (
             <div className="mc-meta">
               {meta.map((m, i) => (

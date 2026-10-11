@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { niceStep, ticks } from '../../lib/scale';
 import type { SupplyDemandProps, SDLine } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { clearQuadrant } from './chartMath';
 
 type Props = SupplyDemandProps & { delay?: number };
 
@@ -340,25 +341,41 @@ export function SupplyDemand({
             className="sud-curve"
           />
 
-          {/* curve labels at the right/top end of each line */}
-          <text
-            x={sx((shift?.curve === 'supply' && movedClip ? movedClip : supClip).q2) - 3}
-            y={sy((shift?.curve === 'supply' && movedClip ? movedClip : supClip).p2) - 5}
-            fill={SUPPLY}
-            className="sud-curve-lbl"
-            textAnchor="end"
-          >
-            S{shift?.curve === 'supply' ? '₁' : ''}
-          </text>
-          <text
-            x={sx((shift?.curve === 'demand' && movedClip ? movedClip : demClip).q2) - 3}
-            y={sy((shift?.curve === 'demand' && movedClip ? movedClip : demClip).p2) - 5}
-            fill={DEMAND}
-            className="sud-curve-lbl"
-            textAnchor="end"
-          >
-            D{shift?.curve === 'demand' ? '₁' : ''}
-          </text>
+          {/* curve labels at the right/top end of each line, in the quadrant the line leaves
+              empty there: above-left of a rising line, below-left of a falling one. A fixed
+              above-left offset sat squarely on a falling demand line. */}
+          {(
+            [
+              ['supply', SUPPLY, 'S'],
+              ['demand', DEMAND, 'D'],
+            ] as const
+          ).map(([curve, color, name]) => {
+            const seg =
+              shift?.curve === curve && movedClip
+                ? movedClip
+                : curve === 'supply'
+                  ? supClip
+                  : demClip;
+            const rising = seg.p2 >= seg.p1;
+            const at = clearQuadrant(rising, !rising, 4);
+            // A falling line usually runs out at the quantity axis, where "below" has no room —
+            // walk the anchor back along the line until the label clears the plot's floor.
+            let t = 1;
+            while (t > 0.6 && sy(seg.p1 + (seg.p2 - seg.p1) * t) + at.dy > H - PAD_B - 3) t -= 0.04;
+            return (
+              <text
+                key={curve}
+                x={sx(seg.q1 + (seg.q2 - seg.q1) * t) + at.dx}
+                y={sy(seg.p1 + (seg.p2 - seg.p1) * t) + at.dy}
+                fill={color}
+                className="sud-curve-lbl"
+                textAnchor={at.anchor}
+              >
+                {name}
+                {shift?.curve === curve ? '₁' : ''}
+              </text>
+            );
+          })}
 
           {/* equilibrium: dashed guide lines + point + P-star / Q-star labels */}
           {showEquilibrium && activeEq && activeEq.q > 0 && activeEq.p > 0 && (

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { evaluateBend, isValidBendFormula, formatBendValue } from '../src/lib/bend';
 import { validateLiveResponse, FRONTIER_BLOCK_TYPES } from '../src/engine/liveSchema';
 import { BendStrip } from '../src/canvas/BendStrip';
+import { bendBlock } from '../src/canvas/bendBlock';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
 import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
 import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
@@ -161,5 +162,126 @@ describe('BendStrip', () => {
     expect(container.querySelector('.ba-income-val')).toHaveTextContent('$5,400');
     expect(container.querySelector('.ba-env-amt')).toHaveTextContent('$1,620');
     expect(container.querySelector('.ba-rem-val')).toHaveTextContent('$3,240');
+  });
+});
+
+// Every card follows the slider by identity: a figure equal to the input, or to an output at the
+// authored input, IS that quantity. Anything that cannot be told apart stays as authored.
+describe('bendBlock — the rest of the canvas follows the slider', () => {
+  const bend: BendSpec = {
+    blockId: 'live-8',
+    label: 'Monthly contribution',
+    param: { value: 200, min: 0, max: 1000, step: 10, unit: '$' },
+    outputs: [{ label: 'Total deposited (10 years)', formula: 'x*12*10', unit: '$' }],
+  };
+  const insight = (props: Record<string, unknown>): Block =>
+    ({ id: 'live-2', type: 'insight', num: '01', props: { title: 'Saving', ...props } }) as Block;
+
+  it('moves the input and every output wherever the card states them', () => {
+    const out = bendBlock(
+      insight({ summary: 'Putting <b>$200</b> a month away deposits $24,000 by 2035.' }),
+      bend,
+      300,
+    );
+    expect(out.props).toMatchObject({
+      summary: 'Putting <b>$300</b> a month away deposits $36,000 by 2035.',
+    });
+  });
+
+  it('moves a numeric prop that is the quantity, and keeps the block when nothing matches', () => {
+    const kpi = {
+      id: 'live-3',
+      type: 'kpi',
+      props: {
+        title: 'Plan',
+        kpis: [
+          { label: 'Deposited', value: 24000 },
+          { label: 'Years', value: 10 },
+        ],
+      },
+    } as unknown as Block;
+    expect(bendBlock(kpi, bend, 250).props).toMatchObject({
+      kpis: [{ value: 30000 }, { value: 10 }],
+    });
+    const untouched = insight({ summary: 'Start early; compounding does the rest.' });
+    expect(bendBlock(untouched, bend, 250)).toBe(untouched);
+    expect(bendBlock(insight({ summary: '$200' }), bend, 200).props).toMatchObject({
+      summary: '$200',
+    });
+  });
+
+  it('leaves a figure in another unit, inside markup, or shared by two quantities as authored', () => {
+    expect(
+      bendBlock(insight({ summary: '200 hours, <a href="/p/200">link</a>' }), bend, 300).props,
+    ).toMatchObject({ summary: '200 hours, <a href="/p/200">link</a>' });
+
+    const twin: BendSpec = {
+      ...bend,
+      outputs: [{ label: 'Same', formula: 'x*2-x', unit: '$' }],
+    };
+    // x and 400-x are both 200 at the authored input but part ways once dragged: the card cannot
+    // say which it means, so neither moves it.
+    const ambiguous: BendSpec = {
+      ...bend,
+      outputs: [{ label: 'Other', formula: '400-x', unit: '$' }],
+    };
+    expect(bendBlock(insight({ summary: '$200' }), twin, 300).props).toMatchObject({
+      summary: '$300',
+    });
+    expect(bendBlock(insight({ summary: '$200' }), ambiguous, 300).props).toMatchObject({
+      summary: '$200',
+    });
+  });
+  it('never moves scale, geometry or code that happens to equal the input', () => {
+    const price: BendSpec = {
+      blockId: 'live-1',
+      label: 'Price',
+      param: { value: 100, min: 50, max: 200, step: 5, unit: '$' },
+      outputs: [],
+    };
+    const gauge = {
+      id: 'live-4',
+      type: 'gauge',
+      props: { title: 'Margin', value: 62, max: 100, target: 100 },
+    } as unknown as Block;
+    expect(bendBlock(gauge, price, 150)).toBe(gauge);
+    expect(
+      bendBlock(insight({ summary: 'At $100 a seat, after the $100M round.' }), price, 150).props,
+    ).toMatchObject({ summary: 'At $150 a seat, after the $100M round.' });
+    const code = {
+      id: 'live-5',
+      type: 'svgblock',
+      props: { title: 'Plot', d: 'M100 100 L 200 100', code: 'cost = $100' },
+    } as unknown as Block;
+    expect(bendBlock(code, price, 150)).toBe(code);
+  });
+
+  it('moves a figure that reads like a year when its unit says it is the quantity', () => {
+    const income: BendSpec = {
+      blockId: 'live-1',
+      label: 'Income',
+      param: { value: 2000, min: 1000, max: 5000, step: 100, unit: '$' },
+      outputs: [{ label: 'Needs', formula: 'x*0.5', unit: '$' }],
+    };
+    expect(
+      bendBlock(insight({ summary: 'Income $2,000 in 2026: needs $1,000.' }), income, 3000).props,
+    ).toMatchObject({ summary: 'Income $3,000 in 2026: needs $1,500.' });
+  });
+
+  it('leaves prose alone when the bend names no unit, and a row in another unit alone', () => {
+    const seats: BendSpec = {
+      blockId: 'live-1',
+      label: 'Seats',
+      param: { value: 50, min: 10, max: 100, step: 1 },
+      outputs: [],
+    };
+    const text = insight({ summary: 'Loop range(50) over 50 seats.' });
+    expect(bendBlock(text, seats, 80)).toBe(text);
+    const kpi = {
+      id: 'live-3',
+      type: 'kpi',
+      props: { title: 'Plan', kpis: [{ label: 'Weight', value: 24000, unit: 'kg' }] },
+    } as unknown as Block;
+    expect(bendBlock(kpi, bend, 300)).toBe(kpi);
   });
 });

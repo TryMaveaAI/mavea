@@ -4,6 +4,7 @@ import { Icon } from '../../../icons/icons';
 import { formatPercent } from '../../lib';
 import type { DilutionWaterfallProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useHostWidth } from '../../lib/useBoxSize';
 
 type Props = DilutionWaterfallProps & { delay?: number };
 
@@ -21,7 +22,10 @@ const PAD_T = 10;
 const PAD_B = 34;
 const BAR_TOP = PAD_T;
 const BAR_H = H - PAD_T - PAD_B;
-const COL_PITCH = 110; // px per round at natural size — many rounds grow the SVG, not shrink it
+const COL_PITCH = 110; // px per round at its narrowest — many rounds grow the SVG, not shrink it
+// Widest a round's slot gets when the card has room to spare: past this the ribbons stretch into
+// flat bands and the columns stop reading as one sequence.
+const MAX_PITCH = 240;
 const COL_W_FRAC = 0.5; // column width as a fraction of its pitch, leaving room for the ribbon
 
 // Marimekko's stacked-column technique adapted for a different story: every column here is
@@ -39,6 +43,9 @@ export function DilutionWaterfall({
 }: Props) {
   const Ic = Icon[icon] || Icon.chart;
   const [hot, setHot] = useState<string | null>(null);
+  // The drawing takes the card's width (it used to sit at a fixed 560px in the left half of a
+  // wide card), never below what keeps each column's labels readable — past that it scrolls.
+  const [hostRef, hostW] = useHostWidth<HTMLDivElement>();
 
   const model = useMemo(() => {
     // Stable color + a fixed vertical band per holder, first-seen order across every round —
@@ -55,10 +62,10 @@ export function DilutionWaterfall({
     );
 
     const n = Math.max(1, rounds.length);
-    const width = Math.max(560, n * COL_PITCH);
-    const colW = COL_PITCH * COL_W_FRAC;
-    const colX = (i: number) =>
-      i * COL_PITCH + (COL_PITCH - colW) / 2 + (width - n * COL_PITCH) / 2;
+    const width = Math.max(hostW > 0 ? hostW : 560, n * COL_PITCH);
+    const pitch = Math.min(MAX_PITCH, width / n);
+    const colW = pitch * COL_W_FRAC;
+    const colX = (i: number) => i * pitch + (pitch - colW) / 2 + (width - n * pitch) / 2;
 
     const cols = rounds.map((r, i) => {
       const total = r.holders.reduce((s, h) => s + Math.max(0, h.pct), 0) || 1;
@@ -99,7 +106,7 @@ export function DilutionWaterfall({
     }
 
     return { width, colW, cols, ribbons, order, colorOf };
-  }, [rounds]);
+  }, [rounds, hostW]);
 
   return (
     <div
@@ -110,7 +117,7 @@ export function DilutionWaterfall({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <div className="fin-dw-scroll">
+      <div className="fin-dw-scroll" ref={hostRef}>
         <svg
           viewBox={`0 0 ${model.width} ${H}`}
           width={model.width}

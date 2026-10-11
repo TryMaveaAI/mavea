@@ -3,6 +3,7 @@ import { Icon } from '../../../icons/icons';
 import { BlockEmpty } from '../../lib';
 import type { CardGroup, PlayingCard, PlayingCardsProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { STACK_STEP_X, STACK_STEP_Y, stackBox } from './cardStack';
 
 type Props = PlayingCardsProps & { delay?: number };
 
@@ -57,9 +58,15 @@ function Pip({
   );
 }
 
+// The columns and pip size leave a clear gutter beside the corner index (which spans x 12-42),
+// so a 4 or a 10 never reads as a pip glued to the index.
+const COLS = 54;
+const PIP_S = 44;
+const INDEX_X = 27;
+const INDEX_PIP_S = 30;
+
 // True pip arrangements for the number cards, in centered coordinates. Pips in the lower half
 // are drawn rotated 180° — the same convention as a physical deck.
-const COLS = 55;
 const PIP_LAYOUT: Record<string, [number, number][]> = {
   '2': [
     [0, -100],
@@ -168,10 +175,10 @@ function Card({ card, backId }: { card: PlayingCard; backId: string }) {
 
   const corner = (
     <g className={red ? 'pcd-red' : 'pcd-blk'}>
-      <text x={30} y={30} className="pcd-rank" style={{ fontSize: cornerSize }}>
+      <text x={INDEX_X} y={30} className="pcd-rank" style={{ fontSize: cornerSize }}>
         {rank}
       </text>
-      <Pip x={30} y={78} s={34} suit={suit} />
+      <Pip x={INDEX_X} y={78} s={INDEX_PIP_S} suit={suit} />
     </g>
   );
 
@@ -201,7 +208,7 @@ function Card({ card, backId }: { card: PlayingCard; backId: string }) {
     center = (
       <g className={red ? 'pcd-red' : 'pcd-blk'}>
         {pips.map(([px, py], i) => (
-          <Pip key={i} x={CX + px} y={CY + py * 0.92} s={48} suit={suit} flip={py > 0} />
+          <Pip key={i} x={CX + px} y={CY + py * 0.92} s={PIP_S} suit={suit} flip={py > 0} />
         ))}
       </g>
     );
@@ -217,22 +224,23 @@ function Card({ card, backId }: { card: PlayingCard; backId: string }) {
       <rect x={3} y={3} width={CW - 6} height={CH - 6} rx={18} className="pcd-face" />
       {corner}
       <g transform={`rotate(180 ${CX} ${CY})`} className={red ? 'pcd-red' : 'pcd-blk'}>
-        <text x={30} y={30} className="pcd-rank" style={{ fontSize: cornerSize }}>
+        <text x={INDEX_X} y={30} className="pcd-rank" style={{ fontSize: cornerSize }}>
           {rank}
         </text>
-        <Pip x={30} y={78} s={34} suit={suit} />
+        <Pip x={INDEX_X} y={78} s={INDEX_PIP_S} suit={suit} />
       </g>
       {center}
     </svg>
   );
 }
 
-// Fan geometry: per-card shift (% of the card's own width), rotation, and a card width chosen
-// so the whole spread stays inside the group box — container-relative, no fixed pixel widths.
+// Fan geometry: per-card shift (% of the card's own width), rotation, and the widest a card
+// can be with the whole spread still inside the group box. The shared card width (--pcd-w)
+// caps it from above, so a short hand matches the other groups instead of filling the row.
 function fanPlan(n: number): { widthPct: number; stepPct: number; stepDeg: number } {
   const stepPct = Math.min(58, 320 / Math.max(1, n - 1));
   const spreadFactor = 1 + ((n - 1) * stepPct) / 100;
-  const widthPct = Math.min(24, 94 / spreadFactor);
+  const widthPct = 94 / spreadFactor;
   const stepDeg = Math.min(8, 44 / Math.max(1, n - 1));
   return { widthPct, stepPct, stepDeg };
 }
@@ -261,7 +269,9 @@ function Group({ group, backId }: { group: CardGroup; backId: string }) {
             key={i}
             className="pcd-fancard"
             style={{
-              width: `${widthPct}%`,
+              // The fan's own share keeps a wide spread inside the box; the shared card width
+              // keeps a two-card hand from dwarfing every other group on the table.
+              width: `min(${widthPct}%, var(--pcd-w))`,
               transform: `translateX(${(i - c) * stepPct}%) rotate(${(i - c) * stepDeg}deg) translateY(${Math.abs(i - c) * Math.abs(i - c) * stepDeg * 0.16}px)`,
             }}
           >
@@ -272,14 +282,26 @@ function Group({ group, backId }: { group: CardGroup; backId: string }) {
     );
   } else if (layout === 'stack') {
     const shown = Math.min(n, 7); // deeper stacks read as one pile; the ×N badge keeps the count honest
+    const box = stackBox(shown, CW / CH);
     body = (
       <div className="pcd-stackrow">
-        <div className="pcd-stack">
+        <div
+          className="pcd-stack"
+          style={
+            {
+              ['--pcd-stack-scale' as string]: box.widthScale,
+              aspectRatio: box.aspect,
+            } as CSSProperties
+          }
+        >
           {cards.slice(0, shown).map((card, i) => (
             <div
               key={i}
               className="pcd-stackcard"
-              style={{ transform: `translate(${i * 4}%, ${i * 3}%)` }}
+              style={{
+                width: `${box.cardPct}%`,
+                transform: `translate(${i * STACK_STEP_X * 100}%, ${i * STACK_STEP_Y * 100}%)`,
+              }}
             >
               <Card card={card} backId={backId} />
             </div>
