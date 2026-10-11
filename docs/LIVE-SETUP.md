@@ -50,10 +50,13 @@ low-cost tier — the model field accepts any id, so stronger models are always 
 
 | Provider  | Default model           | Notes                                                             |
 | --------- | ----------------------- | ----------------------------------------------------------------- |
-| Anthropic | `claude-haiku-4-5`      | Fast, low-cost default; the only suggestion — type any other id   |
-| Gemini    | `gemini-3.1-flash-lite` | Fast, low-cost default; the only suggestion — type any other id   |
-| OpenAI    | `gpt-5.6-luna`          | Cheapest tier OpenAI sells, with a 1M window; the only suggestion |
+| Anthropic | `claude-haiku-5-5`      | Fast, low-cost default; the only suggestion — type any other id   |
+| Gemini    | `gemini-3.5-flash-lite` | Fast, low-cost default; the only suggestion — type any other id   |
+| OpenAI    | `gpt-6-luna`            | Cheapest tier OpenAI sells, with a 1M window; the only suggestion |
 | Grok      | `grok-4.3`              | Fast, low-cost default; the only suggestion — type any other id   |
+
+A saved model that was an earlier default moves to the current one on the next load; a model
+you typed yourself is never changed.
 
 Each provider tile in the Connect step links to where you get a key, and the readiness strip
 verifies the key + model before you commit.

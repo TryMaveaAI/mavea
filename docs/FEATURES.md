@@ -88,7 +88,8 @@ index, or open the **Explore** menu in Live's top bar.
   estimate of how often it will reach for your key (never a price — that is your provider's to
   state).
 - 🔄 **Bendable answers** — a calculation answer can carry its model-authored formula; drag the one
-  number worth dragging and the outputs recompute in front of you, auditable.
+  number worth dragging and the outputs recompute in front of you, auditable — on the cards too,
+  wherever a card states that same quantity in its unit.
 - 🌍 **View any "why" as a living answer** — an answer about causes opens into the causal web behind
   it. Press **Walk me through it** and the camera flies from cause to cause while Mavéa narrates
   each one, drawing the link it is talking about; or read the same web five ways — what led to what,

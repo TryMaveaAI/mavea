@@ -4,6 +4,43 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-10-10
+
+### Added
+
+- **A figure can show where it came from.** When a sentence quoted from a grounded answer's sources states a KPI or ring figure — "$96.2B" as readily as "36%" — the figure becomes a button that opens that sentence and its page. A figure nothing grounds stays plain text and makes no claim.
+- **Answers are playable.** Dragging a what-if slider now recomputes every figure on the cards that is the slider's quantity, using the formula the slider already shows — not only the readouts beneath it. Figures that cannot be told apart, or that are in another unit, stay as written.
+- **Media cards name the work they recommend**, separately from the line that frames it.
+
+### Changed
+
+- **Live reads as one living answer.** The room takes its colour from Mavéa's mood, the ask bar is a single lantern-lit row, the start page is quieter, and the board sets each card as a plate with the card being discussed lit in the room's colour.
+- **New default models:** Gemini 3.5 Flash-Lite, Claude Haiku 5.5, GPT-6 Luna and Grok 4.3. A setup that was still on a previous default moves to the new one automatically; a model you typed yourself is left alone.
+- **Charts draw round-numbered, labelled axes**, and figures lay out at the width of the card they are in, so their labels stay readable from a phone to an ultrawide display.
+- **Phones and tablets:** header controls wrap and turn icon-only at narrow widths, the composer folds into an ask row over a toolbar, touch targets are at least 44px, and the microphone mode moved into the dock's settings.
+
+### Fixed
+
+- Claude Haiku 5.5 no longer fails its first turn on a sampling setting it does not accept, and a model that refuses disabled thinking is remembered instead of failing every turn.
+- A grounded answer on a Claude key lists the pages its web search used; it used to arrive with no sources at all. Every grounded turn is also told to search before answering, so a question about the latest quarter is not answered from memory with an old one.
+- A page a search tool returns with a tracking tag (`?utm_source=…`) is listed once, with the sentence the answer quoted from it, instead of twice.
+- When a provider refuses a model the account's project is not allowed to use, the error names the model and says where to allow it, instead of suggesting the key may be wrong.
+- A figure a few pixels too wide for its card now bleeds into the card's padding instead of turning the whole card into a sideways scroll box.
+- The card being discussed is no longer clipped at its right edge.
+- The dock and top bar fit the space they are given when the session list is open, so the ask field and send button no longer run off the end.
+- Gallery components were checked at phone, laptop, desktop, wide and ultrawide sizes in both themes; labels that were blown up, cut off or overlapping were fixed at their layout, including connectors that run edge to edge and route around the nodes they do not join, circuit wires that never cross a part, timeline and five-forces captions that wrap instead of being cut, journey-map moods centred under their stages, playing-card pips clearing the corner index, sports-pitch names that stay readable on a phone card instead of the pitch panning, and space diagrams keeping their colours.
+- Across the chart, finance and stats families, axis and value labels no longer collide or run off the card: candlestick periods sit under their own candles, rotated labels stay inside their chart, a waffle legend reads as a legend, and an ROC curve opens on its best operating point (Youden's J) rather than its first.
+- On a phone, a chart that has to pan now pans only its drawing; its title and summary stay put.
+- A timeline with several events on one date staggers their captions into rows instead of drawing some of them zero-wide.
+- A network on a grid bends an edge round a node it does not join, and a large circuit diagram routes its wires in milliseconds instead of seconds.
+- An etymology tree wraps a long gloss inside its box instead of cutting it, and fits a phone's card instead of running past its edge.
+- A figure that sits beside a legend or prose pans on its own when it is widened for legibility, so the market-size, ridge, Q–Q, radar, prayer-time, running-log, weld, protocol-stack and anatomy cards no longer drag their text sideways with the drawing. A widened figure also keeps its authored size cap instead of filling its column, and a spectrum's axis title is no longer cut at the bottom.
+- An H–R diagram names its regions clear of the stars clustered there, a food web bows a link round an organism standing in its way, and a control chart's and a candlestick chart's axes are legible in the dark theme.
+- A figure widened for legibility inside a clipping or size-capped stage is no longer cut at its edge (sequence, five-forces and cast-map diagrams), a schematic's top callout keeps its full height, the three-statement links no longer pan all three statements to save one numeral, and the live app preview lays its navigation out as tabs on a phone.
+- A table or list that fits its card no longer keeps a "scroll for more" fade over its last row: the cue was judged while the rows were still rising into place and never judged again, so a three-row rubric read as cut off. Scroll cues now follow the region's current overflow, and a region that stops scrolling stops being a focus stop.
+- Grids whose cells name no column, and heat grids with no levels, show an honest empty state instead of blank rows.
+- Two trend charts on one board no longer share a gradient.
+
 ## [2.11.6] - 2026-10-07
 
 ### Security

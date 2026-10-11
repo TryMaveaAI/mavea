@@ -180,3 +180,7 @@ enforced, not remembered:
   significant changes get a second review plus an architecture review.
 - **AI-assisted work** — make multiple independent passes (a code-review pass and an
   architecture + security pass) and self-review the diff against this list **before** opening a PR.
+
+### Live design studio
+
+In development, `#/studiolab` opens the interactive Live redesign concept. It uses two authored examples (retention and a product launch), with linked scenario controls, representations, evidence, and a downloadable text snapshot. It calls no models and captures no microphone audio. The route is behind the development boundary and spending barrier; it is excluded from production builds. The connected Live experience remains at `#/live`.
