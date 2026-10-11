@@ -260,6 +260,13 @@ const MEASURE_SCRIPT = (
   const modal = Array.from(document.querySelectorAll('[aria-modal="true"]'))
     .filter((d) => d.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
     .at(-1) ?? null;
+  // A curated replay holds its surface \`inert\` while it drives it (useScriptedLock), and hit
+  // testing skips an inert node — so under a replay the Lens's scrim covered nothing, and the
+  // board's controls behind it were judged as if they sat beside the sheet's toolbar. The lock
+  // stops the visitor's input, not what they see: lift it while the page is judged, and put it
+  // back before the modal check, which reads it.
+  const locked = Array.from(document.querySelectorAll('[inert]'));
+  for (const el of locked) el.inert = false;
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
@@ -618,6 +625,8 @@ const MEASURE_SCRIPT = (
       if ((dx === 0 || dy === 0) && gap > 0 && gap < ${TAP_GAP}) crowded.push(Math.round(gap) + 'px "' + boxes[i].label + '" ↔ "' + boxes[j].label + '"');
     }
   }
+
+  for (const el of locked) el.inert = true;
 
   // Every control of an open modal has to be reachable: the page behind it is inert, so a control
   // the modal cannot show is a control with no way to it — a close button off a phone's edge is a

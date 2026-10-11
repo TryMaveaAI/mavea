@@ -115,6 +115,22 @@ describe('the geometry sweep', () => {
     expect(SURFACES.some((s) => s.click?.some((label) => /^start/i.test(label)))).toBe(true);
   });
 
+  it('judges a replay’s page as the visitor sees it, with the scripted lock lifted', () => {
+    // The same lock hides an open sheet's scrim from hit-testing, so with it in place the board
+    // behind the Lens read as uncovered and its card pills were measured against the sheet's
+    // toolbar. The lift has to come before the judging and be undone before the modal check,
+    // which reads `[inert]` to tell what the sheet itself set aside.
+    const audit = read('scripts/surface-audit.mts');
+    const lift = audit.indexOf('for (const el of locked) el.inert = false;');
+    const hitTest = audit.indexOf('document.elementsFromPoint(p[0], p[1])');
+    const restore = audit.indexOf('for (const el of locked) el.inert = true;');
+    const modalCheck = audit.indexOf('el.closest(\'[inert], [aria-hidden="true"]\')');
+    expect(lift).toBeGreaterThan(-1);
+    expect(lift).toBeLessThan(hitTest);
+    expect(hitTest).toBeLessThan(restore);
+    expect(restore).toBeLessThan(modalCheck);
+  });
+
   it('routes a changed file to the surfaces that own it, and a shared file to all of them', () => {
     expect(surfacesTouchedBy(['src/live/prism/PrismOverlay.tsx'])).toEqual(
       new Set(['prism', 'synthesis', 'synthesis-map', 'synlab', 'pageviewlab']),
