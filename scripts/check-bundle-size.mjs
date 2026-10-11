@@ -222,7 +222,14 @@ const ROUTE_BUDGETS = [
     // 364 (was 363): measured at 363.0 kB once the Lens kept a chosen magnification while the
     // reader paged between cards and let a zoom step land on 100%. It is the stage's own state in
     // TopicCanvas, which the board mounts, so it cannot move to a lazy chunk.
-    gzip: 364,
+    // 367 (was 364): measured at 366.8 kB once the Live chrome took the four living-answer sheets:
+    // the room's mood colour, the lantern ask bar, the quiet Go hub and the stage (the board's
+    // plates, opening and floor light). They restyle the board's own shell and the wizard it opens
+    // on, injected after every sheet they override, so they ride LiveApp's chunk and nothing in
+    // them can defer.
+    // 368 (was 367): measured at 367.4. The SVG legibility guard's padding bleed (see the course
+    // lesson's 170) and the stored-former-default upgrade in useLiveConfig, both on the board path.
+    gzip: 368,
     files: 105,
   },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
@@ -307,8 +314,15 @@ const ROUTE_BUDGETS = [
     // 169 (was 168): measured at 168.1. The Gemini adapter reads the quota a 429 names from its
     // structured details, so a per-minute limit is retried and worded as one instead of reading as a
     // spent day — ~200 bytes in the provider closure every canvas route shares.
-    gzip: 169,
-    files: 59,
+    // 170 (was 169): measured at 169.1. The SVG legibility guard now lets a figure that overflows
+    // by a few px bleed into its card's padding instead of turning the whole card into a sideways
+    // pan box; it runs in TopicCanvas, which the lesson mounts.
+    // 176 · 60 files (was 170 · 59): measured at 175.5 kB over 60 requests. The canvas a lesson
+    // mounts now carries figure receipts, the playable-answer recompute (bendBlock), round-numbered
+    // chart axes and the honest empty state for grids that resolve no cells — each part of
+    // TopicCanvas or the core blocks it renders, so none of it can move behind a lazy boundary.
+    gzip: 176,
+    files: 60,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
   {

@@ -29,6 +29,16 @@ const LIVE = ['src/live/', 'src/canvas/', 'src/tour/', 'src/demo/'];
 /** @type {Surface[]} */
 export const SURFACES = [
   {
+    key: 'studiolab',
+    label: 'Live design studio',
+    route: '#/studiolab',
+    hash: '#/studiolab',
+    ready: '.studio-app',
+    reading: '.studio-main',
+    owns: ['src/live/studio/'],
+    lab: true,
+  },
+  {
     key: 'landing',
     label: 'Landing',
     route: '',

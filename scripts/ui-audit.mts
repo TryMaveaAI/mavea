@@ -41,6 +41,21 @@ interface TinyType {
   text: string;
   size: string;
 }
+interface Bloated extends TinyType {
+  scale: string;
+}
+/** A legibility pan region that also carries text: the guard widened a figure and the box it had to
+ *  make scroll holds the card's prose too, so the eyebrow and the summary slide away with it. */
+interface PannedText {
+  block: string;
+  host: string;
+  carries: string;
+}
+interface FalseCue {
+  block: string;
+  host: string;
+  axis: string;
+}
 interface Truncation {
   type: string;
   kind: 'ellipsis' | 'clamp';
@@ -56,6 +71,10 @@ interface Finding {
   overlaps: Collision[];
   truncated: Truncation[];
   tiny: TinyType[];
+  bloated: Bloated[];
+  cut: TinyType[];
+  panned: PannedText[];
+  falseCues: FalseCue[];
   scanned: number;
 }
 
@@ -92,6 +111,10 @@ function readFlag(name: string, fallback: string): string {
 const COLLIDE_SCRIPT = `(() => {
   const overlaps = [];
   const tiny = [];
+  const bloated = [];
+  const cut = [];
+  const panned = [];
+  const falseCues = [];
 
   for (const card of Array.from(document.querySelectorAll('.vlib-tile'))) {
     const block = ((card.querySelector('.vlib-type') || {}).textContent || '?').trim();
@@ -162,6 +185,27 @@ const COLLIDE_SCRIPT = `(() => {
       // Below ~9px is not reading, it is squinting — flag it wherever it turns up.
       if (size > 0 && size < 9)
         tiny.push({ block: block, text: t.slice(0, 30), size: size.toFixed(1) + 'px' });
+      // The other half of the same conversion: a chart drawn in a small fixed viewBox and stretched
+      // to a wide card turns its 10px labels into display type (a season calendar's row names at
+      // 25-50px, cut off at the edge). A label is label-sized type the drawing BLEW UP, so judge the
+      // scale and the authored size together — a numeral authored large in a 1:1 drawing is design.
+      const authored = parseFloat(cs.fontSize);
+      if (ctm && scale > 1.6 && size > 18 && authored <= 14)
+        bloated.push({ block: block, text: t.slice(0, 30), size: size.toFixed(1) + 'px', scale: scale.toFixed(2) });
+      // SVG text has no ellipsis: a label that runs past the drawing's own edge is simply sliced
+      // off by the viewport, and no overflow check sees it because the SVG box itself fits.
+      const host = el.ownerSVGElement;
+      if (host) {
+        let outer = host;
+        while (outer.ownerSVGElement) outer = outer.ownerSVGElement;
+        if (getComputedStyle(outer).overflow !== 'visible') {
+          const sr = outer.getBoundingClientRect();
+          const gr = el.getBoundingClientRect();
+          const over = Math.max(sr.left - gr.left, gr.right - sr.right, sr.top - gr.top, gr.bottom - sr.bottom);
+          if (gr.width > 0 && over > 2)
+            cut.push({ block: block, text: t.slice(0, 30), size: Math.round(over) + 'px' });
+        }
+      }
 
       // Measure the TEXT ITSELF, line by line, not the element's bounding box. An inline run that
       // wraps reports one union rect spanning every line it touches — so two highlighted phrases in
@@ -243,11 +287,55 @@ const COLLIDE_SCRIPT = `(() => {
     }
   }
   const dedup = (xs) => [...new Map(xs.map((x) => [JSON.stringify(x), x])).values()];
-  return { overlaps: dedup(overlaps), tiny: dedup(tiny) };
+  // A figure's pan region must hold the figure alone. Text beside it in the same scroller slides
+  // off the card as the reader pans, and on a phone that is the card's title and its prose.
+  for (const host of Array.from(document.querySelectorAll('.vlib-tile .canvas-svg-scroll'))) {
+    if (host.scrollWidth <= host.clientWidth + 1) continue;
+    const carries = Array.from(host.children).filter(
+      (c) => c.tagName.toLowerCase() !== 'svg' && (c.textContent || '').trim().length > 0,
+    );
+    if (!carries.length) continue;
+    const tile = host.closest('.vlib-tile');
+    const block = ((tile && tile.querySelector('.vlib-type')) || {}).textContent || '?';
+    panned.push({
+      block: block.trim(),
+      host: String(host.className).split(' ')[0],
+      carries: carries.map((c) => String(c.className || c.tagName).split(' ')[0]).join(', '),
+    });
+  }
+  // A scroll cue fades the edge it says there is more past. On a region that no longer overflows
+  // that axis it fades real content instead: a rubric measured while its rows rose into place kept
+  // a fade over a last row that was never cut.
+  for (const host of Array.from(document.querySelectorAll('.vlib-tile .canvas-hscroll, .vlib-tile .canvas-vscroll'))) {
+    const axes = [];
+    if (host.classList.contains('canvas-hscroll') && host.scrollWidth <= host.clientWidth + 1) axes.push('x');
+    if (host.classList.contains('canvas-vscroll') && host.scrollHeight <= host.clientHeight + 1) axes.push('y');
+    if (!axes.length) continue;
+    const tile = host.closest('.vlib-tile');
+    const block = ((tile && tile.querySelector('.vlib-type')) || {}).textContent || '?';
+    falseCues.push({ block: block.trim(), host: String(host.className).split(' ')[0], axis: axes.join('+') });
+  }
+  return {
+    overlaps: dedup(overlaps),
+    tiny: dedup(tiny),
+    bloated: dedup(bloated),
+    cut: dedup(cut),
+    panned: dedup(panned),
+    falseCues: dedup(falseCues),
+  };
 })()`;
 
-async function collide(page: Page): Promise<{ overlaps: Collision[]; tiny: TinyType[] }> {
-  return page.evaluate(COLLIDE_SCRIPT) as Promise<{ overlaps: Collision[]; tiny: TinyType[] }>;
+interface Collided {
+  overlaps: Collision[];
+  tiny: TinyType[];
+  bloated: Bloated[];
+  cut: TinyType[];
+  panned: PannedText[];
+  falseCues: FalseCue[];
+}
+
+async function collide(page: Page): Promise<Collided> {
+  return page.evaluate(COLLIDE_SCRIPT) as Promise<Collided>;
 }
 
 const ALL_TEMPLATES = ['default', 'paper', 'daylight', 'ink', 'console', 'marquee'] as const;
@@ -521,6 +609,10 @@ async function main(): Promise<void> {
             overlaps: [],
             truncated: [],
             tiny: [],
+            bloated: [],
+            cut: [],
+            panned: [],
+            falseCues: [],
           };
 
           // Audit one renderer family at a time. Mounting 625 TopicCanvas trees together made the
@@ -619,20 +711,28 @@ async function main(): Promise<void> {
             const truncation = (await page.evaluate('window.__truncationAudit()')) as {
               truncations: Truncation[];
             };
-            const { overlaps, tiny } = await collide(page);
+            const { overlaps, tiny, bloated, cut, panned, falseCues } = await collide(page);
             aggregate.scanned += report.scanned;
             aggregate.clipped.push(...report.clip);
             aggregate.scrolled.push(...report.scroll);
             aggregate.overlaps.push(...overlaps);
             aggregate.truncated.push(...truncation.truncations);
             aggregate.tiny.push(...tiny);
+            aggregate.bloated.push(...bloated);
+            aggregate.cut.push(...cut);
+            aggregate.panned.push(...panned);
+            aggregate.falseCues.push(...falseCues);
             if (families.length > 1) {
               const familyIssues =
                 report.clip.length +
                 report.scroll.length +
                 overlaps.length +
                 truncation.truncations.length +
-                tiny.length;
+                tiny.length +
+                bloated.length +
+                cut.length +
+                panned.length +
+                falseCues.length;
               console.log(
                 `  ${family.padEnd(18)} ${String(report.scanned).padStart(3)} tiles · ${familyIssues} issue${familyIssues === 1 ? '' : 's'}`,
               );
@@ -651,12 +751,18 @@ async function main(): Promise<void> {
             aggregate.scrolled.length +
             aggregate.overlaps.length +
             aggregate.truncated.length +
-            aggregate.tiny.length;
+            aggregate.tiny.length +
+            aggregate.bloated.length +
+            aggregate.cut.length +
+            aggregate.panned.length +
+            aggregate.falseCues.length;
           console.log(
             `${theme.padEnd(5)} ${variant.padEnd(7)} ${String(width).padStart(4)}px — ${aggregate.scanned} tiles · ` +
               `${aggregate.clipped.length} clipped · ${aggregate.scrolled.length} scrolled · ` +
               `${aggregate.overlaps.length} overlapping · ${aggregate.truncated.length} truncated · ` +
-              `${aggregate.tiny.length} illegible` +
+              `${aggregate.tiny.length} illegible · ${aggregate.bloated.length} blown up · ` +
+              `${aggregate.cut.length} cut off · ${aggregate.panned.length} panning text · ` +
+              `${aggregate.falseCues.length} false cues` +
               (bad === 0 ? '  ✓' : ''),
           );
           await ctx.close();
@@ -673,7 +779,11 @@ async function main(): Promise<void> {
       f.scrolled.length ||
       f.overlaps.length ||
       f.truncated.length ||
-      f.tiny.length,
+      f.tiny.length ||
+      f.bloated.length ||
+      f.cut.length ||
+      f.panned.length ||
+      f.falseCues.length,
   );
 
   // There are no accepted responsive exceptions. A report that says “clean” means every painted
@@ -695,6 +805,15 @@ async function main(): Promise<void> {
     for (const t of f.truncated)
       console.log(`  TRUNCATED  ${t.type}: ${t.kind} ${t.el} "${t.text}"`);
     for (const t of f.tiny) console.log(`  ILLEGIBLE  ${t.block}: "${t.text}" @ ${t.size}`);
+    for (const t of f.bloated)
+      console.log(`  BLOWN UP   ${t.block}: "${t.text}" @ ${t.size} (drawing ×${t.scale})`);
+    for (const t of f.cut) console.log(`  CUT OFF    ${t.block}: "${t.text}" by ${t.size}`);
+    for (const t of f.panned)
+      console.log(`  PANS TEXT  ${t.block}: ${t.host} scrolls ${t.carries} with its figure`);
+    for (const t of f.falseCues)
+      console.log(
+        `  FALSE CUE  ${t.block}: ${t.host} fades its ${t.axis} edge with nothing past it`,
+      );
   }
   process.exitCode = 1;
 }
