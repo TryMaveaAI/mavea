@@ -40,6 +40,7 @@ import {
 } from './http';
 import { openaiResponsesUserContent } from './parts';
 import {
+  isConfigurableGrokModel,
   isReasoningModel,
   isMinimalGlimpse,
   inBandErrorMessage,
@@ -64,13 +65,6 @@ function supportsExplicitPromptCaching(model: string): boolean {
   const major = Number(match[1]);
   const minor = Number(match[2] ?? 0);
   return major > 5 || (major === 5 && minor >= 6);
-}
-
-/** xAI's current text models expose Responses-style reasoning controls even though their ids do
- *  not look like OpenAI reasoning-model ids. Grok 4.3 can disable thought; 4.5/4.6 bottom out at
- *  low. Unknown/free-text Grok ids retain their previous request shape rather than risking a 400. */
-function isConfigurableGrokModel(provider: string, model: string): boolean {
-  return provider === 'grok' && /^grok-4\.(?:3|5|6)(?:[-.]|$)/i.test(model);
 }
 
 /** Pull the real reason out of a non-200 response body so a 400 ("Unsupported parameter" etc.)
@@ -498,6 +492,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
               input: num(u.input_tokens),
               output: num(u.output_tokens),
               cachedInput: num(obj(u.input_tokens_details).cached_tokens),
+              thinking: num(obj(u.output_tokens_details).reasoning_tokens),
             };
           }
           return;

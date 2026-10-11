@@ -368,7 +368,9 @@
 .pen-toggle-pill.on {
   background: color-mix(in oklab, var(--ink-gesture) 18%, transparent);
   border-color: color-mix(in oklab, var(--ink-gesture) 42%, transparent);
-  color: var(--ink-gesture);
+  /* The bare accent reads ~3:1 on its own tint in the light theme; leaning it toward the text ink
+     keeps the hue and clears 4.5:1 in both. */
+  color: color-mix(in oklab, var(--ink-gesture) 70%, var(--text-primary));
 }
 
 .pen-toggle-pill.off {

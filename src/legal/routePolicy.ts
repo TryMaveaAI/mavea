@@ -3,6 +3,7 @@ import { peekDemoPersona } from '../demo/demoEntry';
 import { peekTourMode } from '../tour/tourEntry';
 
 const DEV_ONLY_PREFIXES = [
+  '#/studiolab',
   '#/reel',
   '#/slidelab',
   '#/exportlab',
@@ -32,6 +33,7 @@ export function isLegalGateBypassed(hash: string): boolean {
 
 /** Baked examples are read-only: no model path may spend, even when a key is configured. */
 export function isNoSpendRoute(hash: string): boolean {
+  if (import.meta.env.DEV && hash.startsWith('#/studiolab')) return true;
   if (/^#\/(?:deepzoom|synthesis)[?&].*\bdemo=1(?:&|$)/.test(hash)) return true;
   if (!hash.startsWith('#/live')) return false;
   if (peekTourMode()) return true;

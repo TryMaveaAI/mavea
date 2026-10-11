@@ -58,6 +58,30 @@ describe('parseAmount', () => {
     expect(parseAmount('36%')).toMatchObject({ value: 36, kind: 'pct' });
   });
 
+  it('reads the scales a money figure is actually printed in', () => {
+    // A quarter's revenue is "$96.2B", never "$96,200,000,000": without billions every large
+    // money figure on a card read as no figure at all.
+    expect(parseAmount('$96.2B')?.value).toBe(96_200_000_000);
+    expect(parseAmount('$96.2 billion')?.value).toBe(96_200_000_000);
+    expect(parseAmount('€2bn')?.value).toBe(2_000_000_000);
+    expect(parseAmount('$1.4T')?.value).toBe(1_400_000_000_000);
+    expect(parseAmount('3.5 million')?.value).toBe(3_500_000);
+    expect(parseAmount('12 thousand')?.value).toBe(12_000);
+    // Headlines capitalise the scale.
+    expect(parseAmount('$96.2 Billion')?.value).toBe(96_200_000_000);
+    expect(parseAmount('€2BN')?.value).toBe(2_000_000_000);
+    expect(parseAmount('3.5 Million')?.value).toBe(3_500_000);
+    // A lower-case t is tonnes as often as trillions.
+    expect(parseAmount('5t')).toBeNull();
+  });
+
+  it('scales a figure exactly, not by a float multiply', () => {
+    // 4.1 * 1e9 is 4099999999.9999995; an exact compare then refused honest receipts.
+    expect(parseAmount('$4.1B')?.value).toBe(4_100_000_000);
+    expect(parseAmount('$8,200M')?.value).toBe(8_200_000_000);
+    expect(parseAmount('-16.4k')?.value).toBe(-16_400);
+  });
+
   it('rejects ranges and qualitative strings (strict on purpose)', () => {
     expect(parseAmount('$1,800–$2,000')).toBeNull();
     expect(parseAmount('about half')).toBeNull();

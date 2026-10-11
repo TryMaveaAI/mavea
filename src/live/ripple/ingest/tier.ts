@@ -70,12 +70,12 @@ const FRONTIER_FAST: TierPlan = {
   thinkingLevel: 'minimal',
 };
 
-/** GPT-5 spans both ends of the price list: the bare family id and the heavyweight tiers are the
- *  slow, expensive ones, while nano, luna and mini are the cheapest models OpenAI sells. Match the
- *  expensive names positively, so a new light tier lands in the fast bucket rather than buying deep
- *  thinking on the cheapest model in the catalog — the trade is that a new heavyweight must be
- *  named here or it reads as fast. */
-const GPT5_DEEP = /\bgpt-5(?:\.\d+)?(?:-(?:sol|terra|pro))?(?:-\d{4}-\d{2}-\d{2})?(?![\w.-])/;
+/** GPT-5 and GPT-6 span both ends of the price list: the bare family id and the heavyweight tiers
+ *  are the slow, expensive ones, while nano, luna and mini are the cheapest models OpenAI sells.
+ *  Match the expensive names positively, so a new light tier lands in the fast bucket rather than
+ *  buying deep thinking on the cheapest model in the catalog — the trade is that a new heavyweight
+ *  must be named here or it reads as fast. */
+const GPT_DEEP = /\bgpt-[56](?:\.\d+)?(?:-(?:sol|terra|pro))?(?:-\d{4}-\d{2}-\d{2})?(?![\w.-])/;
 
 const isLocalUrl = (u?: string): boolean =>
   !!u && /(localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal|:11434)/i.test(u);
@@ -91,7 +91,7 @@ export function classifyTier(cfg: ModelConfig): RippleTier {
   // Deep reasoning: the big, slower, pricier models — full read, but courses stay lazy.
   if (
     /\bopus\b/.test(id) ||
-    GPT5_DEEP.test(id) ||
+    GPT_DEEP.test(id) ||
     /(^|[^a-z])o[1-9](-|\b)/.test(id) || // o1/o3/… reasoning series
     /gemini-[0-9.]*-?pro/.test(id) ||
     (/\bsonnet\b/.test(id) && !/haiku/.test(id))

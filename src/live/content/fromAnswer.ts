@@ -13,10 +13,8 @@
 // has less to work with, which is the truth about an ordinary answer rather than a shortcoming of the
 // reading.
 //
-// STATUS: this producer is built and tested; no surface renders from it yet. Putting an ordinary
-// answer's figures on screen through <ProvValue> means changing the core canvas's numeric blocks, and
-// that is a deliberate change of its own rather than the tail of this one. What exists here is the
-// half that has to be right first — the reading, and the grounding of what it read.
+// Read by the evidence drawer, the Study's trust voice, and the canvas itself: a KPI or ring figure
+// this grounds becomes a control that opens its sentence (content/figureIndex, trust/FigureReceipts).
 //
 // Deliberately partial: the four numeric core shapes — chart, breakdown, kpi, ring. A block whose
 // numbers this cannot read yields no facts and no entities, which leaves the canvas exactly as it is
@@ -26,6 +24,7 @@ import type { Block, ConversationSpec } from '../../data/conversation';
 import { makeVerbatimGrounder } from '../ground/verbatim';
 import { figureInQuote, parseAmount } from '../ground/number';
 import { hostOf } from '../ground/citation';
+import { safeHttpUrl } from '../../lib/sourceHost';
 import type { Receipt } from '../ground/types';
 import { buildRegistry } from '../trust';
 import type { UsedInSource, WorldValue } from '../trust';
@@ -149,7 +148,13 @@ export function answerToContent(
     .split(/(?<=[.!?])\s+|\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  const host = spec.sources?.[0]?.url ? hostOf(spec.sources[0].url) : undefined;
+  // A quote is filed under the source whose own excerpt contains it, never under the answer's
+  // first link: a receipt that names the wrong page is worse than one that names none.
+  const sourceOf = (quote: string) => {
+    const src = spec.sources?.find((s) => s.snippet?.includes(quote));
+    const url = src ? safeHttpUrl(src.url) : null;
+    return url ? { url, host: hostOf(url) } : {};
+  };
 
   const entities: Entity[] = [];
   const facts: Fact[] = [];
@@ -172,7 +177,7 @@ export function answerToContent(
       // formatter, so "$30.0 billion" has to be able to ground a stored 30 (see figureInQuote).
       const quote = sentences.find((s) => figureInQuote(reading.value, s) && grounds(s));
       const receipt: Receipt | undefined =
-        quote === undefined ? undefined : { quote, ...(host !== undefined ? { host } : {}) };
+        quote === undefined ? undefined : { quote, ...sourceOf(quote) };
       const value = trustValue(
         id,
         reading.label,

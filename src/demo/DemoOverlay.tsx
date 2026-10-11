@@ -26,6 +26,7 @@ export function DemoOverlay({
   member,
   onExit,
   covered = false,
+  takeover = false,
 }: {
   driver: DemoDriver;
   member: DemoCastMember;
@@ -35,6 +36,10 @@ export function DemoOverlay({
    *  z-index 400 — above every one of them — so its banner covered their titles and its transport
    *  took clicks meant for them. The replay keeps running; only its frame steps aside. */
   covered?: boolean;
+  /** A takeover (the canvas, the world) holds the screen with its own header. The banner sat on
+   *  that header and its zoom controls, so it steps aside; the beat caption and the transport
+   *  stay, since the replay is still narrating. */
+  takeover?: boolean;
 }): ReactElement | null {
   // The start and end cards are the replay's only modal moments — each sits on the .demox-intro
   // scrim, so keyboard focus has to move into the card and stay there while it's up (otherwise Tab
@@ -243,7 +248,12 @@ export function DemoOverlay({
   }
 
   return (
-    <div className="demox" data-covered={covered ? '' : undefined} aria-live="polite">
+    <div
+      className="demox"
+      data-covered={covered ? '' : undefined}
+      data-takeover={takeover ? '' : undefined}
+      aria-live="polite"
+    >
       {/* What this replay shows (the fictional persona is supporting detail) — top-left. */}
       <div className="demox-banner" style={accentStyle} ref={attachBanner}>
         <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>

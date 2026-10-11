@@ -46,7 +46,7 @@ import {
 // The leaf, not './providers' — the adapter registry is mocked wholesale in tests, and this only
 // needs the error class the spend policy throws.
 import { ProviderGenerationBlockedError } from './providers/spendPolicy';
-import { isReasoningModel } from './providers/openaiCompatible';
+import { isConfigurableGrokModel, isReasoningModel } from './providers/openaiCompatible';
 import { currentDateTimeLine } from './ground/now';
 import { semanticFit } from './semantic';
 import { speedTierFor, recordTurnSpeed, recordTurnStall, type SpeedTier } from './speed';
@@ -110,6 +110,7 @@ import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
 import type { Representation } from '../canvas/spatial/morph/types';
 import { autoFix, dropUndrawable, recoverInstruction } from './verify';
 import { fnv1a } from '../lib/hash';
+import { withoutTracking } from '../lib/sourceHost';
 
 export type { ChatMessage };
 
@@ -306,13 +307,18 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
     };
   if (status === 401)
     return { kind: 'auth', status, message: 'Your API key was rejected — check it in settings.' };
-  if (status === 403)
+  if (status === 403) {
+    // A project the provider has not cleared for this model is the likeliest 403, and the body
+    // names the model: say which, so the reader fixes the project instead of re-checking a good key.
+    const model = /access to (?:the )?model [`'"]?([\w.:/-]+)/i.exec(msg)?.[1];
     return {
       kind: 'auth',
       status,
-      message:
-        'Request blocked — your API key may lack permission for this model, or the request was rejected by the provider safety filters.',
+      message: model
+        ? `Your ${label} project isn't allowed to use ${model} — allow it in that project's settings on ${label}, or choose another model in settings.`
+        : `${label} refused this request — your key may not have access to this model, or its safety filters stopped it.`,
     };
+  }
   // 429 is usually a transient per-minute rate limit, not a plan
   // exhaustion — "check your plan" is wrong and alarming. Distinguish by the provider's own
   // wording (RESOURCE_EXHAUSTED, "exceeded your current quota") vs a plain 429 (rate limited).
@@ -493,7 +499,11 @@ function outputBudget(
   // needs its own line item — each extra row costs roughly one enriched item's worth of JSON
   // (a label, a value, a short detail).
   const itemHeadroom = Math.max(0, explicitCount - 6) * 60;
-  const json = ENVELOPE + blocks * PER_BLOCK + itemHeadroom;
+  // The per-block figures were measured on Gemini's tokenizer. Claude's (Haiku 5.5 onward) counts
+  // the same JSON as ~30% more tokens, which on a six-block answer is the whole margin — and this
+  // is a ceiling, so the slack is free unless it is used.
+  const tokenizerSlack = provider === 'anthropic' ? 1.3 : 1;
+  const json = Math.round((ENVELOPE + blocks * PER_BLOCK + itemHeadroom) * tokenizerSlack);
   // Thinking tokens draw from the SAME output budget on both Gemini and Anthropic.
   // Gemini always needs headroom (it thinks at every non-minimal level); Anthropic only
   // when thinking actually activates (adaptive mode fires on medium/high effort turns).
@@ -521,8 +531,13 @@ function outputBudget(
   // So a gateway reserves thinking room unconditionally. A route that doesn't reason never spends
   // it, which is exactly the ceiling-not-a-purchase argument in the paragraph above; this only
   // sizes the BUDGET, and never changes the wire format (isReasoningModel still decides that, so
-  // gateway routes keep sending max_tokens + temperature as they always have).
-  const reservesThinking = isReasoningModel(model) || provider === 'openrouter';
+  // gateway routes keep sending max_tokens + temperature as they always have). Grok 4.3+ is the
+  // named case that slipped the net: it reasons at `low` out of max_output_tokens under an id that
+  // reads like a classic model.
+  const reservesThinking =
+    isReasoningModel(model) ||
+    isConfigurableGrokModel(provider, model) ||
+    provider === 'openrouter';
   const reasonHeadroom = thinkingLevel === 'high' ? 6000 : thinkingLevel === 'medium' ? 4000 : 2500;
   const needsThinkHeadroom =
     provider === 'gemini' ||
@@ -536,7 +551,11 @@ function outputBudget(
   // A reasoning model's ceiling has to clear its own thinking too, or the clamp re-imposes exactly
   // the starvation the headroom above exists to prevent.
   const base = deep ? 9600 : 7200;
-  const ceiling = (reservesThinking ? base + reasonHeadroom : base) + itemHeadroom;
+  // The tokenizer slack scales the cap as well as the estimate, or the largest answers — exactly
+  // the ones it is for — clamp back to an unscaled number.
+  const ceiling = Math.round(
+    ((reservesThinking ? base + reasonHeadroom : base) + itemHeadroom) * tokenizerSlack,
+  );
   return Math.min(ceiling, Math.max(1200, Math.round(total + (deep ? 600 : 0))));
 }
 
@@ -1321,6 +1340,13 @@ export async function generateLive(
     ? 'SEARCH WITH TODAY IN MIND — an undated question about games, scores, schedules, prices, or weather means TODAY (the current date above), never whichever recent day a search happens to rank first. When you search for anything time-sensitive, put the actual current date in the query itself (e.g. "MLB scores <today\'s date>") — a search index cannot resolve a bare "today" — and check each result\'s OWN date before trusting it: yesterday\'s completed games are the wrong answer to an undated ask, even from the top-ranked page. If you can only confirm an earlier day\'s results, say plainly which day they are from — never present them as current.'
     : '';
 
+  // Offering the search tool is not the same as using it: measured live, Claude answered the same
+  // fresh ask from memory on one turn (a quarter two years old, stated as the latest) and searched
+  // twice on the next. Gated like the lines above, so a timeless ask is never pushed to search.
+  const searchFirstLine = mayGround
+    ? 'SEARCH BEFORE YOU ANSWER — this ask is about something that changes after your training data ends. Run a web search first and build every figure from what it returns; never answer it from memory, and never present a remembered figure as the latest.'
+    : '';
+
   // (The icon vocabulary is fixed text too — it rides in the cached prefix, not here.)
 
   // "Go deeper" / "more detail" / a bare "more" → the user wants a fuller answer. Give the model
@@ -1402,6 +1428,7 @@ export async function generateLive(
         ? `HERO PICKS — build the canvas AROUND these specialized components, chosen from the library for THIS exact question: ${heroPicks.join(', ')}. Use at least TWO of them; don't collapse to a wall of the common types.`
         : '',
       noLiveDataLine,
+      searchFirstLine,
       groundedSourcesLine,
       liveStatusLine,
       searchDateLine,
@@ -1491,6 +1518,7 @@ export async function generateLive(
   // covers a genuinely fresh/live ask in that case). Native-search providers ground themselves
   // in the generate call below; their citations come back as out.sources.
   let sources: WebSource[] = [];
+  let searchResults: WebSource[] = [];
   let userForModel = userText;
   if (useNativeSearch) {
     // Native grounding still shows the consent indicator — the search happens inside the
@@ -1794,9 +1822,13 @@ export async function generateLive(
     );
     // Native grounding returns the real source URLs it used — show those as citations.
     if (out.sources?.length) {
-      sources = out.sources.map((s) => ({ title: s.title, url: s.url }));
+      sources = out.sources.map((s) => ({ title: s.title, url: withoutTracking(s.url) }));
       opts.onSources?.(sources);
     }
+    searchResults = (out.searchResults ?? []).map((s) => ({
+      title: s.title,
+      url: withoutTracking(s.url),
+    }));
   } catch (err) {
     // A turn that waited a long time and produced no answer is the clearest speed signal there is,
     // and it used to be discarded: recordTurnSpeed above runs only on success, so a model that timed
@@ -1921,16 +1953,28 @@ export async function generateLive(
   // google_search runs with JSON output, so a genuinely-grounded answer arrives with no
   // adapter-side sources — but the model lists the URLs it used inline (see groundedSourcesLine),
   // so merge those in, deduped by URL. Gated to a real grounded turn (useNativeSearch) so an
-  // ungrounded answer can never smuggle in a fabricated "source".
+  // ungrounded answer can never smuggle in a fabricated "source". A page both sides name is one
+  // source: the tool's copy carries no text, so it takes the model's quoted excerpt.
   if (useNativeSearch && result.sources?.length) {
-    const seen = new Set(sources.map((s) => s.url));
+    const byUrl = new Map(sources.map((s) => [s.url, s]));
     for (const s of result.sources) {
-      if (s.url && !seen.has(s.url)) {
-        seen.add(s.url);
-        sources.push(s);
-      }
+      if (!s.url) continue;
+      const url = withoutTracking(s.url);
+      const known = byUrl.get(url);
+      if (!known) {
+        const source = { ...s, url };
+        byUrl.set(url, source);
+        sources.push(source);
+      } else if (!known.snippet && s.snippet) known.snippet = s.snippet;
     }
     if (sources.length) opts.onSources?.(sources);
+  }
+  // A search that the answer named no page from still read pages: list what it returned rather
+  // than present a searched answer as unsourced. Only then — a search returns ten pages for the
+  // one or two an answer quotes, and calling all ten sources would overstate what it rests on.
+  if (useNativeSearch && !sources.length && searchResults.length) {
+    sources = searchResults;
+    opts.onSources?.(sources);
   }
   // When the turn was grounded in real web sources, mark the opening insight "provable" so
   // the surface offers a "Prove it" affordance — tapping it shows the actual sources the

@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { isVerbatimOnPage, normalizePdfText, groundedPageOf } from '../src/live/ground/verbatim';
 import { gateCitation, canonUrl, hostOf } from '../src/live/ground/citation';
 import { makeTranscriptGrounder, normalizeForMatch } from '../src/live/ground/transcript';
-import { parseAmount, toNumber, digitsOf } from '../src/live/ground/number';
+import { parseAmount, toNumber, digitsOf, figureInQuote } from '../src/live/ground/number';
 import { parseLooseJson, extractJsonSlice } from '../src/live/ground/json';
 
 describe('verbatim gate', () => {
@@ -93,6 +93,26 @@ describe('number + json readers', () => {
     expect(parseAmount('3 to 5')).toBeNull();
     expect(parseAmount('lots')).toBeNull();
   });
+  it('figureInQuote reads a figure at the scale its source writes it in', () => {
+    const quote = 'Revenue for the second quarter was $96.2 billion, up 56% from a year ago.';
+    expect(figureInQuote(parseAmount('$96.2B')!.value, quote)).toBe(true);
+    expect(figureInQuote(parseAmount('$96.2M')!.value, quote)).toBe(false);
+    expect(figureInQuote(96.2 * 1e9, 'Data center revenue was $96.2 million.')).toBe(false);
+    // A chart that stores billions as plain 96.2 is still stated by the same sentence.
+    expect(figureInQuote(96.2, quote)).toBe(true);
+    // A unit that merely starts with a scale letter is not a scale.
+    expect(figureInQuote(5e6, 'a 5 Mbps line')).toBe(false);
+  });
+
+  it('figureInQuote matches a figure its source scales a different way', () => {
+    expect(figureInQuote(parseAmount('$4.1B')!.value, 'Sales reached $4,100 million.')).toBe(true);
+    expect(figureInQuote(parseAmount('$4.1B')!.value, 'Sales reached $4,100,000,000.')).toBe(true);
+    expect(figureInQuote(parseAmount('$8,200M')!.value, 'Sales reached $8.2 billion.')).toBe(true);
+    expect(
+      figureInQuote(parseAmount('$96.2B')!.value, 'Nvidia Reports Revenue of $96.2 Billion'),
+    ).toBe(true);
+  });
+
   it('toNumber is lenient but requires a digit', () => {
     expect(toNumber('1,234')).toBe(1234);
     expect(toNumber(42)).toBe(42);

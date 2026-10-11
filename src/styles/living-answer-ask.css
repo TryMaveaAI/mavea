@@ -1,0 +1,319 @@
+/* The lantern: Mavéa's ask bar, in both of its homes.
+ *
+ * The composer lives under an answered board (the dock) and on a fresh #/live (the Go hub), and
+ * three sheets that never met styled it as two different objects. This sheet loads LAST, reaches
+ * both through the `.live-voice` root at a specificity no lazily loaded chunk can flip, and only
+ * paints — nothing the dock measures (its height, padding or position) is touched. One lit disc
+ * to send, ghost hairlines for the rest, the ask itself in the persona's voice face, and while a
+ * turn composes a single light travels the rim: the one thing here that moves, and it stops
+ * under the lite tier and reduced motion. Every accent reads `--room-a`, the room's colour that
+ * follows the face (living-answer-room.css), so the bar shifts with the mood the way the lit card
+ * does. The light itself comes from the floor: on the board it is the dock's own gradient
+ * (living-answer-stage.css); on the hub the same rise is painted here, behind the lantern.
+ */
+
+@property --lantern-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ---- the pill ------------------------------------------------------------------------------ */
+
+.mavea-app.live-voice .dock-main > .composer-passthrough > .composer,
+.mavea-app.live-voice .dock-main > .voice-capsule,
+.mavea-app.live-voice .go-composer-inner {
+  position: relative;
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--room-a, var(--presence)) 28%, var(--line));
+  border-radius: var(--r-full);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--room-a, var(--presence)) 14%, transparent),
+    0 18px 48px -24px color-mix(in oklab, var(--room-a, var(--presence)) 55%, transparent),
+    var(--shadow-floating);
+  transition:
+    border-color var(--m-normal) var(--ease-out),
+    box-shadow var(--m-normal) var(--ease-out);
+}
+.mavea-app.live-voice .dock-main > .composer-passthrough > .composer:focus-within,
+.mavea-app.live-voice .dock-main > .voice-capsule:focus-within,
+.mavea-app.live-voice .go-composer-inner:focus-within {
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 60%, var(--line));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--room-a, var(--presence)) 35%, transparent),
+    0 0 0 5px color-mix(in oklab, var(--room-a, var(--presence)) 10%, transparent),
+    0 22px 56px -24px color-mix(in oklab, var(--room-a, var(--presence)) 70%, transparent),
+    var(--shadow-floating);
+}
+
+/* ---- the floor light, on the hub ----------------------------------------------------------- */
+
+/* The hub's composer is a docked bar of its own, under the page rather than over it, and it used
+   to be a solid panel behind a hairline. The dock's rise of the room's colour is painted here on
+   a pseudo-element so the lantern sits in light in both of its homes; the bar already owns a
+   stacking context (voice.css gives it a z-index), so the light stays under the pill and above
+   the page, and nothing the bar measures changes. */
+.mavea-app.live-voice .go-composer {
+  position: relative;
+  /* The bar's 860px column (setup-wizard.css) moves down to the pill, so the light spans the
+     room the way the dock's does while the lantern keeps its place under the page's content. */
+  max-width: none;
+  background: transparent;
+  border-top: 0;
+}
+.mavea-app.live-voice .go-composer-inner {
+  margin-inline: auto;
+  max-width: calc(860px - 2 * var(--s-xl));
+}
+.mavea-app.live-voice .go-composer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--room-a, var(--presence)) 14%, var(--surface-default)) 0%,
+    var(--surface-default) 55%,
+    transparent 100%
+  );
+}
+
+/* ---- the ask ------------------------------------------------------------------------------- */
+
+/* The input stretches to the row the 44px buttons already set, so a larger ask has room without
+   the pill growing by a pixel. */
+.mavea-app.live-voice .dock-main .composer-input {
+  align-self: stretch;
+  min-height: var(--tap-min);
+  font-size: var(--fs-lg);
+}
+.mavea-app.live-voice .dock-main .composer-input::placeholder,
+.mavea-app.live-voice .go-composer-input::placeholder {
+  font-family: var(--font-voice);
+  font-style: italic;
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* ---- one lit disc -------------------------------------------------------------------------- */
+
+/* The mic and the paperclip rest as ghost hairlines; a state (listening, armed, paused,
+   processing, muted, pulsing) keeps its own paint, which is why those are excluded here. */
+.mavea-app.live-voice .dock-main .composer-tool:where(:not(.is-pulsing)),
+.mavea-app.live-voice
+  .dock-main
+  .mic-btn:where(:not(.listening, .armed, .paused, .processing, .mic-off)),
+.mavea-app.live-voice .go-composer-attach,
+.mavea-app.live-voice .go-composer-mic {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text-secondary);
+  box-shadow: none;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    background-color var(--m-fast) var(--ease-out);
+}
+.mavea-app.live-voice .dock-main .composer-tool:where(:not(.is-pulsing, :disabled)):hover,
+.mavea-app.live-voice
+  .dock-main
+  .mic-btn:where(:not(.listening, .armed, .paused, .processing, .mic-off)):hover,
+.mavea-app.live-voice .go-composer-attach:hover,
+.mavea-app.live-voice .go-composer-mic:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 50%, var(--line-strong));
+  background: color-mix(in oklab, var(--room-a, var(--presence)) 9%, transparent);
+  opacity: 1;
+  filter: none;
+}
+.mavea-app.live-voice .dock-main .mic-mode-chevron {
+  background: color-mix(in oklab, var(--text-primary) 10%, var(--surface-elevated));
+  color: var(--text-secondary);
+  border-color: var(--surface-elevated);
+}
+
+/* The disc is filled in the presence colour, whose white ink the contrast contract proves; the
+   room's colour is in its glow. */
+.mavea-app.live-voice .dock-main .send-btn,
+.mavea-app.live-voice .go-composer-send {
+  background: var(--presence);
+  color: var(--on-presence);
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--room-a, var(--presence)) 75%, transparent);
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out),
+    opacity var(--m-fast) var(--ease-out);
+}
+.mavea-app.live-voice .dock-main .send-btn:not(:disabled):hover,
+.mavea-app.live-voice .go-composer-send:hover {
+  background: var(--presence-deep-held);
+  opacity: 1;
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -10px color-mix(in oklab, var(--room-a, var(--presence)) 85%, transparent);
+}
+.mavea-app.live-voice .dock-main .send-btn:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ---- the quiet chrome around it ------------------------------------------------------------ */
+
+/* The dock's top is open now (living-answer-stage.css), so a card scrolls under this row: the
+   chips take the plate's fill instead of glass, and the one that is on reads the room's colour. */
+.mavea-app.live-voice .dock-modes .whisper-badge,
+.mavea-app.live-voice .dock-modes .listen-mode-chip {
+  background: var(--surface-elevated);
+  border-color: var(--line);
+  font: 500 var(--fs-xs) / 1 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .pin-dock :is(.pin-chip, .live-chip) {
+  background: var(--surface-elevated);
+}
+.mavea-app.live-voice .dock-modes .listen-mode-chip.on {
+  color: var(--room-ink);
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 55%, var(--line));
+}
+.mavea-app.live-voice .dock-hint-wrap .dock-hint {
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .dock-settings-pop,
+.mavea-app.live-voice .mic-mode-pop {
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 16%, var(--line));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--room-a, var(--presence)) 8%, transparent),
+    var(--shadow-modal);
+}
+.mavea-app.live-voice .mic-mode-row {
+  min-height: var(--tap-min);
+}
+/* A plate like the cards it now sits over. */
+.mavea-app.live-voice .voice-notice {
+  background: var(--surface-elevated);
+  border-color: color-mix(in oklab, var(--warning) 35%, var(--line));
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-raised);
+}
+.mavea-app.live-voice .drop-hint {
+  border: 1px dashed color-mix(in oklab, var(--room-a, var(--presence)) 55%, transparent);
+  background: color-mix(in oklab, var(--surface-elevated) 94%, transparent);
+  color: var(--room-ink);
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* ---- composing: the travelling light ------------------------------------------------------- */
+
+/* The dock's only signal that a turn is running is the input it disables (`disabled={turn.busy}`
+   in LiveApp); the root carries no turn attribute. The ring is a 1px rim cut from a conic
+   gradient by a content-box mask, so nothing inside the pill is repainted. */
+.mavea-app.live-voice .dock-main > .composer-passthrough > .composer:has(.composer-input:disabled),
+.mavea-app.live-voice .dock-main > .voice-capsule:has(.composer-input:disabled) {
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 18%, var(--line));
+}
+.mavea-app.live-voice
+  .dock-main
+  > .composer-passthrough
+  > .composer:has(.composer-input:disabled)::after,
+.mavea-app.live-voice .dock-main > .voice-capsule:has(.composer-input:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--lantern-angle),
+    transparent 0 62%,
+    color-mix(in oklab, var(--room-a, var(--presence)) 85%, var(--surface-elevated)) 80%,
+    transparent 100%
+  );
+  mask:
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
+  mask-composite: exclude;
+  animation: lantern-travel 2.4s linear infinite;
+  animation-play-state: var(--reactive-play);
+}
+@keyframes lantern-travel {
+  to {
+    --lantern-angle: 360deg;
+  }
+}
+
+/* A still ring says the same thing where motion is off. */
+:root[data-perf='lite']
+  .mavea-app.live-voice
+  .dock-main
+  > .composer-passthrough
+  > .composer:has(.composer-input:disabled)::after,
+:root[data-perf='lite']
+  .mavea-app.live-voice
+  .dock-main
+  > .voice-capsule:has(.composer-input:disabled)::after {
+  animation: none;
+  background: color-mix(in oklab, var(--room-a, var(--presence)) 40%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mavea-app.live-voice
+    .dock-main
+    > .composer-passthrough
+    > .composer:has(.composer-input:disabled)::after,
+  .mavea-app.live-voice .dock-main > .voice-capsule:has(.composer-input:disabled)::after {
+    animation: none;
+    background: color-mix(in oklab, var(--room-a, var(--presence)) 40%, transparent);
+  }
+  .mavea-app.live-voice .dock-main .send-btn:not(:disabled):hover,
+  .mavea-app.live-voice .go-composer-send:hover {
+    transform: none;
+  }
+}
+
+/* ---- a phone's rows ------------------------------------------------------------------------ */
+
+/* On a dock under 540px the capsule is two rows (livedock.css): the ask, then six standing targets. Each
+   target keeps its 44px box; the rings come off, so the row reads as a toolbar of glyphs under
+   the ask rather than six discs, and the ask row sits at the height of its own text. A state
+   (listening, armed, the pen on, the spark on) keeps its paint. */
+@container (width <= 540px) {
+  /* Two rows tall, a full pill radius rounds the ends into a 100px oval that reads as a balloon
+     under the board; the plates' own radius keeps it one of them. */
+  .mavea-app.live-voice .dock-main > .composer-passthrough > .composer,
+  .mavea-app.live-voice .dock-main > .voice-capsule {
+    border-radius: var(--r-xl);
+  }
+  .mavea-app.live-voice .dock-main > .voice-capsule > .composer {
+    padding: 2px 12px 4px;
+    row-gap: 2px;
+  }
+  /* A thumb aimed at the ask lands on the field, not the capsule's padding around it; the padding
+     above gave up what the field took, so the pill is barely taller. */
+  .mavea-app.live-voice .dock-main .composer-input {
+    min-height: var(--tap-min);
+    font-size: var(--fs-md);
+  }
+  /* The glyph-only buttons went to 38px to share one row with the ask (livedock.css); on their own
+     row there is room for the full target. */
+  .mavea-app.live-voice .dock-main .mark-toggle,
+  .mavea-app.live-voice .dock-main .composer-watch {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+  .mavea-app.live-voice .dock-main .composer-tool:where(:not(.is-pulsing)),
+  .mavea-app.live-voice
+    .dock-main
+    .mic-btn:where(:not(.listening, .armed, .paused, .processing, .mic-off)),
+  .mavea-app.live-voice .dock-main .mark-toggle:where(:not(.on)),
+  .mavea-app.live-voice .dock-main .composer-watch:where(:not(.on)) {
+    background: transparent;
+    border-color: transparent;
+  }
+}

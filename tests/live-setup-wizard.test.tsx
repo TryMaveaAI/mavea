@@ -164,7 +164,7 @@ describe('SetupWizard — Connect step model input', () => {
     const input = screen.getByLabelText('Model') as HTMLInputElement;
     // The provider's recommendation is written into the config, so the field carries the real
     // value rather than showing it greyed out as a placeholder while something else is used.
-    expect(input.value).toBe('gemini-3.1-flash-lite');
+    expect(input.value).toBe('gemini-3.5-flash-lite');
 
     // Typing then backspacing back to empty must still leave it empty: clearing is deliberate,
     // and nothing refills it.
@@ -202,7 +202,7 @@ describe('SetupWizard — Connect step model input', () => {
           : Promise.reject(new Error('no network in test')),
       ),
     );
-    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.1-flash-lite' } });
+    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.5-flash-lite' } });
     render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
 
     fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'AIzaNOT-A-REAL-KEY' } });
@@ -243,7 +243,7 @@ describe('SetupWizard — returning user', () => {
     // gated instead, which is covered separately below.
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     const speak = mkSpeak();
@@ -339,7 +339,7 @@ describe('SetupWizard — landing seed', () => {
   it('a first-run user has the seed forwarded as their first turn once Go is reached', async () => {
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     const onStart = vi.fn();
@@ -368,7 +368,7 @@ describe('SetupWizard — landing seed', () => {
   it('forwards the seed only once, even if Go is re-entered', async () => {
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     const onStart = vi.fn();
@@ -474,7 +474,7 @@ describe('SetupWizard — the Go hub with no model connected', () => {
   it('lets every one of them through once a key is present', () => {
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     const onStart = vi.fn();
@@ -512,7 +512,7 @@ describe('SetupWizard — start over', () => {
     localStorage.setItem(SETUP_KEY, '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     vi.stubGlobal(

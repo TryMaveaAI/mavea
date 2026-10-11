@@ -34,7 +34,8 @@ describe('composer — narrow-viewport control sizing', () => {
   });
 
   it('gives typing a full row instead of squeezing it between five phone controls', () => {
-    const phone = dockCss.slice(dockCss.indexOf('@media (width <= 430px)'));
+    // Keyed on the dock's own width (the session rail narrows it without the window changing).
+    const phone = dockCss.slice(dockCss.indexOf('@container (width <= 760px)'));
     expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 38px 44px/);
     expect(phone).toMatch(/grid-column:\s*1 \/ -1/);
     expect(phone).toMatch(/\.mark-toggle-label\s*\{[^}]*display:\s*none/s);

@@ -48,6 +48,7 @@ import {
 import { geminiUserParts } from './parts';
 import { thinkingReserve } from './budget';
 import { waitReporter } from './wait';
+import { writeLocal } from '../../lib/localBudget';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://generativelanguage.googleapis.com) for Node eval runs.
@@ -186,13 +187,8 @@ function readNoMinimal(): string[] {
 }
 function rememberNoMinimal(model: string): void {
   noMinimal.add(model);
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(NO_MINIMAL_KEY, JSON.stringify([...noMinimal]));
-    }
-  } catch {
-    /* storage unavailable — the in-session Set still holds */
-  }
+  // Never throws; when storage is unavailable the in-session Set still holds.
+  void writeLocal(NO_MINIMAL_KEY, JSON.stringify([...noMinimal]));
 }
 
 const noMinimal = new Set<string>(readNoMinimal());
@@ -332,7 +328,7 @@ export const geminiAdapter: ProviderAdapter = {
           detail: await providerErrorDetail(res),
         };
       const body: unknown = await res.json();
-      // model names come back as "models/gemini-3.1-flash-lite"
+      // model names come back as "models/gemini-3.5-flash-lite"
       const names = arr(obj(body).models).map((m) => str(obj(m).name).replace(/^models\//, ''));
       return { ok: true, model: names.length === 0 || names.includes(cfg.model) };
     } catch {

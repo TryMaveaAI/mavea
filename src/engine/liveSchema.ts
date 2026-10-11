@@ -50,6 +50,7 @@ import type {
   BlankKind,
 } from '../data/conversation';
 import { usableBlock } from '../canvas/lib/empty';
+import { insightFigure } from '../canvas/lib/insightFigure';
 import { deriveItemIds, identitySpecs, resolveItemIdentity } from './itemIdentity';
 import type { BlanksProps } from '../canvas/blocks/forms/types';
 import type {
@@ -396,7 +397,7 @@ The user asks something; reply with ONLY a single JSON object (no prose, no mark
 COMPLETE SPOKEN THOUGHTS — narration, tour "say", pronunciation twins, and block notes used in Guide me must end in complete sentences and resolve the point they introduce. Use short standalone sentences. Never stop at a character target mid-clause, leave a promised explanation unfinished, or use an ellipsis as a substitute for the conclusion. Rewrite concisely rather than truncating.
 - "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — all three keys, on EVERY block, no exceptions. See PER-SLIDE NOTES.
 - "chips": 2 to 4 short follow-up questions (strings) the user might ask next.
-- "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show, so dragging recomputes them live. Omit it for anything that isn't a real calculation.
+- "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show: give every figure your cards print that depends on x its own output, so dragging moves it on the card as well as under the slider. Omit it for anything that isn't a real calculation.
 
 SPOKEN PRONUNCIATION — "narration", every "tour" line, and every block "note" are READ ALOUD by a synthetic voice that mangles anything it can't sound out: it spells acronyms letter by letter ("CUDA"→"C-U-D-A") and reads symbols/numbers literally ("$5,000/mo"→"dollar sign five thousand slash em-oh"). You know how each is really said, so wherever the words on screen differ from how a person SPEAKS them, mark JUST that span inline as [[shown|said]] — the screen shows the left side EXACTLY as normally written, while the voice reads the right:
 - numbers, money, dates, symbols, equations: "[[$5,000/mo|five thousand dollars a month]]", "[[3.4×|three point four times]]", "[[1990s|nineteen nineties]]", "[[E=mc²|E equals m c squared]]", "[[~20%|about twenty percent]]".
@@ -1008,9 +1009,8 @@ function buildInsight(p: Record<string, Json>, grounded: boolean): InsightProps 
   const summary =
     alias(p, 'summary', 'text', 'detail', 'description', 'body', 'content') || undefined;
   if (summary) out.summary = summary;
-  const stat = optStr(p.stat);
+  const { stat, delta } = insightFigure(optStr(p.stat), optStr(p.delta));
   if (stat) out.stat = stat;
-  const delta = optStr(p.delta);
   if (delta) out.delta = delta;
   const dir = coerceDeltaDir(p.deltaDir);
   if (dir) out.deltaDir = dir;

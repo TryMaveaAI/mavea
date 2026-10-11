@@ -12,6 +12,25 @@ export function hostOf(url: string): string | null {
   }
 }
 
+/**
+ * The URL without the campaign tags (`utm_*`) a search tool appends to the pages it returns
+ * ("?utm_source=openai"). Without this the same page is listed twice — once as the tool returned
+ * it, once as the model quoted it — and carries a tag the reader never asked for. Only rewritten
+ * when a tag was actually removed, so every other URL keeps its exact bytes; unparseable input
+ * comes back unchanged.
+ */
+export function withoutTracking(url: string): string {
+  try {
+    const u = new URL(url);
+    const tags = [...u.searchParams.keys()].filter((key) => /^utm_/i.test(key));
+    if (!tags.length) return url;
+    for (const key of tags) u.searchParams.delete(key);
+    return u.href;
+  } catch {
+    return url;
+  }
+}
+
 /** The URL if it is plain http(s), else null — model-supplied links never get another scheme. */
 export function safeHttpUrl(url: string): string | null {
   try {

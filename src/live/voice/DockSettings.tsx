@@ -49,7 +49,7 @@ export function DockSettings({
         title="Voice, speed, explanation level and model"
         onClick={() => setOpen((o) => !o)}
       >
-        <Icon.sliders />
+        <Icon.sliders width="15" height="15" aria-hidden="true" />
         <span className="mark-toggle-label">Settings</span>
       </button>
       {open && (

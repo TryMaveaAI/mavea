@@ -74,20 +74,6 @@
   transition: background var(--m-cinematic) var(--ease-out);
 }
 
-/* utility */
-.tab-num {
-  font-variant-numeric: tabular-nums;
-}
-.mono {
-  font-family: var(--mono);
-}
-.dim {
-  color: var(--text-secondary);
-}
-.faint {
-  color: var(--text-muted);
-}
-
 /* ---- scrollbars ---- */
 *::-webkit-scrollbar {
   width: 10px;

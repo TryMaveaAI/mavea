@@ -256,6 +256,42 @@ describe('hasModelConfigured — the sync "would this turn even try" check', () 
     expect(fresh.hasModelConfigured(cfg)).toBe(false); // default provider still needs its key
   });
 
+  it('a stored former default follows the default when it moves; a typed model stays put', async () => {
+    // The default is written into storage on first load, so a returning reader would otherwise
+    // keep it forever — and once it retires, every turn fails on a model nobody chose.
+    vi.resetModules();
+    localStorage.setItem(
+      'mavea-live-v2',
+      JSON.stringify({
+        provider: 'anthropic',
+        models: {
+          gemini: 'gemini-3.1-flash-lite',
+          anthropic: 'claude-haiku-4-5',
+          openai: 'gpt-4.1-mini',
+        },
+      }),
+    );
+    const fresh = await import('../src/live/useLiveConfig');
+    const { models } = fresh.getLiveConfigV2();
+    expect(models.gemini).toBe(providerInfo('gemini').defaultModel);
+    expect(models.anthropic).toBe(providerInfo('anthropic').defaultModel);
+    expect(models.openai).toBe('gpt-4.1-mini');
+    expect(models.anthropic).not.toBe('claude-haiku-4-5');
+  });
+
+  it('a former default the reader types themselves is kept, on the write and across reloads', async () => {
+    // Former defaults are superseded, not retired: typing one is a choice. The upgrade has to
+    // run once on load, never on a write (the field would snap back as the last key lands).
+    vi.resetModules();
+    const first = await import('../src/live/useLiveConfig');
+    first.getLiveConfigV2();
+    first.setProviderField('gemini', 'model', 'gemini-3.1-flash-lite');
+    expect(first.getLiveConfigV2().models.gemini).toBe('gemini-3.1-flash-lite');
+    vi.resetModules();
+    const reloaded = await import('../src/live/useLiveConfig');
+    expect(reloaded.getLiveConfigV2().models.gemini).toBe('gemini-3.1-flash-lite');
+  });
+
   it('a gateway with no model id picked is not configured, even with a key', () => {
     setLiveConfigV2({ provider: 'openrouter', keys: { openrouter: 'sk-or-test' }, models: {} });
     expect(hasModelConfigured(getLiveConfigV2())).toBe(false);

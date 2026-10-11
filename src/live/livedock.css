@@ -196,13 +196,13 @@
   animation: vc-orb-pulse 1.8s infinite;
   animation-play-state: var(--reactive-play, running);
 }
-@media (width > 430px) {
+@container (width > 540px) {
   /* The pill carries the state on a wide row, so the button needs no dot. */
   .dock-settings-btn.has-status::after {
     display: none;
   }
 }
-@media (width <= 430px) {
+@container (width <= 540px) {
   .live-voice .voice-capsule .composer .vc-status {
     display: none;
   }
@@ -240,6 +240,47 @@
   text-overflow: ellipsis;
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded truncation of one model id */
   white-space: nowrap;
+}
+/* The mic-mode row only exists for a touch screen; a mouse keeps the badge on the mic. */
+.mic-mode-choice {
+  display: none;
+}
+@media (pointer: coarse) {
+  .mic-mode-chevron {
+    display: none;
+  }
+  .mic-mode-choice {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 6px;
+  }
+  .mic-mode-choice-label {
+    padding-inline: 4px 2px;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .mic-mode-choice-opt {
+    min-height: var(--tap-min);
+    border-radius: var(--r-full);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+  }
+  .mic-mode-choice-opt[aria-checked='true'] {
+    border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+    background: color-mix(in oklab, var(--presence) 14%, transparent);
+    color: var(--text-primary);
+  }
+  /* Every row of the sheet is a thumb's target; the chips' own 29px is a mouse's. */
+  .dock-settings-pop > button,
+  .dock-settings-pop > * > button {
+    min-height: var(--tap-min);
+  }
 }
 /* Same lift as the mic menu: the popover must clear the scrubber and canvas chrome above the dock. */
 .live-voice .live-dock:has(.dock-settings-pop) {
@@ -292,13 +333,24 @@
 /* Phones: the status strip's settings get tight. Drop the voice switch's text to just its
    speaker icon + toggle, cap the model name, and pull the row's padding in — so the capsule
    stays clean and never overflows on a narrow screen. */
-@media (width <= 560px) {
+@container (width <= 760px) {
   /* The current spoken line is already rendered immediately above the dock. In the status row it
      collapsed to a few orphaned letters between four fixed controls on phones, which looked like
      broken input. Keep the desktop glanceable transcript and give mobile chrome a clean row. */
   /* A spoken/preparing status cannot share a phone row with its word label. The animated orb remains visible and the control keeps its complete accessible
      name, so this removes only duplicated visual copy rather than state or functionality. */
   .live-voice .vc-status-label {
+    display: none;
+  }
+  /* Highlight and Settings drop to their glyphs on the same dock width as the spark, so the ask
+     keeps a usable field beside them; each keeps its accessible name. */
+  .live-voice .voice-capsule .mark-toggle {
+    width: 38px;
+    height: 38px;
+    justify-content: center;
+    padding: 0;
+  }
+  .live-voice .voice-capsule .mark-toggle-label {
     display: none;
   }
 }
@@ -314,7 +366,10 @@
   .live-voice .explain-chip-tag {
     display: none;
   }
-
+}
+/* The dock's width again, not the window's: with the rail open a 768px window leaves a phone's
+   worth of dock. */
+@container (width <= 540px) {
   .live-voice .voice-capsule .composer {
     display: grid;
     grid-template-columns: 44px 38px 38px 38px 38px 44px;
@@ -333,14 +388,18 @@
   .live-voice .voice-capsule .send-btn {
     grid-column: 6;
   }
-  .live-voice .voice-capsule .mark-toggle {
-    width: 38px;
-    height: 38px;
-    justify-content: center;
-    padding: 0;
+  /* The settings button sits mid-row here, and a 320px panel hung off its right edge opened past
+     the screen's left. On a dock this narrow the panel spans the ask row instead. */
+  .live-voice .voice-capsule .composer {
+    position: relative;
   }
-  .live-voice .voice-capsule .mark-toggle-label {
-    display: none;
+  .live-voice .voice-capsule .dock-settings {
+    position: static;
+  }
+  .live-voice .voice-capsule .dock-settings-pop {
+    left: 0;
+    right: 0;
+    width: auto;
   }
 }
 

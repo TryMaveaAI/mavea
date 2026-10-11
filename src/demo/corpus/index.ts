@@ -5,7 +5,7 @@
 // Live mount pays nothing for demos it never plays. The double cast below is deliberate — TS
 // infers a giant readonly literal from the JSON that doesn't structurally match our unions
 // (e.g. `mode: string` vs the `Mode` union), so we assert the shape the baker generated.
-import { resolvesCellMatrix, resolvesKeyedRows, resolvesTextItems } from '../../canvas/lib/empty';
+import { usableBlock } from '../../canvas/lib/empty';
 import type { Block } from '../../data/conversation';
 import { continueOrder } from '../../live/lifecycle';
 import type { DemoConversation } from './types';
@@ -19,17 +19,14 @@ const SHARDS = import.meta.glob('./*.generated.json');
  *  replay never revisits that judgement — so a block the validator would refuse today survives in
  *  the file forever. One did: a table with five rows that resolved no cells, which drew a header
  *  over five blank lines under a footer confidently reporting "5 of 5 rows". The fix belongs here
- *  rather than in the JSON, which is generated and explicitly not hand-edited. */
+ *  rather than in the JSON, which is generated and explicitly not hand-edited — and it asks the
+ *  one question every other surface that casts blocks asks, so a shard is held to the same bar as
+ *  a restored session. */
 function usableFrames(convo: DemoConversation): DemoConversation {
   let changed = false;
   const frames = convo.frames.map((frame) => {
     const blocks = frame.spec.blocks;
-    const keep = blocks.map(
-      (b) =>
-        resolvesKeyedRows(b.type, b.props) &&
-        resolvesCellMatrix(b.type, b.props) &&
-        resolvesTextItems(b.type, b.props),
-    );
+    const keep = blocks.map((b) => usableBlock(b.type, b.props));
     if (keep.every(Boolean)) return frame;
     changed = true;
     // Old index → new index, so a tour keeps pointing at the block it was written about.

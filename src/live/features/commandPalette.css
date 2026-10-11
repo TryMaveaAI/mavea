@@ -80,8 +80,13 @@
 .cmdk-row.is-active {
   background: var(--surface-glass-strong);
 }
-.cmdk-row.is-unavailable {
-  opacity: 0.66;
+/* Greyed by the name's ink, not the row's opacity: the blurb on an unavailable row is the reason
+   and how to change it, and faded with the row it fell to ~2.5:1. The row still runs. */
+.cmdk-row.is-unavailable .more-menu-name {
+  color: var(--text-secondary);
+}
+.cmdk-row.is-unavailable .more-menu-blurb {
+  color: var(--text-muted);
 }
 /* The row's active highlight belongs to the whole row, so mirror it onto the wrapper when the
    option inside is the active one (keeps the See-how chip's strip highlighted too). */
@@ -101,7 +106,7 @@
   border: 1px solid var(--line-soft);
   border-radius: var(--r-full);
   background: var(--surface-glass);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-family: var(--font-data);
   font-size: var(--fs-2xs);
   font-weight: 600;
@@ -123,10 +128,16 @@
   width: 11px;
   height: 11px;
 }
+@media (pointer: coarse) {
+  .cmdk-watch {
+    min-height: var(--tap-min);
+    padding-inline: 14px;
+  }
+}
 .cmdk-kbd {
   font-family: var(--font-data);
   font-size: var(--fs-2xs);
-  color: var(--text-faint);
+  color: var(--text-muted);
   background: var(--surface-glass);
   border: 1px solid var(--line-soft);
   border-radius: 5px;

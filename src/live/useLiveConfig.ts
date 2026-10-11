@@ -274,9 +274,50 @@ function withChosenModel(c: LiveConfigV2): LiveConfigV2 {
   return recommended ? { ...c, models: { ...c.models, [c.provider]: recommended } } : c;
 }
 
+/** Which set of defaults the stored config has already been moved onto. Derived from the defaults
+ *  themselves, so moving one is all it takes to run the upgrade once more. */
+const DEFAULTS_SEEN_KEY = 'mavea-live-defaults-seen';
+const DEFAULTS_SEEN = PROVIDERS.map((p) => p.defaultModel ?? '').join(',');
+
+/** Move every stored model that was once a provider's default onto today's default — ONCE per
+ *  change of defaults, on load. The stored value is usually one this file wrote, not one the
+ *  reader chose, so it should follow the default when it moves. Never on a write: a reader who
+ *  types a former default (they are not retired, only superseded) keeps it, and keeps it across
+ *  reloads because the upgrade has already run. */
+function upgradeFormerDefaults(c: LiveConfigV2): LiveConfigV2 {
+  try {
+    if (typeof localStorage === 'undefined') return c;
+    if (localStorage.getItem(DEFAULTS_SEEN_KEY) === DEFAULTS_SEEN) return c;
+    const next = withCurrentDefaults(c);
+    const raw = next === c ? null : localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      // Patch only the models in the stored blob: a full write here would run before the key
+      // vault has hydrated and persist an empty key set over the encrypted one.
+      const stored = JSON.parse(raw) as Record<string, unknown>;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stored, models: next.models }));
+    }
+    localStorage.setItem(DEFAULTS_SEEN_KEY, DEFAULTS_SEEN);
+    return next;
+  } catch {
+    return c;
+  }
+}
+
+function withCurrentDefaults(c: LiveConfigV2): LiveConfigV2 {
+  let models: LiveConfigV2['models'] | undefined;
+  for (const info of PROVIDERS) {
+    const stored = c.models[info.id];
+    if (stored && info.defaultModel && info.formerDefaults?.includes(stored)) {
+      models ??= { ...c.models };
+      models[info.id] = info.defaultModel;
+    }
+  }
+  return models ? { ...c, models } : c;
+}
+
 export function getLiveConfigV2(): LiveConfigV2 {
   if (memory) return memory;
-  memory = withChosenModel(fromStorage());
+  memory = withChosenModel(upgradeFormerDefaults(fromStorage()));
   return memory;
 }
 

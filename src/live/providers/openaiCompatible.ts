@@ -85,20 +85,29 @@ export interface OpenAICompatibleOptions {
   cacheSystemPrefix?: boolean;
 }
 
-/** OpenAI reasoning models (gpt-5.x and the o-series) reject a custom `temperature`
+/** OpenAI reasoning models (gpt-5 onward and the o-series) reject a custom `temperature`
  *  (it's fixed at 1) and `max_tokens` (they meter hidden reasoning tokens from the
  *  completion budget via `max_completion_tokens`), and accept a `reasoning_effort` dial.
  *  Match only at a name boundary so `gpt-4o`/`gpt-4.1` (classic) stay on the normal path.
  *  Exported for openaiResponsesCompatible.ts, which faces the same reasoning-model split
  *  on the Responses API (there under `reasoning.effort` + `max_output_tokens` instead). */
 export function isReasoningModel(model: string): boolean {
-  return /(?:^|\/)(?:o[1-9]|gpt-5)/i.test(model);
+  return /(?:^|\/)(?:o[1-9]|gpt-(?:[5-9]|[1-9]\d))/i.test(model);
+}
+
+/** xAI's current text models expose Responses-style reasoning controls even though their ids do
+ *  not look like OpenAI reasoning-model ids. Grok 4.3 can disable thought; 4.5/4.6 bottom out at
+ *  low. Unknown/free-text Grok ids retain their previous request shape rather than risking a 400.
+ *  Exported beside isReasoningModel because the output budget has to know too: these meter
+ *  their thought out of max_output_tokens exactly as an o-series model does. */
+export function isConfigurableGrokModel(provider: string, model: string): boolean {
+  return provider === 'grok' && /^grok-4\.(?:3|5|6)(?:[-.]|$)/i.test(model);
 }
 
 /** The wire value for the rung BELOW `low`: the model answers with no hidden thinking pass, so
  *  nothing competes with the answer for the completion budget. OpenAI shipped this rung as
- *  `minimal` on the first GPT-5 models and renamed it `none` — the whole current family
- *  (gpt-5.6-luna/terra/sol, gpt-5.4 and its mini/nano) documents `none, low, medium, high, xhigh`
+ *  `minimal` on the first GPT-5 models and renamed it `none` — every model since (gpt-6-luna,
+ *  gpt-5.6-luna/terra/sol, gpt-5.4 and its mini/nano) documents `none, low, medium, high, xhigh`
  *  and answers a `minimal` request with a 400, so sending the old name broke every small ask. Our
  *  own ThinkingLevel keeps the name `minimal`; only the wire value moved. */
 export const NO_THINKING_EFFORT = 'none';
@@ -108,7 +117,7 @@ export const NO_THINKING_EFFORT = 'none';
  *  Grok 4.3 calls the rung `none`. Same name-boundary rule as isReasoningModel, so provider-
  *  qualified ids match while lookalike names do not. */
 export function supportsNoThinkingTier(model: string): boolean {
-  return /(?:^|\/)gpt-5/i.test(model) || /(?:^|\/)grok-4\.3(?:[-.]|$)/i.test(model);
+  return /(?:^|\/)gpt-(?:[5-9]|[1-9]\d)/i.test(model) || /(?:^|\/)grok-4\.3(?:[-.]|$)/i.test(model);
 }
 
 /** OpenRouter's unified reasoning control for non-OpenAI families whose defaults otherwise add a
@@ -466,6 +475,7 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
                 input: num(u.prompt_tokens),
                 output: num(u.completion_tokens),
                 cachedInput: num(obj(u.prompt_tokens_details).cached_tokens),
+                thinking: num(obj(u.completion_tokens_details).reasoning_tokens),
               };
               if (finished) return true; // the frame we stayed for — stop now
             }

@@ -653,3 +653,6 @@
 .demox[data-covered] > *:not(.demox-panel) {
   display: none;
 }
+.demox[data-takeover] > .demox-banner {
+  display: none;
+}

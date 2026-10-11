@@ -68,6 +68,27 @@ describe('answerToContent', () => {
     expect(backed.kind === 'grounded' && backed.resolution.receipt.host).toBe('example.test');
   });
 
+  it("files a quote under the source that says it, not the answer's first link", () => {
+    const first = 'Analysts expect a slower year ahead.';
+    const second = 'Revenue was $30.0 billion in the quarter.';
+    const graph = answerToContent(
+      answer(
+        [chart()],
+        [
+          { title: 'Outlook', url: 'https://first.test/outlook', snippet: first },
+          { title: 'Results', url: 'https://second.test/q2', snippet: second },
+        ],
+      ),
+      `${first}\n${second}`,
+    );
+    const backed = [...graph.trust.values.values()].find((v) => numberOf(v) === 30)!;
+    expect(backed.kind).toBe('grounded');
+    if (backed.kind !== 'grounded' || !backed.resolution.ok || !('receipt' in backed.resolution))
+      throw new Error('expected a receipt');
+    expect(backed.resolution.receipt.host).toBe('second.test');
+    expect(backed.resolution.receipt.url).toBe('https://second.test/q2');
+  });
+
   it('resolves a figure nothing sourced as ILLUSTRATIVE, never as measured', () => {
     // The honest reading of a model figure with no receipt. It still renders — it just cannot wear a
     // GROUNDED badge, which is the same call the world makes on an unsourced value.

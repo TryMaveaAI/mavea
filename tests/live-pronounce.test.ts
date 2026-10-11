@@ -77,7 +77,7 @@ describe('validateLiveResponse — tour line twin', () => {
 
 describe('validateLiveResponse — annotations never leak into a block prop', () => {
   it('strips [[shown|said]] in a stat/label/summary down to the shown side', () => {
-    // The bug: the model annotated a measurement card ("V" shown, "volts" spoken) and the
+    // The bug: the model annotated a measurement card ("12 V" shown, "twelve volts" spoken) and the
     // raw markers reached the screen because only narration/note/tour were being split.
     const r = validateLiveResponse({
       ...base,
@@ -87,7 +87,7 @@ describe('validateLiveResponse — annotations never leak into a block prop', ()
           type: 'insight',
           props: {
             title: 'Voltage [[V|volts]]',
-            stat: '[[V|volts]]',
+            stat: '[[12 V|twelve volts]]',
             summary: 'Current is measured in [[A|amps]].',
           },
         },
@@ -95,7 +95,7 @@ describe('validateLiveResponse — annotations never leak into a block prop', ()
     });
     const block = r?.blocks[0] as { props: { title: string; stat?: string; summary?: string } };
     expect(block.props.title).toBe('Voltage V');
-    expect(block.props.stat).toBe('V');
+    expect(block.props.stat).toBe('12 V');
     expect(block.props.summary).toBe('Current is measured in A.');
   });
 });

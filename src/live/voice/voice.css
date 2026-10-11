@@ -296,6 +296,12 @@
 .live-voice .footer-chip-arrow {
   font-size: var(--fs-sm);
 }
+@media (pointer: coarse) {
+  .live-voice .footer-feature-chip {
+    min-height: var(--tap-min);
+    padding-inline: 16px;
+  }
+}
 
 /* "Track this live" — the rare, quiet offer to stand the answer up as a living dashboard. */
 .live-voice .footer-track {
@@ -332,7 +338,7 @@
   grid-column: 1 / -1;
   margin: 2px 0 0;
   font: 500 var(--fs-xs)/1.55 var(--font-data);
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .live-voice .footer-disclaimer.only {
   margin-top: 0;
@@ -494,7 +500,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
   pointer-events: none;
   user-select: none;
 }
@@ -1129,7 +1135,7 @@
     font-size: var(--fs-2xs);
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: var(--text-muted);
     user-select: none;
   }
 }

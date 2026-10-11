@@ -98,7 +98,7 @@ describe('LiveApp — mounts the setup wizard', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     render(<LiveApp />);
@@ -136,23 +136,23 @@ describe('LiveApp — mounts the setup wizard', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     render(<LiveApp />);
-    expect(screen.getByText(/gemini-3\.1-flash-lite/i)).toBeInTheDocument();
+    expect(screen.getByText(/gemini-3\.5-flash-lite/i)).toBeInTheDocument();
   });
 
   it('a landed turn: the model chip lives in the dock settings, not the topbar', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.1-flash-lite' } });
+    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.5-flash-lite' } });
     savePriorSession('an old question about taxes');
     render(<LiveApp />);
 
     fireEvent.click(
       screen.getByRole('button', { name: /voice, speed, explanation level and model/i }),
     );
-    const chip = screen.getByText(/gemini-3\.1-flash-lite/i).closest('.live-model-chip');
+    const chip = screen.getByText(/gemini-3\.5-flash-lite/i).closest('.live-model-chip');
     expect(chip).toBeTruthy();
     expect(chip?.closest('.topbar')).toBeNull();
     expect(chip?.closest('.dock-settings-pop')).toBeTruthy();
@@ -254,7 +254,7 @@ describe('LiveApp — local voice failures are visible', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     render(<LiveApp />);
@@ -269,7 +269,7 @@ describe('LiveApp — local voice failures are visible', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     render(<LiveApp />);
@@ -284,7 +284,7 @@ describe('LiveApp — local voice failures are visible', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({
       provider: 'gemini',
-      models: { gemini: 'gemini-3.1-flash-lite' },
+      models: { gemini: 'gemini-3.5-flash-lite' },
       keys: { gemini: 'test-key' },
     });
     render(<LiveApp />);

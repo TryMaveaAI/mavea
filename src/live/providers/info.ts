@@ -28,6 +28,14 @@ export interface ProviderInfo {
   /** Prefilled model — the fast+accurate default for this provider. Empty for gateways
    *  (OpenRouter) where there's no single sensible default: the user supplies their own. */
   defaultModel: string;
+  /** Models that were `defaultModel` before it moved. The config writes the default into storage
+   *  on first load, so without this a returning reader keeps the old one forever — and a retired
+   *  one fails every turn. A stored id listed here is upgraded on read; anything else was typed by
+   *  the reader and is left alone. */
+  formerDefaults?: readonly string[];
+  /** Models documented to reject sampling parameters (temperature, top_p). The adapter starts with
+   *  these already learned, so a new reader's first turn on one is not a 400 and a re-ask. */
+  refusesSampling?: readonly string[];
   /** Placeholder shown when there's no default (gateways), to hint the expected id shape. */
   modelPlaceholder?: string;
   suggestedModels: string[];
@@ -62,56 +70,61 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'gemini',
     label: 'Gemini · Google',
-    defaultModel: 'gemini-3.1-flash-lite',
-    suggestedModels: ['gemini-3.1-flash-lite'],
+    // 3.5 Flash-Lite lists a little dearer than 3.1, but it reuses ~80% of the turn's prompt from
+    // Google's implicit cache, so a real turn costs about the same and its first token arrives in
+    // under a second instead of ~4.7s (measured on the canvas prompt, 2026-10-10).
+    defaultModel: 'gemini-3.5-flash-lite',
+    formerDefaults: ['gemini-3.1-flash-lite'],
+    suggestedModels: ['gemini-3.5-flash-lite'],
     needsKey: true,
     keyUrl: 'https://aistudio.google.com/apikey',
     hint: 'Fast and efficient — recommended.',
     search: 'native', // google_search grounding, server-side
     modelNotes: {
-      'gemini-3.1-flash-lite': 'fastest · light',
+      'gemini-3.5-flash-lite': 'fastest · light',
     },
   },
   {
     id: 'anthropic',
     label: 'Claude · Anthropic',
-    // Haiku 4.5 is the only small Claude left — the lineup above it starts at Sonnet 5, twice the
-    // price — so it stays the default despite a retirement floor of 2026-10-15 that has nearly
-    // arrived. Anthropic gives 60 days' notice, and no Haiku successor is announced yet; when one
-    // ships, move both this and the note below, or the prefilled model starts erroring on every
-    // new key.
-    defaultModel: 'claude-haiku-4-5',
-    suggestedModels: ['claude-haiku-4-5'],
+    // Haiku 5.5 replaced Haiku 4.5 (retirement floor 2026-10-15) at a tenth of its price. It thinks
+    // by default, so the adapter has to switch thinking off by name on every turn that does not ask
+    // for it, and its tokenizer runs ~30% heavier, which generateLive's output budget allows for.
+    defaultModel: 'claude-haiku-5-5',
+    formerDefaults: ['claude-haiku-4-5'],
+    refusesSampling: ['claude-haiku-5-5'],
+    suggestedModels: ['claude-haiku-5-5'],
     needsKey: true,
     keyUrl: 'https://console.anthropic.com/settings/keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool, via Structured Outputs (see anthropic.ts)
     modelNotes: {
-      'claude-haiku-4-5': 'fastest · light',
+      'claude-haiku-5-5': 'fastest · light',
     },
   },
   {
     id: 'openai',
     label: 'GPT · OpenAI',
     // The GPT-5 family are reasoning models: the adapter sends max_completion_tokens +
-    // reasoning_effort and omits the (fixed-at-1) temperature automatically. luna is the light
-    // tier; gpt-5.4-nano used to sit beside it and no longer earns a row — same $0.20 input,
-    // dearer output ($1.25 vs $1.20), a 400k window against luna's 1.05M, and a generation older.
-    defaultModel: 'gpt-5.6-luna',
-    suggestedModels: ['gpt-5.6-luna'],
+    // reasoning_effort and omits the (fixed-at-1) temperature automatically; GPT-6 keeps the same
+    // contract. luna is the light tier, and gpt-6-luna halves gpt-5.6-luna's input price and cuts its
+    // output price by more than half, with the same 1.05M window.
+    defaultModel: 'gpt-6-luna',
+    formerDefaults: ['gpt-5.6-luna', 'gpt-5.4-nano'],
+    suggestedModels: ['gpt-6-luna'],
     needsKey: true,
     keyUrl: 'https://platform.openai.com/api-keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool on the Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
-      'gpt-5.6-luna': 'fastest · light · 1M ctx',
+      'gpt-6-luna': 'fastest · light · 1M ctx',
     },
   },
   {
     id: 'grok',
     label: 'Grok · xAI',
-    // xAI's OpenAI-compatible API. 4.3 is the current fast, low-cost general model. The model
-    // field remains free text for users who need another option.
+    // xAI's OpenAI-compatible API. 4.3 is still its lowest-priced general model — 4.5 through 4.7
+    // all list at $2/$6 — so it stays the default. The model field remains free text.
     defaultModel: 'grok-4.3',
     suggestedModels: ['grok-4.3'],
     needsKey: true,

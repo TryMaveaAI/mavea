@@ -199,9 +199,10 @@
   }
 }
 
-/* Under a thumb the dismiss is the notice's only control; it meets the tap floor. */
+/* Under a thumb both of the notice's controls meet the tap floor. */
 @media (pointer: coarse) {
   .feature-use-notice-more {
+    min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
   .feature-use-notice-dismiss {

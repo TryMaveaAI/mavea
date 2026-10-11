@@ -149,12 +149,56 @@ describe('anthropic adapter — Structured Outputs streaming', () => {
     );
     expect(sources).toEqual([{ title: 'A', url: 'https://a.example/x' }]);
   });
+
+  it('reports the pages a search returned, read off the result block where a JSON answer has no citations', async () => {
+    // Structured Outputs makes the final text JSON, and citations only ride on prose — so the
+    // result block is the one place a searched turn's pages ever appear.
+    mockFetchOnce(
+      streamResponse(
+        [
+          'data: {"type":"content_block_start","index":0,"content_block":{"type":"server_tool_use","id":"srv_1","name":"web_search"}}\n',
+          'data: {"type":"content_block_start","index":1,"content_block":{"type":"web_search_tool_result","tool_use_id":"srv_1","content":[{"type":"web_search_result","url":"https://a.example/x","title":"A","encrypted_content":"e","page_age":"May 1"},{"type":"web_search_result","url":"https://b.example/y","title":""},{"type":"web_search_result","url":"https://a.example/x","title":"A again"}]}}\n',
+          'data: {"type":"content_block_delta","index":2,"delta":{"type":"text_delta","text":"{\\"narration\\":\\"Hi\\",\\"title\\":\\"T\\",\\"sub\\":\\"\\",\\"blocks\\":[]}"}}\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k' };
+    const { sources, searchResults } = await anthropicAdapter.generate(
+      { ...canvasReq, tools: { webSearch: true } },
+      cfg,
+    );
+    // What a search returned is not what the answer cited, so it is reported apart.
+    expect(sources).toBeUndefined();
+    expect(searchResults).toEqual([
+      { title: 'A', url: 'https://a.example/x' },
+      { title: 'https://b.example/y', url: 'https://b.example/y' },
+    ]);
+  });
+
+  it('takes nothing from a search that failed', async () => {
+    mockFetchOnce(
+      streamResponse(
+        [
+          'data: {"type":"content_block_start","index":1,"content_block":{"type":"web_search_tool_result","tool_use_id":"srv_1","content":{"type":"web_search_tool_result_error","error_code":"max_uses_exceeded"}}}\n',
+          'data: {"type":"content_block_delta","index":2,"delta":{"type":"text_delta","text":"{\\"narration\\":\\"Hi\\",\\"title\\":\\"T\\",\\"sub\\":\\"\\",\\"blocks\\":[]}"}}\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k' };
+    const { searchResults } = await anthropicAdapter.generate(
+      { ...canvasReq, tools: { webSearch: true } },
+      cfg,
+    );
+    expect(searchResults).toBeUndefined();
+  });
 });
 
 describe('anthropic adapter — the lineup is split on thinking and on temperature', () => {
-  // Haiku 4.5, the prefilled default, runs extended thinking only and answers `type:'adaptive'`
-  // with a 400; Sonnet 5 and the Opus 4.7+ line accept only adaptive AND reject any temperature
-  // but the default. One body cannot satisfy both, so the adapter learns which side it is on.
+  // Haiku 4.5 runs extended thinking only and answers `type:'adaptive'` with a 400; Sonnet 5,
+  // Haiku 5.5 and the Opus 4.7+ line accept only adaptive AND reject any temperature but the
+  // default. One body cannot satisfy both, so the adapter learns which side it is on.
   function badRequest(message: string): Response {
     return new Response(JSON.stringify({ error: { type: 'invalid_request_error', message } }), {
       status: 400,
@@ -196,8 +240,37 @@ describe('anthropic adapter — the lineup is split on thinking and on temperatu
     const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-x2', apiKey: 'k' };
     await anthropicAdapter.generate({ ...canvasReq, thinkingLevel: 'high', maxTokens: 1200 }, cfg);
     // There is no room to think AND answer, so the answer wins rather than the turn failing.
-    expect(bodyOf(fetchMock, 1).thinking).toBeUndefined();
+    expect(bodyOf(fetchMock, 1).thinking).toEqual({ type: 'disabled' });
     expect(bodyOf(fetchMock, 1).max_tokens).toBe(1200);
+  });
+
+  it('switches thinking off by name on a turn that did not ask for it', async () => {
+    // Omitting the field is not "off": Haiku 5.5 thinks at medium effort by default, which put
+    // seconds ahead of the first token and spent the answer's own budget on every ordinary turn.
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k' };
+    await anthropicAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(bodyOf(fetchMock, 0).thinking).toEqual({ type: 'disabled' });
+    expect(bodyOf(fetchMock, 1).thinking).toEqual({ type: 'disabled' });
+  });
+
+  it('re-asks with no thinking field when a model refuses the disabled form, and remembers', async () => {
+    const fetchMock = mockRejectThenStream(
+      badRequest('thinking.type.disabled is not supported for this model. Use adaptive.'),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-opus-x4', apiKey: 'k' };
+    await anthropicAdapter.generate(canvasReq, cfg);
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(bodyOf(fetchMock, 0).thinking).toEqual({ type: 'disabled' });
+    expect(bodyOf(fetchMock, 1)).not.toHaveProperty('thinking');
+    expect(bodyOf(fetchMock, 2)).not.toHaveProperty('thinking');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // Learned for the page's next load too, so a session never pays that 400 twice.
+    expect(localStorage.getItem('mavea-anthropic-no-disabled-thinking')).toContain(
+      'claude-opus-x4',
+    );
   });
 
   it('re-asks without the temperature nudge when the model rejects a non-default value', async () => {
@@ -207,7 +280,15 @@ describe('anthropic adapter — the lineup is split on thinking and on temperatu
     const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-sonnet-x1', apiKey: 'k' };
     await anthropicAdapter.generate(canvasReq, cfg);
     expect(bodyOf(fetchMock, 0).temperature).toBe(0.3);
-    expect(bodyOf(fetchMock, 1).temperature).toBe(1);
+    expect(bodyOf(fetchMock, 1).temperature).toBeUndefined();
+  });
+
+  it('sends the shipped default no temperature, so its first turn is not a 400', async () => {
+    const fetchMock = mockRejectThenStream(streamResponse([], 'text/event-stream'));
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'k' };
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(bodyOf(fetchMock, 0)).not.toHaveProperty('temperature');
   });
 
   it('remembers across turns, so only the first call on a model pays the retry', async () => {
@@ -218,7 +299,19 @@ describe('anthropic adapter — the lineup is split on thinking and on temperatu
     await anthropicAdapter.generate(canvasReq, cfg);
     await anthropicAdapter.generate(canvasReq, cfg);
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(bodyOf(fetchMock, 2).temperature).toBe(1);
+    expect(bodyOf(fetchMock, 2).temperature).toBeUndefined();
+  });
+
+  it('reads a temperature refusal that mentions thinking as the temperature, not as thinking', async () => {
+    // A non-thinking turn sends both knobs. Learning "no disabled thinking" from this would make
+    // every later turn on the model think — slower, and billed.
+    const fetchMock = mockRejectThenStream(
+      badRequest('`temperature` may only be set to 1 when thinking is disabled on this model'),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-x9', apiKey: 'k' };
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(bodyOf(fetchMock, 1).temperature).toBeUndefined();
+    expect(bodyOf(fetchMock, 1).thinking).toEqual({ type: 'disabled' });
   });
 
   it('still surfaces a 400 that is neither quirk', async () => {
@@ -331,6 +424,32 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     );
     return calls;
   }
+
+  it('a model that refuses the disabled-thinking form is still ready, asked once more without it', async () => {
+    const calls: RequestInit[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (!String(url).includes('/v1/messages')) return new Response('{}', { status: 200 });
+        calls.push(init!);
+        return calls.length === 1
+          ? new Response(
+              JSON.stringify({
+                error: {
+                  type: 'invalid_request_error',
+                  message: 'thinking.type.disabled is not supported',
+                },
+              }),
+              { status: 400, headers: { 'content-type': 'application/json' } },
+            )
+          : new Response('{}', { status: 200 });
+      }),
+    );
+    const r = await anthropicAdapter.probe({ ...cfg, model: 'claude-fable-x5' });
+    expect(r.ok).toBe(true);
+    expect(JSON.parse(String(calls[0]!.body))).toHaveProperty('thinking');
+    expect(JSON.parse(String(calls[1]!.body))).not.toHaveProperty('thinking');
+  });
 
   it('is ready only when /v1/messages accepts — with a minimal, ~1-token request', async () => {
     const calls = mockProbeFetch(200, 200);
@@ -575,7 +694,7 @@ describe('openai adapter — Responses API streaming', () => {
         [
           'data: {"type":"response.output_text.delta","delta":"{\\"narration\\""}\n',
           'data: {"type":"response.output_text.delta","delta":":\\"Hi\\"}"}\n',
-          'data: {"type":"response.completed","response":{"output":[],"usage":{"input_tokens":10,"output_tokens":5,"input_tokens_details":{"cached_tokens":2}}}}\n',
+          'data: {"type":"response.completed","response":{"output":[],"usage":{"input_tokens":10,"output_tokens":5,"input_tokens_details":{"cached_tokens":2},"output_tokens_details":{"reasoning_tokens":3}}}}\n',
         ],
         'text/event-stream',
       ),
@@ -586,7 +705,8 @@ describe('openai adapter — Responses API streaming', () => {
     const { raw, usage } = await openaiAdapter.generate(req, cfg, (c) => deltas.push(c));
     expect(raw).toBe('{"narration":"Hi"}');
     expect(deltas.length).toBe(2);
-    expect(usage).toEqual({ input: 10, output: 5, cachedInput: 2 });
+    // Reasoning is already inside output_tokens; `thinking` names that slice, as Gemini's does.
+    expect(usage).toEqual({ input: 10, output: 5, cachedInput: 2, thinking: 3 });
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('/llm/openai/v1/responses');
@@ -787,6 +907,14 @@ describe('a small, self-budgeted ask costs what it asked for (no-thinking tier, 
     expect(body.max_output_tokens).toBe(150);
   });
 
+  it('Responses: gpt-6 is a reasoning model too — no temperature, and the no-thinking rung', async () => {
+    // Matched as `gpt-5` alone, gpt-6-luna went out as a classic model: a custom temperature it
+    // rejects, and no effort, so it reasoned at its default medium before every answer.
+    const body = await responsesBody('gpt-6-luna', smallAsk);
+    expect(body.temperature).toBeUndefined();
+    expect(body.reasoning).toEqual({ effort: 'none' });
+  });
+
   it('Responses: an o-series model has no sub-low tier, so it keeps low effort AND the floor', async () => {
     // The value would be rejected outright there — the saving is never worth a 400.
     const body = await responsesBody('o4-mini', smallAsk);
@@ -968,7 +1096,7 @@ describe('a stream that goes quiet is never re-sent', () => {
         [
           'data: {"choices":[{"delta":{"content":"{\\"narration\\":\\"Hi\\"}"},"finish_reason":null}]}\n',
           'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n',
-          'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":30,"prompt_tokens_details":{"cached_tokens":50}}}\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":30,"prompt_tokens_details":{"cached_tokens":50},"completion_tokens_details":{"reasoning_tokens":12}}}\n',
           'data: [DONE]\n',
         ],
         'text/event-stream',
@@ -978,7 +1106,7 @@ describe('a stream that goes quiet is never re-sent', () => {
     const cfg: ModelConfig = { provider: 'openrouter', model: 'openai/gpt-4o-mini', apiKey: 'k' };
     const { raw, usage } = await openrouterAdapter.generate(req, cfg);
     expect(raw).toBe('{"narration":"Hi"}'); // the answer survives waiting one frame past finish
-    expect(usage).toEqual({ input: 120, output: 30, cachedInput: 50 });
+    expect(usage).toEqual({ input: 120, output: 30, cachedInput: 50, thinking: 12 });
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     const body = JSON.parse(init.body as string) as { stream_options?: unknown };
     expect(body.stream_options).toEqual({ include_usage: true });

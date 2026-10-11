@@ -1,0 +1,360 @@
+/* The Go hub as the first page of a quiet book. The wizard used to open on a boxed settings card
+   beside four tiles of tracked capitals; the box is gone, the settings are one soft line of pills,
+   and the example asks are set in the voice face so the first thing a reader meets is a question
+   they could have asked. Tokens only; nothing on the page moves at rest.
+
+   The hub is told apart by its body (`.go-grid`), never by `data-wizard-step`: that attribute lands
+   in a passive effect, one paint after the step mounts, and a box that dissolves a frame late reads
+   as a flash. */
+
+/* ── Wizard frame ─────────────────────────────────────────────────────────────────────────── */
+.in-wizard .setup-back {
+  background: none;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.in-wizard .setup-back:hover {
+  background: var(--surface-glass);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+/* The constellation keeps its grid and its 44px targets; only its paint quietens. */
+.in-wizard .const-label {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.in-wizard .const-step.is-done .const-label {
+  color: var(--text-secondary);
+}
+.in-wizard .const-step.is-current .const-label {
+  color: var(--text-primary);
+}
+.in-wizard .const-step + .const-step::before {
+  background: var(--line-soft);
+  height: 1px;
+}
+.in-wizard .const-step.is-done + .const-step::before,
+.in-wizard .const-step.is-current + .const-step::before {
+  background: var(--line);
+}
+.in-wizard .const-disc {
+  border-width: 1px;
+}
+.in-wizard .const-step.is-done .const-disc {
+  background: transparent;
+  border-color: color-mix(in oklab, var(--insight) 55%, var(--line));
+  color: var(--insight);
+}
+/* A flat disc in the held deep: the one fill whose lightness is clamped for the white it carries. */
+.in-wizard .const-step.is-current .const-disc {
+  background: var(--presence-deep-held);
+  border-color: var(--presence-deep-held);
+  box-shadow: none;
+}
+/* The breathing halo was the one thing on the page moving while nothing happened. */
+.in-wizard .const-step.is-current .const-disc::before {
+  display: none;
+}
+.in-wizard .const-step.is-current .const-disc::after {
+  box-shadow: none;
+}
+
+.in-wizard .setup-head {
+  max-width: min(760px, 100%);
+}
+.in-wizard .setup-q {
+  color: var(--text-primary);
+  font: 400 var(--fs-2xl) / 1.1 var(--font-voice);
+  letter-spacing: -0.015em;
+  margin: 0 0 var(--s-2);
+}
+.in-wizard .setup-stage:has(.go-grid) .setup-q {
+  font-size: var(--fs-hero);
+  line-height: 1.05;
+}
+.in-wizard .setup-sub {
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+}
+
+/* ── The Go hub ───────────────────────────────────────────────────────────────────────────── */
+.in-wizard .setup-card:has(.go-grid) {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  padding: 0 0 var(--s-xl);
+  /* The parts carry the arrival below; the card's own fade would stack a second motion under it. */
+  transition: none;
+}
+.in-wizard .go-grid {
+  gap: var(--s-lg);
+  grid-template-columns: 1fr;
+}
+.in-wizard .go-grid > .go-left,
+.in-wizard .go-grid > .go-right {
+  grid-column: 1;
+}
+.in-wizard .go-left {
+  gap: var(--s-md);
+}
+
+/* The settled setup as one wrapping line of soft pills: each is still the row it was, still a
+   button that jumps to its step. */
+.in-wizard .checklist {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+}
+.in-wizard .go-left .check-row {
+  align-items: center;
+  background: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  gap: var(--s-xs);
+  min-height: 32px;
+  padding: 4px var(--s-2) 4px var(--s-sm);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+  width: auto;
+}
+.in-wizard .go-left .check-row:hover {
+  background: var(--surface-glass);
+  border-color: var(--line);
+}
+.in-wizard .check-mark {
+  margin-top: 0;
+}
+.in-wizard .check-mark svg {
+  height: 12px;
+  width: 12px;
+}
+.in-wizard .check-label {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+}
+.in-wizard .check-value {
+  color: var(--text-secondary);
+  font: 400 var(--fs-xs) / 1.3 var(--font);
+}
+.in-wizard .go-start {
+  align-self: flex-start;
+  min-width: min(280px, 100%);
+  width: auto;
+}
+.in-wizard .ghost-btn {
+  border-color: var(--line);
+  color: var(--text-secondary);
+  min-height: 36px;
+  padding: 0 var(--s-md);
+}
+.in-wizard .ghost-btn:hover {
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 40%, var(--line));
+  color: var(--text-primary);
+}
+.in-wizard .link-btn {
+  color: var(--room-ink);
+}
+
+/* Section titles in sentence case, in the UI face, at the weight of a running head. Each
+   selector carries four classes because a template's `:root[data-template] .card-eyebrow` sets the
+   tracked capitals these undo with three, and a production build can load the template sheet
+   after this one — a rule that only ties it loses there. */
+.mavea-app.in-wizard .try-head .card-eyebrow,
+.mavea-app.in-wizard .card-eyebrow.start-with-head,
+.mavea-app.in-wizard .ready-shelf .card-eyebrow {
+  color: var(--text-muted);
+  font: 500 var(--fs-sm) / 1.2 var(--font);
+  letter-spacing: 0;
+  margin-bottom: 0;
+  text-transform: none;
+}
+
+/* The example asks are the inviting objects on the page: plates, exactly as the board's cards
+   are (living-answer-stage.css), so the first thing a reader touches is the thing they will read.
+   A hover lifts the plate by light alone — a faint wash of the room's colour and the floating
+   shadow — never by moving it. */
+.in-wizard .starter-grid {
+  gap: var(--s-sm);
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+}
+.in-wizard .starter-chip {
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--line-soft) 45%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-raised);
+  gap: var(--s-sm);
+  min-height: var(--tap-min);
+  padding: var(--s-md) var(--s-lg) var(--s-lg);
+  transition:
+    background-color var(--m-fast),
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.in-wizard .starter-chip:hover {
+  background: color-mix(in oklab, var(--room-a, var(--presence)) 5%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 45%, transparent);
+  box-shadow: var(--shadow-floating);
+  transform: none;
+}
+.in-wizard .starter-kicker {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.in-wizard .starter-kicker > span {
+  color: var(--room-ink);
+}
+.in-wizard .starter-copy {
+  color: var(--text-primary);
+  font: 400 var(--fs-lg) / 1.35 var(--font-voice);
+}
+
+/* The other ways in: the same plates, smaller. */
+.in-wizard .go-grid > .start-with,
+.in-wizard .go-grid > .go-study,
+.in-wizard .go-grid > .go-library {
+  border-top-color: var(--line-soft);
+}
+.in-wizard .start-with-grid {
+  gap: var(--s-sm);
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+}
+.in-wizard .start-with-card {
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--line-soft) 45%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-raised);
+  gap: var(--s-xs);
+  padding: var(--s-md) var(--s-lg);
+  transition:
+    background-color var(--m-fast),
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.in-wizard .start-with-card:hover {
+  background: color-mix(in oklab, var(--room-a, var(--presence)) 5%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--room-a, var(--presence)) 45%, transparent);
+  box-shadow: var(--shadow-floating);
+  transform: none;
+}
+/* Waiting for a capability is not an invitation: the plate stays as it rests. */
+.in-wizard .start-with-card.is-unavailable:hover {
+  background: var(--surface-elevated);
+  border-color: color-mix(in oklab, var(--line-soft) 45%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+.in-wizard .start-with-label {
+  color: var(--text-primary);
+  font: 500 var(--fs-md) / 1.3 var(--font);
+}
+.in-wizard .start-with-blurb {
+  color: var(--text-secondary);
+  font: 400 var(--fs-sm) / 1.45 var(--font);
+}
+/* A button: a template's `:root[data-template] button { font-family }` is (0,3,0), and a tie
+   loses in a production build, where the template sheet loads after this one. Four classes. */
+.mavea-app.in-wizard .start-with .start-with-see {
+  color: var(--room-ink);
+  font: 500 var(--fs-xs) / 1 var(--font);
+  padding: 4px var(--s-xs);
+}
+.in-wizard .start-with-see:hover {
+  color: var(--presence-deep);
+}
+.in-wizard .ready-item {
+  background: transparent;
+  border-color: var(--line-soft);
+}
+
+/* A finger needs the full target; a pointer does not need the row to grow for it. */
+@media (pointer: coarse) {
+  .in-wizard .go-left .check-row,
+  .in-wizard .ghost-btn,
+  .in-wizard .start-with-see {
+    min-height: var(--tap-min);
+  }
+}
+
+.in-wizard .setup-back:focus-visible,
+.in-wizard .const-disc:focus-visible,
+.in-wizard .check-row:focus-visible,
+.in-wizard .ghost-btn:focus-visible,
+.in-wizard .link-btn:focus-visible,
+.in-wizard .starter-chip:focus-visible,
+.in-wizard .start-with-card:focus-visible,
+.in-wizard .start-with-see:focus-visible,
+.in-wizard .ready-item:focus-visible {
+  outline: 2px solid var(--room-a, var(--presence));
+  outline-offset: 2px;
+}
+
+/* ── One arrival ──────────────────────────────────────────────────────────────────────────── */
+/* The page rises into place once, top to bottom, when the hub mounts. `backwards` holds each part
+   hidden through its delay and leaves nothing applied once the moment has passed. Both guards
+   outrank this rule on specificity, so they hold wherever the sheet is loaded. */
+@keyframes la-go-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.in-wizard
+  :is(
+    .setup-stage:has(.go-grid) .setup-head,
+    .go-grid > .go-left,
+    .go-grid > .go-right,
+    .go-grid > .start-with,
+    .go-grid > .go-study,
+    .go-grid > .go-library
+  ) {
+  animation: la-go-rise var(--m-expressive) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.in-wizard .go-grid > .go-left {
+  --i: 1;
+}
+.in-wizard .go-grid > .go-right {
+  --i: 2;
+}
+.in-wizard .go-grid > .start-with {
+  --i: 3;
+}
+.in-wizard .go-grid > .go-study {
+  --i: 4;
+}
+.in-wizard .go-grid > .go-library {
+  --i: 5;
+}
+:root[data-perf='lite']
+  .in-wizard
+  :is(
+    .setup-stage:has(.go-grid) .setup-head,
+    .go-grid > .go-left,
+    .go-grid > .go-right,
+    .go-grid > .start-with,
+    .go-grid > .go-study,
+    .go-grid > .go-library
+  ) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root
+    .in-wizard
+    :is(
+      .setup-stage:has(.go-grid) .setup-head,
+      .go-grid > .go-left,
+      .go-grid > .go-right,
+      .go-grid > .start-with,
+      .go-grid > .go-study,
+      .go-grid > .go-library
+    ) {
+    animation: none;
+  }
+}

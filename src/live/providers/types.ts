@@ -180,6 +180,10 @@ export interface RawResult {
   /** Real web sources the provider's native grounding used, if any. Surfaced so
    *  `generateLive` can render citations without a separate retrieve-then-read pass. */
   sources?: GroundingSource[];
+  /** Every page a native search RETURNED, cited or not, for a provider that reports results
+   *  apart from citations. Not a citation list: a search returns ten pages for the one or two an
+   *  answer quotes, so it stands in only when the answer names none of its own. */
+  searchResults?: GroundingSource[];
   /** Token usage, when the provider reports it (used for cost/cache visibility). */
   usage?: TokenUsage;
 }

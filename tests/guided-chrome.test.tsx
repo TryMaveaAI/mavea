@@ -376,4 +376,20 @@ describe('the board behind a modal holds still', () => {
     rects.mockRestore();
     vi.unstubAllGlobals();
   });
+
+  it('steps the banner aside under a takeover and keeps the caption and transport', () => {
+    // The canvas and the world own the screen with their own header; the banner sat on it.
+    render(
+      <DemoOverlay
+        driver={demoDriver({ started: true })}
+        member={DEMO_CAST[0]}
+        onExit={vi.fn()}
+        takeover
+      />,
+    );
+    expect(document.querySelector('.demox')!.hasAttribute('data-takeover')).toBe(true);
+    const css = readFileSync(join(__dirname, '../src/demo/demo.css'), 'utf8');
+    expect(css).toMatch(/\.demox\[data-takeover\] > \.demox-banner\s*\{\s*display:\s*none/);
+    expect(css).not.toMatch(/\.demox\[data-takeover\] > \*/);
+  });
 });

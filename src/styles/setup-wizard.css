@@ -355,7 +355,7 @@
   font-weight: 600;
 }
 .setup-foot-save {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: var(--fs-xs);
 }
 .setup-done {

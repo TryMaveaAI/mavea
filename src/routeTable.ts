@@ -124,6 +124,10 @@ export const PUBLIC_ROUTES: RouteSpec[] = [
 // these only under `import.meta.env.DEV`; a production build proves that branch unreachable and
 // drops every chunk they reference.
 export const LAB_ROUTES: RouteSpec[] = [
+  {
+    prefix: '#/studiolab',
+    load: () => import('./live/studio/StudioLab').then((m) => ({ default: m.StudioLab })),
+  },
   // The Reel gallery (#/reel): every share "finish" rendered statically for fit/overflow QA,
   // plus a looping full reel.
   {

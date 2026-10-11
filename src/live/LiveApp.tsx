@@ -165,12 +165,13 @@ import { SetupWizard } from './setup/SetupWizard';
 import { isSetupDone } from './setup/setup';
 import { TemplatePicker } from './TemplatePicker';
 import { useFontScaleStamp } from './fontScale';
-import { MicModePopover, type MicMode } from './voice/MicModePopover';
+import { MicModeChoice, MicModePopover, type MicMode } from './voice/MicModePopover';
 import { applyPresenceStyle, automaticPresenceStyle, clearPresenceStyle } from './presenceStyles';
 import type { ExportAnswer } from '../export';
 import { DashPill } from './dashboards/DashPill';
 import { useDashboards } from './dashboards/useDashboards';
 import { LiveEvidence } from './LiveEvidence';
+import { FigureReceipts } from './trust/FigureReceipts';
 import {
   AnswerHero,
   AnswerFooter,
@@ -406,6 +407,10 @@ const libraryLoad = createPreloadableLazy(() =>
 const Library = libraryLoad.Component;
 // Types only — erased at build, so the lazy LiveSettings chunk stays lazy.
 import type { RevealableSetting, SettingsTab } from './LiveSettings';
+import '../styles/living-answer-room.css';
+import '../styles/living-answer-ask.css';
+import '../styles/living-answer-go.css';
+import '../styles/living-answer-stage.css';
 
 const liveSettingsLoad = createPreloadableLazy(() =>
   import('./LiveSettings').then((m) => ({ default: m.LiveSettings })),
@@ -1947,21 +1952,23 @@ export function LiveApp(): ReactElement {
   // The card the reader has open in the Lens — the canvas owns the sheet itself and reports
   // which block is in it, so this side only has to write that one card's notes.
   const [lensedId, setLensedId] = useState<string | null>(null);
-  const studyContent = useMemo(() => {
+  // The answer's figures, grounded against its own sources: what lets a printed figure open the
+  // sentence that states it, and what the desk's trust voice reads. Pure and local — a walk over
+  // the turn's own sources, no model call.
+  const answerContent = useMemo(() => {
     const spec = turn.viewSpec ?? turn.spec;
-    // Wanted by the desk, and by a single lensed card — both are asking the same question of a
-    // block. Pure and local either way: a walk over the turn's own sources, no model call.
-    if ((viewMode !== 'study' && !lensedId) || !spec) return null;
+    if (!spec) return null;
     const corpus = (spec.sources ?? [])
       .map((src) => src.snippet ?? '')
       .filter(Boolean)
       .join('\n');
-    // Nothing to ground against: the trust voice would stamp every figure-bearing card with
-    // the same wholesale disclaimer, which says nothing the reader can use. The observation
-    // and prompt voices carry the desk instead.
+    // Nothing to ground against: every figure would come back unproven, which proves nothing and
+    // would stamp every figure-bearing card on the desk with the same wholesale disclaimer.
     if (!corpus) return null;
     return answerToContent(spec, corpus);
-  }, [viewMode, lensedId, turn.viewSpec, turn.spec]);
+  }, [turn.viewSpec, turn.spec]);
+  // Wanted by the desk, and by a single lensed card — both are asking the same question of a block.
+  const studyContent = viewMode === 'study' || lensedId ? answerContent : null;
 
   // The Study's model-written notes for the answer on screen, fetched the first time the reader
   // actually opens the desk. Never blocking: the derived voices paint immediately and these
@@ -5889,6 +5896,25 @@ export function LiveApp(): ReactElement {
     </div>
   ) : null;
 
+  const pickMicMode = (next: MicMode): void => {
+    // An explicit pick here IS the user's real preference now — even mid-session,
+    // even if a listening surface borrowed always-on to get here. Don't let that
+    // surface's exit revert this choice out from under them.
+    alwaysOnBeforeListenRef.current = null;
+    setAlwaysPaused(false);
+    setAlwaysOn(next === 'always');
+    // Persist the pick here too: picking Always-on while a surface had already
+    // borrowed it changes no React state, so the effect above would never fire and
+    // the choice would live only until the next reload.
+    persistAlwaysOn(next === 'always');
+    setMicHoldPreferred(next === 'hold');
+    if (next === 'always' && alwaysOn && !listening && !value.trim()) {
+      voice.start({ inCanvas: !!turn.spec, continuous: true });
+    } else if (next !== 'always' && listening) {
+      voice.stop();
+    }
+  };
+
   const watchThinkingActionLabel = !watchThinking
     ? 'Watch me think'
     : mindShape.phase === 'settled' || mindShape.phase === 'pausing'
@@ -5932,6 +5958,7 @@ export function LiveApp(): ReactElement {
               member={member}
               onExit={endTourToApp}
               covered={overlayLayered}
+              takeover={viewMode === 'canvas' || viewMode === 'world'}
             />
           ) : null;
         })()}
@@ -6467,6 +6494,7 @@ export function LiveApp(): ReactElement {
                     <VoiceSpeedChip />
                     {/* Standard/Simple, without leaving the conversation for Settings. */}
                     <ExplainLevelChip />
+                    {sttOk && <MicModeChoice mode={micMode} onChange={pickMicMode} />}
                     {/* Which model answers — dot + name + caret, no latency (dropped for compactness;
                         it lives in the picker / this chip's tooltip). */}
                     <button
@@ -6531,24 +6559,7 @@ export function LiveApp(): ReactElement {
                   mode={micMode}
                   pttKey={cfg.pttKey}
                   pttSide={cfg.pttSide}
-                  onChange={(next) => {
-                    // An explicit pick here IS the user's real preference now — even mid-session,
-                    // even if a listening surface borrowed always-on to get here. Don't let that
-                    // surface's exit revert this choice out from under them.
-                    alwaysOnBeforeListenRef.current = null;
-                    setAlwaysPaused(false);
-                    setAlwaysOn(next === 'always');
-                    // Persist the pick here too: picking Always-on while a surface had already
-                    // borrowed it changes no React state, so the effect above would never fire and
-                    // the choice would live only until the next reload.
-                    persistAlwaysOn(next === 'always');
-                    setMicHoldPreferred(next === 'hold');
-                    if (next === 'always' && alwaysOn && !listening && !value.trim()) {
-                      voice.start({ inCanvas: !!turn.spec, continuous: true });
-                    } else if (next !== 'always' && listening) {
-                      voice.stop();
-                    }
-                  }}
+                  onChange={pickMicMode}
                 />
               ) : undefined
             }
@@ -6702,162 +6713,168 @@ export function LiveApp(): ReactElement {
                   </div>
                 }
               >
-                <TopicCanvas
-                  key={
-                    previewing
-                      ? 'thread-' + (turn.viewOverride?.id ?? '')
-                      : viewingLive
-                        ? 'live-' + turn.replaceEpoch
-                        : 'view-' + turn.viewIndex
-                  }
-                  data={
-                    viewMode === 'study'
-                      ? (turn.viewSpec ?? turn.spec)
-                      : (scrubSpec ?? turn.viewSpec ?? turn.spec)
-                  }
-                  spot={viewingLive ? turn.spot : null}
-                  built={{}}
-                  onProve={() => setProofOpen(true)}
-                  onAskBlock={togglePin}
-                  onAddToDashboard={(b) =>
-                    setPinBlock({ block: b, question: hero?.question ?? undefined })
-                  }
-                  selectedBlockIds={pinnedIds}
-                  onNarrate={narrateBlock}
-                  narratingId={narratingId}
-                  muted={muted}
-                  onToggleMute={() => setMuted((m) => !m)}
-                  studyAsides={studyAsides}
-                  studyAsidesAuthored={studyAsidesAuthored}
-                  studyNotesLoading={studyNotesLoading}
-                  studyStreaming={turn.busy}
-                  studyAnswerEpoch={turn.answerEpoch}
-                  viewMode={viewMode}
-                  onViewMode={setViewMode}
-                  // The Lens is a gesture on the resting board, so it is offered only there: the
-                  // desk and the single-card stage already show one object at a time, and the
-                  // spatial views own their own selection. Withheld while a turn streams (the
-                  // grid re-tiles and ids are renumbered at settle, so a card held now would be
-                  // dragged onto another one) and while the pen is armed, since an armed tap is
-                  // already an ink gesture — the two are literally the same press.
-                  onLens={
-                    viewingLive && viewMode === 'board' && !turn.busy && !inkArmed
-                      ? openLens
-                      : undefined
-                  }
-                  // Only on the live head: a scrubbed-back frame is a different canvas, and the
-                  // signature gate would refuse it anyway — this just says so out loud.
-                  revision={viewingLive ? turn.revision : null}
-                  // The frame the canvas is showing owns the correction, so a scrubbed-back
-                  // answer states the one IT declared rather than the live head's.
-                  corrects={
-                    (viewingLive ? headFrame : turn.frames[turn.viewIndex ?? -1])?.corrects ?? null
-                  }
-                  // The margin-note gutters (one per side): latched once per turn at walk
-                  // start — only turns that ARRIVED muted with a spoken tour reserve them, and
-                  // they hold for the whole turn. Mute flips after that change sound, never
-                  // layout (mid-walk mute keeps its notes in the pen log instead).
-                  // Live head only — a scrubbed past frame shows no rail.
-                  noteGutter={
-                    viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn
-                  }
-                  walkNotes={viewingLive ? walkNotes : undefined}
-                  voiceLine={spokenNow ?? null}
-                  speaking={speakingSticky && !voicePreparing}
-                  preparing={voicePreparing && !muted}
-                  lead={turn.narration ?? undefined}
-                  studyIntro={tourMode.current ? 'skip' : 'full'}
-                  blankFill={
-                    // The Blank Space wiring — only the live head (never a scrubbed/past frame).
-                    viewingLive
-                      ? {
-                          values: turn.filled,
-                          activeKey: turn.activeBlank,
-                          fill: turn.fill,
-                          unfill: turn.unfill,
-                          activate: turn.setActiveBlank,
-                          // Completing is a model call, so a replay (which never spends) offers
-                          // no finish; its blanks stay fillable as a demonstration.
-                          complete: modelCallsAllowed ? turn.complete : undefined,
-                          busy: turn.busy,
-                        }
-                      : undefined
-                  }
-                  bend={
-                    // The slider belongs to the LIVE canvas only — never a scrub rebuild or an
-                    // older frame being viewed, where its block id may not even exist.
-                    viewingLive && scrubT === null ? turn.spec?.bend : undefined
-                  }
-                  onAddToFlashcard={addToFlashcard}
-                  flashedIds={flashedIds}
-                  belowHeaderSlot={
-                    // The scrubber belongs to the FLAT views, where the voice is the only thing
-                    // moving. The Study paces itself — "Walk me through" walks the desk and the beat bar
-                    // is the transport — so a second, wider transport above it competes with the
-                    // one control that actually drives the lesson.
-                    hero && viewedAudio && viewMode !== 'study' ? (
-                      <VoiceScrubber audio={viewedAudio} t={scrubT} onSeek={onScrub} />
-                    ) : undefined
-                  }
-                  /* The world's entrance sits BESIDE "View as canvas" because it is that button's
-                     peer: Canvas puts this answer's cards in space, World opens why the answer is
-                     true. Absent — not dimmed — on the many answers that have no world: a control
-                     the reader can never use on most questions teaches them to stop looking, and
-                     its appearing is itself the signal that this answer has causes worth tracing. */
-                  viewSlot={
-                    // Not gated on `viewingLive`: a world belongs to the answer that earned it, and
-                    // it is already built and stored on that answer's own block — so scrolling back
-                    // to an earlier question must offer its world again, not only the newest one's.
-                    worldOffered ? (
-                      <button
-                        type="button"
-                        className="canvas-open world-open"
-                        title={WORLD_VIEW_HINT}
-                        aria-label={WORLD_VIEW_LABEL}
-                        onClick={() => enterWorld()}
-                      >
-                        <Icon.globe className="ic" aria-hidden />
-                        {WORLD_VIEW_LABEL}
-                      </button>
-                    ) : undefined
-                  }
-                  headerSlot={
-                    viewingLive ? (
-                      <>
-                        {/* Anchor wrapper — the popover floats below this div via position:absolute. */}
-                        <div className="pen-anchor" ref={penAnchorRef}>
-                          <PenPill
-                            enabled={cfg.annotationsEnabled}
-                            open={trackVisible}
-                            inkCount={drawnEntries.length}
-                            onClick={() => setTrackVisible((v) => !v)}
-                          />
-                          {trackVisible && (
-                            <div className="pen-popover">
-                              <GestureTrack
-                                entries={drawnEntries}
-                                turnStartMs={turnStartMsRef.current}
-                                annotationsEnabled={cfg.annotationsEnabled}
-                                hiddenSpots={hiddenSpots}
-                                onToggle={togglePen}
-                                onKeep={() => setTrackVisible(false)}
-                                onClear={() => {
-                                  setInked([]);
-                                  setDrawnInk(new Set());
-                                  setHiddenSpots(new Set());
-                                  setTrackVisible(false);
-                                }}
-                                onClip={() => setShareOpen(true)}
-                                onJumpTo={jumpToSpot}
-                                onToggleSpot={toggleSpot}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : undefined
-                  }
-                />
+                <FigureReceipts
+                  blocks={(turn.viewSpec ?? turn.spec)?.blocks}
+                  content={answerContent}
+                >
+                  <TopicCanvas
+                    key={
+                      previewing
+                        ? 'thread-' + (turn.viewOverride?.id ?? '')
+                        : viewingLive
+                          ? 'live-' + turn.replaceEpoch
+                          : 'view-' + turn.viewIndex
+                    }
+                    data={
+                      viewMode === 'study'
+                        ? (turn.viewSpec ?? turn.spec)
+                        : (scrubSpec ?? turn.viewSpec ?? turn.spec)
+                    }
+                    spot={viewingLive ? turn.spot : null}
+                    built={{}}
+                    onProve={() => setProofOpen(true)}
+                    onAskBlock={togglePin}
+                    onAddToDashboard={(b) =>
+                      setPinBlock({ block: b, question: hero?.question ?? undefined })
+                    }
+                    selectedBlockIds={pinnedIds}
+                    onNarrate={narrateBlock}
+                    narratingId={narratingId}
+                    muted={muted}
+                    onToggleMute={() => setMuted((m) => !m)}
+                    studyAsides={studyAsides}
+                    studyAsidesAuthored={studyAsidesAuthored}
+                    studyNotesLoading={studyNotesLoading}
+                    studyStreaming={turn.busy}
+                    studyAnswerEpoch={turn.answerEpoch}
+                    viewMode={viewMode}
+                    onViewMode={setViewMode}
+                    // The Lens is a gesture on the resting board, so it is offered only there: the
+                    // desk and the single-card stage already show one object at a time, and the
+                    // spatial views own their own selection. Withheld while a turn streams (the
+                    // grid re-tiles and ids are renumbered at settle, so a card held now would be
+                    // dragged onto another one) and while the pen is armed, since an armed tap is
+                    // already an ink gesture — the two are literally the same press.
+                    onLens={
+                      viewingLive && viewMode === 'board' && !turn.busy && !inkArmed
+                        ? openLens
+                        : undefined
+                    }
+                    // Only on the live head: a scrubbed-back frame is a different canvas, and the
+                    // signature gate would refuse it anyway — this just says so out loud.
+                    revision={viewingLive ? turn.revision : null}
+                    // The frame the canvas is showing owns the correction, so a scrubbed-back
+                    // answer states the one IT declared rather than the live head's.
+                    corrects={
+                      (viewingLive ? headFrame : turn.frames[turn.viewIndex ?? -1])?.corrects ??
+                      null
+                    }
+                    // The margin-note gutters (one per side): latched once per turn at walk
+                    // start — only turns that ARRIVED muted with a spoken tour reserve them, and
+                    // they hold for the whole turn. Mute flips after that change sound, never
+                    // layout (mid-walk mute keeps its notes in the pen log instead).
+                    // Live head only — a scrubbed past frame shows no rail.
+                    noteGutter={
+                      viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn
+                    }
+                    walkNotes={viewingLive ? walkNotes : undefined}
+                    voiceLine={spokenNow ?? null}
+                    speaking={speakingSticky && !voicePreparing}
+                    preparing={voicePreparing && !muted}
+                    lead={turn.narration ?? undefined}
+                    studyIntro={tourMode.current ? 'skip' : 'full'}
+                    blankFill={
+                      // The Blank Space wiring — only the live head (never a scrubbed/past frame).
+                      viewingLive
+                        ? {
+                            values: turn.filled,
+                            activeKey: turn.activeBlank,
+                            fill: turn.fill,
+                            unfill: turn.unfill,
+                            activate: turn.setActiveBlank,
+                            // Completing is a model call, so a replay (which never spends) offers
+                            // no finish; its blanks stay fillable as a demonstration.
+                            complete: modelCallsAllowed ? turn.complete : undefined,
+                            busy: turn.busy,
+                          }
+                        : undefined
+                    }
+                    bend={
+                      // The slider belongs to the LIVE canvas only — never a scrub rebuild or an
+                      // older frame being viewed, where its block id may not even exist.
+                      viewingLive && scrubT === null ? turn.spec?.bend : undefined
+                    }
+                    onAddToFlashcard={addToFlashcard}
+                    flashedIds={flashedIds}
+                    belowHeaderSlot={
+                      // The scrubber belongs to the FLAT views, where the voice is the only thing
+                      // moving. The Study paces itself — "Walk me through" walks the desk and the beat bar
+                      // is the transport — so a second, wider transport above it competes with the
+                      // one control that actually drives the lesson.
+                      hero && viewedAudio && viewMode !== 'study' ? (
+                        <VoiceScrubber audio={viewedAudio} t={scrubT} onSeek={onScrub} />
+                      ) : undefined
+                    }
+                    /* The world's entrance sits BESIDE "View as canvas" because it is that button's
+                       peer: Canvas puts this answer's cards in space, World opens why the answer is
+                       true. Absent — not dimmed — on the many answers that have no world: a control
+                       the reader can never use on most questions teaches them to stop looking, and
+                       its appearing is itself the signal that this answer has causes worth tracing. */
+                    viewSlot={
+                      // Not gated on `viewingLive`: a world belongs to the answer that earned it, and
+                      // it is already built and stored on that answer's own block — so scrolling back
+                      // to an earlier question must offer its world again, not only the newest one's.
+                      worldOffered ? (
+                        <button
+                          type="button"
+                          className="canvas-open world-open"
+                          title={WORLD_VIEW_HINT}
+                          aria-label={WORLD_VIEW_LABEL}
+                          onClick={() => enterWorld()}
+                        >
+                          <Icon.globe className="ic" aria-hidden />
+                          <span className="door-label">{WORLD_VIEW_LABEL}</span>
+                        </button>
+                      ) : undefined
+                    }
+                    headerSlot={
+                      viewingLive ? (
+                        <>
+                          {/* Anchor wrapper — the popover floats below this div via position:absolute. */}
+                          <div className="pen-anchor" ref={penAnchorRef}>
+                            <PenPill
+                              enabled={cfg.annotationsEnabled}
+                              open={trackVisible}
+                              inkCount={drawnEntries.length}
+                              onClick={() => setTrackVisible((v) => !v)}
+                            />
+                            {trackVisible && (
+                              <div className="pen-popover">
+                                <GestureTrack
+                                  entries={drawnEntries}
+                                  turnStartMs={turnStartMsRef.current}
+                                  annotationsEnabled={cfg.annotationsEnabled}
+                                  hiddenSpots={hiddenSpots}
+                                  onToggle={togglePen}
+                                  onKeep={() => setTrackVisible(false)}
+                                  onClear={() => {
+                                    setInked([]);
+                                    setDrawnInk(new Set());
+                                    setHiddenSpots(new Set());
+                                    setTrackVisible(false);
+                                  }}
+                                  onClip={() => setShareOpen(true)}
+                                  onJumpTo={jumpToSpot}
+                                  onToggleSpot={toggleSpot}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : undefined
+                    }
+                  />
+                </FigureReceipts>
               </Suspense>
               {/* Mavéa's orange marks unmount during a Watch Me Think takeover so the prior
                   answer's ink can't bleed over the mindshape (they redraw on return). `inkSuppressed`

@@ -1,0 +1,312 @@
+/* The room around the living answer. The chrome that used to frame Live — a frosted bar, a
+   panelled rail, a red boxed error — dissolves into one quiet surface that takes its colour from
+   the face. That colour is a registered --room-a so a mood change interpolates as ONE colour
+   everywhere it is read, and nothing in this sheet moves at rest. */
+
+/* ── The room follows the face ─────────────────────────────────────────────────────────────── */
+@property --room-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+/* The base colour stays the template's own `--app-bg`; the room only lays its wash over it. */
+.mavea-app.live-voice {
+  --room-a: var(--presence);
+  /* The room's colour as INK, for words and glyphs. `--room-a` is a light — right for washes and
+     glows, wrong for text: the moment the face acts or warns it is teal or amber, under 2:1 on a
+     light surface. The ink holds its lightness instead, capped on the light theme and floored on
+     the dark, and follows `--room-a` as it interpolates. A browser that cannot derive a colour
+     writes in the presence ink the contrast contract already proves. */
+  --room-ink: var(--presence);
+  transition: --room-a var(--m-cinematic) var(--ease-out);
+}
+@supports (color: oklch(from red l c h)) {
+  .mavea-app.live-voice {
+    --room-ink: oklch(from var(--room-a) max(l, 0.72) c h);
+  }
+  :root[data-theme='light'] .mavea-app.live-voice {
+    --room-ink: oklch(from var(--room-a) min(l, 0.52) c h);
+  }
+}
+/* The face is read, never painted: the room keys off the attributes Presence already carries
+   (indigo calm · teal acting · rose delight · embers concern), and an emotion outranks a state.
+   Only Mavéa's own face, in the positioner: a rehearsal's table and a diagram draw faces too. */
+.mavea-app.live-voice:has(.presence-positioner > .presence[data-state='acting']) {
+  --room-a: var(--insight);
+}
+.mavea-app.live-voice:has(.presence-positioner > .presence[data-emotion='warm']),
+.mavea-app.live-voice:has(.presence-positioner > .presence[data-emotion='celebrate']),
+.mavea-app.live-voice:has(.presence-positioner > .presence[data-emotion='laugh']) {
+  --room-a: color-mix(in oklab, var(--danger) 55%, var(--presence));
+}
+.mavea-app.live-voice:has(.presence-positioner > .presence[data-emotion='concerned']) {
+  --room-a: var(--warning);
+}
+/* The room's light is the dock (living-answer-stage.css): a colour pooled in a corner read as a
+   stain, so nothing is painted on the app's own backdrop here. */
+
+/* ── The bar dissolves ─────────────────────────────────────────────────────────────────────── */
+/* No glass and no hairline: the bar is the room's own air thickening for 60px so a card scrolling
+   under it fades out instead of colliding with the controls. The blur token is zeroed in place,
+   the way the lite tier does it, so top-bar.css keeps its one backdrop-filter declaration.
+   Four classes: a template's `:root[data-template] .topbar` carries three, and a production
+   build can load the template sheet after this one, so a tie there is a loss. */
+.mavea-app.live-voice.canvas-flat .topbar {
+  --bar-glass-blur: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface-default) 92%, transparent) 0%,
+    transparent 100%
+  );
+  border-bottom: 0;
+  box-shadow: none;
+}
+.mavea-app.live-voice .topbar .topbar-text-btn {
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+  transition:
+    color var(--m-fast) var(--ease-out),
+    background-color var(--m-fast) var(--ease-out);
+}
+.mavea-app.live-voice .topbar .topbar-text-btn.accent,
+.mavea-app.live-voice .topbar .topbar-zoom-btn {
+  color: var(--presence);
+}
+.mavea-app.live-voice .topbar .topbar-text-btn:hover,
+.mavea-app.live-voice .topbar .topbar-text-btn:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.mavea-app.live-voice .topbar .topbar-icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.mavea-app.live-voice .topbar .topbar-icon-btn:hover,
+.mavea-app.live-voice .topbar .topbar-icon-btn:focus-visible {
+  border-color: transparent;
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.mavea-app.live-voice .topbar .workspace-name {
+  font-family: var(--font-voice);
+  color: var(--text-muted);
+}
+/* "Live" in sentence case beside a still dot: the pulse was an endless animation on every
+   session's idle frame, and a steady mark says the same thing. Four classes, as the top bar. */
+.mavea-app.live-voice.canvas-flat .live-badge {
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+.mavea-app.live-voice .live-badge .live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--insight);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--insight) 18%, transparent);
+  animation: none;
+}
+@media (pointer: coarse) {
+  .mavea-app.live-voice .topbar .topbar-text-btn {
+    min-height: var(--tap-min);
+  }
+}
+
+/* ── The session rail as a quiet thread ────────────────────────────────────────────────────── */
+/* Desktop only: below the ladder the rail is a bottom sheet over the canvas (mobile.css) and
+   needs its opaque panel. Here the panel goes and the asks sit in the room, in the voice face. */
+@media (width > 768px) and (height > 500px) {
+  .mavea-app.live-voice.canvas-flat .side-rail {
+    background: transparent;
+    border-right: 1px solid var(--line-soft);
+  }
+  /* The rail sits a layer above the topbar, which an opaque rail hid: a topbar menu that opens
+     over it now had the asks painted through it. Lift the bar while a menu is open, as the dock
+     does for its popovers. */
+  .mavea-app.live-voice .topbar:has(.tpl-menu) {
+    z-index: 46;
+  }
+}
+.mavea-app.live-voice .rail-head {
+  border-bottom: 0;
+  padding-bottom: 6px;
+}
+.mavea-app.live-voice .rail-title {
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+.mavea-app.live-voice .rail-title svg {
+  color: var(--text-muted);
+}
+.mavea-app.live-voice .rail-history {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+.mavea-app.live-voice .rail-history:hover,
+.mavea-app.live-voice .rail-history:focus-visible {
+  border-color: transparent;
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.mavea-app.live-voice .sess-chapter-label {
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .sess-row {
+  position: relative;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+}
+/* The current ask is marked by a bar in the room's colour, not a filled row: a fill is a card,
+   and the thread should have none. The bar draws in once when a new ask becomes current. */
+.mavea-app.live-voice .sess-row.is-current {
+  background: transparent;
+  color: var(--text-primary);
+}
+.mavea-app.live-voice .sess-row.is-current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--room-a);
+  /* A coarse pointer grows every button's ::before into a centred 44px hit box (mobile.css);
+     this one is a mark, so it takes neither the shift nor the height. */
+  translate: none;
+  height: auto;
+  transform-origin: top;
+  animation: room-mark-in var(--m-expressive) var(--ease-out) both;
+}
+.mavea-app.live-voice .sess-row:hover {
+  background: var(--surface-glass);
+}
+.mavea-app.live-voice .sess-q {
+  font-family: var(--font-voice);
+  font-size: var(--fs-md);
+  font-weight: 400;
+  line-height: 1.35;
+}
+@keyframes room-mark-in {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* ── A failed turn, stated calmly ──────────────────────────────────────────────────────────── */
+/* A floating card in the room's own surface, cleared from under the bar: the headline is a human
+   sentence in the voice face and the one filled button is the way back, not a red flag. */
+.mavea-app.live-voice .live-error-stage {
+  padding: calc(60px + var(--s-lg)) var(--s-lg) var(--s-lg);
+}
+.mavea-app.live-voice .live-error {
+  gap: 12px;
+  margin: 0;
+  padding: 22px 24px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-floating);
+  max-width: min(520px, 100%);
+  animation: room-rise var(--m-expressive) var(--ease-out) both;
+}
+.mavea-app.live-voice .live-error-head {
+  gap: 10px;
+  font-family: var(--font-voice);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.mavea-app.live-voice .live-error-head svg {
+  color: var(--danger);
+}
+.mavea-app.live-voice .live-error-msg {
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.mavea-app.live-voice .live-error-actions {
+  gap: 10px;
+}
+.mavea-app.live-voice .live-error-btn {
+  min-height: 36px;
+  padding: 6px 16px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.mavea-app.live-voice .live-error-btn:hover,
+.mavea-app.live-voice .live-error-btn:focus-visible {
+  background: var(--surface-glass);
+}
+/* `--on-presence` is ink computed for `--presence`, so that is the fill it sits on; the pressed
+   state uses the held deep, whose lightness is clamped for that same ink. */
+.mavea-app.live-voice .live-error-btn.primary {
+  border-color: var(--presence);
+  background: var(--presence);
+  color: var(--on-presence);
+}
+.mavea-app.live-voice .live-error-btn.primary:hover,
+.mavea-app.live-voice .live-error-btn.primary:focus-visible {
+  border-color: var(--presence-deep-held);
+  background: var(--presence-deep-held);
+}
+@keyframes room-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── Scrollbars that belong to the room ────────────────────────────────────────────────────── */
+.mavea-app.live-voice .rail-chat,
+.mavea-app.live-voice .transcript-body,
+.mavea-app.live-voice .canvas-stage,
+.mavea-app.live-voice .presence-stage {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--text-faint) 50%, transparent) transparent;
+}
+
+/* ── Lite tier and reduced motion ──────────────────────────────────────────────────────────── */
+/* Each guard is built from the selector it silences, so it can never lose the cascade to it. */
+:root[data-perf='lite'] .mavea-app.live-voice,
+:root[data-perf='lite'] .mavea-app.live-voice::before {
+  transition: none;
+}
+:root[data-perf='lite'] .mavea-app.live-voice .sess-row.is-current::before,
+:root[data-perf='lite'] .mavea-app.live-voice .live-error {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mavea-app.live-voice,
+  .mavea-app.live-voice::before {
+    transition: none;
+  }
+  .mavea-app.live-voice .sess-row.is-current::before,
+  .mavea-app.live-voice .live-error {
+    animation: none;
+  }
+}

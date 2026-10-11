@@ -56,6 +56,8 @@ import { anthropicOutputFormat } from './anthropicFormat';
 import { anthropicUserContent } from './parts';
 import type { GroundingSource, TokenUsage } from './types';
 import { waitReporter } from './wait';
+import { writeLocal } from '../../lib/localBudget';
+import { providerInfo } from './info';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://api.anthropic.com) for Node-side eval runs.
@@ -85,14 +87,46 @@ function headers(cfg: ModelConfig): Record<string, string> {
 
 /** Models this session has learned reject `thinking: {type:'adaptive'}`, and models that reject a
  *  non-default `temperature`. The lineup is split down both seams and no single body satisfies it:
- *  Haiku 4.5 — the prefilled default — runs extended thinking only and answers adaptive with
+ *  Haiku 4.5 runs extended thinking only and answers adaptive with
  *  `400 adaptive thinking is not supported on this model`, while Sonnet 5 and the Opus 4.7+ line
  *  accept only adaptive AND reject any temperature but the default on every request, thinking or
  *  not. Learned rather than listed, for the reason gemini.ts learns its thinking tiers: the model
  *  field is free text, a gateway route can front either side, and a hand-kept set of ids rots into
  *  the outage it was added to fix. The first rejection is remembered and the turn is re-asked. */
 const noAdaptiveThinking = new Set<string>();
-const noCustomTemperature = new Set<string>();
+// Seeded from the provider table: the shipped default is documented to refuse sampling
+// parameters, and without the seed every new reader's first Claude turn opened on a 400.
+const noCustomTemperature = learnedSet(
+  'mavea-anthropic-no-temperature',
+  providerInfo('anthropic').refusesSampling,
+);
+/** Models that refuse `thinking: {type:'disabled'}` — the newest Opus/Sonnet/Fable ids take no
+ *  off switch in that form, while Haiku 5.5 thinks by default unless told not to. The refusal is
+ *  learned, and the re-ask leaves the field out (each model's own default). */
+const noDisabledThinking = learnedSet('mavea-anthropic-no-disabled-thinking');
+
+/** A learned refusal that survives the page: without it the first turn of every session paid a
+ *  400 and a re-ask on the same model, the cost gemini.ts's `noMinimal` was persisted to stop. */
+function learnedSet(
+  key: string,
+  known: readonly string[] = [],
+): { has(model: string): boolean; add(model: string): void } {
+  const seen = new Set<string>(known);
+  try {
+    const raw = JSON.parse(globalThis.localStorage?.getItem(key) ?? '[]') as unknown;
+    if (Array.isArray(raw)) for (const m of raw) if (typeof m === 'string') seen.add(m);
+  } catch {
+    /* unreadable — start empty and learn again */
+  }
+  return {
+    has: (model) => seen.has(model),
+    add(model) {
+      seen.add(model);
+      // Never throws; when storage is unavailable the in-session set still holds.
+      void writeLocal(key, JSON.stringify([...seen]));
+    },
+  };
+}
 /** Models that refuse the output_config schema — an older or gateway-fronted model with no
  *  structured-output support at all, or one whose dialect rejects a construct this schema
  *  uses. Learned for the same reason as the two above: the model field is free text. */
@@ -116,6 +150,7 @@ function probeUsage(body: string): { usage?: TokenUsage } {
 
 /** The paid half of the readiness probe: a one-token messages call on the configured model. */
 async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProbe> {
+  const sentOff = !noDisabledThinking.has(cfg.model);
   let gen: Response;
   try {
     gen = await fetchWithTimeout(
@@ -126,6 +161,9 @@ async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProb
         body: JSON.stringify({
           model: cfg.model,
           max_tokens: 1,
+          // A model that thinks by default would spend the one token thinking, or refuse a budget
+          // too small to think in — either way the probe would fail a key that works.
+          ...(sentOff ? { thinking: { type: 'disabled' } } : {}),
           messages: [{ role: 'user', content: 'ping' }],
         }),
       },
@@ -136,13 +174,14 @@ async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProb
     return { ok: false, model: false, paid: true };
   }
   if (!gen.ok) {
-    return {
-      ok: false,
-      model: false,
-      paid: true,
-      statusCode: gen.status,
-      detail: await providerErrorDetail(gen),
-    };
+    const detail = await providerErrorDetail(gen);
+    // A model that takes no off switch in that form has still answered the key: learn it, as a
+    // turn would, and ask once more without the field rather than report a working key broken.
+    if (sentOff && rejectsDisabledThinking(gen.status, detail)) {
+      noDisabledThinking.add(cfg.model);
+      return generationCheck(base, cfg);
+    }
+    return { ok: false, model: false, paid: true, statusCode: gen.status, detail };
   }
   // The model answered; a body that breaks off mid-read only costs the token count, never the
   // verdict or the ledger row for a call that was billed.
@@ -158,6 +197,11 @@ async function generationCheck(base: string, cfg: ModelConfig): Promise<LiveProb
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
 const MIN_THINKING_BUDGET = 1024;
+
+/** Whether a 400 is a model refusing `thinking: {type:'disabled'}`. */
+function rejectsDisabledThinking(status: number, detail: string): boolean {
+  return status === 400 && /disabled/i.test(detail) && /thinking/i.test(detail);
+}
 
 /** Whether a 400 is Anthropic refusing adaptive thinking, rather than any other bad argument.
  *  Matched on the words the message is built from, not the whole sentence — that is provider copy
@@ -199,7 +243,7 @@ export const anthropicAdapter: ProviderAdapter = {
     constrainedDecoding: true,
     streaming: true,
     vision: true,
-    contextWindow: 200_000,
+    contextWindow: 1_000_000, // claude-haiku-5-5, the default
     strengthTier: 'frontier',
     // Claude runs web_search as a server-side tool loop before its final (Structured
     // Outputs-validated) answer — see the header comment for why this needed dropping
@@ -373,24 +417,34 @@ export const anthropicAdapter: ProviderAdapter = {
       // budgeted out of max_tokens, so it only goes out when half the budget still clears
       // Anthropic's floor. Below that there is no room to think AND answer, and the answer wins.
       const extendedBudget = Math.floor(maxTokens / 2);
-      function thinkingConfig(): Record<string, unknown> | undefined {
-        if (!useThinking) return undefined;
-        if (!noAdaptiveThinking.has(cfg.model)) {
-          return { thinking: { type: 'adaptive', display: 'summarized' } };
-        }
+      // Leaving the field out is not the same as "no thinking": Haiku 5.5 thinks at medium effort
+      // by default, which puts seconds ahead of the first token and spends the answer's own
+      // max_tokens on a pass the turn never asked for. So "off" is said out loud, unless this
+      // model has refused that form. Read per attempt: a re-ask follows what the refusal taught.
+      let sentDisabledThinking = false;
+      function thinkingConfig(): Record<string, unknown> {
+        const thinking = chooseThinking();
+        sentDisabledThinking = thinking?.type === 'disabled';
+        return thinking ? { thinking } : {};
+      }
+      function chooseThinking(): Record<string, unknown> | null {
+        const off = noDisabledThinking.has(cfg.model) ? null : { type: 'disabled' };
+        if (!useThinking) return off;
+        if (!noAdaptiveThinking.has(cfg.model)) return { type: 'adaptive', display: 'summarized' };
         return extendedBudget >= MIN_THINKING_BUDGET
-          ? { thinking: { type: 'enabled', budget_tokens: extendedBudget } }
-          : undefined;
+          ? { type: 'enabled', budget_tokens: extendedBudget }
+          : off;
       }
 
       const buildBody = (): string =>
         JSON.stringify({
           model: cfg.model,
           max_tokens: maxTokens,
-          // Thinking pins temperature to 1, which is also the default — so the only value that can
-          // trip the 4.7+ sampling-parameter refusal is our own nudge on a non-thinking turn.
+          // Thinking needs the default temperature, and a model that refuses sampling parameters
+          // takes none at all — so the field is left out and only our own nudge on a
+          // non-thinking turn is ever sent.
           ...(useThinking || noCustomTemperature.has(cfg.model)
-            ? { temperature: 1 }
+            ? {}
             : { temperature: req.temperature ?? 0.3 }),
           ...thinkingConfig(),
           system: systemBlocks(),
@@ -440,12 +494,25 @@ export const anthropicAdapter: ProviderAdapter = {
         // Neither of these is transient and neither is the user's fault — the request simply named
         // a mode this half of the lineup doesn't take. Learn it and re-ask rather than failing a
         // turn over a knob nobody chose.
-        if (rejectsAdaptive(res.status, detail) && !noAdaptiveThinking.has(cfg.model)) {
-          noAdaptiveThinking.add(cfg.model);
-          continue;
-        }
+        // Temperature is read first. A non-thinking turn sends both `thinking: disabled` and the
+        // 0.3 nudge, and a sampling refusal may well mention thinking while explaining itself;
+        // learning the wrong lesson there would make every later turn on the model think. Wrongly
+        // learning the temperature costs nothing — 1 is the default.
         if (rejectsTemperature(res.status, detail) && !noCustomTemperature.has(cfg.model)) {
           noCustomTemperature.add(cfg.model);
+          continue;
+        }
+        // Before adaptive: that refusal can name adaptive as the alternative it wants.
+        if (
+          sentDisabledThinking &&
+          rejectsDisabledThinking(res.status, detail) &&
+          !noDisabledThinking.has(cfg.model)
+        ) {
+          noDisabledThinking.add(cfg.model);
+          continue;
+        }
+        if (rejectsAdaptive(res.status, detail) && !noAdaptiveThinking.has(cfg.model)) {
+          noAdaptiveThinking.add(cfg.model);
           continue;
         }
         // A schema is an accuracy aid, never the answer's only guarantee — validateLiveResponse
@@ -488,6 +555,7 @@ export const anthropicAdapter: ProviderAdapter = {
       let acc = '';
       let usage: TokenUsage | undefined;
       const grounding = new Map<string, GroundingSource>();
+      const returned = new Map<string, GroundingSource>();
       await readSSE(res, (ev) => {
         const e = obj(ev);
         const type = str(e.type);
@@ -502,6 +570,18 @@ export const anthropicAdapter: ProviderAdapter = {
           const curl = str(citation.url);
           if (curl && !grounding.has(curl)) {
             grounding.set(curl, { title: str(citation.title) || curl, url: curl });
+          }
+        } else if (type === 'content_block_start') {
+          // The pages a search returned arrive whole on the result block's start. They are the
+          // only record of the search on a Structured Outputs turn: citations ride on prose, and
+          // the final text here is JSON, so no citation delta ever comes.
+          const block = obj(e.content_block);
+          if (str(block.type) !== 'web_search_tool_result' || !Array.isArray(block.content)) return;
+          for (const item of block.content) {
+            const hit = obj(item);
+            const url = str(hit.url);
+            if (str(hit.type) === 'web_search_result' && url && !returned.has(url))
+              returned.set(url, { title: str(hit.title) || url, url });
           }
         } else if (type === 'message_start') {
           // Anthropic's input_tokens EXCLUDES the cached slices (unlike Gemini/OpenAI, whose
@@ -534,17 +614,17 @@ export const anthropicAdapter: ProviderAdapter = {
       // Answered in full: whatever readiness check failed for this combination is out of date, so
       // Settings must not keep saying it cannot answer.
       rememberAnswered(await readinessFingerprint(base, cfg));
-      const sources = grounding.size ? [...grounding.values()] : undefined;
+      const extras = {
+        ...(grounding.size ? { sources: [...grounding.values()] } : {}),
+        ...(returned.size ? { searchResults: [...returned.values()] } : {}),
+        ...(usage ? { usage } : {}),
+      };
       // Resolve as the parsed object when possible; else hand the raw string to the
       // validator (it tolerates partial/embedded JSON).
       try {
-        return {
-          raw: JSON.parse(acc) as object,
-          ...(sources ? { sources } : {}),
-          ...(usage ? { usage } : {}),
-        };
+        return { raw: JSON.parse(acc) as object, ...extras };
       } catch {
-        return { raw: acc, ...(sources ? { sources } : {}), ...(usage ? { usage } : {}) };
+        return { raw: acc, ...extras };
       }
     } finally {
       clearTimeout(capTimer);

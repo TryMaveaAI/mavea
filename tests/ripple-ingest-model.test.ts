@@ -1113,6 +1113,7 @@ describe('ripple model tiering', () => {
       expect(classifyTier(cfg('openai', 'gpt-5'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'gpt-5.4'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'gpt-5.6-sol'))).toBe('frontier-deep');
+      expect(classifyTier(cfg('openai', 'gpt-6-sol'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'gpt-5.4-2026-03-17'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'o3'))).toBe('frontier-deep');
       expect(classifyTier(cfg('gemini', 'gemini-3-pro'))).toBe('frontier-deep');
@@ -1126,6 +1127,7 @@ describe('ripple model tiering', () => {
       // plan's extra round-trips and thinking just for sharing the family prefix.
       expect(classifyTier(cfg('openai', 'gpt-5.4-nano'))).toBe('frontier-fast');
       expect(classifyTier(cfg('openai', 'gpt-5.6-luna'))).toBe('frontier-fast');
+      expect(classifyTier(cfg('openai', 'gpt-6-luna'))).toBe('frontier-fast');
       expect(classifyTier(cfg('openrouter', 'openai/gpt-5.6-luna'))).toBe('frontier-fast');
       expect(classifyTier(cfg('grok', 'grok-4'))).toBe('frontier-fast');
     });

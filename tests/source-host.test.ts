@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hostOf, safeHttpUrl, safeContactUrl } from '../src/lib/sourceHost';
+import { hostOf, safeHttpUrl, safeContactUrl, withoutTracking } from '../src/lib/sourceHost';
 
 // The one link-safety gate for model- and search-supplied URLs. React refuses javascript:
 // hrefs at the DOM layer, but that is renderer courtesy — these tests pin the guarantee
@@ -55,5 +55,20 @@ describe('safeContactUrl', () => {
     expect(safeContactUrl('https://988lifeline.org/')).toBe('https://988lifeline.org/');
     expect(safeContactUrl('mailto:x@y.z')).toBeNull();
     expect(safeContactUrl('not a url')).toBeNull();
+  });
+});
+
+describe('withoutTracking', () => {
+  it('drops the campaign tags a search tool appends, and nothing else', () => {
+    expect(withoutTracking('https://a.example/x?utm_source=openai')).toBe('https://a.example/x');
+    expect(withoutTracking('https://a.example/x?id=7&utm_source=openai&UTM_medium=m#top')).toBe(
+      'https://a.example/x?id=7#top',
+    );
+  });
+
+  it('returns an untagged or unparseable URL byte for byte', () => {
+    // Re-serialising a query rewrites its encoding ("a b" becomes "a+b"); untagged URLs never go through it.
+    expect(withoutTracking('https://a.example/s?q=a%20b')).toBe('https://a.example/s?q=a%20b');
+    expect(withoutTracking('not a url')).toBe('not a url');
   });
 });

@@ -19,15 +19,19 @@ export interface ModelPrice {
  *  Keyed by the canonical model id; priceFor also matches a provider-prefixed id (OpenRouter). */
 export const EVAL_PRICES: Record<string, ModelPrice> = {
   'gemini-3.1-flash-lite': { inPerM: 0.25, outPerM: 1.5, cachedInPerM: 0.025 },
+  'gemini-3.5-flash-lite': { inPerM: 0.3, outPerM: 2.5, cachedInPerM: 0.03 },
   'gemini-3.5-flash': { inPerM: 1.5, outPerM: 9, cachedInPerM: 0.15 },
   // Launch pricing, listed as holding through 2026-12-31 and then doubling.
   'gemini-3.8-flash': { inPerM: 0.75, outPerM: 3.75, cachedInPerM: 0.075 },
   'claude-haiku-4-5': { inPerM: 1, outPerM: 5, cachedInPerM: 0.1 },
+  // Prompts over 100k tokens bill at five times these rates.
+  'claude-haiku-5-5': { inPerM: 0.1, outPerM: 0.5, cachedInPerM: 0.01 },
   'claude-sonnet-5': { inPerM: 2, outPerM: 10, cachedInPerM: 0.2 },
   'gpt-5.4': { inPerM: 2.5, outPerM: 15, cachedInPerM: 0.25 },
   'gpt-5.4-mini': { inPerM: 0.75, outPerM: 4.5, cachedInPerM: 0.075 },
   'gpt-5.4-nano': { inPerM: 0.2, outPerM: 1.25, cachedInPerM: 0.02 },
   'gpt-5.6-luna': { inPerM: 0.2, outPerM: 1.2, cachedInPerM: 0.02 },
+  'gpt-6-luna': { inPerM: 0.1, outPerM: 0.5, cachedInPerM: 0.01 },
   // xAI discounts a cache read to ~15-25% of the input rate, not the ~10% the others charge.
   'grok-4.3': { inPerM: 1.25, outPerM: 2.5, cachedInPerM: 0.2 },
   'grok-4.5': { inPerM: 2, outPerM: 6, cachedInPerM: 0.3 },

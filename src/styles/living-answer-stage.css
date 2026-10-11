@@ -1,0 +1,341 @@
+/* The stage. The answered board is where a reader lives, and the room sheet left it alone: boxed
+   cards under a divider, the narration a paragraph, the dock a shelf. Here the canvas is the only
+   bright thing — the narration opens the page in the voice face, the cards sit as plates on the
+   field, the card the walk is lighting glows in the room's colour, and the light comes from the
+   floor, under the lantern, instead of pooling in a corner. Tokens only; nothing here moves at
+   rest, and every tint reads `--room-a`, the colour that follows the face (living-answer-room.css). */
+
+/* ── The opening ──────────────────────────────────────────────────────────────────────────── */
+.mavea-app.live-voice .answer-hero {
+  gap: var(--s-sm);
+  margin-bottom: var(--s-xl);
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+/* The reader's own words, as a quiet italic line rather than a tracked label. */
+.mavea-app.live-voice .hero-ask {
+  color: var(--text-muted);
+  font: italic 400 var(--fs-md) / 1.4 var(--font-voice);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Four classes: a template's `.voice-text` face rule carries three. Size and measure stay
+   voice.css's: the line spans the answer column at a paragraph's size. A display size with its
+   own 62ch cap read as a giant paragraph stopping halfway across a wide board, with the doors
+   stranded at the far edge. */
+.mavea-app.live-voice .hero-line.voice-text {
+  font-size: var(--fs-xl);
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+/* On a wide board the doors stand beside the opening instead of on a row of their own under it,
+   so the line runs to them rather than stopping in the open with the doors stranded at the far
+   edge. Only when the header carries nothing but doors: a correction line belongs under the
+   answer it corrects, at full width. */
+@media (width >= 1600px) {
+  .mavea-app.live-voice.canvas-flat
+    .topic-wrap:has(> .answer-hero + .canvas-header):not(:has(.rev-corrects)) {
+    /* The outer tracks are the gutters `margin-inline: auto` gives every other child of the
+       wrap, so the row starts and ends on the same edges as the cards under it. */
+    --stage-gutter: max(0px, calc((100% - var(--live-content-max)) / 2));
+    display: grid;
+    grid-template-columns: var(--stage-gutter) minmax(0, 1fr) auto var(--stage-gutter);
+    align-items: start;
+  }
+  .mavea-app.live-voice.canvas-flat
+    .topic-wrap:has(> .answer-hero + .canvas-header):not(:has(.rev-corrects))
+    > * {
+    grid-column: 1 / -1;
+  }
+  /* A grid item centred by `margin-inline: auto` shrinks to its content where a block child
+     stretches — the working skeletons collapsed to one narrow column of plates. Width comes back
+     at zero specificity, so a child that sets its own still wins. */
+  :where(
+      .mavea-app.live-voice.canvas-flat
+        .topic-wrap:has(> .answer-hero + .canvas-header):not(:has(.rev-corrects))
+    )
+    > * {
+    width: 100%;
+  }
+  .mavea-app.live-voice.canvas-flat
+    .topic-wrap:has(> .answer-hero + .canvas-header):not(:has(.rev-corrects))
+    > .answer-hero {
+    grid-column: 2;
+    margin-inline-end: var(--s-xl);
+  }
+  .mavea-app.live-voice.canvas-flat
+    .topic-wrap:has(> .answer-hero + .canvas-header):not(:has(.rev-corrects))
+    > .canvas-header {
+    grid-column: 3;
+    margin: 0;
+  }
+}
+.mavea-app.live-voice .hero-accent {
+  color: var(--room-ink);
+}
+.mavea-app.live-voice .hero-meta {
+  color: var(--text-muted);
+  font: 400 var(--fs-xs) / 1.4 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Cards as plates ──────────────────────────────────────────────────────────────────────── */
+.mavea-app.live-voice.canvas-flat .card-grid {
+  gap: clamp(14px, 1.6vw, 26px);
+}
+/* These two selectors are the spotlight rule's own (voice.css, eight classes), so the plate wins
+   by order alone and every lighter card rule — the base, the templates, the light-theme polish —
+   sits under it. The border stays 1px, so no card changes size when the walk lights it. */
+.mavea-app.live-voice.canvas-flat .card-grid > div:not(.spotlit):not(.picked) > .card,
+.mavea-app.live-voice.canvas-flat .card-grid > div:not(.spotlit):not(.picked) > .fit-box .card {
+  background: var(--surface-elevated);
+  border-color: color-mix(in oklab, var(--line-soft) 45%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-raised);
+}
+/* The plate sets the border at a higher specificity than the shared hover rule (wow-polish.css),
+   which kept its lift but lost its edge — so the hover is restated here, one step above. */
+.mavea-app.live-voice.canvas-flat
+  .card-grid
+  > div:not(.spotlit):not(.picked):not(.dimmed):hover
+  > .card,
+.mavea-app.live-voice.canvas-flat
+  .card-grid
+  > div:not(.spotlit):not(.picked):not(.dimmed):hover
+  > .fit-box
+  .card {
+  border-color: var(--line-strong);
+}
+/* The lit cell stays its own size. visualizations-extra.css grows it 3% and exempts only a
+   literal `.col-12`, but a cell spans the whole track under narrow-viewport fallbacks and on a
+   one-column board too, and there the growth ran past `.canvas-scroll`'s clipped edge and cut
+   the card's last column off. The light below is the focus; the board never reflows under it. */
+.mavea-app.live-voice.canvas-flat .card-grid > div.spotlit {
+  transform: none;
+}
+/* The lit card: the room's colour, as light. `:not(.dimmed)` is always true of a lit card; it is
+   there so this outranks a template's hover rule on the same card (`div:not(.dimmed):hover`),
+   which a production build can load after this sheet. */
+.mavea-app.live-voice.canvas-flat .card-grid > div.spotlit:not(.dimmed) > .card,
+.mavea-app.live-voice.canvas-flat .card-grid > div.spotlit:not(.dimmed) > .fit-box .card {
+  background: color-mix(in oklab, var(--room-a) 7%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--room-a) 55%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--room-a) 35%, transparent),
+    0 30px 90px -36px color-mix(in oklab, var(--room-a) 70%, transparent),
+    var(--shadow-floating);
+}
+/* A card pinned for a follow-up keeps its plate: the plate rule above steps aside for `.picked`
+   so the pin's ring (wow-polish.css) is not fought on border and shadow, which left the pinned
+   card on the base sheet's fill and radius. */
+.mavea-app.live-voice.canvas-flat .card-grid > div.picked > .card,
+.mavea-app.live-voice.canvas-flat .card-grid > div.picked > .fit-box .card {
+  background: var(--surface-elevated);
+  border-radius: var(--r-xl);
+}
+/* Eyebrows in sentence case, in the UI face, the glyph in the room's colour. Four classes: the
+   template rule that sets the tracked capitals carries three. */
+.mavea-app.live-voice .card-grid .card .card-eyebrow {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .card-grid .card .card-eyebrow .ic {
+  color: var(--room-ink);
+}
+
+/* ── The floor light ──────────────────────────────────────────────────────────────────────── */
+/* The dock is where the light comes from: the shelf's hairline and flat fill give way to a rise of
+   the room's colour under the lantern that fades out upward. A fixed bar is already its own
+   layer, so the gradient costs nothing more to composite than the fill it replaces. Four classes:
+   a template's `.live-dock` rule carries three, and a production build can load the template
+   sheet after this one, so a tie there is a loss. */
+.mavea-app.live-voice.canvas-flat .live-dock {
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--room-a) 14%, var(--surface-default)) 0%,
+    var(--surface-default) 55%,
+    transparent 100%
+  );
+  border-top: 0;
+  padding-top: calc(10px + var(--s-md));
+}
+
+/* ── The small print ──────────────────────────────────────────────────────────────────────── */
+/* The hero's claims line sets the data face and the tracked capitals on its own parts, so the
+   paragraph's rule above never reached them. The dot keeps the provenance amber: "inferred" is a
+   caveat about the claim, never the room's colour. */
+.mavea-app.live-voice .hero-meta .hero-sources,
+.mavea-app.live-voice .hero-meta .prov-inferred {
+  color: var(--text-muted);
+  font: 400 var(--fs-xs) / 1.4 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .hero-meta .prov-inferred {
+  gap: 7px;
+}
+.mavea-app.live-voice .hero-meta .prov-inferred .prov-dot {
+  background: var(--prov-inferred);
+}
+/* A card's evidence chip, in sentence case; its fill stays the trust language's own. */
+.mavea-app.live-voice .card-grid .card .card-foot .prov-pill,
+.mavea-app.live-voice .card-grid .card .card-foot .conf {
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* "Fig. n —" in the eyebrow's own face: the data face it was set in belonged to the capitals. */
+.mavea-app.live-voice.canvas-flat .card-grid > div[data-kind] .card-eyebrow::before {
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The doors on the board ───────────────────────────────────────────────────────────────── */
+/* The header's invitations take the room's colour, like every other accent on the stage. */
+.mavea-app.live-voice .canvas-header-actions .canvas-open,
+.mavea-app.live-voice .canvas-header-actions .guide-me {
+  border-color: color-mix(in oklab, var(--room-a) 40%, var(--line));
+  color: var(--room-ink);
+}
+.mavea-app.live-voice .canvas-header-actions .canvas-open:hover,
+.mavea-app.live-voice .canvas-header-actions .guide-me:hover {
+  background: color-mix(in oklab, var(--room-a) 8%, var(--surface-elevated));
+  border-color: var(--room-a);
+  color: var(--room-ink);
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────────────────────── */
+.mavea-app.live-voice .depth-section-header {
+  border-bottom-color: color-mix(in oklab, var(--line-soft) 60%, transparent);
+  padding: var(--s-xs) 0 var(--s-sm);
+}
+.mavea-app.live-voice .depth-section-num {
+  background: color-mix(in oklab, var(--room-a) 12%, transparent);
+  color: var(--room-ink);
+  font: 600 var(--fs-2xs) / 1.6 var(--font);
+  letter-spacing: 0;
+}
+.mavea-app.live-voice .depth-section-label {
+  color: var(--text-primary);
+  font: 500 var(--fs-md) / 1.3 var(--font);
+  letter-spacing: 0;
+}
+.mavea-app.live-voice .depth-go-deeper:hover,
+.mavea-app.live-voice .depth-go-deeper.is-open {
+  background: color-mix(in oklab, var(--room-a) 9%, transparent);
+  border-color: color-mix(in oklab, var(--room-a) 55%, transparent);
+  color: var(--room-ink);
+}
+.mavea-app.live-voice .depth-recall-label {
+  color: var(--text-muted);
+  font: 500 var(--fs-sm) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── While it composes ────────────────────────────────────────────────────────────────────── */
+/* A skeleton is the plate the card will be: same radius, same lift, so nothing jumps when the
+   answer lands in its place. The shimmer is the shared one and already yields to reduced motion. */
+.mavea-app.live-voice .skel-card {
+  background: var(--surface-elevated);
+  border-color: color-mix(in oklab, var(--line-soft) 45%, transparent);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-raised);
+}
+.mavea-app.live-voice .skel-eyebrow {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .composing-status {
+  border-color: color-mix(in oklab, var(--line-soft) 45%, transparent);
+}
+
+/* ── The Lens ─────────────────────────────────────────────────────────────────────────────── */
+/* The opened card is a plate held up to the light: the sheet's frame is the plate's, and the
+   titles over it and beside it are set like the eyebrows on the board. */
+.mavea-app.live-voice .zoom-sheet {
+  border-color: color-mix(in oklab, var(--line-soft) 45%, transparent);
+  border-radius: var(--r-xl);
+}
+.mavea-app.live-voice .zoom-sheet-toolbar {
+  border-bottom-color: color-mix(in oklab, var(--line-soft) 60%, transparent);
+}
+.mavea-app.live-voice .zoom-sheet-title,
+.mavea-app.live-voice .lens-notes-eyebrow {
+  color: var(--text-muted);
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* The card on the stage sits in the sheet's frame, not its own: a plate inside a plate read as a
+   box in a box. Its eyebrow is set like the board's, which the grid-scoped rule above cannot
+   reach from here. */
+.mavea-app.live-voice .zoom-sheet-body .card {
+  border-color: transparent;
+  box-shadow: none;
+}
+.mavea-app.live-voice .zoom-sheet-body .card .card-eyebrow {
+  font: 500 var(--fs-xs) / 1.2 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.mavea-app.live-voice .zoom-sheet-body .card .card-eyebrow .ic {
+  color: var(--room-ink);
+}
+
+/* The header's pill cluster is told not to shrink, so that it drops under the title whole; but a
+   line narrower than the cluster (a phone, four pills) then clips its last door, since a cluster
+   that cannot shrink never gets to wrap its own pills. Letting it shrink to the line changes
+   nothing on a line it fits, and on a phone it wraps onto two rows instead of running off. */
+.mavea-app.live-voice .canvas-header > .canvas-header-actions {
+  flex-shrink: 1;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ── Narrow screens ───────────────────────────────────────────────────────────────────────── */
+/* On a phone the opening sits closer to the first card, so it is above the fold of a 414px
+   screen; the doors wrap from the left, so a fourth door on its own row sits under the first
+   instead of stranded at the right. Four classes: the template sheet reaches the hero with
+   three. */
+@media (width <= 720px) {
+  .mavea-app.live-voice.canvas-flat .answer-hero {
+    margin-bottom: var(--s-lg);
+  }
+  .mavea-app.live-voice.canvas-flat .canvas-header > .canvas-header-actions {
+    justify-content: flex-start;
+  }
+  /* Four labelled doors need ~490px and a phone's line has ~330: the two "View as" doors keep
+     their glyph and their full name (aria-label, title), so all four stand on one row. */
+  .mavea-app.live-voice.canvas-flat .canvas-header-actions :is(.canvas-open, .world-open) {
+    min-width: var(--tap-min);
+    padding-inline: 0;
+    justify-content: center;
+  }
+  .mavea-app.live-voice.canvas-flat .canvas-header-actions .door-label {
+    display: none;
+  }
+}
+/* Under a thumb every door is the height of the pen's pill, the one that already met the tap
+   floor; a 32px button beside a 44px one read as two kinds of control. */
+@media (pointer: coarse) {
+  .mavea-app.live-voice.canvas-flat .canvas-header-actions > button {
+    min-height: var(--tap-min);
+  }
+}
+/* The per-card actions stand at rest under a thumb (wow-polish.css): four ringed discs in every
+   card's band. The glyphs alone say the same; the one standing state, a card captured to
+   flashcards, keeps its own paint. */
+@media (hover: none) {
+  .mavea-app.live-voice.canvas-flat .block-actions > .block-action-pill:where(:not(.is-flashed)) {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+}

@@ -10,19 +10,43 @@ export interface ParsedAmount {
   raw: string;
 }
 
-export const AMOUNT_RE =
-  /^[~≈]?\s*([$€£]?)\s*(-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+(?:\.\d+)?)\s*([kKmM]?)(%?)(?:\s*\/\s*[a-z]{1,8})?$/;
+// The scales a figure is printed in, as powers of ten. Money at the size a report writes it is
+// "$96.2B" or "$96.2 Billion", so a reader that stopped at millions refused every company's revenue
+// as a figure. A lower-case `t` is not trillions: "5t" is as likely to be tonnes. A scale is applied
+// in decimal ("4.1e9"), never by multiplying: 4.1 * 1e9 is 4099999999.9999995, and an exact compare
+// would then refuse "$4.1B" against a source's "$4,100 million". The two patterns below spell the
+// same scale group out as literals — built with `new RegExp` at module scope they read to the bundler
+// as a side effect, and every route that reads a figure paid an extra request for it.
+const SCALE_EXPONENTS: Record<string, number> = {
+  k: 3,
+  thousand: 3,
+  m: 6,
+  million: 6,
+  b: 9,
+  bn: 9,
+  billion: 9,
+  t: 12,
+  tn: 12,
+  trillion: 12,
+};
+/** `digits` (no grouping commas) at the scale written after it, in exact decimal. */
+const scaled = (digits: string, word: string | undefined): number =>
+  Number(word ? `${digits}e${SCALE_EXPONENTS[word.toLowerCase()]}` : digits);
 
-/** Parse a human value string ("$1,800", "≈3.2k", "36%", "$5,000/mo") to a number.
+const AMOUNT_RE =
+  /^[~≈]?\s*([$€£]?)\s*(-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+(?:\.\d+)?)\s*([Tt]housand|THOUSAND|[Mm]illion|MILLION|[Bb]illion|BILLION|[Tt]rillion|TRILLION|[Bb][Nn]|[Tt][Nn]|[kKmMbB]|T)?(%?)(?:\s*\/\s*[a-z]{1,8})?$/;
+// A number in running text, with the scale written after it when there is one.
+const QUOTE_FIGURE_RE =
+  /(\d[\d,]*(?:\.\d+)?)(?:\s?([Tt]housand|THOUSAND|[Mm]illion|MILLION|[Bb]illion|BILLION|[Tt]rillion|TRILLION|[Bb][Nn]|[Tt][Nn]|[kKmMbB]|T)\b)?/g;
+
+/** Parse a human value string ("$1,800", "≈3.2k", "$96.2B", "36%", "$5,000/mo") to a number.
  *  Returns null for anything that isn't a single clean numeric token (ranges,
  *  qualitative phrases) — false positives here cost a model call, so be strict. */
 export function parseAmount(s: string): ParsedAmount | null {
   const m = AMOUNT_RE.exec(s.trim());
   if (!m) return null;
-  let value = parseFloat(m[2].replace(/,/g, ''));
+  const value = scaled(m[2].replace(/,/g, ''), m[3]);
   if (!Number.isFinite(value)) return null;
-  if (m[3].toLowerCase() === 'k') value *= 1_000;
-  if (m[3].toLowerCase() === 'm') value *= 1_000_000;
   return { value, kind: m[4] ? 'pct' : 'amount', raw: s.trim() };
 }
 
@@ -76,8 +100,13 @@ export function valueInQuote(value: number, quote: string): boolean {
  */
 export function figureInQuote(value: number, quote: string): boolean {
   if (!Number.isFinite(value)) return false;
-  for (const token of quote.match(/\d[\d,]*(?:\.\d+)?/g) ?? []) {
-    if (Number(token.replace(/,/g, '')) === value) return true;
+  // A token is read both bare and at the scale written after it: a chart that stores billions as
+  // 96.2 and a card that prints "$96.2B" are both stated by "$96.2 billion", and neither by "$96.2
+  // million". The scale has to end on a word boundary, or "5 Mbps" would state five million.
+  for (const [, digits, scale] of quote.matchAll(QUOTE_FIGURE_RE)) {
+    const plain = digits.replace(/,/g, '');
+    if (Number(plain) === value || (scale !== undefined && scaled(plain, scale) === value))
+      return true;
   }
   return false;
 }

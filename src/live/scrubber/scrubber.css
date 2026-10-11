@@ -33,7 +33,7 @@
 .ovw-sub {
   margin: 4px 0 0;
   font-size: var(--fs-md);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .ovw-grid {
@@ -81,7 +81,7 @@
 .ovw-card-count {
   flex: 0 0 auto;
   font-size: var(--fs-sm);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: var(--surface-glass);
   border-radius: var(--r-full);
   padding: 1px 9px;

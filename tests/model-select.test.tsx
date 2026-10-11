@@ -78,8 +78,8 @@ describe('ModelSelect', () => {
   it('selecting an option writes the model id and closes the menu', () => {
     render(<Harness provider="anthropic" />);
     fireEvent.click(input());
-    fireEvent.click(screen.getByRole('option', { name: /claude-haiku-4-5/ }));
-    expect(input().value).toBe('claude-haiku-4-5');
+    fireEvent.click(screen.getByRole('option', { name: /claude-haiku-5-5/ }));
+    expect(input().value).toBe('claude-haiku-5-5');
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 

@@ -122,6 +122,7 @@ const fake = {
   nativeWebSearch: false,
   /** Sources the mock "grounding" returns, surfaced as citations. */
   sources: undefined as { title: string; url: string }[] | undefined,
+  searchResults: undefined as { title: string; url: string }[] | undefined,
   /** The last request the adapter received, so tests can assert tools/thinking/history. */
   lastReq: null as LiveRequest | null,
 };
@@ -144,7 +145,11 @@ vi.mock('../src/live/providers', () => ({
       req: LiveRequest,
       _cfg: ModelConfig,
       onDelta?: (c: string) => void,
-    ): Promise<{ raw: string | object; sources?: { title: string; url: string }[] }> => {
+    ): Promise<{
+      raw: string | object;
+      sources?: { title: string; url: string }[];
+      searchResults?: { title: string; url: string }[];
+    }> => {
       fake.calls += 1;
       fake.lastReq = req;
       if (fake.shouldThrow || (fake.throwFirstCall && fake.calls === 1))
@@ -155,7 +160,11 @@ vi.mock('../src/live/providers', () => ({
         fake.onDeltaSeen = text;
         onDelta(text);
       }
-      return fake.sources ? { raw, sources: fake.sources } : { raw };
+      return {
+        raw,
+        ...(fake.sources ? { sources: fake.sources } : {}),
+        ...(fake.searchResults ? { searchResults: fake.searchResults } : {}),
+      };
     },
   }),
 }));
@@ -176,6 +185,7 @@ beforeEach(() => {
   fake.onDeltaSeen = '';
   fake.nativeWebSearch = false;
   fake.sources = undefined;
+  fake.searchResults = undefined;
   fake.lastReq = null;
 });
 
@@ -710,6 +720,20 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
     expect(e.message).toBe('Your API key was rejected — check it in settings.');
   });
 
+  it('403 naming a model → the project is not cleared for it, not a bad key', () => {
+    const e = describeLiveError(
+      new Error('openai 403 — Project `proj_x` does not have access to model `gpt-6-luna`'),
+      'openai',
+    );
+    expect(e).toMatchObject({ kind: 'auth', status: 403 });
+    expect(e.message).toBe(
+      "Your OpenAI project isn't allowed to use gpt-6-luna — allow it in that project's settings on OpenAI, or choose another model in settings.",
+    );
+    expect(describeLiveError(new Error('anthropic 403'), 'anthropic').message).toBe(
+      'Anthropic refused this request — your key may not have access to this model, or its safety filters stopped it.',
+    );
+  });
+
   it('429 / "insufficient quota" → the provider account is out of quota', () => {
     expect(describeLiveError(new Error('openai 429'), 'openai')).toMatchObject({
       kind: 'quota',
@@ -834,12 +858,79 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
       caps: { searchMode: 'realtime' },
       repair: false,
     });
-    // The model was instructed to cite inline…
+    // The model was told to search rather than answer from memory, and to cite inline…
+    expect(fake.lastReq?.system).toContain('SEARCH BEFORE YOU ANSWER');
     expect(fake.lastReq?.system).toContain('CITE YOUR SOURCES');
     // …and its inline citations are surfaced + the lead insight is marked provable.
     expect(spec.sources).toEqual([{ title: 'Reuters', url: 'https://reuters.com/mars' }]);
     const lead2 = spec.blocks.find((b) => b.type === 'insight');
     expect(lead2 && 'prove' in lead2 ? lead2.prove : false).toBe(true);
+  });
+
+  it('lists a page the search tool tagged and the model quoted as ONE source, with its excerpt', async () => {
+    // Measured live: OpenAI returned the press release as "…?utm_source=openai" and the model
+    // listed it bare with the verbatim sentence, so the reader saw the same page twice — and the
+    // copy that kept the tag had no text to ground a figure on.
+    fake.nativeWebSearch = true;
+    fake.sources = [{ title: 'Results', url: 'https://ir.example.com/q2?id=7&utm_source=openai' }];
+    fake.raw = JSON.stringify({
+      title: 'Q2',
+      sub: 's',
+      narration: 'A short line.',
+      blocks: [{ type: 'insight', props: { title: 'Point', conf: 'inferred' } }],
+      sources: [
+        {
+          title: 'Results',
+          url: 'https://ir.example.com/q2?id=7',
+          snippet: 'Revenue was $96.2 billion.',
+        },
+      ],
+    });
+    const { spec } = await generateLive(freshAsk, [], cfg, undefined, {
+      caps: { searchMode: 'realtime' },
+      repair: false,
+    });
+    expect(spec.sources).toEqual([
+      {
+        title: 'Results',
+        url: 'https://ir.example.com/q2?id=7',
+        snippet: 'Revenue was $96.2 billion.',
+      },
+    ]);
+  });
+
+  it("lists the pages the answer named, not every page Claude's search returned", async () => {
+    // Measured live: two searches returned nineteen pages for an answer that quoted two.
+    fake.nativeWebSearch = true;
+    fake.searchResults = [
+      { title: 'Results', url: 'https://ir.example.com/q2' },
+      { title: 'Old results', url: 'https://ir.example.com/q1' },
+      { title: 'Blog', url: 'https://blog.example.com/nvda' },
+    ];
+    const answer = (sources: unknown[]) =>
+      JSON.stringify({
+        title: 'Q2',
+        sub: 's',
+        narration: 'A short line.',
+        blocks: [{ type: 'insight', props: { title: 'Point', conf: 'inferred' } }],
+        sources,
+      });
+    fake.raw = answer([
+      { title: 'Results', url: 'https://ir.example.com/q2', snippet: 'Revenue was $96.2 billion.' },
+    ]);
+    const named = await generateLive(freshAsk, [], cfg, undefined, {
+      caps: { searchMode: 'realtime' },
+      repair: false,
+    });
+    expect(named.spec.sources?.map((s) => s.url)).toEqual(['https://ir.example.com/q2']);
+
+    // An answer that names none still searched: what the search returned stands in.
+    fake.raw = answer([]);
+    const unnamed = await generateLive(freshAsk, [], cfg, undefined, {
+      caps: { searchMode: 'realtime' },
+      repair: false,
+    });
+    expect(unnamed.spec.sources).toHaveLength(3);
   });
 
   it('does NOT trust model-listed sources on an UNGROUNDED turn (no fabricated citations)', async () => {
@@ -857,6 +948,8 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
       repair: false,
     });
     expect(spec.sources).toBeUndefined();
+    // A timeless ask is never pushed to search.
+    expect(fake.lastReq?.system).not.toContain('SEARCH BEFORE YOU ANSWER');
   });
 
   it('does NOT mark a block provable when the turn had no grounding sources', async () => {

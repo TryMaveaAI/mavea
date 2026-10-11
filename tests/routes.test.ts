@@ -37,6 +37,7 @@ describe('routeFor', () => {
       '#/synlab',
       '#/pageviewlab',
       '#/whylab',
+      '#/studiolab',
     ];
     for (const prefix of labPrefixes) {
       expect(routeFor(prefix), `${prefix} should resolve in dev`).not.toBeNull();

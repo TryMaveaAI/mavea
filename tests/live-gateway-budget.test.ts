@@ -73,9 +73,17 @@ describe('output budget on a gateway route', () => {
 
   it('leaves a provider that needs no headroom alone', async () => {
     const gateway = await budgetFor('openrouter', 'vendor/anything:free');
-    const direct = await budgetFor('grok', 'grok-4.3');
+    const direct = await budgetFor('grok', 'grok-3');
     expect(direct).toBeLessThan(gateway);
     // The gateway's extra is the reasoning reservation, not a bigger canvas.
     expect(gateway - direct).toBeGreaterThanOrEqual(2000);
+  });
+
+  it('reserves it for a Grok model that reasons out of the same budget', async () => {
+    // grok-4.3 (the Grok default) thinks at `low` and meters it from max_output_tokens, though
+    // nothing in its id reads as a reasoning model.
+    expect(await budgetFor('grok', 'grok-4.3')).toBe(
+      await budgetFor('openrouter', 'vendor/anything:free'),
+    );
   });
 });

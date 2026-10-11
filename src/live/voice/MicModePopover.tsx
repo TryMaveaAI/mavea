@@ -134,3 +134,40 @@ export function MicModePopover({
     </div>
   );
 }
+
+const CHOICES: readonly { key: MicMode; title: string }[] = [
+  { key: 'tap', title: 'Tap' },
+  { key: 'always', title: 'Always on' },
+  { key: 'hold', title: 'Hold' },
+];
+
+/** The same choice as a row in the dock's Settings sheet, for a touch screen. The badge is an
+ *  18px dot on the mic's corner, so a thumb aimed at it lands on the mic about as often; on a
+ *  coarse pointer the badge is hidden (livedock.css) and the choice lives here instead. */
+export function MicModeChoice({
+  mode,
+  onChange,
+}: {
+  mode: MicMode;
+  onChange: (mode: MicMode) => void;
+}): ReactElement {
+  return (
+    <div className="mic-mode-choice" role="radiogroup" aria-label="Mic mode">
+      <span className="mic-mode-choice-label" aria-hidden="true">
+        Mic
+      </span>
+      {CHOICES.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          role="radio"
+          aria-checked={mode === c.key}
+          className="mic-mode-choice-opt"
+          onClick={() => onChange(c.key)}
+        >
+          {c.title}
+        </button>
+      ))}
+    </div>
+  );
+}

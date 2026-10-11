@@ -81,6 +81,11 @@
   outline: 2px solid var(--presence);
   outline-offset: 4px;
 }
+@media (pointer: coarse) {
+  .brand-link {
+    min-height: var(--tap-min);
+  }
+}
 /* The brand mark is a tiny one-element jelly: the span is the bell, ::before paints the eyes,
    ::after the three trailing strands. Same aurora as the living face, so the logo and the
    mascot are one creature. Shared shape — any surface showing the Mavéa wordmark reuses this
@@ -167,8 +172,31 @@
 .workspace-name {
   color: var(--text-secondary);
   font-size: var(--fs-md);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
+  /* An answer's title is as long as the question made it: it gives way to the controls, which
+     otherwise ran off the bar's clipped right edge. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded truncation of one title */
   white-space: nowrap;
+}
+.brand {
+  min-width: 0;
+}
+.brand-dot,
+.brand-name,
+.brand-sep {
+  flex-shrink: 0;
+}
+/* The four feature menus fold into Search (the ⌘K palette, which survives) once the BAR is too
+   narrow for them — measured on the bar, not the window, because the session rail takes 236px of
+   it without the window changing. They stop fitting at a ~470px bar on the default text size;
+   560 leaves room for the larger one (1.2x) and a menu badge. */
+@container (width <= 560px) {
+  .topbar .more-menu-root,
+  .topbar .topbar-divider {
+    display: none;
+  }
 }
 
 .topbar-spacer {
@@ -333,7 +361,7 @@
   border: 1px solid var(--line-soft);
   border-radius: 5px;
   background: var(--surface-glass);
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--font-data);
   font-size: var(--fs-2xs);
 }

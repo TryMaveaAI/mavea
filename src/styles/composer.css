@@ -153,9 +153,13 @@
   outline: 2px solid var(--presence);
   outline-offset: 2px;
 }
-@media (width <= 640px) {
+/* Keyed on the dock's width, not the window's: the session rail takes 236px of dock without the
+   window changing, and a labelled row held at 900px wide overflowed and pushed send off the end.
+   The phase-width floor above has to come off too, or it outranks the square box. */
+@container (width <= 760px) {
   .composer-watch {
     width: 38px;
+    min-width: 0;
     padding: 0;
   }
   .composer-watch span {
