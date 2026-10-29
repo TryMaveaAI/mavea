@@ -59,5 +59,12 @@ export function placeRingBadges(rings: Pt[][], avoid: Pt[], taken: Pt[], radius:
  *  does not print the same number a second time. */
 export function labelStates(label: string, offset: number): boolean {
   const n = formatValue(offset);
-  return new RegExp(`(^|[^\\d.])${n.replace(/[.,]/g, '\\$&')}(?![\\d.])`).test(label);
+  let index = label.indexOf(n);
+  while (index !== -1) {
+    const before = label[index - 1] ?? '';
+    const after = label[index + n.length] ?? '';
+    if (!/[\d.]/u.test(before) && !/[\d.]/u.test(after)) return true;
+    index = label.indexOf(n, index + 1);
+  }
+  return false;
 }

@@ -46,6 +46,8 @@ introduces a seam, a dependency, or a new module.
 
 `pnpm check:vulnerabilities` scans the versions reachable through installed dependency links, including build tooling; stale pnpm cache entries are excluded. When an upstream fix is unavailable, a local pnpm patch must include regression tests. The gate recognizes a patched advisory only when the reviewed patch, workspace and lockfile configuration, and every installed patched file match their recorded checksums. Removing or changing the patch blocks the release again.
 
+Demo narration baking sends the authored corpus only to `http://127.0.0.1:8880/v1/audio/speech` and refuses redirects. Unlike the development proxy, the baker does not accept `KOKORO_URL` overrides, so a build cannot forward corpus text to a remote voice endpoint.
+
 ### Scalability & performance
 
 - [ ] No needless re-renders, O(n²) loops, or unbounded growth; large lists are bounded/virtualized where needed

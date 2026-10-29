@@ -290,6 +290,18 @@ describe('placeRingBadges', () => {
 });
 
 describe('labelStates', () => {
+  it.each([
+    ['Side · 2.5 ft', 2.5, true],
+    ['Side · 2x5 ft', 2.5, false],
+    ['Side · 12.5 ft', 2.5, false],
+    ['Side · 2.55 ft', 2.5, false],
+    ['120 ft followed by 20 ft', 20, true],
+    ['Side · 1,000 ft', 1000, true],
+    ['Side · 1000 ft', 1000, false],
+  ])('matches literal bounded offsets in %s', (label, offset, expected) => {
+    expect(labelStates(label, offset)).toBe(expected);
+  });
+
   it('spots an offset the label already states', () => {
     expect(labelStates('Front yard · 20 ft', 20)).toBe(true);
     expect(labelStates('Front yard', 20)).toBe(false);

@@ -236,7 +236,7 @@ describe('the world control in the answer header', () => {
 
     // Wait for the answer itself, so this is "the header rendered and the control is not in it"
     // rather than "nothing has rendered yet".
-    await screen.findByText('Cheap credit');
+    await screen.findByText('Cheap credit', {}, { timeout: COLD_MS });
     expect(screen.queryByRole('button', { name: WORLD_CHIP })).toBeNull();
   });
 

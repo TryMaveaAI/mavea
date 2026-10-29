@@ -9,6 +9,7 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { encodeNarration } from './build-media-input';
 
 type Frame = { narration?: string };
@@ -17,7 +18,6 @@ type Corpus = { persona: string; frames: Frame[] };
 const ROOT = resolve(import.meta.dirname, '..');
 const CORPUS_DIR = join(ROOT, 'src/demo/corpus');
 const OUT_DIR = join(ROOT, 'public/demo-assets/narration');
-const KOKORO_URL = (process.env.KOKORO_URL ?? 'http://127.0.0.1:8880').replace(/\/$/u, '');
 const ONLY = new Set(
   (process.env.ONLY ?? '')
     .split(',')
@@ -38,8 +38,10 @@ function sourceFiles(): string[] {
   return selected.map((persona) => join(CORPUS_DIR, `${persona}.generated.json`));
 }
 
-async function synthesize(text: string): Promise<Uint8Array> {
-  const response = await fetch(`${KOKORO_URL}/v1/audio/speech`, {
+export async function synthesize(text: string): Promise<Uint8Array> {
+  // Corpus text is sent only to the local voice service; redirects must never forward it elsewhere.
+  const response = await fetch('http://127.0.0.1:8880/v1/audio/speech', {
+    redirect: 'error',
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -79,7 +81,8 @@ async function main(): Promise<void> {
   for (const file of sourceFiles()) await bakeCorpus(file);
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });

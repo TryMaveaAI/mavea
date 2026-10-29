@@ -11,11 +11,11 @@ import type { ProviderId } from '../../types/mavea';
 // Model catalogs move quickly. This date is deliberately exercised by truthfulness-copy.test.ts;
 // after 45 days the release gate fails until the IDs, prices, and official pages are rechecked.
 export const MODEL_CATALOG_AUDIT = {
-  verifiedOn: '2026-09-03',
+  verifiedOn: '2026-10-29',
   maxAgeDays: 45,
   sources: {
     gemini: 'https://ai.google.dev/gemini-api/docs/models',
-    anthropic: 'https://platform.claude.com/docs/en/about-claude/models/overview',
+    anthropic: 'https://platform.claude.com/docs/en/models/overview',
     openai: 'https://developers.openai.com/api/docs/models/all',
     grok: 'https://docs.x.ai/developers/models',
     openrouter: 'https://openrouter.ai/models',
@@ -87,7 +87,7 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'anthropic',
     label: 'Claude · Anthropic',
-    // Haiku 5.5 replaced Haiku 4.5 (retirement floor 2026-10-15) at a tenth of its price. It thinks
+    // Haiku 5.5 replaced Haiku 4.5 at a tenth of its price for prompts up to 100K tokens. It thinks
     // by default, so the adapter has to switch thinking off by name on every turn that does not ask
     // for it, and its tokenizer runs ~30% heavier, which generateLive's output budget allows for.
     defaultModel: 'claude-haiku-5-5',
@@ -123,8 +123,8 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'grok',
     label: 'Grok · xAI',
-    // xAI's OpenAI-compatible API. 4.3 is still its lowest-priced general model — 4.5 through 4.7
-    // all list at $2/$6 — so it stays the default. The model field remains free text.
+    // xAI's OpenAI-compatible API. 4.3 remains cheaper than the newer 4.5 through 4.7 models, which
+    // list at $2/$6 — so it stays the default. The model field remains free text.
     defaultModel: 'grok-4.3',
     suggestedModels: ['grok-4.3'],
     needsKey: true,
