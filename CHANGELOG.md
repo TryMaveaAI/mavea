@@ -4,6 +4,15 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1] - 2026-10-29
+
+### Security
+
+- Updated Vite, Vitest, DOMPurify, Undici, fast-uri, Zod, and the PowerPoint image parser to fixed releases.
+- Removed dependency advisory exceptions; the installed dependency gate now requires a fixed release or a checksum-verified local remediation for every finding.
+- Restricted demo narration baking to the local voice service and refused redirects.
+- Replaced dynamic regular-expression construction in site-plan badge matching with literal comparisons.
+
 ## [2.12.0] - 2026-10-10
 
 ### Added
