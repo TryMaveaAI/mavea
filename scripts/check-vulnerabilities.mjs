@@ -3,12 +3,6 @@
 // It scans production and development dependencies because compromised build tooling can affect
 // the shipped artifact too. Any known, non-withdrawn vulnerability fails the gate; there is no
 // severity threshold and no silent ignore list.
-//
-// REVIEWED, on the other hand, is not silent — see ACCEPTED below. An advisory can be one this
-// project has read and shown to be unreachable in the way IT uses the package, and the honest
-// answer there is neither to fail forever on something that cannot happen nor to wave through a
-// category. Each acceptance names the exact advisory, the exact package VERSION, and the argument;
-// it is printed on every run, and it stops applying the moment either changes.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -19,28 +13,6 @@ const MODULES = resolve(ROOT, 'node_modules');
 const OSV_BATCH_URL = 'https://api.osv.dev/v1/querybatch';
 const OSV_DETAIL_URL = 'https://api.osv.dev/v1/vulns/';
 const BATCH_SIZE = 500;
-
-/** Advisories reviewed and accepted, pinned to the exact version the review was done against.
- *
- *  A bump re-opens the question by construction: the key carries the version, so an upgraded
- *  package no longer matches and the gate fails again until someone looks. Removing the last
- *  consumer has the same effect — the entry then matches nothing and is reported as stale. */
-const ACCEPTED = new Map([
-  [
-    'GHSA-5p2g-fcmc-qvqq@image-size@1.2.1',
-    'Unreachable as this project uses it. The parsers at fault are JXL/HEIF (and ICNS in the ' +
-      'sibling advisory); pptxgenjs only ever receives what export/pipeline/raster.ts produces, ' +
-      'which is canvas.toDataURL("image/jpeg") or ("image/png") — never those formats, and never ' +
-      'a file the reader supplies. pptxgenjs is lazily imported on the PPTX export path alone. ' +
-      'Availability-only (C:N/I:N/A:H), and every published image-size version is affected, so ' +
-      'there is nothing to upgrade to. Re-check when image-size ships a fix or pptxgenjs drops it.',
-  ],
-  [
-    'GHSA-w3rx-r6r6-pgpr@image-size@1.2.1',
-    'Same package, same review as GHSA-5p2g-fcmc-qvqq — the ICNS parser, a format this project ' +
-      'never produces or forwards.',
-  ],
-]);
 
 // Follow installed links rather than stale directories retained in pnpm's store.
 export function collectInstalledPackages(modules = MODULES, { includeRoots = false } = {}) {
@@ -221,22 +193,19 @@ async function main() {
     return;
   }
 
-  // Split before reporting: an accepted advisory is announced, not hidden, and anything else fails.
-  const accepted = [];
+  // Only checksum-verified local remediations can exempt an upstream advisory.
   const patched = [];
   const braces = packages.find((pkg) => `${pkg.name}@${pkg.version}` === BRACES_PATCH.package);
   const bracesPatched = verifiedBracesPatch(ROOT, braces?.roots);
   const blocking = new Map();
   for (const [id, pkgs] of findings) {
-    const unreviewed = new Set();
+    const unpatched = new Set();
     for (const pkg of pkgs) {
-      const key = `${id}@${pkg}`;
       if (id === BRACES_PATCH.id && pkg === BRACES_PATCH.package && bracesPatched) {
         patched.push({ id, pkg });
-      } else if (ACCEPTED.has(key)) accepted.push({ id, pkg, why: ACCEPTED.get(key) });
-      else unreviewed.add(pkg);
+      } else unpatched.add(pkg);
     }
-    if (unreviewed.size) blocking.set(id, unreviewed);
+    if (unpatched.size) blocking.set(id, unpatched);
   }
   if (patched.length) {
     for (const { id, pkg } of patched) {
@@ -245,24 +214,8 @@ async function main() {
       );
     }
   }
-  if (accepted.length) {
-    console.log(`\n${accepted.length} reviewed acceptance(s) — read, argued, and version-pinned:`);
-    for (const { id, pkg, why } of accepted) {
-      console.log(`    ${id} — ${pkg}`);
-      console.log(`      ${why}`);
-      console.log(`      https://osv.dev/${id}`);
-    }
-  }
-  const stale = [...ACCEPTED.keys()].filter(
-    (key) => !accepted.some(({ id, pkg }) => `${id}@${pkg}` === key),
-  );
-  if (stale.length) {
-    console.error(`\n✖ ${stale.length} acceptance(s) match nothing installed — delete them:`);
-    for (const key of stale) console.error(`    ${key}`);
-    process.exitCode = 1;
-  }
   if (!blocking.size) {
-    if (!stale.length) console.log('\n✓ No unreviewed vulnerabilities in the installed graph.');
+    console.log('\n✓ No unpatched vulnerabilities in the installed graph.');
     return;
   }
 
