@@ -81,7 +81,6 @@ import {
   PHOTO_BLOCK_TYPE,
   blockTypesForTier,
 } from './blockTypes';
-import { actionSpec } from '../live/actions/catalog';
 import type { AskComplexity } from '../live/select/complexity';
 import { safeImageUrl, safeBlockImageSrc } from '../live/image/safeUrl';
 import { safeHttpUrl } from '../lib/sourceHost';
@@ -2643,16 +2642,6 @@ function buildBlockUnchecked(
     case 'composite': {
       const cp = cleanBuilt(buildComposite(props, allowed, grounded));
       return cp ? ({ type: 'composite', col, delay, props: cp } as unknown as Block) : null;
-    }
-    case 'action': {
-      // A model-PROPOSED action: keep it only if its id is a known action; the surface
-      // renders it as a confirm card and nothing runs until the user confirms.
-      const id = asStr(props.id).trim();
-      if (!actionSpec(id)) return null;
-      const out: Record<string, Json> = { id, args: sanitizeDeep(asObj(props.args)) };
-      const label = optStr(props.label);
-      if (label) out.label = label;
-      return { type: 'action', col, delay, props: out } as unknown as Block;
     }
     case 'imagecallouts': {
       // Otherwise generic, except the nested image still needs the exact per-file clearance gate.

@@ -48,7 +48,7 @@ describe('project legal policy', () => {
     expect(read('TERMS.md')).toContain('offering paid or commercial licenses');
     expect(read('TERMS.md')).toContain('rights it owns or controls');
     expect(read('PRIVACY.md')).toContain('non-extractable, device-bound browser key');
-    expect(read('PRIVACY.md')).toContain('no separate Mavéa user accounts');
+    expect(read('PRIVACY.md')).toContain('no Mavéa user-account system');
     expect(read('PRIVACY.md')).toContain('no automatic expiration');
     expect(read('PRIVACY.md')).toContain('does not set analytics or advertising cookies');
     expect(read('PRIVACY.md')).toContain('transferred to a successor');

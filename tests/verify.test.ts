@@ -358,21 +358,11 @@ describe('autoFix — deterministic, zero-call repair (saves model calls)', () =
 });
 
 describe('fabricated action claims', () => {
-  it('flags narration claiming a completed action with no action block', () => {
+  it('flags narration claiming it completed an external action', () => {
     const r = resp([block('insight', { title: 'Done' })]);
     r.narration = "I've added that to your calendar.";
     const codes = checkConsistency(r).map((i) => i.code);
     expect(codes).toContain('fabricated-action-claim');
-  });
-
-  it('does NOT flag a real action proposal (the "action" block is present)', () => {
-    const r = resp([
-      block('insight', { title: 'Done' }),
-      block('action', { id: 'calendar.addEvent', args: {} }),
-    ]);
-    r.narration = "I've added that to your calendar.";
-    const codes = checkConsistency(r).map((i) => i.code);
-    expect(codes).not.toContain('fabricated-action-claim');
   });
 
   it('does NOT flag an honest offer ("I can …") or a future-tense line', () => {
@@ -383,29 +373,20 @@ describe('fabricated action claims', () => {
     expect(checkConsistency(r).map((i) => i.code)).not.toContain('fabricated-action-claim');
   });
 
-  it('autoFix rewrites the false completion claim into an honest offer', () => {
+  it('autoFix turns the false completion into a step the user can take', () => {
     const r = resp([block('insight', { title: 'Done' })]);
     r.narration = "I've sent the email to your manager.";
     const fixed = autoFix(r);
-    expect(fixed.narration).toBe('I can send the email to your manager.');
+    expect(fixed.narration).toBe('You can send the email to your manager.');
     expect(checkConsistency(fixed).map((i) => i.code)).not.toContain('fabricated-action-claim');
-  });
-
-  it('autoFix leaves narration alone when a real action block backs the claim', () => {
-    const r = resp([
-      block('insight', { title: 'Done' }),
-      block('action', { id: 'calendar.addEvent', args: {} }),
-    ]);
-    r.narration = "I've drafted the email — take a look.";
-    expect(autoFix(r).narration).toBe("I've drafted the email — take a look.");
   });
 
   it('autoFix rewrites the spoken voice twin the same way', () => {
     const r = resp([block('insight', { title: 'Done' })]);
     r.narration = 'Done!';
-    r.spoken = "I've booked the meeting for you.";
+    r.spoken = "I've booked the meeting.";
     const fixed = autoFix(r);
-    expect(fixed.spoken).toBe('I can book the meeting for you.');
+    expect(fixed.spoken).toBe('You can book the meeting.');
   });
 });
 

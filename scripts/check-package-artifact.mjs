@@ -96,6 +96,7 @@ try {
   }
   const leaked = paths.filter(
     (path) =>
+      path.startsWith('gateway/') ||
       /(?:^|\/)(?:src|tests?|coverage|\.git|\.github)(?:\/|$)/.test(path) ||
       /(?:^|\/)\.env(?:\.|$)/.test(path) ||
       /\.map$/i.test(path),

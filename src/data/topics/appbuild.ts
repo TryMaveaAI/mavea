@@ -543,36 +543,6 @@ export const appbuild: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll open a draft PR with the scaffolded shell.",
-      props: {
-        eyebrow: 'Action · pull request',
-        icon: 'external',
-        title: 'Open PR: “Scaffold the Northwind app shell”',
-        lines: [
-          { k: 'Branch', v: 'scaffold/northwind-shell → main' },
-          { k: 'Includes', v: '13 nav components · 5 screens' },
-        ],
-        perm: 'Mavéa opens a draft PR. Nothing merges without your review and approval.',
-        cta: 'Open draft PR',
-        doneText: 'Draft PR opened · waiting for your review',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'Scaffold the Northwind app shell' },
-          { param: 'head', label: 'Branch', value: 'scaffold/northwind-shell' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value: 'React + TypeScript starter: 13 nav components, 5 screens, ⌘K palette.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -590,7 +560,6 @@ export const appbuild: ConversationSpec = {
     { label: 'Open the ⌘K palette', icon: 'sparkle', route: 'appbuild:palette', lead: 'Try' },
     { label: 'Show the mobile shell', icon: 'screen', route: 'appbuild:mobile' },
     { label: 'Make it a one-slide brief', icon: 'slides', route: 'slide' },
-    { label: 'Scaffold the shell', icon: 'layers', route: 'send' },
     { label: 'Clip a 20-second tour', icon: 'play', route: 'replay' },
   ],
   intents: {

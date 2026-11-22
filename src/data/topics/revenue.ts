@@ -274,36 +274,6 @@ export const revenue: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll block time to kick off the SMB pricing test, you confirm before it's added.",
-      props: {
-        eyebrow: 'Action · reminder',
-        icon: 'clock',
-        title: 'Schedule the SMB pricing-test kickoff',
-        lines: [
-          { k: 'Covers', v: '1-page plan + success metric' },
-          { k: 'Adds', v: 'One calendar event' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add to calendar',
-        doneText: 'Added · SMB pricing-test kickoff',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Title', value: 'SMB pricing-test kickoff' },
-          { param: 'start', label: 'Start', value: '2026-07-25T14:00' },
-          {
-            param: 'notes',
-            label: 'Agenda',
-            value:
-              'The segment-specific SMB pricing test: the hypothesis, the success metric, and the guardrail before we ship it wider.',
-            multiline: true,
-          },
-        ],
-      },
-    },
   },
 
   group: 'docs',

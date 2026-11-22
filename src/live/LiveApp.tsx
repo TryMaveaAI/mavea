@@ -981,8 +981,6 @@ export function LiveApp(): ReactElement {
   const [memorySaved, setMemorySaved] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const settingsScrim = useBackdropDismiss(() => setShowSettings(false));
-  // Which tab the settings modal opens on — the palette's "Connect apps" jumps straight to
-  // Actions (the tab is otherwise hidden until something is connected).
   const [settingsTab, setSettingsTab] = useState<SettingsTab>();
   // Which You-tab setting a palette row promised ("Whisper mode" → Quiet hours): the panel opens
   // More options and scrolls there. Both this and the tab are cleared whenever settings closes

@@ -25,9 +25,9 @@ const digest = (file: string): string =>
 /** The documents the gate asks a reader to accept or acknowledge, and the digest each was last
  *  reviewed at. Update a line only together with the review that earned it. */
 const REVIEWED: Record<string, string> = {
-  'TERMS.md': '3d26746a3d310715',
-  'PRIVACY.md': '70bf168ec57ab295',
-  'DISCLAIMER.md': '1331da4b98ee7d90',
+  'TERMS.md': 'a82200f5645e8397',
+  'PRIVACY.md': '0624a74acb4543b1',
+  'DISCLAIMER.md': 'd9696e8f1dd09743',
 };
 
 describe('a changed legal document cannot ship without a decision about the acceptance version', () => {

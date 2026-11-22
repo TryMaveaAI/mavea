@@ -23,16 +23,10 @@ import { safePdfUrl } from './src/live/doc/safeUrl.js';
 // off-allowlist (e.g. internal) host. Dev-only, like the /llm proxies below — a deployed build
 // needs an equivalent same-origin forwarder, else pdfreader gracefully shows the "Open" link.
 const PDF_MAX_BYTES = 30 * 1024 * 1024;
-// The provider proxies forward whatever key a request carries, and the /actions proxy attaches
-// GATEWAY_SECRET to whatever it forwards, so any page open in the same browser could otherwise
-// spend a reader's key, or act through their connectors, with a blind cross-site POST to
-// localhost. Only this app's own pages may use them, the same proof bin/mavea.mjs demands: a
-// matching Origin or Referer, else Fetch Metadata saying same-origin. A raw curl carries none of
-// these and is refused too. The local voice services sit behind the same door: another site
-// could otherwise run a reader's Kokoro or whisper for its own ends, or read what they return.
-// `/actions`, `/tts` and `/stt` are matched as bare prefixes because that is how their proxy
-// entries match.
-const GUARDED_PROXY = /^\/(?:llm\/|search\/|actions|tts|stt)/;
+// Only this app's own pages may call the provider and voice proxies, using the same proof the CLI
+// requires: a matching Origin or Referer, or Fetch Metadata saying same-origin. The voice routes
+// use bare prefixes because their proxy entries do too.
+const GUARDED_PROXY = /^\/(?:llm\/|search\/|tts|stt)/;
 
 export function proxyRequestAllowed(req: Pick<IncomingMessage, 'url' | 'headers'>): boolean {
   if (!GUARDED_PROXY.test(req.url ?? '')) return true;
@@ -425,6 +419,19 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    fs: {
+      // A local checkout may still have OAuth credentials from the retired actions gateway.
+      // Vite replaces its default deny list when configured, so keep the defaults here too.
+      deny: [
+        '.env',
+        '.env.*',
+        '*.{crt,pem,key,p12,pfx,cer,der}',
+        '.npmrc',
+        '.yarnrc.yml',
+        '**/.git/**',
+        '**/gateway/.gateway-data/**',
+      ],
+    },
     // NOTE: we intentionally do NOT set COOP/COEP. Cross-origin isolation would let
     // onnxruntime-web (Silero VAD) run multi-threaded via SharedArrayBuffer, but COEP also
     // BLOCKS Chrome's PDF viewer inside the page — so an embedded PDF could never preview, only
@@ -529,24 +536,6 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq) => {
             proxyReq.removeHeader('origin');
             proxyReq.removeHeader('referer');
-          });
-        },
-      },
-      // Actions gateway — a confirmed action (calendar/Slack/Gmail) posts to /actions/<id>
-      // and this forwards to the dependency-free gateway service (gateway/), which holds the
-      // credentials and makes the real call. Connection refused (gateway not running) surfaces
-      // as an honest "couldn't reach the connector" on the card, never a crash.
-      '/actions': {
-        target: process.env.ACTIONS_URL || 'http://127.0.0.1:8910',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/actions/, ''),
-        // Forward the browser's Origin (the gateway's anti-CSRF check needs it) and, when a
-        // shared secret is configured, inject it server-side so the page never sees it.
-        configure: (proxy) => {
-          const secret = process.env.GATEWAY_SECRET;
-          if (!secret) return;
-          proxy.on('proxyReq', (proxyReq) => {
-            proxyReq.setHeader('x-gateway-secret', secret);
           });
         },
       },

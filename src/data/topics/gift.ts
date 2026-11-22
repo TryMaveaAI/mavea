@@ -281,32 +281,12 @@ export const gift: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Getting it ready',
-      say: "I'll get the herb garden set ready to buy, you check out.",
-      props: {
-        eyebrow: 'Action · shopping',
-        icon: 'link',
-        title: 'Get the herb garden set ready to buy',
-        lines: [
-          { k: 'Item', v: 'Indoor herb garden set · $72' },
-          { k: 'Where', v: 'You complete checkout yourself' },
-        ],
-        perm: 'Mavéa has no store connection, it only prepares the link. It will never buy anything for you.',
-        cta: 'Get the link',
-        doneText: 'Link ready — you buy',
-      },
-    },
-  },
+  extras: {},
 
   group: 'decide',
   tryChip: { label: 'Find a gift for my mom', route: 'topic:gift' },
   suggests: [
     { label: 'Which one should I get?', icon: 'proof', route: 'gift:pick', lead: 'Try' },
-    { label: 'Get it ready to buy', icon: 'link', route: 'send' },
     { label: 'Help me pick an apartment', icon: 'layers', route: 'topic:decision' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },
   ],

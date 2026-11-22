@@ -950,7 +950,7 @@
   padding-right: 0;
 }
 
-/* Zoom — blows a single card up full-screen over a dim scrim, mirroring .app-scrim/.app-launch. */
+/* Zoom — blows a single card up full-screen over a dim scrim. */
 .zoom-scrim {
   position: fixed;
   inset: 0;

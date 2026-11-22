@@ -498,35 +498,6 @@ export const money: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll set a monthly money check-in, you confirm before it's added.",
-      props: {
-        eyebrow: 'Action · reminder',
-        icon: 'clock',
-        title: 'Schedule a monthly money check-in',
-        lines: [
-          { k: 'Repeats', v: 'A recurring reminder to review' },
-          { k: 'Adds', v: 'One calendar event' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add to calendar',
-        doneText: 'Added · monthly money check-in',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Title', value: 'Monthly money check-in' },
-          { param: 'start', label: 'Start', value: '2026-08-01T09:00' },
-          {
-            param: 'notes',
-            label: 'Agenda',
-            value: 'Review this month’s spending and the three things to know.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,

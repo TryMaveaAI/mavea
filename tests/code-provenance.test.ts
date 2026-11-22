@@ -3,7 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '..');
-const SCAN_DIRS = ['src', 'scripts', 'bin', 'gateway', 'voice'];
+const SCAN_DIRS = ['src', 'scripts', 'bin', 'voice'];
 const CODE_EXTENSIONS = /\.(?:ts|tsx|js|mjs|mts|css|py|sh)$/;
 
 // Deliberately reviewed exceptions, by repo-relative path. Vendored-with-attribution code lands

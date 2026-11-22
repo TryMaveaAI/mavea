@@ -212,53 +212,23 @@ export const sleep: ConversationSpec = {
       "Naps during the day aren't counted toward the nightly total.",
     ],
   },
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I'll add a wind-down reminder to your calendar for tonight.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'bell',
-        title: 'Add a wind-down reminder for 10:45pm',
-        lines: [
-          { k: 'Adds', v: 'One event · tonight, 10:45pm' },
-          { k: 'Does', v: 'A nudge to ease off screens' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add reminder',
-        doneText: 'Added to your calendar for 10:45pm',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Wind down · ease off screens' },
-          { param: 'start', label: 'Start', value: '2026-06-12T22:45:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '15' },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'health',
   tryChip: { label: 'How have I been sleeping?', route: 'topic:sleep' },
   suggests: [
     { label: 'Why am I so short?', icon: 'proof', route: 'sleep:why', lead: 'Try' },
-    { label: 'Set a wind-down reminder', icon: 'bell', route: 'sleep:remind' },
     { label: "How's my running?", icon: 'chart', route: 'topic:fitness' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },
   ],
   intents: {
     why: { kind: 'proof' },
-    remind: { kind: 'build', key: 'action' },
   },
   keywords: [
     {
       test: /\bsleep|sleeping|\brest\b|\btired\b|\bbed\b|insomnia/,
       route: 'topic:sleep',
-      sub: [
-        { test: /why|short|cause|reason|so little/, route: 'sleep:why' },
-        { test: /remind|wind.?down|nudge|alarm/, route: 'sleep:remind' },
-      ],
+      sub: [{ test: /why|short|cause|reason|so little/, route: 'sleep:why' }],
     },
   ],
 };

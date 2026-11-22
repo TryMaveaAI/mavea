@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TermsApp } from '../src/legal/TermsApp';
 import { PrivacyApp } from '../src/legal/PrivacyApp';
+import { LegalApp } from '../src/legal/LegalApp';
 
 // Opening a document anchors it to the top; jsdom does not implement window.scrollTo.
 // tests/legal-scroll.test.tsx covers that behaviour.
@@ -28,6 +29,7 @@ describe('canonical legal documents', () => {
     expect(screen.getByText(/at least 18 years old/i)).toBeInTheDocument();
     expect(screen.getByText(/does not provide medical, legal, financial/i)).toBeInTheDocument();
     expect(screen.getByText(/same-origin proxy/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Using and sharing outputs' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Acceptable use' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Disclaimers' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Limitation of liability' })).toBeInTheDocument();
@@ -55,7 +57,19 @@ describe('canonical legal documents', () => {
     expect(screen.getByRole('link', { name: '← Back to Mavéa' })).toHaveAttribute('href', '#/live');
   });
 
-  it('describes actual local, proxy, provider, speech, gateway, and deletion boundaries', () => {
+  it('shows current repository and output disclosures on the important information page', () => {
+    render(<LegalApp />);
+
+    expect(
+      screen.getByRole('heading', { name: 'A connected repository leaves with your request' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Review output before you use or share it' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/confirming every action|connected apps/i)).not.toBeInTheDocument();
+  });
+
+  it('describes local storage, providers, speech, legacy gateway credentials, and deletion', () => {
     window.location.hash = '#/privacy?from=home';
     render(<PrivacyApp />);
 
@@ -65,7 +79,10 @@ describe('canonical legal documents', () => {
     expect(screen.getByText(/course data, mastery and progress/i)).toBeInTheDocument();
     expect(screen.getByText(/non-extractable, device-bound browser key/i)).toBeInTheDocument();
     expect(screen.getByText(/proxy and its host can technically access/i)).toBeInTheDocument();
-    expect(screen.getByText(/no separate Mavéa user accounts/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/earlier versions offered a standalone actions gateway/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/legacy gateway credentials remain on disk/i)).toBeInTheDocument();
     expect(screen.getAllByText(/speech-to-text endpoint/i)).not.toHaveLength(0);
     expect(document.body).toHaveTextContent(/sends store: false/i);
     expect(screen.getByText(/can receive, log, or retain the audio/i)).toBeInTheDocument();
@@ -108,7 +125,7 @@ describe('canonical legal documents', () => {
   it('does not leave the public account fixture making fictional product privacy promises', () => {
     const accountFixture = readFileSync(join(__dirname, '../src/data/topics/account.ts'), 'utf8');
     expect(accountFixture).toContain('Example privacy map · fictional product');
-    expect(accountFixture).toContain('Mavéa has no account backend');
+    expect(accountFixture).toContain('Mavéa does not create an account or send this email');
     expect(accountFixture).not.toContain('Encrypted in our EU database');
     expect(accountFixture).not.toContain('Aggregated, no personal ID');
     expect(accountFixture).not.toContain('Nothing is shared with anyone');

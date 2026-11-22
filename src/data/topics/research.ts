@@ -1035,24 +1035,6 @@ export const research: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll compile the 11 kept sources into a bibliography.",
-      props: {
-        eyebrow: 'Action · bibliography',
-        icon: 'doc',
-        title: 'Compile the 11 graded sources into a bibliography',
-        lines: [
-          { k: 'Compiles', v: '11 sources · 3 NEJM RCTs' },
-          { k: 'Where', v: 'Right here, export as PDF to keep it' },
-        ],
-        perm: 'Mavéa has no library connection, it only compiles the citations here.',
-        cta: 'Compile the bibliography',
-        doneText: 'Bibliography compiled — export as PDF',
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -1074,7 +1056,6 @@ export const research: ConversationSpec = {
       lead: 'Try',
     },
     { label: 'Make it a research brief', icon: 'slides', route: 'slide' },
-    { label: 'Compile the 11 sources', icon: 'doc', route: 'send' },
     { label: 'Clip a 20-second walkthrough', icon: 'play', route: 'replay' },
     { label: "How's the business doing?", icon: 'chart', route: 'topic:biz' },
   ],

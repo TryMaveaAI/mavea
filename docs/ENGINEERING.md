@@ -79,7 +79,7 @@ green, you can trust that nothing broke and the app works.**
 ```mermaid
 graph BT
     UNIT["Unit — most numerous, deterministic\neval-score · streamParse · data-integrity\nleak-guard · Presence"]
-    INT["Seam tests — many, fast, no real I/O\nliveSchema · settle-turn · live-turnstate-reducer\nproviders · actions-gateway · routes"]
+    INT["Seam tests — many, fast, no real I/O\nliveSchema · settle-turn · live-turnstate-reducer\nproviders · routes"]
     E2E["Smoke / integration — few, high-confidence\napp-smoke · live-smoke · canvas-render"]
     UNIT --> INT --> E2E
 ```

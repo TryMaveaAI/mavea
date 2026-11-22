@@ -99,19 +99,15 @@ that configured endpoint, which must be covered by the operator's security and p
 
 ---
 
-## Actions
+## Repository access
 
-Mavéa proposes **no side-effecting actions** — it can't add a calendar event, send a message, or
-touch an external account, and it never claims to have. The in-product "Connect apps" write-actions
-feature (and its Settings panel) was removed: the handful of integrations that could be honored end
-to end weren't worth a surface that implied more than it delivered.
+Ripple reads pull requests, diffs, and repository trees directly from `api.github.com` in the
+browser. Public repositories work without a token. For a private repository, provide a read-only
+token with access to that repository.
 
-Ripple's GitHub access is unrelated and unchanged — it reads pull requests, diffs, and repo trees
-**directly from api.github.com in the browser** (public repos need nothing; a private repo works
-once you paste a read-only token), so it needs no gateway or server-side credentials.
-
-> The standalone actions gateway (`gateway/`, `pnpm actions`) is retained for now but is no longer
-> wired into the app; a follow-up removes it entirely.
+If you ran the retired actions gateway, its credentials can still exist in
+`gateway/.gateway-data/tokens.json`, a custom token-store path, or your host configuration.
+Revoke unused credentials with the issuing service and remove the local copies you no longer need.
 
 ---
 

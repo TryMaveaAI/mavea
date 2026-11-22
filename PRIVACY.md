@@ -37,7 +37,7 @@ Saved content is encrypted in browser storage only where the relevant feature an
 
 Because this browser data is encrypted to this specific browser, it does not carry over to a different browser, an incognito window, or another device. You can export a backup file of your dashboards, memory, flashcards, saved canvases, map, and courses, and import it elsewhere to move that data. A backup carries a dashboard's definition and its latest values, not its fetched reading history, so moving to another browser starts that history fresh. The backup is plain, unencrypted JSON under your control, so store and share it carefully; it deliberately excludes your provider and search keys. Importing a backup merges into existing data and never deletes it, and importing a file you did not create can add content from that file — import only backups you trust.
 
-Browser and operating-system caches may retain application assets and optional voice models. The actions gateway may store connected-service credentials and configuration on the deployment operator's machine.
+Browser and operating-system caches may retain application assets and optional voice models.
 
 ## 3. Credentials and connected-service tokens
 
@@ -49,9 +49,7 @@ Keys are decrypted when needed and pass through the deployment's same-origin pro
 
 The scope you grant is the boundary of what these features can read: a token that can reach private repositories lets any feature you run reach them too, and what it reads can then be sent to your selected model provider (see section 4). Review the scopes at the point of authorization, prefer read-only, and revoke a connection you are no longer using.
 
-Optional GitHub and Google connections can store access tokens, refresh tokens, or repository settings in the actions gateway or its host configuration. The unmodified gateway writes persisted OAuth tokens to an owner-readable host file and keeps limited audit metadata, not request bodies or provider response text. Whoever runs the gateway controls that file, its backups, logs, deletion, and security.
-
-The unmodified gateway has no separate Mavéa user accounts. On a shared deployment, everyone allowed to use action features may act through the deployment operator's connected GitHub or Google account. Use a dedicated, least-privilege gateway and do not expose it to people who should not share those permissions.
+Earlier versions offered a standalone actions gateway for GitHub and Google. A deployment that ran it may still retain access tokens, refresh tokens, and repository settings in its local token file or host configuration, along with audit metadata in logs. The deployment operator controls these records, their backups, and their deletion.
 
 ## 4. Prompts, files, code, and generated content
 
@@ -104,7 +102,7 @@ The unmodified project does not sell personal information or use it for cross-co
 
 Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. A dashboard's fetched reading history is capped per tracked item, and deleting a dashboard deletes its readings and its record of recent checks with it. Settings offers Forget everything on this device, which removes saved keys, the browser key that sealed them, and every Mavéa store and cache in this browser, then reloads. Clearing all browser site data does the same from the browser's side. Neither reaches a disk or profile backup taken earlier, and removing browser data does not delete copies already sent elsewhere.
 
-Gateway tokens remain until disconnected or removed by the gateway operator. Server, proxy, infrastructure, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
+Legacy gateway credentials remain on disk until the deployment operator removes them. Server, proxy, infrastructure, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
 
 Exports, downloaded files, backups, browser sync, system backups, provider records, and recipients of anything you share must be deleted separately.
 
@@ -134,9 +132,9 @@ Do not submit children's data or another person's personal, confidential, privil
 
 ## 11. Security
 
-Mavéa uses safeguards such as browser encryption for supported stored data, content sanitization, same-origin request boundaries, confirmation for connected actions, and restricted gateway token-file permissions. No safeguard is perfect. Do not treat local storage or encryption as a guarantee, and do not use Mavéa as a password manager or secret vault.
+Mavéa uses safeguards such as browser encryption for supported stored data, content sanitization, and same-origin request boundaries. No safeguard is perfect. Do not treat local storage or encryption as a guarantee, and do not use Mavéa as a password manager or secret vault.
 
-You are responsible for device security, access controls, backups, proxy configuration, least-privilege provider credentials, and connected-account security. Do not expose a local proxy, development server, or actions gateway to an untrusted network.
+You are responsible for device security, access controls, backups, proxy configuration, least-privilege provider credentials, and connected-account security. Do not expose a local proxy or development server to an untrusted network.
 
 ## 12. Children
 

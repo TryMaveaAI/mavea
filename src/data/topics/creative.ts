@@ -1314,24 +1314,6 @@ export const creative: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll compile the board into one page you can export.",
-      props: {
-        eyebrow: 'Action · compile',
-        icon: 'paperclip',
-        title: 'Compile the Azores story into one page',
-        lines: [
-          { k: 'Compiles', v: 'Moodboard · palette · route · shot list' },
-          { k: 'Where', v: 'Right here, export or screenshot to keep it' },
-        ],
-        perm: 'Mavéa has no notes connection, it only compiles this page.',
-        cta: 'Compile the page',
-        doneText: 'Board compiled — export to keep it',
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -1346,7 +1328,6 @@ export const creative: ConversationSpec = {
   group: 'home',
   tryChip: { label: 'Turn my Azores trip into a photo-story', route: 'topic:creative' },
   suggests: [
-    { label: 'Compile the board', icon: 'paperclip', route: 'send', lead: 'Try' },
     { label: 'Make it a look-book page', icon: 'slides', route: 'slide' },
     { label: 'Clip a walkthrough', icon: 'play', route: 'replay' },
     { label: 'Plan my Kyoto trip', icon: 'share', route: 'topic:travel' },

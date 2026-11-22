@@ -72,7 +72,7 @@ for (const marker of [
 }
 for (const marker of [
   'non-extractable, device-bound browser key',
-  'no separate Mavéa user accounts',
+  'no Mavéa user-account system',
   'speech-to-text endpoint',
   'no automatic expiration',
   'does not sell personal information',

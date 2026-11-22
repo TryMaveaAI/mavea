@@ -1408,37 +1408,6 @@ export const product: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll open a draft PR with the cutover-week checklist.",
-      props: {
-        eyebrow: 'Action · pull request',
-        icon: 'external',
-        title: 'Open PR: “Cutover-week checklist”',
-        lines: [
-          { k: 'Branch', v: 'docs/cutover-checklist → main' },
-          { k: 'Includes', v: '6-item checklist · Atlas v3 · Search' },
-        ],
-        perm: 'Mavéa opens a draft PR. Nothing merges without your review and approval.',
-        cta: 'Open draft PR',
-        doneText: 'Draft PR opened · waiting for your review',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'Cutover-week checklist' },
-          { param: 'head', label: 'Branch', value: 'docs/cutover-checklist' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value:
-              '6-item checklist for cutover week: freeze writes, verify read parity, flip the flag, monitor error budget, confirm rollback path, close the loop with steering.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -1455,7 +1424,6 @@ export const product: ConversationSpec = {
   suggests: [
     { label: 'Prove the latency number', icon: 'proof', route: 'product:searchbet', lead: 'Try' },
     { label: 'Make it steering-ready', icon: 'slides', route: 'slide' },
-    { label: 'Open the cutover checklist', icon: 'check', route: 'send' },
     { label: 'Clip a version for the team', icon: 'play', route: 'replay' },
     { label: "How's the business doing?", icon: 'chart', route: 'topic:biz' },
   ],

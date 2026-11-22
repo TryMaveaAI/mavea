@@ -53,7 +53,7 @@ AGENTS.md
 .playwright-mcp/
 .mavea-review/
 
-# Actions gateway token store when run on the host (`pnpm actions`)
+# Credentials left by older installations of the actions gateway
 gateway/.gateway-data/
 
 # Generated semantic-fit model assets (built by scripts/build-semantic-index.py; ~7MB, lazy-fetched at runtime)

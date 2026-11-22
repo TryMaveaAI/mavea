@@ -7,7 +7,6 @@
 # proxies /tts → localhost:8880, so the browser never talks to Kokoro directly (no CORS).
 # Without these containers Mavéa still works through typing and written captions; microphone
 # transcription stays unavailable rather than sending speech to a browser-vendor service.
-# The optional actions gateway is plain Node (`pnpm actions`), no container needed.
 
 services:
   # Kokoro TTS — OpenAI-compatible /v1/audio/speech on :8880. Mavéa's only voice. The wrapper and

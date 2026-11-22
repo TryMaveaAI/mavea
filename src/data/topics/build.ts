@@ -245,37 +245,6 @@ export const build: ConversationSpec = {
   ],
   proof: null,
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Opening a PR',
-      say: "I'll open a draft PR with the CRM starter, you run it yourself.",
-      props: {
-        eyebrow: 'Action · pull request',
-        icon: 'external',
-        title: 'Open PR: “Studio CRM starter”',
-        lines: [
-          { k: 'Branch', v: 'feat/studio-crm → main' },
-          { k: 'Includes', v: '4 tables, 5 screens, 8 sample leads' },
-        ],
-        perm: 'Mavéa opens a draft PR. Nothing merges without your review and approval.',
-        cta: 'Open draft PR',
-        doneText: 'Draft PR opened · waiting for your review',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'Studio CRM starter' },
-          { param: 'head', label: 'Branch', value: 'feat/studio-crm' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value:
-              'B2B-first CRM shaped like your studio: Companies → Contacts → Projects, seeded from studio-aria.com.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -314,7 +283,6 @@ export const build: ConversationSpec = {
     { label: 'Show me the data model', icon: 'layers', route: 'build:schema' },
     { label: 'What screens do I get?', icon: 'slides', route: 'build:screens' },
     { label: 'Looks right, build it', icon: 'spark', route: 'build:run' },
-    { label: 'Open the CRM PR', icon: 'external', route: 'send' },
   ],
   intents: {
     understood: {
@@ -351,7 +319,6 @@ export const build: ConversationSpec = {
           test: /get.*(business|me).*right|did you (get|understand)|about my (business|studio)/,
           route: 'build:understood',
         },
-        { test: /open (it|my)|publish|go live|launch it/, route: 'send' },
         { test: /build it|looks right|go ahead|do it|ship it/, route: 'build:run' },
       ],
     },

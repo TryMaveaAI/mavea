@@ -78,8 +78,6 @@ import { buildMemoryContext } from './memory/inject';
 import { rankForInjection, proceduralHints, personalFitLine } from './memory/retrieve';
 import { memoryRelevant } from './memory/relevance';
 import { adaptiveCols } from './layout';
-import { actionsMenu } from './actions/catalog';
-import { getConnectedMcps } from './actions/connected';
 import { targetBlockCount, countDirective } from './screen';
 import { rememberDeepenTurn } from './depth/deepenStore';
 import type { ChatMessage, LiveRequest, ThinkingLevel } from './providers/types';
@@ -1091,11 +1089,6 @@ export async function generateLive(
   // remote image. Live therefore never offers found-photo blocks; only individually reviewed
   // assets baked into the tour/demo corpus can cross the render-time media clearance gate.
   const photoEnabled = false;
-  // Actions are gated OFF until the user connects an MCP; only then do we expose the
-  // 'action' block (to the validator + schema) and tell the model what it can offer.
-  // Nothing ever runs without an explicit confirm on the card.
-  const connectedMcps = getConnectedMcps();
-  const actionMenu = connectedMcps.size ? actionsMenu(connectedMcps) : '';
   // The tier's STANDARD set (the base 8, plus the frontier cousins bars/stack/donut/gauge that
   // liveSystemPrompt's frontier addendum tells a capable model to "use liberally"). These must
   // be in the gate AND the type enum even when the random hero draw didn't pick them — otherwise
@@ -1103,7 +1096,7 @@ export async function generateLive(
   // one, collapsing a full 10-block canvas down to the lone always-allowed insight. (This was THE
   // "Live only shows 1 element" bug: prompt and gate disagreed on the standard frontier blocks.)
   const tierStandard = blockTypesForTier(tier);
-  const extras = [...(photoEnabled ? [PHOTO_BLOCK_TYPE] : []), ...(actionMenu ? ['action'] : [])];
+  const extras = photoEnabled ? [PHOTO_BLOCK_TYPE] : [];
   // SYNTHESIS — when no registered component fits this rich ask, let the model compose a bespoke
   // layout from primitives ('composite') or draw a custom SVG illustration ('svgblock') instead of
   // falling back to plain text. Fires only on a weak fit, so the extra prompt tokens are
@@ -1416,7 +1409,6 @@ export async function generateLive(
       opts.lesson?.directive ?? '',
       topicLockLine,
       dateLine,
-      actionMenu,
       countLine,
       formRequestLine,
       specialistLine,

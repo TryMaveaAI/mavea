@@ -32,19 +32,7 @@ const BREAKDOWN_SUM_TOLERANCE = 12;
 /** Two mentions of the same quantity may round; >1% apart is a real contradiction. */
 const VALUE_CONFLICT_TOLERANCE = 0.01;
 
-/* ------------------------------------------------------------------ *
- * Fabricated action claims. Mavéa's whole action surface is PROPOSE-then-confirm — an
- * "action" block is a confirm card, and nothing runs until the user taps it — so narration
- * that says the deed is already DONE ("I've sent that email") is a hallucination even when
- * the model correctly proposed the action, and an outright lie when it didn't propose one at
- * all. This is the highest-trust-damage class of mistake the surface can make, so it's
- * checked on every turn, for free.
- * ------------------------------------------------------------------ */
-
-/** Past-tense/completion-verb → base-form map, used to rewrite a false completion claim
- *  ("I've sent the email") into an honest offer ("I can send the email") without a model
- *  round-trip. Deliberately broad — it also catches claims about things Mavéa can't do at all
- *  (a "texted"/"paid" it never performed), not just the connected actions (calendar/GitHub). */
+/** Base forms for completion claims about work the answer can only guide the user through. */
 const ACTION_VERB_BASE: Record<string, string> = {
   sent: 'send',
   added: 'add',
@@ -98,15 +86,12 @@ function claimsActionDone(text: string): boolean {
  *  use so the shared instance is safe across calls. */
 const ACTION_COMPLETION_ALL_RE = new RegExp(ACTION_COMPLETION_RE.source, 'gi');
 
-/** Rewrite every false completion claim in `text` into an honest offer, e.g.
- *  "I've sent the email" → "I can send the email". Falls back to leaving the match alone if
- *  the captured verb somehow isn't in the base-form map (defensive; can't happen given the
- *  regex is built from that same map's keys). */
+/** Turn a fabricated completion into a step the user can take without another model call. */
 function deClaimActions(text: string): string {
   ACTION_COMPLETION_ALL_RE.lastIndex = 0;
   return text.replace(ACTION_COMPLETION_ALL_RE, (whole, verb: string) => {
     const base = ACTION_VERB_BASE[verb.toLowerCase()];
-    return base ? `I can ${base}` : whole;
+    return base ? `You can ${base}` : whole;
   });
 }
 
@@ -124,28 +109,21 @@ const RICH_CANVAS_MIN = 8;
  *  we treat it as the "same ten components every time" collapse and ask for a rebuild. */
 const MIN_SPECIALIZED_TYPES = 3;
 
-/** Distinct specialized (non-standard) block types on the canvas — the visuals that make an
- *  answer look composed for the topic rather than assembled from the generic dozen. `action`
- *  is a tool button, not a data visual, so it never counts toward variety. */
+/** Distinct specialized (non-standard) block types on the canvas. */
 function specializedTypes(blocks: Block[]): Set<string> {
-  return new Set(
-    blocks.map((b) => b.type as string).filter((t) => !STANDARD_TYPES.has(t) && t !== 'action'),
-  );
+  return new Set(blocks.map((b) => b.type).filter((t) => !STANDARD_TYPES.has(t)));
 }
 
 /** The pure-prose staples — cards that render as running text, not a data visualization. A canvas
  *  built ENTIRELY from these is "another wall of text": exactly what Mavéa exists to replace with
  *  something you can SEE. Every other type — chart, compare, timeline, breakdown, ring, kpi, the
  *  bars/stack/donut/gauge family, and the whole specialized library — renders a visual, so a single
- *  one of them clears the floor. `action` is a bare tool button, so it doesn't count as a visual. */
+ *  one of them clears the floor. */
 const PROSE_STAPLE_TYPES: ReadonlySet<string> = new Set(['insight', 'list', 'blanks']);
 
 /** Does the canvas carry at least one genuine visual (anything past the prose staples)? */
 function hasVisualBlock(blocks: Block[]): boolean {
-  return blocks.some((b) => {
-    const t = b.type as string;
-    return t !== 'action' && !PROSE_STAPLE_TYPES.has(t);
-  });
+  return blocks.some((b) => !PROSE_STAPLE_TYPES.has(b.type));
 }
 
 const PREAMBLE_OPENER_RE =
@@ -389,18 +367,11 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
     });
   }
 
-  // Fabricated action claim: narration says a real-world deed is DONE ("I've sent the
-  // email") but this turn never actually proposed the matching "action" block — the model
-  // narrated a completion that never happened. autoFix rewrites this deterministically
-  // (see below); it's reported here so the fix is observable and
-  // covered whenever checkConsistency runs on a response autoFix hasn't touched yet.
-  if (
-    claimsActionDone(r.narration) &&
-    !r.blocks.some((b) => (b as { type: string }).type === 'action')
-  ) {
+  // Report fabricated completions when checking a response that has not gone through autoFix.
+  if (claimsActionDone(r.narration)) {
     issues.push({
       code: 'fabricated-action-claim',
-      detail: `narration claims an action is already done ("${r.narration}") but no "action" block was proposed this turn — rewrite it as an offer ("I can …"), never a completed deed, unless you actually include the matching action block.`,
+      detail: `narration claims it performed an external action ("${r.narration}") — describe a step the user can take instead.`,
     });
   }
 
@@ -527,15 +498,8 @@ export function autoFix(r: LiveResponse): LiveResponse {
     return b;
   });
 
-  // Fabricated action claim: rewrite it into an honest offer, for free, whenever narration
-  // claims a deed is done but no matching "action" block was actually proposed this turn (see
-  // claimsActionDone/deClaimActions above). The voice twin gets the same treatment so the
-  // spoken line never says something the screen doesn't.
-  const hasActionBlock = blocks.some((b) => (b as { type: string }).type === 'action');
-  const narration =
-    !hasActionBlock && claimsActionDone(r.narration) ? deClaimActions(r.narration) : r.narration;
-  const spoken =
-    r.spoken && !hasActionBlock && claimsActionDone(r.spoken) ? deClaimActions(r.spoken) : r.spoken;
+  const narration = deClaimActions(r.narration);
+  const spoken = r.spoken && deClaimActions(r.spoken);
   const declaimed: LiveResponse = { ...r, narration, ...(spoken ? { spoken } : {}) };
 
   // Ensure a framing card: a lone NON-insight block (a bare compare / list /

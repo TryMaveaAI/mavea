@@ -803,33 +803,11 @@ export interface SlideProps {
   foot?: string;
   eyebrow?: string;
 }
-export interface ActionLine {
-  k: string;
-  v: string;
-}
-export interface ActionField {
-  param: string;
-  label: string;
-  value: string;
-  multiline?: boolean;
-}
-export interface ActionProps {
-  eyebrow?: string;
-  icon?: IconKey;
-  title?: string;
-  lines?: ActionLine[];
-  perm?: string;
-  cta?: string;
-  doneText?: string;
-  mcpId?: string;
-  fields?: ActionField[];
-}
 export interface ReplayProps {
   line?: string;
 }
 export type Extra =
   | { kind: 'slide'; col: number; status: string; say: string; props: SlideProps }
-  | { kind: 'action'; col: number; status: string; say: string; props: ActionProps }
   | { kind: 'replay'; col: number; status: string; say: string; props: ReplayProps };
 
 /* ---- routing metadata (each spec owns its own routing so adding a convo = one file) ---- */
@@ -842,7 +820,7 @@ export interface SuggestSpec {
 export type IntentSpec =
   | { kind: 'spotlight'; spotId: string; say: string }
   | { kind: 'proof' }
-  | { kind: 'build'; key: 'slide' | 'action' | 'replay' };
+  | { kind: 'build'; key: 'slide' | 'replay' };
 export interface KeywordRule {
   test: RegExp;
   route: string;
@@ -886,7 +864,7 @@ export interface ConversationSpec {
    *  `score` 0–100, and a short `reason`. Surfaced as a quiet "Track this live" chip only when the
    *  score clears the threshold (see dashboards/detect). Absent on the vast majority of answers. */
   track?: { score: number; reason: string };
-  extras: { slide?: Extra; action?: Extra; replay?: Extra };
+  extras: { slide?: Extra; replay?: Extra };
 
   // routing metadata — kept next to the data it routes
   group: ConversationGroup;

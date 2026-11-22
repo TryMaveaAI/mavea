@@ -420,24 +420,6 @@ export const cookkids: ConversationSpec = {
   ],
   proof: null,
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll put together the six ingredients you'll need.",
-      props: {
-        eyebrow: 'Action · shopping list',
-        icon: 'cart',
-        title: 'Compile the mini-pizza ingredient list',
-        lines: [
-          { k: 'Lists', v: '6 ingredients' },
-          { k: 'Where', v: 'Copy into any list app' },
-        ],
-        perm: 'Mavéa has no store or list connection, it only compiles the list here.',
-        cta: 'Compile the list',
-        doneText: 'List ready to copy',
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -469,7 +451,6 @@ export const cookkids: ConversationSpec = {
   group: 'household',
   tryChip: { label: 'A fun recipe to make with my kids', route: 'topic:cookkids' },
   suggests: [
-    { label: 'Compile my ingredient list', icon: 'cart', route: 'send', lead: 'Try' },
     { label: 'Show me the kid-safe steps', icon: 'sparkle', route: 'cookkids:steps' },
     { label: 'Make it a fridge recipe card', icon: 'slides', route: 'slide' },
     { label: 'What about a no-bake snack?', icon: 'spark', route: 'topic:meal' },

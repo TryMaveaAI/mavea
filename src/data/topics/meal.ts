@@ -324,32 +324,12 @@ export const meal: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I'll get a 10-minute pasta timer ready, you start it.",
-      props: {
-        eyebrow: 'Action · timer',
-        icon: 'clock',
-        title: 'Get a 10-minute pasta timer ready',
-        lines: [
-          { k: 'Sets up', v: '10:00 timer, named “Pasta”' },
-          { k: 'Where', v: 'You start it on your phone' },
-        ],
-        perm: "Mavéa can't start timers on your phone, it only prepares this one.",
-        cta: 'Get it ready',
-        doneText: 'Timer ready — start it on your phone',
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'What should I cook tonight?', route: 'topic:meal' },
   suggests: [
     { label: 'Walk me through it', icon: 'clock', route: 'meal:steps', lead: 'Try' },
-    { label: 'Get the timer ready', icon: 'check', route: 'send' },
     { label: "What's my week look like?", icon: 'sparkle', route: 'topic:week' },
     { label: 'Plan my Lisbon trip', icon: 'layers', route: 'topic:trip' },
   ],

@@ -706,39 +706,6 @@ export const symptom: ConversationSpec = {
   ],
   proof: null,
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll add the first overnight temperature check to your calendar.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add the first overnight check, in 4 hours',
-        lines: [
-          { k: 'Adds', v: 'One event · first of 3 checks, every 4 hours' },
-          { k: 'To', v: 'Your personal calendar' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add reminder',
-        doneText: 'Added the first check-in, repeat every 4 hours',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          {
-            param: 'title',
-            label: 'Event title',
-            value: 'Check temperature · overnight fever watch',
-          },
-          { param: 'start', label: 'Start', value: '2026-06-12T23:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '10' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value: 'First of 3 checks, every 4 hours through the night.',
-          },
-        ],
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -777,7 +744,6 @@ export const symptom: ConversationSpec = {
     },
     { label: 'How sure are you about this?', icon: 'shield', route: 'symptom:confidence' },
     { label: 'Make me a fridge one-pager', icon: 'slides', route: 'slide' },
-    { label: 'Set the first check-in reminder', icon: 'clock', route: 'send' },
     { label: 'Help me sleep better tonight', icon: 'moon', route: 'topic:sleep' },
   ],
   intents: {

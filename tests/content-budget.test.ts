@@ -72,15 +72,4 @@ describe('shared model/UI content budgets', () => {
     expect(Array.from(props.events[0].title)).toHaveLength(96);
     expect(Array.from(props.events[0].detail)).toHaveLength(320);
   });
-
-  it('never changes action arguments while bounding the displayed label', () => {
-    const body = 'important '.repeat(500);
-    const bounded = enforceComponentContentBudget('action', {
-      label: 'x'.repeat(1_000),
-      args: { body },
-    });
-
-    expect(Array.from(bounded.label as string)).toHaveLength(96);
-    expect((bounded.args as { body: string }).body).toBe(body);
-  });
 });

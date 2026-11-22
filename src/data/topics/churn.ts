@@ -295,43 +295,11 @@ export const churn: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll block time to review the at-risk accounts — you confirm before it's added.",
-      props: {
-        eyebrow: 'Action · retention',
-        icon: 'clock',
-        title: 'Schedule the at-risk SMB review',
-        lines: [
-          { k: 'Covers', v: '5 accounts · $4.5k MRR' },
-          { k: 'Adds', v: 'One calendar event' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add to calendar',
-        doneText: 'Added · at-risk account review',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Title', value: 'At-risk SMB retention review' },
-          { param: 'start', label: 'Start', value: '2026-07-22T10:00' },
-          {
-            param: 'notes',
-            label: 'Agenda',
-            value:
-              'Walk the 5 at-risk accounts hit by the pricing change and agree a retention offer for each.',
-            multiline: true,
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'docs',
   tryChip: { label: 'Show me the churn deep-dive', route: 'topic:churn' },
   suggests: [
-    { label: 'Draft a retention offer', icon: 'mail', route: 'send', lead: 'Try' },
     { label: 'Back to the board story', icon: 'chart', route: 'topic:revenue' },
     { label: "How's customer sentiment?", icon: 'quote', route: 'topic:sentiment' },
     { label: "What's the runway?", icon: 'layers', route: 'topic:runway' },

@@ -163,7 +163,7 @@ jobs:
       - name: Install Semgrep
         run: pipx install semgrep==1.172.0
       - name: SAST (Semgrep — curated CI ruleset)
-        run: semgrep --config p/ci --error --quiet src gateway bin scripts vite.config.ts
+        run: semgrep --config p/ci --error --quiet src bin scripts vite.config.ts
 
       # The source toolchain requires Node 24+, but the packed CLI is dependency-free and supports
       # Node 22.12+. Exercise that public runtime contract rather than asking modern build

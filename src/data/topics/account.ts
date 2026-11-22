@@ -528,32 +528,12 @@ export const account: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll save your account settings and finish setup.",
-      props: {
-        eyebrow: 'Action · finish setup',
-        icon: 'check',
-        title: 'Save your account & preferences',
-        lines: [
-          { k: 'Saves', v: 'Profile, workspace, notifications, privacy' },
-          { k: 'To', v: 'john.smith@example.com' },
-        ],
-        perm: 'Demo-only preview. Mavéa has no account backend and this action does not save or send data.',
-        cta: 'Finish setup',
-        doneText: 'All set, welcome to your workspace',
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'Help me set up my account', route: 'topic:account' },
   suggests: [
     { label: 'Verify my email now', icon: 'lock', route: 'account:verify', lead: 'Try' },
-    { label: 'Finish setup', icon: 'check', route: 'send' },
     { label: 'Tweak my notifications', icon: 'bell', route: 'account:notify' },
     { label: 'Name my workspace', icon: 'layers', route: 'account:workspace' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },

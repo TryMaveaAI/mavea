@@ -1,6 +1,6 @@
 // "Adding dark mode to Settings", a coding-agent walkthrough: weighs three approaches,
 // maps the blast radius, runs the tests, shows the diff, and grounds the API against the
-// installed react-native before offering to open a draft PR.
+// installed react-native.
 import type { ConversationSpec } from '../conversation';
 
 export const code: ConversationSpec = {
@@ -324,37 +324,6 @@ export const code: ConversationSpec = {
     ],
   },
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Opening a PR',
-      say: "I'll open a PR, you review before it merges.",
-      props: {
-        eyebrow: 'Action · pull request',
-        icon: 'external',
-        title: 'Open PR: “Add dark mode to Settings”',
-        lines: [
-          { k: 'Branch', v: 'feat/dark-mode → main' },
-          { k: 'Includes', v: '5 files, updated snapshot test' },
-        ],
-        perm: 'Mavéa opens a draft PR. Nothing merges without your review and approval.',
-        cta: 'Open draft PR',
-        doneText: 'Draft PR opened · waiting for your review',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'Add dark mode to Settings' },
-          { param: 'head', label: 'Branch', value: 'feat/dark-mode' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value:
-              'Reads the OS color scheme via useColorScheme, updates one snapshot test. No API changes.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -389,7 +358,6 @@ export const code: ConversationSpec = {
     { label: 'What does this touch?', icon: 'layers', route: 'code:map' },
     { label: 'Show me the diff', icon: 'edit', route: 'code:diff' },
     { label: 'Did anything break?', icon: 'check', route: 'code:tests' },
-    { label: 'Open a PR', icon: 'external', route: 'send' },
   ],
   intents: {
     map: {
@@ -423,7 +391,6 @@ export const code: ConversationSpec = {
         { test: /diff|change|show me the code|what did you/, route: 'code:diff' },
         { test: /test|broke|break|ci|pass/, route: 'code:tests' },
         { test: /sure|real|hallucin|exist|prove|ground/, route: 'prove' },
-        { test: /pr|pull request|ship|open/, route: 'send' },
       ],
     },
   ],

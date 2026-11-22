@@ -679,37 +679,6 @@ export const designsys: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: 'I’ll add the v3.4 components to your library.',
-      props: {
-        eyebrow: 'Action · install',
-        icon: 'doc',
-        title: 'Bump aria-ui to v3.4 in your workspace',
-        lines: [
-          { k: 'Updates', v: '8 new · 61 drop-in' },
-          { k: 'To', v: 'aria-ui · v3.4.0' },
-        ],
-        perm: 'Opens a draft PR only, nothing merges until you review and approve it on GitHub.',
-        cta: 'Open the bump PR',
-        doneText: 'Draft PR opened, review on GitHub',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'chore: bump aria-ui to v3.4.0' },
-          { param: 'head', label: 'Branch', value: 'deps/aria-ui-3.4.0' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value:
-              'Bumps aria-ui from v3.3.2 to v3.4.0. Changelog: new Button variants, Tooltip refactor, no breaking changes.',
-            multiline: true,
-          },
-        ],
-      },
-    },
   },
 
   group: 'docs',
@@ -718,7 +687,6 @@ export const designsys: ConversationSpec = {
     { label: 'Spotlight the team', icon: 'share', route: 'designsys:team', lead: 'Try' },
     { label: 'Copy the Button usage', icon: 'doc', route: 'designsys:usage' },
     { label: 'Make it a one-slide brief', icon: 'slides', route: 'slide' },
-    { label: 'Bump aria-ui to v3.4', icon: 'check', route: 'send' },
     { label: 'How’s the business doing?', icon: 'chart', route: 'topic:biz' },
   ],
   intents: {

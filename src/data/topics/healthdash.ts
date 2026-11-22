@@ -793,40 +793,11 @@ export const healthdash: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll add a calendar reminder to recheck your LDL in eight weeks.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'bell',
-        title: 'Add an LDL recheck reminder for Jul 31',
-        lines: [
-          { k: 'Adds', v: 'One event · Jul 31' },
-          { k: 'What', v: 'Book a lipid panel at Quest' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add reminder',
-        doneText: 'Added to your calendar for Jul 31',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          {
-            param: 'title',
-            label: 'Event title',
-            value: 'Recheck LDL cholesterol · book lipid panel at Quest',
-          },
-          { param: 'start', label: 'Start', value: '2026-07-31T09:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '30' },
-        ],
-      },
-    },
   },
 
   group: 'health',
   tryChip: { label: 'How is my health?', route: 'topic:healthdash' },
   suggests: [
-    { label: 'Recheck my LDL in 8 weeks', icon: 'bell', route: 'send', lead: 'Try' },
     { label: 'Summarize this for my doctor', icon: 'slides', route: 'slide' },
     { label: "How's my running going?", icon: 'chart', route: 'topic:fitness' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },

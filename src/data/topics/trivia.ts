@@ -425,24 +425,6 @@ export const trivia: ConversationSpec = {
   ],
   proof: null,
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll tally Round 3 and update everyone's totals.",
-      props: {
-        eyebrow: 'Action · scorekeeper',
-        icon: 'check',
-        title: 'Lock in Round 3 scores',
-        lines: [
-          { k: 'Updates', v: '4 teams · 2 pts per correct' },
-          { k: 'Then', v: 'Reshuffle for Round 4' },
-        ],
-        perm: 'Mavéa will update the scorecard for tonight only. Nothing leaves this room.',
-        cta: 'Tally the round',
-        doneText: 'Round 3 locked, onto Round 4!',
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -473,7 +455,6 @@ export const trivia: ConversationSpec = {
     { label: 'Reveal the answers', icon: 'sparkle', route: 'trivia:funfact', lead: 'Try' },
     { label: 'Show the final standings', icon: 'chart', route: 'trivia:ranks' },
     { label: 'Put the answers on the TV', icon: 'slides', route: 'slide' },
-    { label: 'Tally the round', icon: 'check', route: 'send' },
     { label: 'Plan our game-night snacks', icon: 'cart', route: 'topic:meal' },
   ],
   intents: {

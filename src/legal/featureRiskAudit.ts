@@ -14,8 +14,7 @@ export type FeatureNoticeKind =
   | 'monitoring'
   | 'publishing'
   | 'voice-data'
-  | 'credentials'
-  | 'connected-actions';
+  | 'credentials';
 
 export interface FeatureRiskReview {
   notice: FeatureNoticeKind;
@@ -175,9 +174,5 @@ export const FEATURE_NOTICE_COPY: Record<
   credentials: {
     title: 'Remembering a key is a convenience',
     body: 'Remember stores an encrypted copy in this browser; it is not a security guarantee. Use restricted, revocable keys on a trusted device and revoke them at the provider if exposure is possible.',
-  },
-  'connected-actions': {
-    title: 'Connected actions affect other systems',
-    body: 'Data and credentials pass to your gateway and connected services. Use least-privilege access and review the destination, content, and permissions before confirming every action.',
   },
 };

@@ -326,43 +326,12 @@ export const trip: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll add the three days to your calendar.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add the weekend to your calendar',
-        lines: [
-          { k: 'Adds', v: '1 event · Friday to Sunday' },
-          { k: 'To', v: 'Your personal calendar' },
-        ],
-        perm: 'Mavéa will create 1 event spanning the weekend. Nothing is shared with anyone.',
-        cta: 'Add to calendar',
-        doneText: 'Added Fri–Sun to your calendar',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Lisbon weekend' },
-          { param: 'start', label: 'Start', value: '2026-06-12T17:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '3120' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value: 'Fri: Alfama. Sat: Sintra day trip, 9:10 train. Sun: Belém + pastéis.',
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'Plan my Lisbon weekend', route: 'topic:trip' },
   suggests: [
     { label: "What's Saturday?", icon: 'clock', route: 'trip:sintra', lead: 'Try' },
-    { label: 'Add it to my calendar', icon: 'check', route: 'trip:calendar' },
     { label: "What's for dinner tonight?", icon: 'table', route: 'topic:meal' },
     { label: "How's my running?", icon: 'chart', route: 'topic:fitness' },
   ],
@@ -372,16 +341,12 @@ export const trip: ConversationSpec = {
       spotId: 'sintra',
       say: "Saturday's the big one, Sintra. Reserve the 9:10 train.",
     },
-    calendar: { kind: 'build', key: 'action' },
   },
   keywords: [
     {
       test: /lisbon|trip|travel|vacation|holiday|itinerary/,
       route: 'topic:trip',
-      sub: [
-        { test: /calendar|add it|add them|schedule|book all/, route: 'trip:calendar' },
-        { test: /saturday|sintra|which day|what.*day/, route: 'trip:sintra' },
-      ],
+      sub: [{ test: /saturday|sintra|which day|what.*day/, route: 'trip:sintra' }],
     },
   ],
 };

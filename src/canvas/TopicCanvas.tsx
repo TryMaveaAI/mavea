@@ -30,7 +30,6 @@ import { Timeline } from './Timeline';
 import { ListCard } from './ListCard';
 import { ComparisonMatrix } from './ComparisonMatrix';
 import { SlidePreview } from './SlidePreview';
-import { ActionCard } from './ActionCard';
 import { ContextPill } from './trust';
 // charts & diagrams
 import { RingStat } from './RingStat';
@@ -89,21 +88,13 @@ import { depthLens, hasSections } from '../live/depth/depthLens';
 import { SectionGroup } from './depth/SectionGroup';
 import { BendStrip } from './BendStrip';
 import { bendBlock } from './bendBlock';
-import { ActionProposal, type ActionProposalProps } from './ActionProposal';
 import { blockLabel } from './blockLabel';
 import { BlankFillContext, type BlankFillState } from './lib';
 import { useCardDrag } from './dnd/useCardDrag';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
 import { StudyStage } from './study/StudyStage';
 import { deskObjects } from './study/scene';
-import type {
-  Block,
-  BendSpec,
-  ConversationSpec,
-  Extra,
-  PreviewProps,
-  AccentVar,
-} from '../data/conversation';
+import type { Block, BendSpec, ConversationSpec, Extra, AccentVar } from '../data/conversation';
 import { answerSignature } from '../data/conversation';
 import type {
   ReactNode,
@@ -301,13 +292,7 @@ function BlockViewImpl({
   if (b.type === 'screenmap') return <ScreenMap {...b.props} {...common} />;
   if (b.type === 'buildprog') return <BuildProgress {...b.props} {...common} />;
   if (b.type === 'preview') return <PreviewFrame {...b.props} {...common} />;
-  // A model-proposed action (Live only, not in the core Block union) — renders as a
-  // confirm card; nothing runs until the user confirms. Coerced by liveSchema, so the
-  // props are already validated.
-  if ((b.type as string) === 'action') {
-    const p = (b as unknown as { props: ActionProposalProps }).props;
-    return <ActionProposal {...p} {...common} />;
-  }
+
   // Extended library (595 components, 24 families) — looked up through the per-family
   // loader. A family still in flight shows a placeholder card, which this cell swaps for the
   // real one when the chunk lands.
@@ -460,9 +445,6 @@ export function TopicCanvas({
   corrects,
   blankFill,
 }: Props) {
-  // The "Open my CRM/tracker" action launches the real built app full-screen.
-  // The app it opens IS the topic's `preview` block (the same interactive PreviewFrame).
-  const [launched, setLaunched] = useState<PreviewProps | null>(null);
   const [bendValue, setBendValue] = useState<number | null>(bend?.param.value ?? null);
   useEffect(() => setBendValue(bend?.param.value ?? null), [bend?.blockId, bend?.param.value]);
   // Reading mode: expand every "Go deeper" drawer at once (find-in-page + screen reader access).
@@ -703,9 +685,6 @@ export function TopicCanvas({
   const contentRevision = `${data.id}:${familiesLoaded}:${budget}`;
   useAccessibleScrollRegions(gridRef, contentRevision);
   useTruncatedTextDisclosures(gridRef, contentRevision);
-  const previewBlock = data.blocks.find((b) => b.type === 'preview');
-  const previewProps = previewBlock ? (previewBlock.props as PreviewProps) : null;
-
   // Study mode needs one addressable object, and never disturbs the remembered preference if a
   // particular answer cannot use it.
   // The desk drops a world preview — it is a doorway to another surface, not an object to examine
@@ -771,13 +750,6 @@ export function TopicCanvas({
 
   const renderExtra = (ex: Extra): ReactNode => {
     if (ex.kind === 'slide') return <SlidePreview {...ex.props} />;
-    if (ex.kind === 'action')
-      return (
-        <ActionCard
-          {...ex.props}
-          onConfirm={previewProps ? () => setLaunched(previewProps) : undefined}
-        />
-      );
     // `data` is the ConversationSpec this canvas is showing — the replay card turns it into a
     // shareable Mavéa Story of the real components.
     if (ex.kind === 'replay') {
@@ -1042,7 +1014,6 @@ export function TopicCanvas({
     );
   };
 
-  const appScrim = useBackdropDismiss(() => setLaunched(null));
   return (
     // Provide the fill wiring so a BlankSlot nested in any block reaches it; a null value (Demo)
     // is equivalent to no provider — the slot then keeps its own local state.
@@ -1266,13 +1237,15 @@ export function TopicCanvas({
                 )
                 .map((k) => {
                   const ex = data.extras[k as keyof typeof data.extras] as Extra;
+                  const extra = renderExtra(ex);
+                  if (extra === null) return null;
                   // Extras carry CSS-12 col values. At tablet/mobile budgets go full-width;
                   // at desktop/laptop keep the authored col so pairs share a row cleanly.
                   const rawCol = Math.min(12, Math.max(1, ex.col || 6));
                   const scaledCol = budget < 9 ? 12 : rawCol;
                   return (
                     <div className={'col-' + scaledCol} key={k}>
-                      {renderExtra(ex)}
+                      {extra}
                     </div>
                   );
                 })}
@@ -1326,48 +1299,6 @@ export function TopicCanvas({
             </div>
           );
         })()}
-
-      {launched && (
-        <div
-          className="app-scrim"
-          role="button"
-          tabIndex={0}
-          aria-label="Close app preview"
-          onPointerDown={appScrim.onPointerDown}
-          onClick={appScrim.onClick}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setLaunched(null);
-            }
-          }}
-        >
-          <div
-            className="app-launch"
-            role="button"
-            tabIndex={0}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
-            }}
-          >
-            <div className="app-launch-head">
-              <span className="app-launch-title">
-                {launched.app}
-                <span className="app-launch-pill">
-                  <span className="web-live-dot" /> Live on your workspace
-                </span>
-              </span>
-              <button className="drawer-x" onClick={() => setLaunched(null)} aria-label="Close app">
-                <Icon.x />
-              </button>
-            </div>
-            <div className="app-launch-body">
-              <PreviewFrame {...launched} />
-            </div>
-          </div>
-        </div>
-      )}
 
       {zoomedBlock &&
         (() => {

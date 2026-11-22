@@ -490,37 +490,11 @@ export const family: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I'll hold Wednesday as date night, recurring?",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Hold Wednesday for date night',
-        lines: [
-          { k: 'Holds', v: 'Wed evening, weekly' },
-          { k: 'On', v: 'Your shared calendar' },
-        ],
-        perm: "Adds one event to your calendar. It won't message or notify anyone.",
-        cta: 'Block the time',
-        doneText: 'Wednesday evening is blocked',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Date night' },
-          { param: 'start', label: 'Start', value: '2026-06-17T19:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '180' },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'Sort out the family week', route: 'topic:family' },
   suggests: [
-    { label: 'Hold Wednesday for date night', icon: 'check', route: 'send', lead: 'Try' },
     { label: "What's for dinner tonight?", icon: 'table', route: 'topic:meal' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },
     { label: 'How should I budget?', icon: 'chart', route: 'topic:money' },

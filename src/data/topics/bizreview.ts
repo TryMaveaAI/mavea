@@ -1333,35 +1333,6 @@ export const bizreview: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll put the board review on the calendar — you confirm before it's added.",
-      props: {
-        eyebrow: 'Action · board review',
-        icon: 'clock',
-        title: 'Schedule the Q2 board review',
-        lines: [
-          { k: 'Adds', v: 'One calendar event' },
-          { k: 'Agenda', v: 'Q2 summary + this canvas' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add to calendar',
-        doneText: 'Added · Q2 board review',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Title', value: 'Q2 board review' },
-          { param: 'start', label: 'Start', value: '2026-07-24T15:00' },
-          {
-            param: 'notes',
-            label: 'Agenda',
-            value: 'The three key takeaways from the Q2 business review, plus this canvas.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -1378,7 +1349,6 @@ export const bizreview: ConversationSpec = {
   suggests: [
     { label: 'Prove the ARR bridge', icon: 'proof', route: 'bizreview:bridge', lead: 'Try' },
     { label: 'Make it board-ready', icon: 'slides', route: 'slide' },
-    { label: 'Send the review to the board', icon: 'mail', route: 'action' },
     { label: 'Clip a 30-second version', icon: 'play', route: 'replay' },
     { label: 'How are the unit metrics?', icon: 'chart', route: 'topic:biz' },
   ],

@@ -24,7 +24,7 @@ The license does not grant rights in the Mavéa name, logos, trade dress, domain
 
 The current Service is designed for local or self-hosted operation. The Licensors and Maintainers do not currently provide a Mavéa-hosted account, cloud storage, telemetry, analytics, or conversation-retention service. They do not receive your prompts or browser-local data merely because you install or run Mavéa. A separate deployment operator is responsible for its deployment, notices, access controls, security, data practices, and legal compliance.
 
-You are responsible for selecting, configuring, operating, and securing your device, browser, network, reverse proxy, deployment, credentials, backups, and connected accounts. Do not expose a development server, local proxy, or actions gateway to an untrusted network.
+You are responsible for selecting, configuring, operating, and securing your device, browser, network, reverse proxy, deployment, credentials, backups, and connected accounts. Do not expose a development server or local proxy to an untrusted network.
 
 ## 4. AI output and no professional advice
 
@@ -36,7 +36,7 @@ You must independently review and verify important output against qualified prof
 
 ## 5. Third-party services, credentials, and costs
 
-Mavéa can communicate with model, search, speech, media, hosting, OAuth, and action providers that you select. Those services are independent third parties and are governed by their own contracts, privacy policies, acceptable-use rules, retention practices, availability, and pricing.
+Mavéa can communicate with model, search, speech, media, hosting, and repository services. Those services are independent third parties and are governed by their own contracts, privacy policies, acceptable-use rules, retention practices, availability, and pricing.
 
 Connecting a code host or other content account authorizes Mavéa to read what that credential can reach and to include the relevant parts in requests to the provider you select. This applies to private repositories exactly as it does to public ones: if the scope you grant can read private source, internal documentation, diffs, or issues, that material can be sent to a third party under that party's own terms. You are responsible for having the right to disclose it, for granting the narrowest scope that works, and for revoking connections you no longer use.
 
@@ -66,11 +66,9 @@ Listening features turn nearby speech into text. Recording and eavesdropping law
 
 If you export a backup of your data, the resulting file is plain, unencrypted content under your sole control — you are responsible for storing, transmitting, and deleting it safely, and for only importing backups you trust. Backups exclude your provider and search keys.
 
-## 7. Connected actions
+## 7. Using and sharing outputs
 
-Some features can propose actions in connected accounts, such as drafting or sending content, creating calendar entries, or opening a draft pull request. An action is intended to run only after confirmation, but software, providers, networks, and account permissions can fail.
-
-Before confirming, review the target, recipients, arguments, permissions, charges, facts, confidential information, intellectual-property rights, accessibility, and likely consequences. You are solely responsible for actions you authorize, including irreversible changes, repository changes, generated messages, exports, presentations, shared reels, external communications, account activity, publishing, and third-party fees. A preview, confirmation screen, or successful provider response does not guarantee the intended result. Use sandbox or test accounts where possible and keep independent backups.
+Before using, exporting, or sharing output, review its facts, confidential information, intellectual-property rights, accessibility, intended recipients, and likely consequences. You are solely responsible for how you use generated messages, code, presentations, reels, and other outputs, including any communications, repository changes, publishing, or third-party fees that result. A preview or successful provider response does not guarantee the intended result. Keep independent backups.
 
 ## 8. Acceptable use
 
@@ -118,7 +116,7 @@ Some jurisdictions do not allow certain disclaimers, so parts of this section ma
 
 ## 12. Limitation of liability
 
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE AND OUR AFFILIATES, SUCCESSORS, LICENSORS, SERVICE PROVIDERS, AND REPRESENTATIVES WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, OR PUNITIVE DAMAGES; LOSS OF PROFITS, REVENUE, SAVINGS, BUSINESS, OPPORTUNITY, GOODWILL, USE, OR DATA; BUSINESS INTERRUPTION; COST OF SUBSTITUTE SERVICES; THIRD-PARTY CLAIMS; OR DAMAGES ARISING FROM AI OUTPUT, SECURITY INCIDENTS, CONNECTED ACTIONS, OR THIRD-PARTY SERVICES, UNDER ANY THEORY OF LIABILITY, EVEN IF ADVISED OF THE POSSIBILITY.
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE AND OUR AFFILIATES, SUCCESSORS, LICENSORS, SERVICE PROVIDERS, AND REPRESENTATIVES WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, OR PUNITIVE DAMAGES; LOSS OF PROFITS, REVENUE, SAVINGS, BUSINESS, OPPORTUNITY, GOODWILL, USE, OR DATA; BUSINESS INTERRUPTION; COST OF SUBSTITUTE SERVICES; THIRD-PARTY CLAIMS; OR DAMAGES ARISING FROM AI OUTPUT, SECURITY INCIDENTS, OR THIRD-PARTY SERVICES, UNDER ANY THEORY OF LIABILITY, EVEN IF ADVISED OF THE POSSIBILITY.
 
 TO THE MAXIMUM EXTENT PERMITTED BY LAW, OUR TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TERMS WILL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID US DIRECTLY FOR THE SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM OR (B) US$100.
 

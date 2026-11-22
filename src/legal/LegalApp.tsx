@@ -12,7 +12,7 @@ const DISCLOSURES = [
   },
   {
     title: 'Third-party providers process requests',
-    body: 'Prompts, attachments, conversation context, search requests, and connected-app data may be sent to the AI provider, search provider, or connected service you select so the requested feature can work. Their terms, privacy practices, retention rules, availability, and billing apply. You are responsible for provider charges, and Mavéa does not control third-party services.',
+    body: 'Prompts, attachments, conversation context, search requests, and repository content may be sent to the AI provider, search provider, or connected service you select so the requested feature can work. Their terms, privacy practices, retention rules, availability, and billing apply. You are responsible for provider charges, and Mavéa does not control third-party services.',
   },
   {
     title: 'Remembered keys remain your responsibility',
@@ -31,8 +31,8 @@ const DISCLOSURES = [
     body: 'Only upload, transform, publish, or share material you have the rights and permission to use. AI output may not be unique, may resemble other material, may include protected content, or may not qualify for copyright protection. Mavéa does not guarantee ownership or non-infringement; review output before publishing or commercial use.',
   },
   {
-    title: 'Review actions before they leave Mavéa',
-    body: 'Connected apps, exports, code suggestions, generated messages, and other actions can affect external systems or people. Check the destination, content, permissions, and consequences before confirming or using them. You are responsible for actions you take and material you share.',
+    title: 'Review output before you use or share it',
+    body: 'Check the destination, content, permissions, and consequences before sharing an export, applying a code suggestion, or sending a generated message. You are responsible for how you use and share Mavéa’s outputs.',
   },
 ] as const;
 
@@ -47,7 +47,7 @@ export function LegalApp(): ReactElement {
       intro={
         <p>
           Mavéa uses AI models and connected services selected by you. These plain-language notices
-          apply across Live, Courses, Deep Zoom, Prism, Ripple, Reels, exports, and connected apps.
+          apply across Live, Courses, Deep Zoom, Prism, Ripple, Reels, and exports.
         </p>
       }
     >

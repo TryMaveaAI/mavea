@@ -41,7 +41,7 @@ export function SlidePreview({
           <span>June 2026</span>
         </div>
       </div>
-      <div className="action-btns" style={{ marginTop: 16 }}>
+      <div className="slide-preview-actions" style={{ marginTop: 16 }}>
         <button
           className="btn-ghost"
           onClick={() => toast("Tell Mavéa what to change — it'll redo the one-pager", 'info')}

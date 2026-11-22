@@ -6,7 +6,7 @@
 @import './visualizations-harvested.css';
 @import './build-layer.css';
 @import './slide.css';
-@import './action-card.css';
+@import './slide-preview-actions.css';
 @import './replay-card.css';
 
 /* Ticked code inside model prose (canvas/lib/inlineCode). Sized to sit in the line it interrupts:

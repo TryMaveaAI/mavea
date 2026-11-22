@@ -274,49 +274,19 @@ export const week: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I'll hold Tuesday morning as focus time, okay?",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Block Tuesday morning for focus',
-        lines: [
-          { k: 'Holds', v: 'Tue 9:00–11:30, “Focus, do not book”' },
-          { k: 'On', v: 'Your work calendar' },
-        ],
-        perm: "Adds one event to your calendar. It won't message anyone.",
-        cta: 'Block the time',
-        doneText: 'Tuesday morning is blocked',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Focus — do not book' },
-          { param: 'start', label: 'Start', value: '2026-06-16T09:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '150' },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: "What's my week look like?", route: 'topic:week' },
   suggests: [
-    { label: 'Block Tuesday for focus', icon: 'check', route: 'week:focus', lead: 'Try' },
     { label: "What's for dinner tonight?", icon: 'table', route: 'topic:meal' },
     { label: "How's my sleep?", icon: 'sparkle', route: 'topic:sleep' },
     { label: 'Plan my Lisbon trip', icon: 'clock', route: 'topic:trip' },
   ],
-  intents: {
-    focus: { kind: 'build', key: 'action' },
-  },
   keywords: [
     {
       test: /my week|this week|schedule|calendar.*week|week.*look|busy|overload|focus time/,
       route: 'topic:week',
-      sub: [{ test: /block|hold|protect|focus time/, route: 'week:focus' }],
     },
   ],
 };

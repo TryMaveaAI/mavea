@@ -440,24 +440,6 @@ export const gameday: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I can't ping your phone, but I'll flag it here when it's final.",
-      props: {
-        eyebrow: 'Action · watch',
-        icon: 'eye',
-        title: 'Flag the Warriors–Lakers final here',
-        lines: [
-          { k: 'Watching', v: 'Warriors vs Lakers' },
-          { k: 'Shows', v: 'Right here on this board when it wraps' },
-        ],
-        perm: "This only marks the card, Mavéa can't send phone notifications.",
-        cta: 'Flag it',
-        doneText: 'Flagged — check back here for the final',
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -474,7 +456,6 @@ export const gameday: ConversationSpec = {
   suggests: [
     { label: 'Show me the key plays', icon: 'play', route: 'gameday:plays', lead: 'Try' },
     { label: 'Prove the head-to-head', icon: 'table', route: 'gameday:h2h' },
-    { label: 'Flag it at the final', icon: 'eye', route: 'send' },
     { label: 'Cut the highlights', icon: 'sparkle', route: 'replay' },
     { label: "How's my running going?", icon: 'chart', route: 'topic:fitness' },
   ],

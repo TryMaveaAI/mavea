@@ -513,37 +513,7 @@ export const puppy: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll add Biscuit's week-12 booster to your calendar.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add the week-12 vet visit',
-        lines: [
-          { k: 'Adds', v: 'One event · week-12 booster' },
-          { k: 'To', v: 'Family calendar' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add reminder',
-        doneText: 'Added the week-12 vet visit',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Biscuit · week-12 vaccine booster' },
-          { param: 'start', label: 'Start', value: '2026-06-30T10:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '30' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value: 'Maple Animal Care. Week-16 booster follows 4 weeks later.',
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'household',
   tryChip: { label: 'We just got a puppy, help us start', route: 'topic:puppy' },
@@ -554,7 +524,6 @@ export const puppy: ConversationSpec = {
       route: 'puppy:vaccines',
       lead: 'Try',
     },
-    { label: 'Add the vet visit to my calendar', icon: 'check', route: 'send' },
     { label: 'Show the first-week supplies', icon: 'cart', route: 'puppy:supplies' },
     { label: 'What does the daily rhythm look like?', icon: 'clock', route: 'puppy:day' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },

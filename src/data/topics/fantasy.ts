@@ -520,24 +520,6 @@ export const fantasy: ConversationSpec = {
         ],
       },
     },
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: 'I’ll get the optimal lineup ready, you set it in your league app.',
-      props: {
-        eyebrow: 'Action · lineup moves',
-        icon: 'check',
-        title: 'Get your optimal Week 11 lineup ready',
-        lines: [
-          { k: 'Moves', v: '3 swaps · Achane, Nabers, McBride in' },
-          { k: 'League', v: 'The Gridiron Gurus · ESPN' },
-        ],
-        perm: 'Mavéa has no connection to ESPN, you make the swaps yourself before kickoff.',
-        cta: 'Get the 3 moves ready',
-        doneText: 'Moves ready, projected 121.4 · set them in ESPN',
-      },
-    },
     replay: {
       kind: 'replay',
       col: 6,
@@ -552,7 +534,6 @@ export const fantasy: ConversationSpec = {
   group: 'decide',
   tryChip: { label: 'Who should I start this week?', route: 'topic:fantasy' },
   suggests: [
-    { label: 'Get my optimal lineup ready', icon: 'check', route: 'send', lead: 'Try' },
     { label: 'Should I start Nabers or Waddle?', icon: 'spark', route: 'fantasy:startsit' },
     { label: 'Make it a one-slide game plan', icon: 'slides', route: 'slide' },
     { label: 'Clip a 20-second recap', icon: 'play', route: 'replay' },

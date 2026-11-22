@@ -153,8 +153,7 @@ export function LegalGate({
             </li>
             <li>
               <strong>You are responsible for your use of Mavéa,</strong> including your
-              credentials, your right to submit content, any connected actions you take, and
-              anything you share.
+              credentials, your right to submit content, and how you use or share its outputs.
             </li>
           </ul>
 

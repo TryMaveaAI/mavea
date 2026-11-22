@@ -223,7 +223,7 @@
   text-align: center;
 }
 
-/* The inline "working…" ring, shared by BuildProgress and ActionCard. */
+/* The inline progress ring. */
 .tiny-spin {
   width: 13px;
   height: 13px;
@@ -661,98 +661,4 @@
   padding: 9px 2px;
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 0;
-}
-
-/* App launcher — "Open my CRM/tracker" opens the built app full-screen */
-.open-app-hint {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-.app-scrim {
-  position: fixed;
-  inset: 0;
-  background: rgba(var(--scrim-rgb), 0.62);
-  backdrop-filter: var(--glass-blur, blur(5px));
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 28px;
-  animation: appFade var(--m-normal) var(--ease-out);
-}
-.app-launch {
-  width: min(1140px, 95vw);
-  max-height: 90dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--surface-elevated);
-  border: 1px solid var(--line-strong);
-  border-radius: 18px;
-  box-shadow: var(--shadow-modal);
-  animation: appLaunchIn var(--m-expressive) var(--ease-out);
-}
-.app-launch-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-.app-launch-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.app-launch-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--insight);
-  background: color-mix(in oklab, var(--insight) 13%, transparent);
-  padding: 3px 10px;
-  border-radius: var(--r-full);
-  text-transform: none;
-}
-.app-launch-head .drawer-x {
-  position: static;
-}
-.app-launch-body {
-  padding: 18px;
-  overflow-y: auto;
-}
-.app-launch-body .card {
-  box-shadow: none;
-}
-.app-launch-body .card-eyebrow {
-  display: none;
-}
-.app-launch-body .appframe {
-  margin-top: 0;
-}
-.app-launch-body .appframe-body {
-  min-height: 60dvh;
-}
-@keyframes appFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes appLaunchIn {
-  from {
-    opacity: 0;
-    transform: scale(0.965) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }

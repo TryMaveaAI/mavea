@@ -351,48 +351,12 @@ export const booking: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: 'I’ll add the session to your calendar.',
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add the studio session to your calendar',
-        lines: [
-          { k: 'Adds', v: 'Sat Jun 14 · 9:00–11:30 AM' },
-          { k: 'With', v: 'Maya Chen · Aria Studio · Loft B' },
-          { k: 'Hold', v: '$120 refundable deposit' },
-        ],
-        perm: 'Creates 1 calendar event — nothing is emailed or shared until you review.',
-        cta: 'Add to calendar',
-        doneText: 'Held Sat Jun 14 · 9:00 AM at Aria Studio',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          {
-            param: 'title',
-            label: 'Event title',
-            value: 'Studio session · Aria Loft B · Maya Chen',
-          },
-          { param: 'start', label: 'Start', value: '2026-06-14T09:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '150' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value: 'Warm Sand backdrop · party of 4 · $120 deposit holds the slot',
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'Book a studio session', route: 'topic:booking' },
   suggests: [
     { label: 'Hold my slot', icon: 'check', route: 'booking:confirm', lead: 'Try' },
-    { label: 'Add it to my calendar', icon: 'clock', route: 'send' },
     { label: 'Pick a different photographer', icon: 'eye', route: 'booking:photographer' },
     { label: 'Plan my Kyoto trip', icon: 'share', route: 'topic:travel' },
     { label: 'What’s my week look like?', icon: 'clock', route: 'topic:week' },

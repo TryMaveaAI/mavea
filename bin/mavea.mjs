@@ -292,7 +292,7 @@ export function parseArgs(argv, env = process.env) {
   return out;
 }
 
-// Same-origin forwarders — the production equivalent of the /llm, /search, /actions, /tts, /stt
+// Same-origin forwarders — the production equivalent of the /llm, /search, /tts, /stt
 // dev proxies in vite.config.ts. BYOK keys travel browser → this local server → provider, same
 // as dev; nothing is stored or logged here.
 const MiB = 1024 * 1024;
@@ -397,19 +397,6 @@ export const PROXIES = [
     maxConcurrent: 12,
     timeoutMs: 30_000,
   },
-  {
-    prefix: '/actions',
-    target: process.env.ACTIONS_URL || 'http://127.0.0.1:8910',
-    methods: ['GET', 'POST', 'DELETE'],
-    bodyLimit: 2 * MiB,
-    responseLimit: 8 * MiB,
-    requestsPerMinute: 120,
-    maxConcurrent: 4,
-    timeoutMs: 30_000,
-    forwardOrigin: true,
-    crossSiteNavigationPaths: ['/oauth/google/callback'],
-    injectGatewaySecret: true,
-  },
 ];
 
 function send(res, status, body = '', headers = {}) {
@@ -464,17 +451,9 @@ function localUrlFromHeader(value) {
   }
 }
 
-function isTrustedBrowserRequest(req, requestTarget, route) {
+function isTrustedBrowserRequest(req) {
   const host = localUrlFromHeader(req.headers.host);
   if (!host) return false;
-
-  const crossSitePath = requestTarget.pathname.slice(route.prefix.length) || '/';
-  if (
-    req.method === 'GET' &&
-    route.crossSiteNavigationPaths?.some((path) => crossSitePath === path)
-  ) {
-    return true;
-  }
 
   const origin = localUrlFromHeader(req.headers.origin);
   if (origin) return origin.host === host.host;
@@ -550,7 +529,7 @@ function readRequestBody(req, limit) {
   });
 }
 
-function requestHeadersForUpstream(req, route, targetUrl, body) {
+function requestHeadersForUpstream(req, targetUrl, body) {
   const headers = {};
   for (const [name, value] of Object.entries(req.headers)) {
     const lower = name.toLowerCase();
@@ -559,7 +538,8 @@ function requestHeadersForUpstream(req, route, targetUrl, body) {
       lower === 'host' ||
       lower === 'cookie' ||
       lower === 'content-length' ||
-      (!route.forwardOrigin && (lower === 'origin' || lower === 'referer'))
+      lower === 'origin' ||
+      lower === 'referer'
     ) {
       continue;
     }
@@ -567,9 +547,6 @@ function requestHeadersForUpstream(req, route, targetUrl, body) {
   }
   headers.host = targetUrl.host;
   if (body.byteLength > 0) headers['content-length'] = String(body.byteLength);
-  if (route.injectGatewaySecret && process.env.GATEWAY_SECRET) {
-    headers['x-gateway-secret'] = process.env.GATEWAY_SECRET;
-  }
   return headers;
 }
 
@@ -650,7 +627,7 @@ async function proxyRequest(req, res, route, requestTarget) {
   const rest = restPath + requestTarget.search;
   const isHttps = targetUrl.protocol === 'https:';
   const mod = isHttps ? https : http;
-  const headers = requestHeadersForUpstream(req, route, targetUrl, body);
+  const headers = requestHeadersForUpstream(req, targetUrl, body);
 
   await new Promise((resolveProxy) => {
     let settled = false;
@@ -685,7 +662,7 @@ async function proxyRequest(req, res, route, requestTarget) {
       proxyReq.destroy(new Error('upstream request timeout'));
     });
     proxyReq.on('error', () => {
-      // Connection refused (voice/gateway not running) surfaces as an honest failure on the card.
+      // Connection refused can mean the optional local voice service is stopped.
       if (!res.destroyed && !res.headersSent) {
         sendProblem(res, 502, 'The upstream service is unavailable.');
       } else if (!res.destroyed) {
@@ -894,7 +871,7 @@ export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Dat
       sendProblem(res, 405, 'Method not allowed.', { Allow: allowedMethods.join(', ') });
       return;
     }
-    if (!isTrustedBrowserRequest(req, requestTarget, route)) {
+    if (!isTrustedBrowserRequest(req)) {
       sendProblem(res, 403, 'Proxy requests must come from this local Mavéa page.');
       return;
     }

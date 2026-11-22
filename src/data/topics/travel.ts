@@ -254,43 +254,11 @@ export const travel: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Preparing',
-      say: "I'll add the five days to your calendar.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add the Kyoto trip to your calendar',
-        lines: [
-          { k: 'Adds', v: '1 event · Apr 12–16' },
-          { k: 'To', v: 'Your personal calendar' },
-        ],
-        perm: 'Mavéa will create 1 event spanning the trip. Nothing is shared with anyone.',
-        cta: 'Add to calendar',
-        doneText: 'Added Apr 12–16 to your calendar',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Kyoto trip' },
-          { param: 'start', label: 'Start', value: '2026-04-12T10:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '5760' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value:
-              'ANA nonstop both ways, Machiya townhouse in Gion, ICOCA card, one kaiseki dinner.',
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: 'Plan my Kyoto trip', route: 'topic:travel' },
   suggests: [
-    { label: 'Add it to my calendar', icon: 'check', route: 'send', lead: 'Try' },
     { label: 'Plan my Lisbon weekend', icon: 'share', route: 'topic:trip' },
     { label: "How's my running going?", icon: 'chart', route: 'topic:fitness' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },

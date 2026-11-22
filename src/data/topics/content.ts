@@ -357,37 +357,6 @@ export const content: ConversationSpec = {
   ],
   proof: null,
   extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Opening a PR',
-      say: "I'll open a draft PR with the tracker starter, you run it yourself.",
-      props: {
-        eyebrow: 'Action · pull request',
-        icon: 'external',
-        title: 'Open PR: “Content OS starter”',
-        lines: [
-          { k: 'Branch', v: 'feat/content-os → main' },
-          { k: 'Includes', v: '4 tables, 5 screens, 12 imported posts' },
-        ],
-        perm: 'Mavéa opens a draft PR. Nothing merges without your review and approval.',
-        cta: 'Open draft PR',
-        doneText: 'Draft PR opened · waiting for your review',
-        mcpId: 'github.openDraftPr',
-        fields: [
-          { param: 'title', label: 'PR title', value: 'Content OS starter' },
-          { param: 'head', label: 'Branch', value: 'feat/content-os' },
-          { param: 'base', label: 'Target branch', value: 'main' },
-          {
-            param: 'body',
-            label: 'PR description',
-            value:
-              'Channel-grouped content tracker, idea → drafting → scheduled → published, seeded from theofield.com.',
-            multiline: true,
-          },
-        ],
-      },
-    },
     slide: {
       kind: 'slide',
       col: 6,
@@ -426,7 +395,6 @@ export const content: ConversationSpec = {
     { label: 'Show me the data model', icon: 'layers', route: 'content:schema' },
     { label: 'What screens do I get?', icon: 'slides', route: 'content:screens' },
     { label: 'Looks right, build it', icon: 'spark', route: 'content:run' },
-    { label: 'Open the tracker PR', icon: 'external', route: 'send' },
   ],
   intents: {
     understood: {
@@ -461,7 +429,6 @@ export const content: ConversationSpec = {
           test: /get.*(work|me).*right|did you (get|understand)|about my (work|content)/,
           route: 'content:understood',
         },
-        { test: /open (it|my)|publish|go live|launch it/, route: 'send' },
         { test: /build it|looks right|go ahead|do it|ship it/, route: 'content:run' },
       ],
     },

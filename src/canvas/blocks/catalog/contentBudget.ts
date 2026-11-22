@@ -156,23 +156,12 @@ function capDeep(
   return value;
 }
 
-/** Runtime half of the contract. Action arguments are deliberately preserved: content budgets are
- * a display/layout concern and must never silently change the operation a user is confirming. */
+/** Apply display limits to a component’s props. */
 export function enforceComponentContentBudget(
   type: string,
   props: Record<string, unknown>,
   meta?: Pick<ComponentMeta, 'contentBudget'>,
 ): Record<string, unknown> {
-  if (type === 'action') {
-    const label =
-      typeof props.label === 'string'
-        ? capContentText(
-            props.label,
-            fieldContentBudget(type, 'label', 'text', meta?.contentBudget),
-          )
-        : props.label;
-    return label === undefined ? props : { ...props, label };
-  }
   return capDeep(type, props, '', meta?.contentBudget, 0) as Record<string, unknown>;
 }
 

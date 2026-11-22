@@ -111,6 +111,19 @@ describe('mavea CLI server security boundary', () => {
     expect(healthy.headers['permissions-policy']).toContain('microphone=(self)');
   });
 
+  it('does not forward requests to the retired actions gateway', async () => {
+    expect(PROXIES).not.toContainEqual(expect.objectContaining({ prefix: '/actions' }));
+    const port = await start(createMaveaServer({ distDir }));
+
+    const response = await request(port, '/actions/confirm', {
+      method: 'POST',
+      headers: { Origin: `http://${LOOPBACK_HOST}:${port}` },
+    });
+
+    expect(response.status).toBe(405);
+    expect(response.headers.allow).toBe('GET, HEAD');
+  });
+
   it('revalidates HTML and caches content-hashed assets for one year', async () => {
     await writeFile(join(distDir, 'entry-abc123.js'), 'export default 1');
     const assets = join(distDir, 'assets');

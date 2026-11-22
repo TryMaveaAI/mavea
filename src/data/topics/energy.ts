@@ -1,5 +1,5 @@
 // energy.ts, "Why is my power bill so high?" (content.md §2.1).
-// Enriched: insight + chart + donut (kWh split) + heat (hour×day usage) + gauge (vs neighbors) + breakdown + ActionCard.
+// Enriched: insight + chart + donut (kWh split) + heat (hour×day usage) + gauge (vs neighbors) + breakdown.
 import type { ConversationSpec } from '../conversation';
 
 export const energy: ConversationSpec = {
@@ -267,44 +267,13 @@ export const energy: ConversationSpec = {
       "Tariff is assumed flat; if you're on time-of-use the savings could be larger.",
     ],
   },
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I'll add a calendar reminder for the 9–11pm heater window.",
-      props: {
-        eyebrow: 'Action · calendar',
-        icon: 'clock',
-        title: 'Add a heater reminder, 9–11pm tonight',
-        lines: [
-          { k: 'Adds', v: 'One event · tonight, 9:00–11:00pm' },
-          { k: 'To', v: 'Your personal calendar' },
-        ],
-        perm: 'Adds one event to your calendar. No invites are sent.',
-        cta: 'Add reminder',
-        doneText: 'Added tonight, 9–11pm',
-        mcpId: 'calendar.addEvent',
-        fields: [
-          { param: 'title', label: 'Event title', value: 'Turn the heater on · off at 11' },
-          { param: 'start', label: 'Start', value: '2026-06-12T21:00:00' },
-          { param: 'durationMin', label: 'Duration (min)', value: '120' },
-          {
-            param: 'notes',
-            label: 'Notes',
-            value: 'Heat the room, not the night, saves about $30/month.',
-          },
-        ],
-      },
-    },
-  },
+  extras: {},
 
   group: 'household',
   tryChip: { label: 'Why is my power bill so high?', route: 'topic:energy' },
   suggests: [
     { label: 'Prove the jump', icon: 'proof', route: 'energy:prove', lead: 'Try' },
     { label: 'How do I cut it?', icon: 'chart', route: 'energy:fix' },
-    { label: 'Schedule the heater', icon: 'clock', route: 'energy:action' },
     { label: 'Back to my money', icon: 'chart', route: 'topic:money' },
   ],
   intents: {
@@ -314,7 +283,6 @@ export const energy: ConversationSpec = {
       spotId: 'fix',
       say: 'A timer that heats the room, not the night, claws back about half, roughly $30 a month.',
     },
-    action: { kind: 'build', key: 'action' },
   },
   keywords: [
     {

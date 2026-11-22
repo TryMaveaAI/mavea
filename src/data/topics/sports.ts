@@ -145,31 +145,11 @@ export const sports: ConversationSpec = {
     },
   ],
   proof: null,
-  extras: {
-    action: {
-      kind: 'action',
-      col: 6,
-      status: 'Setting it up',
-      say: "I can't send phone alerts, but I'll flag the Yankees game here.",
-      props: {
-        eyebrow: 'Action · watch',
-        icon: 'eye',
-        title: 'Flag the Yankees game here',
-        lines: [
-          { k: 'Watching', v: 'Yankees vs Mets, top 9th' },
-          { k: 'Shows', v: 'Right here on this board' },
-        ],
-        perm: "This only marks the card, Mavéa can't send phone notifications.",
-        cta: 'Flag it',
-        doneText: 'Flagged — check back here for the final',
-      },
-    },
-  },
+  extras: {},
 
   group: 'home',
   tryChip: { label: "What's the score tonight?", route: 'topic:sports' },
   suggests: [
-    { label: 'Flag the close game', icon: 'eye', route: 'send', lead: 'Try' },
     { label: "How's my running going?", icon: 'chart', route: 'topic:fitness' },
     { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },
     { label: 'Plan my Kyoto trip', icon: 'share', route: 'topic:travel' },
