@@ -950,18 +950,18 @@ call most model APIs directly due to CORS restrictions and key exposure.
 
 Any reverse proxy or rewrite layer works; it needs to replicate these dev proxies:
 
-| Dev proxy path      | Production target                             |
-| ------------------- | --------------------------------------------- |
-| `/llm/anthropic/*`  | `https://api.anthropic.com/*`                 |
-| `/llm/openai/*`     | `https://api.openai.com/*`                    |
-| `/llm/gemini/*`     | `https://generativelanguage.googleapis.com/*` |
-| `/llm/grok/*`       | `https://api.x.ai/*`                          |
-| `/llm/openrouter/*` | `https://openrouter.ai/*`                     |
-| `/tts`              | Kokoro TTS (`http://localhost:8880`)          |
-| `/stt`              | Whisper STT (`http://localhost:8100`)         |
-| `/search/brave/*`   | `https://api.search.brave.com/*`              |
-| `/search/tavily/*`  | `https://api.tavily.com/*`                    |
-| `/pdf`              | dev-only PDF proxy (SSRF-bounded allowlist)   |
+| Dev proxy path      | Production target                                          |
+| ------------------- | ---------------------------------------------------------- |
+| `/llm/anthropic/*`  | `https://api.anthropic.com/*`                              |
+| `/llm/openai/*`     | `https://api.openai.com/*`                                 |
+| `/llm/gemini/*`     | `https://generativelanguage.googleapis.com/*`              |
+| `/llm/grok/*`       | `https://api.x.ai/*`                                       |
+| `/llm/openrouter/*` | `https://openrouter.ai/*`                                  |
+| `/tts`              | Kokoro TTS (`http://localhost:8880`)                       |
+| `/stt`              | Whisper STT (`http://localhost:8100`)                      |
+| `/search/brave/*`   | `https://api.search.brave.com/*`                           |
+| `/search/tavily/*`  | `https://api.tavily.com/*`                                 |
+| `/pdf`              | dev-only PDF proxy (same-origin, bounded HTTPS forwarding) |
 
 Any host can serve the built app, but it must forward these paths with a real serverless **function**
 (Cloudflare Worker, Vercel/Netlify function, a small Node process). A static rewrite is not enough:

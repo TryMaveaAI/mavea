@@ -14,6 +14,9 @@ describe('safePdfUrl', () => {
     expect(safePdfUrl('https://evil.example.com/x.pdf')).toBeUndefined();
     expect(safePdfUrl('http://bitcoin.org/bitcoin.pdf')).toBeUndefined(); // not https
     expect(safePdfUrl('https://bitcoin.org.attacker.com/x.pdf')).toBeUndefined(); // subdomain spoof
+    expect(safePdfUrl('https://other.bitcoin.org/x.pdf')).toBeUndefined();
+    expect(safePdfUrl('https://bitcoin.org:8443/x.pdf')).toBeUndefined();
+    expect(safePdfUrl('https://user:password@bitcoin.org/x.pdf')).toBeUndefined();
     expect(safePdfUrl('https://10.0.0.1/internal.pdf')).toBeUndefined(); // private host
     expect(safePdfUrl('not a url')).toBeUndefined();
     expect(safePdfUrl(undefined)).toBeUndefined();

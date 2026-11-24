@@ -14,7 +14,7 @@ function sameOriginFrameUrl(raw: string | undefined): string | null {
   if (!raw || typeof window === 'undefined') return null;
   try {
     const url = new URL(raw, window.location.origin);
-    if (url.origin !== window.location.origin) return null;
+    if (url.origin !== window.location.origin || url.pathname.startsWith('//')) return null;
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
     // Do not turn this into a general same-origin iframe primitive. Only a real PDF asset or the
     // audited PDF forwarder is eligible; app routes/HTML remain impossible to frame here.

@@ -16,30 +16,37 @@ import babel from '@rolldown/plugin-babel';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { safePdfUrl } from './src/live/doc/safeUrl.js';
 
-// /pdf?url=<allowlisted https pdf> — fetch the document server-side and re-serve it from our
-// own origin (stripping the source's X-Frame-Options), so an external PDF previews INLINE in
-// the pdfreader instead of falling back to a link. The allowlist (safePdfUrl) is the SSRF
-// boundary; we also re-validate the FINAL url after redirects so a redirect can't jump to an
-// off-allowlist (e.g. internal) host. Dev-only, like the /llm proxies below — a deployed build
-// needs an equivalent same-origin forwarder, else pdfreader gracefully shows the "Open" link.
+const PDF_PATH = /^\/pdf(?:\?|$)/;
 const PDF_MAX_BYTES = 30 * 1024 * 1024;
-// Only this app's own pages may call the provider and voice proxies, using the same proof the CLI
+const PDF_MAX_REDIRECTS = 3;
+const PDF_TIMEOUT_MS = 12_000;
+const PDF_MAX_IN_FLIGHT = 4;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+// Only this app's own pages may call the forwarders, using the same proof the CLI
 // requires: a matching Origin or Referer, or Fetch Metadata saying same-origin. The voice routes
 // use bare prefixes because their proxy entries do too.
 const GUARDED_PROXY = /^\/(?:llm\/|search\/|tts|stt)/;
 
-export function proxyRequestAllowed(req: Pick<IncomingMessage, 'url' | 'headers'>): boolean {
-  if (!GUARDED_PROXY.test(req.url ?? '')) return true;
-  const hostOf = (value: string | undefined) => {
+export function proxyRequestAllowed(
+  req: Pick<IncomingMessage, 'url' | 'headers'>,
+  protocol: 'http' | 'https' = 'http',
+): boolean {
+  const path = req.url ?? '';
+  if (!GUARDED_PROXY.test(path) && !PDF_PATH.test(path)) return true;
+  const fetchSite = req.headers['sec-fetch-site'];
+  if (fetchSite && fetchSite !== 'same-origin') return false;
+  const originOf = (value: string | undefined) => {
     if (!value) return null;
     try {
-      return new URL(value).host;
+      return new URL(value).origin;
     } catch {
       return null;
     }
   };
-  const claimed = hostOf(req.headers.origin) ?? hostOf(req.headers.referer);
-  return claimed ? claimed === req.headers.host : req.headers['sec-fetch-site'] === 'same-origin';
+  const claimed = originOf(req.headers.origin ?? req.headers.referer);
+  if (!claimed) return fetchSite === 'same-origin';
+  const expected = req.headers.host && originOf(`${protocol}://${req.headers.host}`);
+  return claimed === expected;
 }
 
 function sameOriginProxyGuardPlugin(): Plugin {
@@ -47,7 +54,8 @@ function sameOriginProxyGuardPlugin(): Plugin {
     name: 'mavea-same-origin-proxy-guard',
     configureServer(server) {
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
-        if (proxyRequestAllowed(req)) return next();
+        const protocol = 'encrypted' in req.socket && req.socket.encrypted ? 'https' : 'http';
+        if (proxyRequestAllowed(req, protocol)) return next();
         res.statusCode = 403;
         res.end('Forbidden: local proxies answer only this app.');
       });
@@ -55,48 +63,102 @@ function sameOriginProxyGuardPlugin(): Plugin {
   };
 }
 
+async function fetchPdf(target: string, signal: AbortSignal): Promise<Response | null> {
+  for (let redirects = 0; ; redirects++) {
+    const upstream = await fetch(target, { signal, redirect: 'manual' });
+    if (!REDIRECT_STATUSES.has(upstream.status)) return upstream;
+    await upstream.body?.cancel();
+    const location = upstream.headers.get('location');
+    if (!location || redirects >= PDF_MAX_REDIRECTS) return null;
+    // Validate the resolved destination before opening another connection.
+    const next = safePdfUrl(new URL(location, target).href);
+    if (!next) return null;
+    target = next;
+  }
+}
+
+async function readPdf(body: ReadableStream<Uint8Array>): Promise<Buffer | null> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return Buffer.concat(chunks, size);
+      size += value.byteLength;
+      if (size > PDF_MAX_BYTES) return null;
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function servePdf(req: IncomingMessage, res: ServerResponse) {
+  const fail = (code: number) => {
+    if (res.destroyed) return;
+    res.statusCode = code;
+    res.end();
+  };
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return fail(405);
+  }
+  const target = safePdfUrl(
+    new URLSearchParams(req.url?.slice('/pdf?'.length)).get('url') ?? undefined,
+  );
+  if (!target) return fail(400);
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, PDF_TIMEOUT_MS);
+  res.once('close', abort);
+  try {
+    const upstream = await fetchPdf(target, controller.signal);
+    const mediaType = upstream?.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
+    if (!upstream?.ok || mediaType !== 'application/pdf' || !upstream.body) return fail(502);
+    if (Number(upstream.headers.get('content-length')) > PDF_MAX_BYTES) return fail(413);
+    // Fetch may decompress the body or receive it without a length header. Bound the bytes we
+    // actually retain before serving any part of the document under the app's origin.
+    const body = await readPdf(upstream.body);
+    if (!body) return fail(413);
+    if (!body.subarray(0, 5).equals(Buffer.from('%PDF-'))) return fail(502);
+    if (res.destroyed) return;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.end(body);
+  } catch {
+    fail(502);
+  } finally {
+    clearTimeout(timer);
+    res.off('close', abort);
+    // Cancel any unread upstream bytes on rejection as well as on client disconnect.
+    abort();
+  }
+}
+
 function pdfProxyPlugin(): Plugin {
   return {
     name: 'mavea-pdf-proxy',
     configureServer(server) {
-      server.middlewares.use('/pdf', async (req: IncomingMessage, res: ServerResponse) => {
-        const fail = (code: number) => {
-          res.statusCode = code;
+      let inFlight = 0;
+      server.middlewares.use((req, res, next) => {
+        if (!PDF_PATH.test(req.url ?? '')) return next();
+        if (inFlight >= PDF_MAX_IN_FLIGHT) {
+          res.statusCode = 503;
           res.end();
-        };
-        try {
-          const raw = req.url || '';
-          const q = raw.indexOf('?');
-          const target = safePdfUrl(
-            new URLSearchParams(q >= 0 ? raw.slice(q + 1) : '').get('url') || undefined,
-          );
-          if (!target) return fail(400);
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 12_000);
-          let upstream: Response;
-          try {
-            upstream = await fetch(target, { signal: ctrl.signal, redirect: 'follow' });
-          } finally {
-            clearTimeout(timer);
-          }
-          // A redirect must not escape the allowlist (SSRF guard), and the body must be a PDF.
-          if (!safePdfUrl(upstream.url)) return fail(502);
-          const ct = upstream.headers.get('content-type') || '';
-          if (!upstream.ok || !/pdf/i.test(ct)) return fail(502);
-          const declared = Number(upstream.headers.get('content-length') || 0);
-          if (declared > PDF_MAX_BYTES) return fail(413);
-          const body = Buffer.from(await upstream.arrayBuffer());
-          if (body.length > PDF_MAX_BYTES) return fail(413);
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', 'inline');
-          res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-          res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-          res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.end(body);
-        } catch {
-          fail(502);
+          return;
         }
+        inFlight++;
+        // Keep the slot until writing ends so slow readers also count against the memory bound.
+        res.once('close', () => inFlight--);
+        void servePdf(req, res);
       });
     },
   };

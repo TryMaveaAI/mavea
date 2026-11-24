@@ -29,9 +29,13 @@ the repository owners the operator of someone else's deployment.
 - Preserve every security header in `public/_headers`, including the header-level
   `Content-Security-Policy`: it is index.html's meta policy plus `frame-ancestors 'none'`, which a
   meta CSP cannot express. Copy the line verbatim; `tests/csp-parity.test.ts` holds it to the page.
-- Put the same-origin `/llm`, `/search`, `/actions`, `/tts`, `/stt`, and `/pdf` forwarders behind
+- Put the same-origin `/llm`, `/search`, `/tts`, `/stt`, and `/pdf` forwarders behind
   bounded request sizes, timeouts, concurrency/rate limits, and origin/authentication checks. A
   static host without these forwarders is not a complete Live deployment.
+- If you deploy a PDF forwarder, mirror the development checks. Require same-origin GETs, validate
+  each HTTPS destination against the exact host allowlist before connecting, cap redirects at three,
+  and apply a 12-second upstream deadline and a 30 MiB decoded body limit. Serve only verified PDF
+  responses with same-origin framing, private caching, and MIME sniffing disabled.
 - Keep origin logs free of request bodies and authorization headers. BYOK prompts and keys must not
   enter CDN analytics, error pages, or access logs.
 

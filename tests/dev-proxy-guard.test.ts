@@ -19,6 +19,7 @@ describe('the dev proxy same-origin guard', () => {
     '/tts/v1/audio/speech',
     '/tts/health',
     '/stt/inference',
+    '/pdf?url=https%3A%2F%2Fbitcoin.org%2Fbitcoin.pdf',
   ];
 
   it.each(guarded)('refuses %s from another site or from no page at all', (url) => {
@@ -36,6 +37,20 @@ describe('the dev proxy same-origin guard', () => {
 
   it.each(['/tts', '/stt'])('guards %s by the bare prefix its proxy entry matches', (url) => {
     expect(proxyRequestAllowed(at(url, { origin: 'https://evil.example' }))).toBe(false);
+  });
+
+  it('refuses a same-site request even when its referrer shares the host', () => {
+    expect(
+      proxyRequestAllowed(
+        at('/pdf', { referer: `https://${HOST}/`, 'sec-fetch-site': 'same-site' }),
+      ),
+    ).toBe(false);
+  });
+
+  it('compares the scheme when falling back to Origin or Referer', () => {
+    const req = at('/pdf', { referer: `https://${HOST}/` });
+    expect(proxyRequestAllowed(req)).toBe(false);
+    expect(proxyRequestAllowed(req, 'https')).toBe(true);
   });
 
   it('leaves the app’s own pages and assets alone', () => {

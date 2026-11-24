@@ -45,6 +45,13 @@ describe('Pdfreader URL boundary', () => {
     expect(screen.getByText('This PDF link could not be verified.')).toBeInTheDocument();
   });
 
+  it('rejects PDF paths that cannot round-trip as relative URLs', () => {
+    const { container } = render(
+      <Pdfreader {...base} embedSrc={`${window.location.origin}//example.com/sample.pdf`} />,
+    );
+    expect(container.querySelector('iframe')).toBeNull();
+  });
+
   it('renders an external http(s) document as an explicit safe link instead of a frame', () => {
     const { container } = render(<Pdfreader {...base} file="https://www.w3.org/TR/example.pdf" />);
     expect(container.querySelector('iframe')).toBeNull();
