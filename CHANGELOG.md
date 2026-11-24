@@ -6,6 +6,13 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.12.2] - 2026-11-24
+
+### Security
+
+- Restricted the development PDF proxy to same-origin GET requests and exact HTTPS hosts. The proxy now validates redirect destinations before connecting and limits download time, size, and concurrency.
+- Tightened the PDF viewer's frame URL validation and updated the lint toolchain to a fixed `minimatch` release.
+
 ### Removed
 
 - Removed the retired actions gateway and its Google Calendar and GitHub write integrations.
